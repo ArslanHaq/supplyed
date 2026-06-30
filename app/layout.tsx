@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Script from "next/script";
 import type { ReactNode } from "react";
+import { RouteLoader } from "@/components/molecules/RouteLoader";
 import { seoKeywords, siteConfig } from "@/lib/seo";
 
 const themeBootScript = `
@@ -89,6 +90,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           id="supplyed-theme-boot"
           strategy="beforeInteractive"
         />
+        <RouteLoader />
         {children}
       </body>
     </html>

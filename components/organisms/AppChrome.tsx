@@ -45,7 +45,8 @@ export function AppChrome({
   children,
   go,
   onLanding,
-}: Pick<RouteProps, "state" | "setState" | "go"> & { children: ReactNode; onLanding: () => void }) {
+  onLogout,
+}: Pick<RouteProps, "state" | "setState" | "go"> & { children: ReactNode; onLanding: () => void; onLogout: () => void }) {
   const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : state.role === "individual" ? individualNav : adminNav;
   const userName = state.role === "institution" ? "Greenfield Primary" : state.role === "teacher" ? "Sarah Johnson" : state.role === "individual" ? "Aisha Khan" : "Admin Team";
   const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Supply teacher" : state.role === "individual" ? "Talent seeker" : "Operations";
@@ -75,7 +76,10 @@ export function AppChrome({
           ))}
         </div>
         <div className="workspace-crumb">{roleCrumb}</div>
-        <Btn variant="ghost" size="sm" onClick={onLanding}>View landing</Btn>
+        <div className="flex items-center gap-2">
+          <Btn variant="ghost" size="sm" onClick={onLanding}>View Home</Btn>
+          <Btn variant="secondary" size="sm" onClick={onLogout}>Logout</Btn>
+        </div>
       </div>
       <div className="app-nav">
         <Logo size={17} onClick={() => go("dashboard")} />

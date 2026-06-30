@@ -29,7 +29,7 @@ function statusCopy(status: AppState["applicationStatus"]) {
   };
 }
 
-export function ApplicationStatusPage({ state, onLanding }: { state: AppState; onLanding: () => void }) {
+export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: AppState; onLanding: () => void; onLogout: () => void }) {
   const copy = statusCopy(state.applicationStatus);
   const roleLabel = state.role === "teacher" ? "Teacher application" : state.role === "institution" ? "School workspace" : "Account";
 
@@ -37,9 +37,14 @@ export function ApplicationStatusPage({ state, onLanding }: { state: AppState; o
     <div className="min-h-screen bg-[var(--chalk)]">
       <header className="flex min-h-[76px] items-center justify-between border-b border-[var(--border)] bg-white px-4 py-3 sm:px-6 lg:px-12">
         <Logo size={20} onClick={onLanding} />
-        <Btn variant="secondary" onClick={onLanding}>
-          View landing
-        </Btn>
+        <div className="flex items-center gap-2">
+          <Btn variant="secondary" onClick={onLanding}>
+            View Home
+          </Btn>
+          <Btn variant="ghost" onClick={onLogout}>
+            Logout
+          </Btn>
+        </div>
       </header>
 
       <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[960px] items-center px-4 py-10 sm:px-6 lg:px-8">
@@ -69,7 +74,10 @@ export function ApplicationStatusPage({ state, onLanding }: { state: AppState; o
           <div className="mt-7 flex flex-wrap gap-3">
             <Btn icon="message">Contact support</Btn>
             <Btn variant="secondary" onClick={onLanding}>
-              Back to website
+              Back to Home
+            </Btn>
+            <Btn variant="ghost" onClick={onLogout}>
+              Logout
             </Btn>
           </div>
         </section>

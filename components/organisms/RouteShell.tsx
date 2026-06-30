@@ -76,6 +76,20 @@ function RouteShell({ page }: { page: AppPage }) {
     router.push(buildAppHref(page, ctx));
   };
 
+  function goHome() {
+    const nextState: AppState = { ...state, auth: "landing" };
+    setState(nextState);
+    saveAppState(nextState);
+    router.push("/");
+  }
+
+  function logout() {
+    const nextState: AppState = { ...state, auth: "login", page: "dashboard", ctx: {} };
+    setState(nextState);
+    saveAppState(nextState);
+    router.push("/login");
+  }
+
   const routeProps: RouteProps = {
     go,
     toast,
@@ -128,12 +142,8 @@ function RouteShell({ page }: { page: AppPage }) {
     return (
       <ApplicationStatusPage
         state={routeProps.state}
-        onLanding={() => {
-          const nextState: AppState = { ...state, auth: "landing" };
-          setState(nextState);
-          saveAppState(nextState);
-          router.push("/");
-        }}
+        onLanding={goHome}
+        onLogout={logout}
       />
     );
   }
@@ -144,12 +154,8 @@ function RouteShell({ page }: { page: AppPage }) {
         state={routeProps.state}
         setState={setState}
         go={go}
-        onLanding={() => {
-          const nextState: AppState = { ...state, auth: "landing" };
-          setState(nextState);
-          saveAppState(nextState);
-          router.push("/");
-        }}
+        onLanding={goHome}
+        onLogout={logout}
       >
         {content}
       </AppChrome>
