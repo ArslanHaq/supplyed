@@ -3,8 +3,9 @@ import type { Dispatch, SetStateAction } from "react";
 export type Tone = "" | "purple" | "amber" | "green";
 export type ApplicationStage = "applied" | "shortlisted" | "interview" | "hired";
 export type MessageAuthor = "me" | "them";
-export type AppRole = "institution" | "teacher" | "admin";
+export type AppRole = "institution" | "teacher" | "individual" | "admin";
 export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
+export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
 
 export type AppPage =
   | "dashboard"
@@ -94,6 +95,11 @@ export type AppState = {
   role: AppRole;
   page: AppPage;
   auth: AuthState;
+  signupEmail: string;
+  signupVerified: boolean;
+  roleSelected: boolean;
+  onboardingComplete: boolean;
+  applicationStatus: ApplicationStatus;
   onboardingStep: number;
   selectedJob: string;
   selectedTeacher: string;

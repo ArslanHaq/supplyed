@@ -11,12 +11,14 @@ import type { AppPage, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/typ
 
 import { ToastStack } from "../molecules";
 import { AdminDashboard } from "./AdminDashboard";
+import { ApplicationStatusPage } from "./ApplicationStatusPage";
 import { AppChrome } from "./AppChrome";
 import { ApplicationsPage } from "./ApplicationsPage";
 import { BillingPage } from "./BillingPage";
 import { CalendarPage } from "./CalendarPage";
 import { FindJobsPage } from "./FindJobsPage";
 import { FindTeachersPage } from "./FindTeachersPage";
+import { IndividualDashboard } from "./IndividualDashboard";
 import { InstitutionDashboard } from "./InstitutionDashboard";
 import { JobDetailPage } from "./JobDetailPage";
 import { MessagingPage } from "./MessagingPage";
@@ -103,11 +105,38 @@ function RouteShell({ page }: { page: AppPage }) {
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
     else content = <TeacherDashboard {...routeProps} />;
+  } else if (state.role === "individual") {
+    if (activePage === "dashboard") content = <IndividualDashboard {...routeProps} />;
+    else if (activePage === "find-teachers") content = <FindTeachersPage {...routeProps} />;
+    else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
+    else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
+    else if (activePage === "calendar") content = <CalendarPage />;
+    else if (activePage === "billing") content = <BillingPage />;
+    else content = <IndividualDashboard {...routeProps} />;
   } else {
     content = activePage === "messaging" ? <MessagingPage {...routeProps} /> : <AdminDashboard />;
   }
 
   if (!isClient) return null;
+
+  if (
+    routeProps.state.role !== "individual" &&
+    (routeProps.state.applicationStatus === "pending_review" ||
+      routeProps.state.applicationStatus === "rejected" ||
+      routeProps.state.applicationStatus === "suspended")
+  ) {
+    return (
+      <ApplicationStatusPage
+        state={routeProps.state}
+        onLanding={() => {
+          const nextState: AppState = { ...state, auth: "landing" };
+          setState(nextState);
+          saveAppState(nextState);
+          router.push("/");
+        }}
+      />
+    );
+  }
 
   return (
     <>

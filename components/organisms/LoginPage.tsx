@@ -1,45 +1,30 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
-import type { AppRole } from "@/types/supplyed";
+import { Btn, Checkbox, Field, Logo } from "../atoms";
+import { PasswordInput } from "../atoms/PasswordInput";
 
-import { Btn, Checkbox, Field, Icon, Logo } from "../atoms";
-
-type LoginRole = Extract<AppRole, "institution" | "teacher">;
 type LoginErrors = Partial<Record<"email" | "password" | "code", string>>;
+type LoginStep = "credentials" | "email-verification" | "identity-verification";
+type LoginChallenge = "email-verification" | "identity-verification";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function roleCopy(role: LoginRole) {
-  if (role === "teacher") {
-    return {
-      title: "Supply teacher",
-      description: "Access matched jobs, messages, calendar, and profile compliance.",
-      icon: "user",
-    };
-  }
-
-  return {
-    title: "School / MAT",
-    description: "Post cover, review ranked matches, message teachers, and manage bookings.",
-    icon: "building",
-  };
-}
-
 export function LoginPage({
-  role,
-  setRole,
+  onCredentialsAccepted,
+  onEmailVerified,
   onLogin,
   onLanding,
+  onForgotPassword,
   onSwitchSignup,
 }: {
-  role: AppRole;
-  setRole: (role: LoginRole) => void;
-  onLogin: () => void;
+  onCredentialsAccepted: (email: string) => LoginChallenge;
+  onEmailVerified: (email: string) => void;
+  onLogin: (email: string) => void;
   onLanding: () => void;
-  onSwitchSignup: (role?: LoginRole) => void;
+  onForgotPassword: () => void;
+  onSwitchSignup: () => void;
 }) {
-  const activeRole: LoginRole = role === "teacher" ? "teacher" : "institution";
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<LoginStep>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -48,13 +33,11 @@ export function LoginPage({
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
   const codeValue = code.join("");
 
-  const roleSummary = useMemo(() => roleCopy(activeRole), [activeRole]);
-
   function validateCredentials() {
     const nextErrors: LoginErrors = {};
     const trimmedEmail = email.trim();
 
-    if (!trimmedEmail) nextErrors.email = "Enter your work email.";
+    if (!trimmedEmail) nextErrors.email = "Enter your email address.";
     else if (!emailPattern.test(trimmedEmail)) nextErrors.email = "Use a valid email address.";
 
     if (!password) nextErrors.password = "Enter your password.";
@@ -77,7 +60,8 @@ export function LoginPage({
   function handleCredentialSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validateCredentials()) return;
-    setStep(2);
+    setStep(onCredentialsAccepted(email.trim()));
+    setCode(["", "", "", "", "", ""]);
     setErrors({});
     window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
   }
@@ -108,11 +92,24 @@ export function LoginPage({
     codeRefs.current[Math.min(pasted.length, 5)]?.focus();
   }
 
-  function handleVerificationSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleChallengeSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validateCode()) return;
-    onLogin();
+
+    if (step === "email-verification") {
+      onEmailVerified(email.trim());
+      setCode(["", "", "", "", "", ""]);
+      setErrors({});
+      setStep("identity-verification");
+      window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
+      return;
+    }
+
+    onLogin(email.trim());
   }
+
+  const isCredentialsStep = step === "credentials";
+  const isEmailVerificationStep = step === "email-verification";
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[var(--chalk)] lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
@@ -124,7 +121,7 @@ export function LoginPage({
             className="border-white/15 text-white hover:bg-white/10 hover:text-white"
             variant="ghost"
             size="sm"
-            onClick={() => onSwitchSignup(activeRole)}
+            onClick={onSwitchSignup}
           >
             Sign up
           </Btn>
@@ -138,34 +135,8 @@ export function LoginPage({
             <em className="text-[var(--se)]">staffing continues.</em>
           </h1>
           <p className="mt-5 text-base leading-7 text-white/65">
-            Access your SupplyED workspace with clean compliance, role matching, messaging, and booking tools in one place.
+            Sign in once. SupplyED then checks email verification, two-factor requirements, role selection, and application status before opening the right workspace.
           </p>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-            {(["institution", "teacher"] as const).map((value) => {
-              const option = roleCopy(value);
-              const selected = activeRole === value;
-
-              return (
-                <button
-                  key={value}
-                  className="rounded-xl border p-4 text-left transition"
-                  onClick={() => setRole(value)}
-                  style={{
-                    background: selected ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
-                    borderColor: selected ? "var(--se)" : "rgba(255,255,255,0.12)",
-                  }}
-                  type="button"
-                >
-                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-[var(--se)]">
-                    <Icon name={option.icon} size={18} />
-                  </div>
-                  <div className="font-semibold">{option.title}</div>
-                  <p className="mt-1 text-sm leading-6 text-white/55">{option.description}</p>
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         <div className="relative text-xs text-white/40">© 2026 SupplyED</div>
@@ -176,16 +147,18 @@ export function LoginPage({
           <div className="mb-7">
             <div className="eyebrow mb-2 text-[var(--se)]">Secure sign in</div>
             <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">
-              {step === 1 ? "Log in to SupplyED" : "Verify your identity"}
+              {isCredentialsStep ? "Log in to SupplyED" : isEmailVerificationStep ? "Verify your email" : "Verify your identity"}
             </h2>
             <p className="mt-3 text-[var(--muted)]">
-              {step === 1 ? (
+              {isCredentialsStep ? (
                 <>
                   New to SupplyED?{" "}
-                  <button className="font-semibold text-[var(--se)]" onClick={() => onSwitchSignup(activeRole)} type="button">
+                  <button className="font-semibold text-[var(--se)]" onClick={onSwitchSignup} type="button">
                     Create an account
                   </button>
                 </>
+              ) : isEmailVerificationStep ? (
+                <>Confirm <span className="font-semibold text-[var(--ink)]">{email.trim()}</span> before we continue your sign in.</>
               ) : (
                 <>Enter the 6-digit code sent to <span className="font-semibold text-[var(--ink)]">{email.trim()}</span>.</>
               )}
@@ -193,16 +166,8 @@ export function LoginPage({
           </div>
 
           <div className="rounded-xl border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-xs)] sm:p-7">
-            {step === 1 ? (
+            {isCredentialsStep ? (
               <form noValidate onSubmit={handleCredentialSubmit}>
-                <div className="mb-5 rounded-lg border border-[var(--border)] bg-[var(--chalk)] p-4">
-                  <div className="mb-1.5 flex items-center gap-2 font-semibold">
-                    <Icon name={roleSummary.icon} size={16} className="text-[var(--se)]" />
-                    {roleSummary.title}
-                  </div>
-                  <p className="text-sm leading-6 text-[var(--muted)]">{roleSummary.description}</p>
-                </div>
-
                 <Field label="Email address" htmlFor="login-email" error={errors.email} required>
                   <input
                     aria-invalid={Boolean(errors.email)}
@@ -214,14 +179,14 @@ export function LoginPage({
                       setEmail(event.target.value);
                       setErrors((current) => ({ ...current, email: undefined }));
                     }}
-                    placeholder="name@school.org.uk"
+                    placeholder="name@example.com"
                     type="email"
                     value={email}
                   />
                 </Field>
 
                 <Field label="Password" htmlFor="login-password" error={errors.password} required>
-                  <input
+                  <PasswordInput
                     aria-invalid={Boolean(errors.password)}
                     autoComplete="current-password"
                     className="input"
@@ -231,14 +196,15 @@ export function LoginPage({
                       setErrors((current) => ({ ...current, password: undefined }));
                     }}
                     placeholder="Enter your password"
-                    type="password"
                     value={password}
                   />
                 </Field>
 
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                   <Checkbox checked={remember} onChange={setRemember} label="Remember this device" />
-                  <button className="text-sm font-semibold text-[var(--se)]" type="button">Forgot password?</button>
+                  <button className="text-sm font-semibold text-[var(--se)]" onClick={onForgotPassword} type="button">
+                    Forgot password?
+                  </button>
                 </div>
 
                 <Btn className="w-full" size="lg" type="submit" iconRight="arrow">
@@ -246,8 +212,8 @@ export function LoginPage({
                 </Btn>
               </form>
             ) : (
-              <form noValidate onSubmit={handleVerificationSubmit}>
-                <Field label="Verification code" error={errors.code} required>
+              <form noValidate onSubmit={handleChallengeSubmit}>
+                <Field label={isEmailVerificationStep ? "Email verification code" : "Verification code"} error={errors.code} required>
                   <div className="grid grid-cols-6 gap-2 sm:gap-3">
                     {code.map((digit, index) => (
                       <input
@@ -269,18 +235,21 @@ export function LoginPage({
                 </Field>
 
                 <div className="mb-6 rounded-lg bg-[var(--se-tint)] p-4 text-sm leading-6 text-[var(--se-dark)]">
-                  Keep this browser open while you check your email. Codes expire after 10 minutes.
+                  {isEmailVerificationStep
+                    ? "Your email is not verified yet. Enter the email verification code first, then we will continue the sign in."
+                    : "Keep this browser open while you check your email. Codes expire after 10 minutes."}
                 </div>
 
                 <Btn className="w-full" size="lg" type="submit">
-                  Verify and continue
+                  {isEmailVerificationStep ? "Verify email" : "Verify and continue"}
                 </Btn>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Btn
                     className="w-full"
                     variant="ghost"
                     onClick={() => {
-                      setStep(1);
+                      setStep("credentials");
+                      setCode(["", "", "", "", "", ""]);
                       setErrors({});
                     }}
                   >

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 
 export const siteConfig = {
   name: "SupplyED",
-  title: "SupplyED | Vetted Supply Teachers for UK Schools",
+  title: "SupplyED | Vetted Teachers for Schools and Families",
   description:
-    "SupplyED helps UK schools find vetted, DBS-checked supply teachers for same-day cover, long-term roles, and competitive staffing briefs.",
+    "SupplyED helps UK schools and families find vetted, DBS-checked teachers for same-day cover, long-term roles, tutoring, and learner support.",
   url: process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://supplyed.co.uk",
   locale: "en_GB",
 };
@@ -15,6 +15,8 @@ export const seoKeywords = [
   "school staffing",
   "DBS checked teachers",
   "UK schools",
+  "individual tutor marketplace",
+  "private tutors UK",
   "teacher marketplace",
   "supply teaching jobs",
 ];

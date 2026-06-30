@@ -9,7 +9,16 @@ export function MessagingPage({ state, setState, role }: Pick<RouteProps, "state
 
   return (
     <div className="app-page">
-      <PageHead title="Messages" subtitle={role === "teacher" ? "Stay in touch with schools and placement details." : "Coordinate quickly with candidates and schools."} />
+      <PageHead
+        title="Messages"
+        subtitle={
+          role === "teacher"
+            ? "Stay in touch with schools and placement details."
+            : role === "individual"
+              ? "Coordinate safely with verified teachers from the hiring account."
+              : "Coordinate quickly with candidates and schools."
+        }
+      />
       <div className="three-panel">
         <div className="card overflow-hidden">
           {seedMessages.map((message) => (

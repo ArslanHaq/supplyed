@@ -14,23 +14,30 @@ export function LandingPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.06)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.06)_1px,transparent_1px)] bg-[length:56px_56px]" />
         <div className="relative mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
           <div>
-            <div className="eyebrow mb-6">Infrastructure for school staffing</div>
+            <div className="eyebrow mb-6">Infrastructure for education staffing</div>
             <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[64px]">
-              Connecting schools
+              Connecting schools and learners
               <br />
               with <em className="text-[var(--se)]">brilliant teachers.</em>
             </h1>
             <p className="mb-8 mt-5 max-w-[540px] text-base leading-[1.65] text-white/70 sm:mb-9 sm:mt-6 sm:text-[17px]">
-              SupplyED is the marketplace where UK schools find vetted, DBS-checked supply teachers instantly, or through competitive proposals. No agency fees. Full compliance.
+              SupplyED is the marketplace where UK schools, learners, and hiring accounts find vetted, DBS-checked teachers for cover, tutoring, and learner support. No agency fees. Full compliance.
             </p>
             <div className="mb-12 flex flex-wrap gap-3">
-              <Link className={buttonClassName({ size: "xl" })} href="/signup?role=institution">I&apos;m a school</Link>
+              <Link className={buttonClassName({ size: "xl" })} href="/signup">I&apos;m a school</Link>
               <Link
                 className={buttonClassName({ variant: "secondary", size: "xl" })}
-                href="/signup?role=teacher"
+                href="/signup"
                 style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
               >
                 I&apos;m a teacher
+              </Link>
+              <Link
+                className={buttonClassName({ variant: "secondary", size: "xl" })}
+                href="/signup"
+                style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
+              >
+                I&apos;m hiring talent
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-5 sm:flex sm:flex-wrap sm:gap-6">
@@ -82,10 +89,11 @@ export function LandingPage() {
             <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">Two ways to staff a role.</h2>
             <p className="mt-2 text-[var(--muted)]">Post urgently for instant AI matching, or open a brief and review proposals.</p>
           </div>
-          <div className="grid-2">
+          <div className="grid gap-4 lg:grid-cols-3">
             {[
               { tag: "Instant matching", title: "Same-day cover, solved in minutes", color: "var(--se)", bg: "var(--se-tint)", steps: ["Post an urgent role", "Teachers are ranked instantly", "First accept wins"] },
               { tag: "Freelance briefs", title: "Long-term roles, properly staffed", color: "var(--purple)", bg: "var(--purple-tint)", steps: ["Publish your brief", "Receive proposals", "Compare, message, hire"] },
+              { tag: "Learner support", title: "Verified teachers for learners", color: "var(--green)", bg: "var(--green-tint)", steps: ["Create a learner request", "Review verified matches", "Message from your account"] },
             ].map((card) => (
               <div key={card.title} className="card card-pad-lg">
                 <Tag className="mb-4" style={{ background: card.bg, color: card.color }}>{card.tag}</Tag>

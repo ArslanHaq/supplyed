@@ -2,7 +2,8 @@ import { useState } from "react";
 
 import type { RouteProps } from "@/types/supplyed";
 
-import { Btn, Checkbox, Chip, Field, Tag } from "../atoms";
+import { Btn, Checkbox, Field, Tag } from "../atoms";
+import { SelectDropdown } from "../molecules/OptionDropdowns";
 import { PageHead } from "../molecules";
 
 type PostingMode = "instant" | "brief";
@@ -10,7 +11,7 @@ type PostingMode = "instant" | "brief";
 export function PostJobPage({ go, toast }: Pick<RouteProps, "go" | "toast">) {
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<PostingMode>("instant");
-  const [form, setForm] = useState({ title: "", keyStage: "KS2", subject: "Maths", startDate: "Tomorrow, Wed 25 Mar", duration: "1 day", rate: 180, urgent: false, dbsRequired: true, qtsRequired: false });
+  const [form, setForm] = useState({ title: "", keyStage: "KS2", subject: "Maths", startDate: "Tomorrow, Wed 25 Mar", duration: "1 day", rate: 180, urgent: false, dbsRequired: true, qtsRequired: false, minExperience: "1+ year" });
   const publish = () => {
     toast({ title: "Job posted", msg: "AI matching started - 6 candidates notified." });
     go("applications", { jobId: "j-101" });
@@ -68,7 +69,13 @@ export function PostJobPage({ go, toast }: Pick<RouteProps, "go" | "toast">) {
                 <Checkbox checked={false} onChange={() => {}} label="SEN experience" />
               </div>
             </Field>
-            <Field label="Minimum experience"><div className="flex flex-wrap gap-2">{["Any", "ECT welcome", "1+ year", "3+ years", "5+ years"].map((item, index) => <Chip key={item} active={index === 2}>{item}</Chip>)}</div></Field>
+            <Field label="Minimum experience">
+              <SelectDropdown
+                options={["Any", "ECT welcome", "1+ year", "3+ years", "5+ years"]}
+                value={form.minExperience}
+                onChange={(value) => setForm({ ...form, minExperience: value })}
+              />
+            </Field>
           </div>
         ) : null}
         {step === 4 ? (
@@ -77,7 +84,7 @@ export function PostJobPage({ go, toast }: Pick<RouteProps, "go" | "toast">) {
             <div className="card card-pad bg-[var(--chalk)]">
               <div className="mb-2.5 flex flex-wrap gap-2"><Tag tone={mode === "instant" ? "" : "purple"}>{mode === "instant" ? "Instant matching" : "Open brief"}</Tag>{form.urgent ? <Tag tone="red">Urgent</Tag> : null}</div>
               <div className="font-serif text-[22px]">{form.title || "Y6 Maths Cover - 1 day"}</div>
-              <div className="mt-2.5 flex flex-wrap gap-2"><span className="pill">{form.keyStage}</span><span className="pill">{form.subject}</span><span className="pill">£{form.rate}/day</span>{form.dbsRequired ? <span className="pill">DBS required</span> : null}</div>
+              <div className="mt-2.5 flex flex-wrap gap-2"><span className="pill">{form.keyStage}</span><span className="pill">{form.subject}</span><span className="pill">{form.minExperience}</span><span className="pill">£{form.rate}/day</span>{form.dbsRequired ? <span className="pill">DBS required</span> : null}</div>
             </div>
           </div>
         ) : null}

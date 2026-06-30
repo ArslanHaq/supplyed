@@ -7,7 +7,7 @@ import { buttonClassName, Icon, Tag } from "@/components/atoms";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Simple dummy pricing plans for schools, trusts, and supply teachers using SupplyED.",
+  description: "Simple dummy pricing plans for schools, individual hirers, trusts, and supply teachers using SupplyED.",
   alternates: {
     canonical: "/pricing",
   },
@@ -18,7 +18,7 @@ const plans = [
     name: "Teacher",
     price: "Free",
     caption: "For supply teachers building a verified profile.",
-    href: "/signup?role=teacher",
+    href: "/signup",
     cta: "Join as teacher",
     tone: "ghost" as const,
     features: ["Verified profile", "Job matching", "Availability tools", "Direct school messages"],
@@ -28,17 +28,26 @@ const plans = [
     price: "£149",
     period: "/month",
     caption: "For schools filling day-to-day and planned cover.",
-    href: "/signup?role=institution",
+    href: "/signup",
     cta: "Start school plan",
     tone: "" as const,
     featured: true,
     features: ["Unlimited job posts", "AI ranked teacher matches", "Compliance snapshot", "Messaging and booking workflow"],
   },
   {
+    name: "Individual",
+    price: "Free",
+    caption: "For individuals requesting safe learner support for themselves or another learner.",
+    href: "/signup",
+    cta: "Hire talent",
+    tone: "green" as const,
+    features: ["Learner requests", "Verified teacher badges", "Account-led messaging", "Booking preparation tools"],
+  },
+  {
     name: "Trust",
     price: "Custom",
     caption: "For MATs coordinating cover across multiple schools.",
-    href: "/signup?role=institution",
+    href: "/signup",
     cta: "Create trust workspace",
     tone: "purple" as const,
     features: ["Multi-school workspace", "Regional talent pools", "Shared compliance reporting", "Priority onboarding support"],
@@ -46,16 +55,18 @@ const plans = [
 ];
 
 const comparisons = [
-  ["Teacher profile", "Included", "Included", "Included"],
-  ["Job posting", "-", "Unlimited", "Unlimited"],
-  ["Compliance dashboard", "Profile only", "School view", "Trust-wide"],
-  ["Messaging", "Included", "Included", "Included"],
-  ["Support", "Standard", "Priority", "Dedicated"],
+  ["Teacher profile", "Included", "Included", "-", "Included"],
+  ["Job posting", "-", "Unlimited", "-", "Unlimited"],
+  ["Learner requests", "-", "-", "Included", "Included"],
+  ["Compliance dashboard", "Profile only", "School view", "Verified badges", "Trust-wide"],
+  ["Messaging", "Included", "Included", "Included", "Included"],
+  ["Support", "Standard", "Priority", "Standard", "Dedicated"],
 ];
 
 const faqs = [
   ["Can schools trial SupplyED?", "Yes. Dummy trial data assumes a 14-day pilot with no long-term commitment."],
   ["Are teachers charged?", "No. The teacher plan is listed as free so supply staff can build verified profiles and receive matches."],
+  ["Can individuals join?", "Yes. Any verified account can create learner requests and contact verified teachers through guarded messaging."],
   ["Does pricing include compliance checks?", "The example plans include compliance visibility. Real verification costs can be added later."],
 ];
 
@@ -73,14 +84,14 @@ export default function PricingPage() {
                 Simple plans for flexible school staffing.
               </h1>
               <p className="mt-5 text-base leading-7 text-[var(--muted)] sm:text-lg">
-                Dummy pricing for the prototype: keep teachers free, give schools predictable monthly access, and reserve custom workflows for trust-level teams.
+                Dummy pricing for the prototype: keep teachers and individual hirers free, give schools predictable monthly access, and reserve custom workflows for trust-level teams.
               </p>
             </div>
           </div>
         </section>
 
         <section className="px-4 py-12 sm:px-6 lg:px-12">
-          <div className="mx-auto grid max-w-[1180px] gap-4 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-[1180px] gap-4 lg:grid-cols-4">
             {plans.map((plan) => (
               <article
                 key={plan.name}
@@ -130,7 +141,7 @@ export default function PricingPage() {
 
             <div className="overflow-hidden rounded-xl border border-[var(--border)]">
               {comparisons.map((row, index) => (
-                <div key={row[0]} className="grid grid-cols-2 border-b border-[var(--border)] bg-white last:border-b-0 md:grid-cols-4">
+                <div key={row[0]} className="grid grid-cols-2 border-b border-[var(--border)] bg-white last:border-b-0 md:grid-cols-5">
                   {row.map((cell, cellIndex) => (
                     <div
                       key={`${row[0]}-${cellIndex}`}

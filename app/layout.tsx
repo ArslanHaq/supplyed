@@ -1,6 +1,7 @@
 import "./globals.css";
 
 import type { Metadata } from "next";
+import Script from "next/script";
 import type { ReactNode } from "react";
 import { seoKeywords, siteConfig } from "@/lib/seo";
 
@@ -82,10 +83,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
-      </head>
-      <body>{children}</body>
+      <body>
+        <Script
+          dangerouslySetInnerHTML={{ __html: themeBootScript }}
+          id="supplyed-theme-boot"
+          strategy="beforeInteractive"
+        />
+        {children}
+      </body>
     </html>
   );
 }

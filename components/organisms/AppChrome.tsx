@@ -26,6 +26,14 @@ const teacherNav: NavItem[] = [
   { id: "teacher-profile", label: "Profile", icon: "user" },
 ];
 
+const individualNav: NavItem[] = [
+  { id: "dashboard", label: "Dashboard", icon: "home" },
+  { id: "find-teachers", label: "Teachers", icon: "search" },
+  { id: "messaging", label: "Messages", icon: "message" },
+  { id: "calendar", label: "Schedule", icon: "calendar" },
+  { id: "billing", label: "Payments", icon: "file" },
+];
+
 const adminNav: NavItem[] = [
   { id: "admin", label: "Console", icon: "shield" },
   { id: "messaging", label: "Messages", icon: "message" },
@@ -38,12 +46,15 @@ export function AppChrome({
   go,
   onLanding,
 }: Pick<RouteProps, "state" | "setState" | "go"> & { children: ReactNode; onLanding: () => void }) {
-  const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : adminNav;
-  const userName = state.role === "institution" ? "Greenfield Primary" : state.role === "teacher" ? "Sarah Johnson" : "Admin Team";
-  const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Supply teacher" : "Operations";
+  const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : state.role === "individual" ? individualNav : adminNav;
+  const userName = state.role === "institution" ? "Greenfield Primary" : state.role === "teacher" ? "Sarah Johnson" : state.role === "individual" ? "Aisha Khan" : "Admin Team";
+  const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Supply teacher" : state.role === "individual" ? "Talent seeker" : "Operations";
+  const roleCrumb = state.role === "institution" ? "School view" : state.role === "teacher" ? "Teacher view" : state.role === "individual" ? "Talent seeker view" : "Admin view";
+  const searchPlaceholder = state.role === "teacher" ? "Search jobs..." : state.role === "individual" ? "Search tutors..." : "Search teachers...";
   const roles: Array<{ v: AppRole; label: string; icon: string }> = [
     { v: "institution", label: "School", icon: "building" },
     { v: "teacher", label: "Teacher", icon: "user" },
+    { v: "individual", label: "Hirer", icon: "heart" },
     { v: "admin", label: "Admin", icon: "shield" },
   ];
   const selectRole = (role: AppRole) => {
@@ -63,7 +74,7 @@ export function AppChrome({
             </button>
           ))}
         </div>
-        <div className="workspace-crumb">{state.role === "institution" ? "School view" : state.role === "teacher" ? "Teacher view" : "Admin view"}</div>
+        <div className="workspace-crumb">{roleCrumb}</div>
         <Btn variant="ghost" size="sm" onClick={onLanding}>View landing</Btn>
       </div>
       <div className="app-nav">
@@ -76,7 +87,7 @@ export function AppChrome({
           ))}
         </div>
         <div className="app-nav-right">
-          <div className="flex items-center gap-1.5 rounded-lg bg-[var(--chalk)] px-3 py-1.5"><Icon name="search" size={13} /><input placeholder={state.role === "teacher" ? "Search jobs..." : "Search teachers..."} className="w-[140px] border-0 bg-transparent outline-none" /></div>
+          <div className="flex items-center gap-1.5 rounded-lg bg-[var(--chalk)] px-3 py-1.5"><Icon name="search" size={13} /><input placeholder={searchPlaceholder} className="w-[140px] border-0 bg-transparent outline-none" /></div>
           <div className="notif-btn" onClick={() => go("messaging")}><Icon name="bell" size={16} /><div className="notif-dot" /></div>
           <div className="notif-btn"><Icon name="help" size={16} /></div>
           <div className="flex items-center gap-2"><Avatar name={userName} size="sm" /><div><div className="text-sm font-semibold">{userName}</div><div className="text-xs text-[var(--muted)]">{userSub}</div></div></div>

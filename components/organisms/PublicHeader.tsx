@@ -17,8 +17,9 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
       <Logo href="/" size={20} />
 
       <nav aria-label="Public navigation" className="ml-0 hidden items-center gap-2 md:flex lg:ml-8">
-        <Link className="app-nav-link" href="/signup?role=institution">For Schools</Link>
-        <Link className="app-nav-link" href="/signup?role=teacher">For Teachers</Link>
+        <Link className="app-nav-link" href="/signup">For Schools</Link>
+        <Link className="app-nav-link" href="/signup">For Teachers</Link>
+        <Link className="app-nav-link" href="/signup">Hire Talent</Link>
         {navItems.map((item) => (
           <Link key={item.id} className={`app-nav-link ${active === item.id ? "active" : ""}`} href={item.href}>
             {item.label}

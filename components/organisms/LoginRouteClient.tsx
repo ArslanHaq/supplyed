@@ -1,32 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
 import { buildAppHref } from "@/lib/routes";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
-import type { AppPage, AppRole, AppState } from "@/types/supplyed";
+import type { AppPage, AppState } from "@/types/supplyed";
 
 import { PublicThemeControls } from "../molecules";
 import { LoginPage } from "./LoginPage";
 
-type LoginRole = Extract<AppRole, "institution" | "teacher">;
+type LoginChallenge = "email-verification" | "identity-verification";
 
-function signupHref(role?: LoginRole) {
-  return role ? `/signup?role=${role}` : "/signup";
-}
-
-export function LoginRouteClient() {
+function LoginRouteClientInner() {
   const router = useRouter();
   const [state, setState] = useState<AppState>(() => ({ ...loadAppState(), auth: "login" }));
 
   useEffect(() => {
-    saveAppState({ ...state, auth: "login" });
+    saveAppState(state);
   }, [state]);
-
-  function setRole(role: LoginRole) {
-    setState((current) => ({ ...current, role, auth: "login" }));
-  }
 
   function goLanding() {
     const nextState: AppState = { ...state, auth: "landing" };
@@ -35,21 +27,67 @@ export function LoginRouteClient() {
     router.push("/");
   }
 
-  function goSignup(role?: LoginRole) {
+  function goSignup() {
     const nextState: AppState = {
       ...state,
-      ...(role ? { role } : {}),
       auth: "onboarding",
+      signupEmail: "",
+      signupVerified: false,
+      roleSelected: false,
+      onboardingComplete: false,
+      applicationStatus: "none",
       onboardingStep: 1,
     };
     setState(nextState);
     saveAppState(nextState);
-    router.push(signupHref(role));
+    router.push("/signup");
   }
 
-  function finishLogin() {
-    const nextPage: AppPage = state.role === "admin" ? "admin" : "dashboard";
-    const nextState: AppState = { ...state, auth: "signed-in", page: nextPage };
+  function goForgotPassword() {
+    router.push("/forgot-password");
+  }
+
+  function isUnverifiedAccountEmail(email: string) {
+    const savedEmail = state.signupEmail.trim().toLowerCase();
+    return Boolean(savedEmail && savedEmail === email.trim().toLowerCase() && !state.signupVerified);
+  }
+
+  function handleCredentialsAccepted(email: string): LoginChallenge {
+    return isUnverifiedAccountEmail(email) ? "email-verification" : "identity-verification";
+  }
+
+  function verifyEmailForLogin(email: string) {
+    const nextState: AppState = {
+      ...state,
+      auth: "login",
+      signupEmail: state.signupEmail || email,
+      signupVerified: true,
+    };
+    setState(nextState);
+    saveAppState(nextState);
+  }
+
+  function finishLogin(email: string) {
+    const signedInState: AppState = {
+      ...state,
+      auth: "signed-in",
+      signupEmail: state.signupEmail || email,
+      signupVerified: true,
+    };
+
+    if (!signedInState.roleSelected || !signedInState.onboardingComplete) {
+      const nextState: AppState = {
+        ...signedInState,
+        onboardingStep: signedInState.roleSelected ? signedInState.onboardingStep : 1,
+      };
+      setState(nextState);
+      saveAppState(nextState);
+      router.push("/onboarding");
+      return;
+    }
+
+    const nextPage: AppPage = signedInState.role === "admin" ? "admin" : "dashboard";
+    const nextState: AppState = { ...signedInState, page: nextPage };
     setState(nextState);
     saveAppState(nextState);
     router.push(buildAppHref(nextPage));
@@ -58,13 +96,26 @@ export function LoginRouteClient() {
   return (
     <>
       <LoginPage
+        onCredentialsAccepted={handleCredentialsAccepted}
+        onEmailVerified={verifyEmailForLogin}
+        onForgotPassword={goForgotPassword}
         onLanding={goLanding}
-        role={state.role}
-        setRole={setRole}
         onLogin={finishLogin}
         onSwitchSignup={goSignup}
       />
       <PublicThemeControls />
     </>
   );
+}
+
+export function LoginRouteClient() {
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  if (!isClient) return null;
+
+  return <LoginRouteClientInner />;
 }

@@ -3,8 +3,9 @@ import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, MatchScore, Stars, Tag, VerifyBadge } from "../atoms";
 
-export function TeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
+export function TeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ctx" | "go" | "role">) {
   const teacher = seedTeachers.find((item) => item.id === (ctx.teacherId || "t-sarah")) || seedTeachers[0];
+  const isIndividual = role === "individual";
 
   return (
     <div className="app-page">
@@ -25,7 +26,7 @@ export function TeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) 
           <div className="card card-pad-lg"><div className="section-title">Subjects & stages</div><div className="flex flex-wrap gap-2">{teacher.subjects.map((subject) => <span className="pill" key={subject}>{subject}</span>)}{teacher.keyStages.map((stage) => <span className="pill" key={stage}>{stage}</span>)}</div></div>
         </div>
         <div>
-          <div className="card card-pad-lg"><div className="font-serif text-[26px]">£{teacher.rate}</div><div className="text-xs text-[var(--muted)]">per day</div><div className="section-title mt-5">Quick actions</div><div className="flex flex-col gap-2"><Btn onClick={() => go("messaging")}>Message</Btn><Btn variant="secondary">Invite to job</Btn><Btn variant="secondary">Download CV</Btn></div></div>
+          <div className="card card-pad-lg"><div className="font-serif text-[26px]">£{teacher.rate}</div><div className="text-xs text-[var(--muted)]">{isIndividual ? "guide rate" : "per day"}</div><div className="section-title mt-5">Quick actions</div><div className="flex flex-col gap-2"><Btn onClick={() => go("messaging")}>Message</Btn><Btn variant="secondary">{isIndividual ? "Request availability" : "Invite to job"}</Btn><Btn variant="secondary">Download CV</Btn></div></div>
         </div>
       </div>
     </div>

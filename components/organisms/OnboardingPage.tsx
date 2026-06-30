@@ -4,11 +4,13 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { AppRole } from "@/types/supplyed";
 
-import { Btn, Checkbox, Chip, Field, Icon, Logo, Tag } from "../atoms";
+import { Btn, Checkbox, Field, Icon, Logo, Tag } from "../atoms";
+import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdowns";
 
-type SignupRole = Extract<AppRole, "institution" | "teacher">;
+type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
 type SignupStep = 1 | 2 | 3 | 4;
 type SignupField =
+  | "accountRole"
   | "fullName"
   | "email"
   | "phone"
@@ -27,6 +29,12 @@ type SignupField =
   | "dbsNumber"
   | "rightToWorkFile"
   | "identityPhoto"
+  | "individualRelationship"
+  | "learningMode"
+  | "preferredSchedule"
+  | "budgetRange"
+  | "learnerNotes"
+  | "individualConsent"
   | "complianceContact"
   | "complianceEmail"
   | "safeguardingConfirmed";
@@ -59,6 +67,12 @@ type SignupForm = {
   teachingReferenceNumber: string;
   rightToWorkFile: UploadedFile | null;
   identityPhoto: UploadedFile | null;
+  individualRelationship: string;
+  learningMode: string;
+  preferredSchedule: string;
+  budgetRange: string;
+  learnerNotes: string;
+  individualConsent: boolean;
   complianceContact: string;
   complianceEmail: string;
   safeguardingConfirmed: boolean;
@@ -100,6 +114,12 @@ const initialForm: SignupForm = {
   teachingReferenceNumber: "",
   rightToWorkFile: null,
   identityPhoto: null,
+  individualRelationship: "",
+  learningMode: "",
+  preferredSchedule: "",
+  budgetRange: "",
+  learnerNotes: "",
+  individualConsent: false,
   complianceContact: "",
   complianceEmail: "",
   safeguardingConfirmed: false,
@@ -108,23 +128,82 @@ const initialForm: SignupForm = {
 const subjects = ["Maths", "English", "Science", "Humanities", "SEN", "All Primary"];
 const keyStages = ["EYFS", "KS1", "KS2", "KS3", "KS4", "KS5"];
 const coverTypes = ["Same-day cover", "Long-term roles", "Intervention groups", "Exam season", "SEN support"];
+const supportForOptions = ["Myself", "My child", "Another learner", "A small group"];
+const learningModes = ["In person", "Online", "Hybrid"];
+const preferredSchedules = ["Weekday evenings", "Weekends", "After school", "Flexible"];
+const budgetRanges = ["Under £25/hr", "£25-£40/hr", "£40-£60/hr", "Flexible"];
+const unselectedSteps = [
+  { label: "Choose role", description: "Select how you want to use SupplyED" },
+  { label: "Role details", description: "Complete the details needed for that path" },
+  { label: "Verification", description: "Provide required safety or compliance details" },
+  { label: "Review", description: "Confirm before submitting" },
+];
 
 function stepContent(role: SignupRole) {
   if (role === "teacher") {
     return [
-      { label: "Account", description: "Choose your role and secure access" },
+      { label: "Profile basics", description: "Add contact details for your verified account" },
       { label: "Teaching profile", description: "Subjects, stages, experience, and bio" },
       { label: "Compliance", description: "DBS, right to work, and identity checks" },
       { label: "Review", description: "Confirm your teacher profile" },
     ];
   }
 
+  if (role === "individual") {
+    return [
+      { label: "Your details", description: "Choose how you want to hire talent and add contact details" },
+      { label: "Learner needs", description: "Subject, stage, schedule, and location preferences" },
+      { label: "Safeguarding", description: "Privacy, contact, and verified teacher expectations" },
+      { label: "Review", description: "Confirm the learner request before matching" },
+    ];
+  }
+
   return [
-    { label: "Account", description: "Choose your role and secure access" },
+    { label: "Contact details", description: "Add contact details for your verified account" },
     { label: "School details", description: "Organisation, cover needs, and authority" },
     { label: "Compliance", description: "Safeguarding contact and approval details" },
     { label: "Review", description: "Confirm your school workspace" },
   ];
+}
+
+function roleLabel(role: SignupRole) {
+  if (role === "teacher") return "Supply teacher";
+  if (role === "individual") return "Individual hirer";
+  return "School / MAT";
+}
+
+function signupHeroTitle(role: SignupRole) {
+  if (role === "teacher") return "Build your trusted teacher profile.";
+  if (role === "individual") return "Find trusted support for a learner.";
+  return "Create your school staffing workspace.";
+}
+
+function signupHeroCopy(role: SignupRole) {
+  if (role === "teacher") {
+    return "Complete your teaching profile once, then use it for matching, messaging, bookings, and compliance checks.";
+  }
+
+  if (role === "individual") {
+    return "Create a safe request, browse verified teachers, and keep every conversation under the verified hiring account.";
+  }
+
+  return "Set up a verified workspace for posting cover, reviewing ranked matches, and keeping compliance visible.";
+}
+
+function signupStepTitle(role: SignupRole, step: SignupStep) {
+  if (step === 1) return "Complete profile basics";
+  if (step === 2) {
+    if (role === "teacher") return "Build your teacher profile";
+    if (role === "individual") return "Add learner needs";
+    return "Add school details";
+  }
+  if (step === 3) return role === "individual" ? "Set safeguarding preferences" : "Complete compliance";
+  return "Review and submit";
+}
+
+function signupSubmitLabel(role: SignupRole) {
+  if (role === "individual") return "Create learner request";
+  return "Submit for review";
 }
 
 function fieldClass(error?: string) {
@@ -133,10 +212,6 @@ function fieldClass(error?: string) {
 
 function areaClass(error?: string) {
   return cn("textarea min-h-[132px]", error ? "border-[var(--red)] bg-[var(--red-tint)]" : null);
-}
-
-function toggleList(list: string[], value: string) {
-  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }
 
 function ReviewBadgeList({ items }: { items: string[] }) {
@@ -253,6 +328,10 @@ function UploadCard({
 }
 
 export function OnboardingPage({
+  accountEmail,
+  headerActionLabel = "Log in",
+  headerPrompt = "Already registered?",
+  roleSelected,
   step,
   setStep,
   role,
@@ -261,6 +340,10 @@ export function OnboardingPage({
   onLanding,
   onLogin,
 }: {
+  accountEmail?: string;
+  headerActionLabel?: string;
+  headerPrompt?: string;
+  roleSelected: boolean;
   step: number;
   setStep: (step: number) => void;
   role: AppRole;
@@ -269,17 +352,17 @@ export function OnboardingPage({
   onLanding: () => void;
   onLogin: () => void;
 }) {
-  const activeRole: SignupRole = role === "teacher" ? "teacher" : "institution";
+  const activeRole: SignupRole = role === "teacher" ? "teacher" : role === "individual" ? "individual" : "institution";
   const currentStep = Math.min(4, Math.max(1, step)) as SignupStep;
-  const steps = useMemo(() => stepContent(activeRole), [activeRole]);
-  const [form, setForm] = useState<SignupForm>(initialForm);
+  const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
+  const [form, setForm] = useState<SignupForm>(() => ({ ...initialForm, email: accountEmail || "" }));
   const [errors, setErrors] = useState<SignupErrors>({});
   const progress = currentStep * 25;
   const reviewGroups = useMemo<ReviewGroup[]>(() => {
     const accountLines: ReviewLine[] = [
-      { label: "Account type", value: activeRole === "teacher" ? "Supply teacher" : "School / MAT" },
+      { label: "Account type", value: roleLabel(activeRole) },
       { label: "Name", value: form.fullName || "Not provided" },
-      { label: "Email", value: form.email || "Not provided" },
+      { label: "Email", value: form.email || accountEmail || "Not provided" },
       { label: "Phone", value: form.phone || "Not provided" },
       { label: "Postcode", value: form.postcode || "Not provided" },
     ];
@@ -320,6 +403,43 @@ export function OnboardingPage({
       ];
     }
 
+    if (activeRole === "individual") {
+      return [
+        {
+          title: "Account",
+          description: "Login and contact details",
+          icon: "user",
+          editStep: 1,
+          lines: accountLines,
+        },
+        {
+          title: "Learner Request",
+          description: "Subject, stage, and scheduling needs",
+          icon: "heart",
+          editStep: 2,
+          lines: [
+            { label: "Support for", value: form.individualRelationship || "Not provided" },
+            { label: "Subjects", value: <ReviewBadgeList items={form.subjects} />, wide: true },
+            { label: "Stage", value: <ReviewBadgeList items={form.keyStages} />, wide: true },
+            { label: "Format", value: form.learningMode || "Not provided" },
+            { label: "Schedule", value: form.preferredSchedule || "Not provided" },
+            { label: "Budget", value: form.budgetRange || "Not provided" },
+            { label: "Notes", value: form.learnerNotes || "Optional", wide: true },
+          ],
+        },
+        {
+          title: "Safeguarding",
+          description: "Privacy and verified-teacher expectations",
+          icon: "shield",
+          editStep: 3,
+          lines: [
+            { label: "Hiring consent", value: form.individualConsent ? "Hiring responsibility confirmed" : "Not confirmed", wide: true },
+            { label: "Platform safety", value: form.safeguardingConfirmed ? "Messaging and bookings stay inside SupplyED" : "Not confirmed", wide: true },
+          ],
+        },
+      ];
+    }
+
     return [
       {
         title: "Account",
@@ -353,7 +473,7 @@ export function OnboardingPage({
         ],
       },
     ];
-  }, [activeRole, form]);
+  }, [accountEmail, activeRole, form]);
 
   function updateField<FieldName extends keyof SignupForm>(field: FieldName, value: SignupForm[FieldName]) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -362,18 +482,13 @@ export function OnboardingPage({
 
   function validateStep(targetStep: SignupStep) {
     const nextErrors: SignupErrors = {};
-    const trimmedEmail = form.email.trim();
 
     if (targetStep === 1) {
+      if (!roleSelected) nextErrors.accountRole = "Choose how you want to use SupplyED.";
       if (!form.fullName.trim()) nextErrors.fullName = "Enter your full name.";
-      if (!trimmedEmail) nextErrors.email = "Enter your email address.";
-      else if (!emailPattern.test(trimmedEmail)) nextErrors.email = "Use a valid email address.";
       if (!form.phone.trim()) nextErrors.phone = "Enter a contact number.";
       else if (!phonePattern.test(form.phone.trim())) nextErrors.phone = "Use a valid phone number.";
       if (!form.postcode.trim()) nextErrors.postcode = "Enter your postcode.";
-      if (form.password.length < 8) nextErrors.password = "Use at least 8 characters.";
-      if (form.confirmPassword !== form.password) nextErrors.confirmPassword = "Passwords must match.";
-      if (!form.termsAccepted) nextErrors.termsAccepted = "Accept the terms to continue.";
     }
 
     if (targetStep === 2 && activeRole === "institution") {
@@ -391,6 +506,15 @@ export function OnboardingPage({
       if (form.bio.trim().length < 40) nextErrors.bio = "Write at least 40 characters so schools understand your teaching style.";
     }
 
+    if (targetStep === 2 && activeRole === "individual") {
+      if (!form.individualRelationship) nextErrors.individualRelationship = "Choose who needs support.";
+      if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
+      if (form.keyStages.length === 0) nextErrors.keyStages = "Choose the learner stage.";
+      if (!form.learningMode) nextErrors.learningMode = "Choose online, in-person, or hybrid support.";
+      if (!form.preferredSchedule) nextErrors.preferredSchedule = "Choose a preferred schedule.";
+      if (!form.budgetRange) nextErrors.budgetRange = "Choose a budget range.";
+    }
+
     if (targetStep === 3 && activeRole === "institution") {
       if (!form.complianceContact.trim()) nextErrors.complianceContact = "Enter the safeguarding or compliance lead.";
       if (!form.complianceEmail.trim()) nextErrors.complianceEmail = "Enter the compliance email.";
@@ -402,6 +526,11 @@ export function OnboardingPage({
       if (!form.dbsNumber.trim()) nextErrors.dbsNumber = "Enter your enhanced DBS certificate number.";
       if (!form.rightToWorkFile) nextErrors.rightToWorkFile = "Upload your right-to-work evidence.";
       if (!form.identityPhoto) nextErrors.identityPhoto = "Upload or capture a photo of your ID.";
+    }
+
+    if (targetStep === 3 && activeRole === "individual") {
+      if (!form.individualConsent) nextErrors.individualConsent = "Confirm you are authorised to arrange learning support.";
+      if (!form.safeguardingConfirmed) nextErrors.safeguardingConfirmed = "Confirm communication will stay inside SupplyED.";
     }
 
     setErrors(nextErrors);
@@ -467,8 +596,8 @@ export function OnboardingPage({
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-white px-4 py-4 sm:px-6 lg:px-8">
         <Logo size={21} onClick={onLanding} />
         <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-[var(--muted)] sm:inline">Already registered?</span>
-          <Btn variant="secondary" size="sm" onClick={onLogin}>Log in</Btn>
+          <span className="hidden text-sm text-[var(--muted)] sm:inline">{headerPrompt}</span>
+          <Btn variant="secondary" size="sm" onClick={onLogin}>{headerActionLabel}</Btn>
         </div>
       </header>
 
@@ -479,12 +608,12 @@ export function OnboardingPage({
             <div>
               <div className="eyebrow mb-5 text-[var(--se)]">Join SupplyED</div>
               <h1 className="font-serif text-3xl leading-[1.08] sm:text-[40px]">
-                {activeRole === "teacher" ? "Build your trusted teacher profile." : "Create your school staffing workspace."}
+                {roleSelected ? signupHeroTitle(activeRole) : "Choose your SupplyED path."}
               </h1>
               <p className="mt-5 text-sm leading-7 text-white/65 sm:text-[15px]">
-                {activeRole === "teacher"
-                  ? "Complete your teaching profile once, then use it for matching, messaging, bookings, and compliance checks."
-                  : "Set up a verified workspace for posting cover, reviewing ranked matches, and keeping compliance visible."}
+                {roleSelected
+                  ? signupHeroCopy(activeRole)
+                  : "Your email is verified. Now choose whether you are hiring talent, joining as a teacher, or setting up a school workspace."}
               </p>
             </div>
 
@@ -524,7 +653,7 @@ export function OnboardingPage({
 
             <div className="mt-auto hidden rounded-lg border border-white/10 bg-white/5 p-4 lg:block">
               <div className="text-xs uppercase tracking-[1px] text-white/45">Current path</div>
-              <div className="mt-1 font-serif text-2xl">{activeRole === "teacher" ? "Teacher" : "School"} signup</div>
+              <div className="mt-1 font-serif text-2xl">{roleSelected ? roleLabel(activeRole) : "Role selection"}</div>
               <p className="mt-1 text-sm text-white/55">You can change this in the account step before submitting.</p>
             </div>
           </div>
@@ -535,7 +664,7 @@ export function OnboardingPage({
             <div>
               <Tag>Step {currentStep} of 4</Tag>
               <h2 className="mt-3 font-serif text-3xl leading-tight sm:text-[36px]">
-                {["Create your account", activeRole === "teacher" ? "Build your teacher profile" : "Add school details", "Complete compliance", "Review and submit"][currentStep - 1]}
+                {roleSelected ? signupStepTitle(activeRole, currentStep) : "Choose account type"}
               </h2>
               <p className="mt-2 max-w-[640px] text-[var(--muted)]">{steps[currentStep - 1].description}</p>
             </div>
@@ -553,41 +682,53 @@ export function OnboardingPage({
           <div className="flex-1">
             {currentStep === 1 ? (
               <div className="space-y-6">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {([
-                    ["institution", "School / MAT", "building", "Post roles, review ranked matches, and manage compliance."],
-                    ["teacher", "Supply teacher", "user", "Build your profile, find roles, and manage availability."],
-                  ] as const).map(([value, title, icon, copy]) => {
-                    const selected = activeRole === value;
-
-                    return (
-                      <button
-                        key={value}
-                        aria-pressed={selected}
-                        className="rounded-xl border p-4 text-left transition hover:border-[var(--se)] hover:bg-[var(--se-tint)] sm:p-5"
-                        onClick={() => {
-                          setRole(value);
-                          setErrors({});
-                        }}
-                        style={{ borderColor: selected ? "var(--se)" : "var(--border)", background: selected ? "var(--se-tint)" : "#fff" }}
-                        type="button"
-                      >
-                        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[var(--se)]">
-                          <Icon name={icon} size={20} />
-                        </div>
-                        <div className="font-serif text-xl">{title}</div>
-                        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{copy}</p>
-                      </button>
-                    );
-                  })}
+                <div className="rounded-xl border border-[var(--se-tint-2)] bg-[var(--se-tint)] p-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                      <Icon name="checkCircle" size={19} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[var(--se-dark)]">Account verified</div>
+                      <div className="truncate text-sm text-[var(--se-dark)]/75">{form.email || accountEmail || "Verified email"}</div>
+                    </div>
+                  </div>
                 </div>
+
+                <Field label="Choose account type" error={errors.accountRole} required>
+                  <div className="grid gap-3 lg:grid-cols-3">
+                    {([
+                      ["institution", "School / MAT", "building", "Post roles, review ranked matches, and manage compliance."],
+                      ["teacher", "Supply teacher", "user", "Build your profile, find roles, and manage availability."],
+                      ["individual", "Individual hirer", "heart", "Find verified teachers for yourself, your child, or another learner."],
+                    ] as const).map(([value, title, icon, copy]) => {
+                      const selected = roleSelected && activeRole === value;
+
+                      return (
+                        <button
+                          key={value}
+                          aria-pressed={selected}
+                          className="rounded-xl border p-4 text-left transition hover:border-[var(--se)] hover:bg-[var(--se-tint)] sm:p-5"
+                          onClick={() => {
+                            setRole(value);
+                            setErrors((current) => ({ ...current, accountRole: undefined }));
+                          }}
+                          style={{ borderColor: selected ? "var(--se)" : "var(--border)", background: selected ? "var(--se-tint)" : "#fff" }}
+                          type="button"
+                        >
+                          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                            <Icon name={icon} size={20} />
+                          </div>
+                          <div className="font-serif text-xl">{title}</div>
+                          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{copy}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
 
                 <div className="grid gap-x-4 sm:grid-cols-2">
                   <Field label="Full name" htmlFor="signup-name" error={errors.fullName} required>
                     <input id="signup-name" className={fieldClass(errors.fullName)} value={form.fullName} onChange={(event) => updateField("fullName", event.target.value)} placeholder="Your full name" />
-                  </Field>
-                  <Field label="Work email" htmlFor="signup-email" error={errors.email} required>
-                    <input id="signup-email" className={fieldClass(errors.email)} value={form.email} onChange={(event) => updateField("email", event.target.value)} placeholder="name@school.org.uk" type="email" />
                   </Field>
                   <Field label="Phone" htmlFor="signup-phone" error={errors.phone} required>
                     <input id="signup-phone" className={fieldClass(errors.phone)} value={form.phone} onChange={(event) => updateField("phone", event.target.value)} placeholder="+44 7700 900000" inputMode="tel" />
@@ -595,17 +736,7 @@ export function OnboardingPage({
                   <Field label="Postcode" htmlFor="signup-postcode" error={errors.postcode} required>
                     <input id="signup-postcode" className={fieldClass(errors.postcode)} value={form.postcode} onChange={(event) => updateField("postcode", event.target.value.toUpperCase())} placeholder="M1 1AE" />
                   </Field>
-                  <Field label="Password" htmlFor="signup-password" error={errors.password} hint="Use at least 8 characters." required>
-                    <input id="signup-password" className={fieldClass(errors.password)} value={form.password} onChange={(event) => updateField("password", event.target.value)} placeholder="Create a password" type="password" />
-                  </Field>
-                  <Field label="Confirm password" htmlFor="signup-confirm" error={errors.confirmPassword} required>
-                    <input id="signup-confirm" className={fieldClass(errors.confirmPassword)} value={form.confirmPassword} onChange={(event) => updateField("confirmPassword", event.target.value)} placeholder="Repeat your password" type="password" />
-                  </Field>
                 </div>
-
-                <Field error={errors.termsAccepted}>
-                  <Checkbox checked={form.termsAccepted} onChange={(value) => updateField("termsAccepted", value)} label="I agree to SupplyED's verification, privacy, and marketplace terms." />
-                </Field>
               </div>
             ) : null}
 
@@ -626,13 +757,13 @@ export function OnboardingPage({
                   </Field>
                 </div>
                 <Field label="Staffing needs" error={errors.coverTypes} required>
-                  <div className="flex flex-wrap gap-2">
-                    {coverTypes.map((item) => (
-                      <Chip key={item} active={form.coverTypes.includes(item)} onClick={() => updateField("coverTypes", toggleList(form.coverTypes, item))}>
-                        {item}
-                      </Chip>
-                    ))}
-                  </div>
+                  <MultiSelectDropdown
+                    error={Boolean(errors.coverTypes)}
+                    options={coverTypes}
+                    placeholder="Select staffing needs"
+                    value={form.coverTypes}
+                    onChange={(value) => updateField("coverTypes", value)}
+                  />
                 </Field>
               </div>
             ) : null}
@@ -640,22 +771,22 @@ export function OnboardingPage({
             {currentStep === 2 && activeRole === "teacher" ? (
               <div className="space-y-6">
                 <Field label="Primary subjects" error={errors.subjects} required>
-                  <div className="flex flex-wrap gap-2">
-                    {subjects.map((item) => (
-                      <Chip key={item} active={form.subjects.includes(item)} onClick={() => updateField("subjects", toggleList(form.subjects, item))}>
-                        {item}
-                      </Chip>
-                    ))}
-                  </div>
+                  <MultiSelectDropdown
+                    error={Boolean(errors.subjects)}
+                    options={subjects}
+                    placeholder="Select primary subjects"
+                    value={form.subjects}
+                    onChange={(value) => updateField("subjects", value)}
+                  />
                 </Field>
                 <Field label="Key stages" error={errors.keyStages} required>
-                  <div className="flex flex-wrap gap-2">
-                    {keyStages.map((item) => (
-                      <Chip key={item} active={form.keyStages.includes(item)} onClick={() => updateField("keyStages", toggleList(form.keyStages, item))}>
-                        {item}
-                      </Chip>
-                    ))}
-                  </div>
+                  <MultiSelectDropdown
+                    error={Boolean(errors.keyStages)}
+                    options={keyStages}
+                    placeholder="Select key stages"
+                    value={form.keyStages}
+                    onChange={(value) => updateField("keyStages", value)}
+                  />
                 </Field>
                 <div className="grid gap-x-4 sm:grid-cols-2">
                   <Field label="Years of experience" htmlFor="experience" error={errors.yearsExperience} required>
@@ -672,6 +803,81 @@ export function OnboardingPage({
                     value={form.bio}
                     onChange={(event) => updateField("bio", event.target.value)}
                     placeholder="Describe your classroom style, specialist subjects, behaviour approach, and availability."
+                  />
+                </Field>
+              </div>
+            ) : null}
+
+            {currentStep === 2 && activeRole === "individual" ? (
+              <div className="space-y-6">
+                <Field label="Who needs support?" error={errors.individualRelationship} required>
+                  <SelectDropdown
+                    error={Boolean(errors.individualRelationship)}
+                    options={supportForOptions}
+                    placeholder="Select who needs support"
+                    value={form.individualRelationship}
+                    onChange={(value) => updateField("individualRelationship", value)}
+                  />
+                </Field>
+
+                <div className="grid gap-6 xl:grid-cols-2">
+                  <Field label="Subject needed" error={errors.subjects} required>
+                    <MultiSelectDropdown
+                      error={Boolean(errors.subjects)}
+                      options={subjects}
+                      placeholder="Select subject needs"
+                      value={form.subjects}
+                      onChange={(value) => updateField("subjects", value)}
+                    />
+                  </Field>
+                  <Field label="Learner stage" error={errors.keyStages} required>
+                    <SelectDropdown
+                      error={Boolean(errors.keyStages)}
+                      options={keyStages}
+                      placeholder="Select learner stage"
+                      value={form.keyStages[0] || ""}
+                      onChange={(value) => updateField("keyStages", value ? [value] : [])}
+                    />
+                  </Field>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-3">
+                  <Field label="Format" error={errors.learningMode} required>
+                    <SelectDropdown
+                      error={Boolean(errors.learningMode)}
+                      options={learningModes}
+                      placeholder="Select format"
+                      value={form.learningMode}
+                      onChange={(value) => updateField("learningMode", value)}
+                    />
+                  </Field>
+                  <Field label="Preferred schedule" error={errors.preferredSchedule} required>
+                    <SelectDropdown
+                      error={Boolean(errors.preferredSchedule)}
+                      options={preferredSchedules}
+                      placeholder="Select schedule"
+                      value={form.preferredSchedule}
+                      onChange={(value) => updateField("preferredSchedule", value)}
+                    />
+                  </Field>
+                  <Field label="Budget range" error={errors.budgetRange} required>
+                    <SelectDropdown
+                      error={Boolean(errors.budgetRange)}
+                      options={budgetRanges}
+                      placeholder="Select budget range"
+                      value={form.budgetRange}
+                      onChange={(value) => updateField("budgetRange", value)}
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Learner notes" htmlFor="learner-notes" hint="Optional. Avoid sharing full child identity at signup.">
+                  <textarea
+                    id="learner-notes"
+                    className="textarea min-h-[116px]"
+                    value={form.learnerNotes}
+                    onChange={(event) => updateField("learnerNotes", event.target.value)}
+                    placeholder="Example: Year 5 learner needs confidence with fractions. Prefer calm, structured sessions after school."
                   />
                 </Field>
               </div>
@@ -700,6 +906,50 @@ export function OnboardingPage({
                   <Field error={errors.safeguardingConfirmed}>
                     <Checkbox checked={form.safeguardingConfirmed} onChange={(value) => updateField("safeguardingConfirmed", value)} label="I confirm this workspace will be managed by authorised school staff." />
                   </Field>
+                </div>
+              </div>
+            ) : null}
+
+            {currentStep === 3 && activeRole === "individual" ? (
+              <div className="space-y-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--chalk)] p-5">
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                      <Icon name="shield" size={20} />
+                    </div>
+                    <div className="font-semibold">Verified teacher access</div>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                      Hirers see verification badges, while documents stay private for admin review and safeguarding checks.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--chalk)] p-5">
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                      <Icon name="message" size={20} />
+                    </div>
+                    <div className="font-semibold">Account-led communication</div>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                      Requests, messages, bookings, and location details should stay under the adult account.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[var(--border)] bg-white p-5">
+                  <div className="space-y-4">
+                    <Field error={errors.individualConsent}>
+                      <Checkbox
+                        checked={form.individualConsent}
+                        onChange={(value) => updateField("individualConsent", value)}
+                        label="I confirm I am authorised to arrange this learning support."
+                      />
+                    </Field>
+                    <Field error={errors.safeguardingConfirmed}>
+                      <Checkbox
+                        checked={form.safeguardingConfirmed}
+                        onChange={(value) => updateField("safeguardingConfirmed", value)}
+                        label="I understand direct contact, messaging, and bookings should remain inside SupplyED."
+                      />
+                    </Field>
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -769,7 +1019,7 @@ export function OnboardingPage({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Btn variant="secondary" onClick={onLanding}>Save and exit</Btn>
               <Btn size="lg" iconRight="arrow" onClick={() => (currentStep === 4 ? submitSignup() : continueStep())}>
-                {currentStep === 4 ? "Submit for review" : "Continue"}
+                {currentStep === 4 ? signupSubmitLabel(activeRole) : "Continue"}
               </Btn>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { defaultState, defaultTweaks } from "@/data/supplyed";
-import type { AppState, Toast, Tweaks } from "@/types/supplyed";
+import type { AppRole, AppState, Toast, Tweaks } from "@/types/supplyed";
 
 const stateKey = "supplyed_state";
 const tweaksKey = "supplyed_tweaks";
@@ -8,8 +8,17 @@ export function loadAppState(): AppState {
   if (typeof window === "undefined") return defaultState;
 
   try {
-    const saved = JSON.parse(window.localStorage.getItem(stateKey) || "{}") as Partial<AppState>;
-    return { ...defaultState, ...saved, toasts: [] as Toast[] };
+    const savedRecord = JSON.parse(window.localStorage.getItem(stateKey) || "{}") as Record<string, unknown>;
+    const saved = savedRecord as Partial<AppState>;
+    const rawRole = typeof savedRecord.role === "string" ? savedRecord.role : undefined;
+    const savedRole = (rawRole === "guardian" ? "individual" : rawRole) as AppRole | undefined;
+    const merged = { ...defaultState, ...saved, ...(savedRole ? { role: savedRole } : {}), toasts: [] as Toast[] };
+
+    return {
+      ...merged,
+      roleSelected: saved.roleSelected ?? Boolean(saved.onboardingComplete || saved.auth === "signed-in"),
+      applicationStatus: saved.applicationStatus ?? (saved.onboardingComplete ? "approved" : "none"),
+    };
   } catch {
     return defaultState;
   }

@@ -3,21 +3,51 @@ import { useState } from "react";
 import { seedTeachers } from "@/data/supplyed";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, Checkbox, Chip, Field, Icon, MatchScore, Stars, Tag, VerifyBadge } from "../atoms";
+import { Avatar, Btn, Checkbox, Field, Icon, MatchScore, Stars, Tag, VerifyBadge } from "../atoms";
+import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdowns";
 import { PageHead } from "../molecules";
 
-export function FindTeachersPage({ go, toast }: Pick<RouteProps, "go" | "toast">) {
+const stageOptions = ["KS1", "KS2", "KS3", "KS4", "KS5"];
+const subjectOptions = ["All subjects", "Maths", "English", "Science", "Humanities", "SEN", "All Primary"];
+
+export function FindTeachersPage({ go, toast, role }: Pick<RouteProps, "go" | "toast" | "role">) {
   const [query, setQuery] = useState("");
-  const results = seedTeachers.filter((teacher) => teacher.name.toLowerCase().includes(query.toLowerCase()) || teacher.role.toLowerCase().includes(query.toLowerCase()));
+  const [selectedStages, setSelectedStages] = useState<string[]>([]);
+  const [subject, setSubject] = useState("All subjects");
+  const results = seedTeachers.filter((teacher) => {
+    const matchesQuery = teacher.name.toLowerCase().includes(query.toLowerCase()) || teacher.role.toLowerCase().includes(query.toLowerCase());
+    const matchesStages = selectedStages.length === 0 || selectedStages.some((stage) => teacher.keyStages.includes(stage));
+    const matchesSubject = subject === "All subjects" || teacher.subjects.includes(subject);
+
+    return matchesQuery && matchesStages && matchesSubject;
+  });
+  const isIndividual = role === "individual";
 
   return (
     <div className="app-page">
-      <PageHead title="Find teachers" subtitle="Browse the full teacher network. Filter, shortlist, invite." actions={<Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn>} />
+      <PageHead
+        title="Find teachers"
+        subtitle={isIndividual ? "Browse verified teachers and request safe learner support." : "Browse the full teacher network. Filter, shortlist, invite."}
+        actions={isIndividual ? <Btn icon="message" onClick={() => go("messaging")}>Messages</Btn> : <Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn>}
+      />
       <div className="three-panel">
         <div className="card card-pad self-start">
           <div className="label-xs mb-3">Filters</div>
-          <Field label="Key stage"><div className="flex flex-wrap gap-1.5">{["KS1", "KS2", "KS3", "KS4", "KS5"].map((item, index) => <Chip key={item} active={index === 1 || index === 2}>{item}</Chip>)}</div></Field>
-          <Field label="Subject"><select className="select"><option>All subjects</option><option>Maths</option><option>English</option><option>Science</option></select></Field>
+          <Field label="Key stage">
+            <MultiSelectDropdown
+              options={stageOptions}
+              placeholder="All key stages"
+              value={selectedStages}
+              onChange={setSelectedStages}
+            />
+          </Field>
+          <Field label="Subject">
+            <SelectDropdown
+              options={subjectOptions}
+              value={subject}
+              onChange={setSubject}
+            />
+          </Field>
           <div className="flex flex-col gap-2"><Checkbox checked onChange={() => {}} label="DBS verified only" /><Checkbox checked={false} onChange={() => {}} label="QTS qualified" /><Checkbox checked={false} onChange={() => {}} label="Available today" /></div>
         </div>
         <div>
@@ -36,7 +66,7 @@ export function FindTeachersPage({ go, toast }: Pick<RouteProps, "go" | "toast">
                 </div>
                 <div className="text-center"><div className="font-serif text-lg">£{teacher.rate}</div><div className="text-xs text-[var(--muted)]">per day</div></div>
                 <MatchScore score={teacher.matchScore} />
-                <div className="flex flex-col gap-1.5"><Btn size="sm" onClick={(event) => { event.stopPropagation(); toast({ title: "Invited", msg: `${teacher.name} has been invited to apply.` }); }}>Invite</Btn><Btn variant="secondary" size="sm" onClick={(event) => { event.stopPropagation(); go("messaging"); }}>Message</Btn></div>
+                <div className="flex flex-col gap-1.5"><Btn size="sm" onClick={(event) => { event.stopPropagation(); toast({ title: isIndividual ? "Request sent" : "Invited", msg: isIndividual ? `${teacher.name} has received your availability request.` : `${teacher.name} has been invited to apply.` }); }}>{isIndividual ? "Request" : "Invite"}</Btn><Btn variant="secondary" size="sm" onClick={(event) => { event.stopPropagation(); go("messaging"); }}>Message</Btn></div>
               </div>
             ))}
           </div>

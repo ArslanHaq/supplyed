@@ -3,21 +3,47 @@ import { useState } from "react";
 import { seedJobs } from "@/data/supplyed";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Btn, Chip, Icon, MatchScore, Tag } from "../atoms";
+import { Btn, Field, Icon, MatchScore, Tag } from "../atoms";
+import { SelectDropdown } from "../molecules/OptionDropdowns";
 import { PageHead } from "../molecules";
 
 export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
-  const [mode, setMode] = useState<"all" | "urgent">("all");
-  const jobs = mode === "urgent" ? seedJobs.filter((job) => job.urgent) : seedJobs;
+  const [urgency, setUrgency] = useState("All jobs");
+  const [keyStage, setKeyStage] = useState("All stages");
+  const [subject, setSubject] = useState("All subjects");
+  const jobs = seedJobs.filter((job) => {
+    const matchesUrgency = urgency === "All jobs" || job.urgent;
+    const matchesStage = keyStage === "All stages" || job.keyStage === keyStage;
+    const matchesSubject = subject === "All subjects" || job.subject === subject;
+
+    return matchesUrgency && matchesStage && matchesSubject;
+  });
 
   return (
     <div className="app-page">
       <PageHead title="Find jobs" subtitle={`${seedJobs.length} open roles near you - ranked by match score`} />
-      <div className="mb-5 flex flex-wrap gap-2">
-        <Chip active={mode === "all"} onClick={() => setMode("all")}>All {seedJobs.length}</Chip>
-        <Chip active={mode === "urgent"} onClick={() => setMode("urgent")}>Urgent {seedJobs.filter((job) => job.urgent).length}</Chip>
-        <Chip>KS2</Chip>
-        <Chip>Maths</Chip>
+      <div className="mb-5 grid gap-3 rounded-xl border border-[var(--border)] bg-white p-3 shadow-[var(--shadow-xs)] md:grid-cols-3">
+        <Field label="Role type">
+          <SelectDropdown
+            options={["All jobs", "Urgent only"]}
+            value={urgency}
+            onChange={setUrgency}
+          />
+        </Field>
+        <Field label="Key stage">
+          <SelectDropdown
+            options={["All stages", "KS1", "KS2", "KS3", "KS4", "KS5"]}
+            value={keyStage}
+            onChange={setKeyStage}
+          />
+        </Field>
+        <Field label="Subject">
+          <SelectDropdown
+            options={["All subjects", "Maths", "English", "Science", "All Primary"]}
+            value={subject}
+            onChange={setSubject}
+          />
+        </Field>
       </div>
       <div className="two-col">
         <div className="flex flex-col gap-3">
