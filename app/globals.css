@@ -1,7 +1,39 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap");
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+@source not "../tmp";
+
+@theme inline {
+  --font-sans: var(--sans);
+  --font-serif: var(--serif);
+  --font-mono: var(--mono);
+  --color-brand: var(--se);
+  --color-brand-dark: var(--se-dark);
+  --color-brand-tint: var(--se-tint);
+  --color-brand-tint-2: var(--se-tint-2);
+  --color-ink: var(--ink);
+  --color-graphite: var(--graphite);
+  --color-slate: var(--slate);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-chalk: var(--chalk);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-2);
+  --color-success: var(--green);
+  --color-success-tint: var(--green-tint);
+  --color-warning: var(--amber);
+  --color-warning-tint: var(--amber-tint);
+  --color-danger: var(--red);
+  --color-danger-tint: var(--red-tint);
+  --radius-card: var(--radius);
+  --radius-panel: var(--radius-lg);
+  --shadow-card: var(--shadow);
+  --shadow-panel: var(--shadow-lg);
+}
 
 :root {
   --se: #008cc4;
+  --se-rgb: 0 140 196;
   --se-dark: #006e9a;
   --se-tint: #e5f4fa;
   --se-tint-2: #cfeaf5;
@@ -33,12 +65,14 @@
   --serif: "DM Serif Display", Georgia, serif;
   --sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-serif: var(--serif);
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+  --default-font-family: var(--sans);
 }
 
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html,
@@ -60,12 +94,27 @@ textarea {
   font: inherit;
 }
 
+button:not(:disabled),
+a[href],
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+summary {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 a {
   color: inherit;
   text-decoration: none;
 }
 
-.proto-shell {
+.workspace-shell {
   min-height: 100vh;
   background: var(--chalk);
 }
@@ -281,6 +330,13 @@ a {
   outline: none;
 }
 
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--se);
+  box-shadow: 0 0 0 3px rgb(var(--se-rgb) / 0.14);
+}
+
 .textarea {
   resize: vertical;
   min-height: 88px;
@@ -485,7 +541,7 @@ a {
   text-overflow: ellipsis;
 }
 
-.proto-chrome {
+.workspace-topbar {
   position: sticky;
   top: 0;
   z-index: 50;
@@ -497,7 +553,7 @@ a {
   background: #fff;
 }
 
-.proto-role-select {
+.workspace-role-select {
   display: flex;
   gap: 2px;
   padding: 3px;
@@ -506,7 +562,7 @@ a {
   background: var(--chalk);
 }
 
-.proto-role-btn {
+.workspace-role-btn {
   border: none;
   background: transparent;
   border-radius: 5px;
@@ -515,13 +571,13 @@ a {
   cursor: pointer;
 }
 
-.proto-role-btn.active {
+.workspace-role-btn.active {
   color: var(--ink);
   background: var(--surface);
   box-shadow: var(--shadow-xs);
 }
 
-.proto-crumb {
+.workspace-crumb {
   margin-left: auto;
   font-size: 11px;
   letter-spacing: 1.5px;
@@ -794,6 +850,7 @@ a {
   border-radius: var(--radius);
   border: 0.5px solid var(--border);
   background: #fff;
+  cursor: pointer;
 }
 
 .msg-list-item {
@@ -870,6 +927,7 @@ a {
   justify-content: center;
   padding: 20px;
   background: rgba(10, 10, 10, 0.4);
+  cursor: pointer;
 }
 
 .modal {
@@ -878,6 +936,7 @@ a {
   max-height: 90vh;
   overflow: auto;
   border-radius: var(--radius-xl);
+  cursor: default;
   background: #fff;
   box-shadow: var(--shadow-lg);
 }
@@ -887,8 +946,8 @@ a {
   right: 20px;
   bottom: 20px;
   z-index: 70;
-  width: 280px;
-  padding: 14px;
+  width: 260px;
+  padding: 16px;
   border-radius: var(--radius-lg);
   border: 0.5px solid var(--border);
   background: #fff;
@@ -937,12 +996,12 @@ a {
   }
 
   .page-title-row,
-  .proto-chrome,
+  .workspace-topbar,
   .app-nav {
     flex-wrap: wrap;
   }
 
-  .proto-crumb {
+  .workspace-crumb {
     margin-left: 0;
   }
 }

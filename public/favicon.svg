@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SupplyED">
+  <rect width="64" height="64" rx="16" fill="#008CC4" />
+  <path d="M17 22.5C17 17.8 20.8 14 25.5 14H47v9H26.5c-.8 0-1.5.7-1.5 1.5s.7 1.5 1.5 1.5h12C44.3 26 49 30.7 49 36.5S44.3 47 38.5 47H17v-9h20.5c1 0 1.8-.8 1.8-1.8s-.8-1.8-1.8-1.8h-12C20.8 34.5 17 30.7 17 26v-3.5Z" fill="#FFFFFF" />
+  <path d="M42 47V26h15v7h-6v14h-9Z" fill="#BDEBFF" opacity=".95" />
+</svg>
