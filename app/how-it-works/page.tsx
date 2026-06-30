@@ -47,7 +47,7 @@ const metrics = [
 
 export default function HowItWorksPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[var(--chalk)]">
+    <div className="min-h-screen overflow-x-hidden bg-chalk">
       <PublicHeader active="how-it-works" />
 
       <main>
@@ -62,7 +62,7 @@ export default function HowItWorksPage() {
                 Dummy product flow for the prototype: schools post staffing needs, individuals create learner requests, teachers build trusted profiles, and each side moves through matching, messaging, and booking.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link className={buttonClassName({ className: "rounded-full px-6 py-3 !text-white" })} href="/signup">
+                <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href="/signup">
                   Start as school
                 </Link>
                 <Link
@@ -102,13 +102,13 @@ export default function HowItWorksPage() {
 
             <div className="grid gap-4 md:grid-cols-4">
               {workflow.map((item, index) => (
-                <article key={item.label} className="relative rounded-xl border border-[var(--border)] bg-white p-5">
-                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--se-tint)] text-[var(--se)]">
+                <article key={item.label} className="relative rounded-xl border border-border bg-white p-5">
+                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-brand-tint text-brand">
                     <Icon name={item.icon} size={20} />
                   </div>
-                  <div className="mb-2 text-xs font-bold uppercase tracking-[1px] text-[var(--muted)]">Step {index + 1}</div>
+                  <div className="mb-2 text-xs font-bold uppercase tracking-[1px] text-muted">Step {index + 1}</div>
                   <h3 className="font-serif text-xl">{item.label}</h3>
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{item.copy}</p>
+                  <p className="mt-3 text-sm leading-6 text-muted">{item.copy}</p>
                 </article>
               ))}
             </div>
@@ -117,48 +117,48 @@ export default function HowItWorksPage() {
 
         <section className="bg-white px-4 py-14 sm:px-6 lg:px-12">
           <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-3">
-            <article className="rounded-xl border border-[var(--border)] p-6">
+            <article className="rounded-xl border border-border p-6">
               <Tag>For schools</Tag>
               <h2 className="mt-4 font-serif text-3xl">Fill cover without agency complexity.</h2>
               <div className="mt-6 space-y-5">
                 {schoolSteps.map(([title, copy], index) => (
                   <div key={title} className="flex gap-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--se)] text-xs font-bold text-white">{index + 1}</div>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">{index + 1}</div>
                     <div>
                       <h3 className="font-semibold">{title}</h3>
-                      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{copy}</p>
+                      <p className="mt-1 text-sm leading-6 text-muted">{copy}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </article>
 
-            <article className="rounded-xl border border-[var(--border)] p-6">
+            <article className="rounded-xl border border-border p-6">
               <Tag tone="purple">For teachers</Tag>
               <h2 className="mt-4 font-serif text-3xl">Turn one profile into matched opportunities.</h2>
               <div className="mt-6 space-y-5">
                 {teacherSteps.map(([title, copy], index) => (
                   <div key={title} className="flex gap-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--purple)] text-xs font-bold text-white">{index + 1}</div>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-purple text-xs font-bold text-white">{index + 1}</div>
                     <div>
                       <h3 className="font-semibold">{title}</h3>
-                      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{copy}</p>
+                      <p className="mt-1 text-sm leading-6 text-muted">{copy}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </article>
 
-            <article className="rounded-xl border border-[var(--border)] p-6">
+            <article className="rounded-xl border border-border p-6">
               <Tag tone="green">For individuals</Tag>
               <h2 className="mt-4 font-serif text-3xl">Find verified support without exposing private learner data.</h2>
               <div className="mt-6 space-y-5">
                 {individualSteps.map(([title, copy], index) => (
                   <div key={title} className="flex gap-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--green)] text-xs font-bold text-white">{index + 1}</div>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success text-xs font-bold text-white">{index + 1}</div>
                     <div>
                       <h3 className="font-semibold">{title}</h3>
-                      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{copy}</p>
+                      <p className="mt-1 text-sm leading-6 text-muted">{copy}</p>
                     </div>
                   </div>
                 ))}
@@ -168,12 +168,12 @@ export default function HowItWorksPage() {
         </section>
 
         <section className="px-4 py-14 sm:px-6 lg:px-12">
-          <div className="mx-auto flex max-w-[1180px] flex-col gap-5 rounded-xl border border-[var(--border)] bg-white p-6 md:flex-row md:items-center md:justify-between">
+          <div className="mx-auto flex max-w-[1180px] flex-col gap-5 rounded-xl border border-border bg-white p-6 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="eyebrow">Next step</div>
               <h2 className="mt-2 font-serif text-3xl">Create a workspace and test the full flow.</h2>
             </div>
-            <Link className={buttonClassName({ className: "rounded-full px-6 py-3 !text-white" })} href="/signup">
+            <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href="/signup">
               Get started
             </Link>
           </div>

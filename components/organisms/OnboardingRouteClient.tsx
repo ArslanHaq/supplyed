@@ -3,11 +3,12 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
+import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
 import type { AppRole, AppState } from "@/types/supplyed";
 
-import { PublicThemeControls } from "../molecules";
+import { PageLoader, PublicThemeControls } from "../molecules";
 import { OnboardingPage } from "./OnboardingPage";
 
 type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
@@ -22,11 +23,13 @@ function OnboardingRouteClientInner() {
 
   useEffect(() => {
     if (!state.signupVerified) {
+      startRouteLoading();
       router.replace("/signup");
       return;
     }
 
     if (state.onboardingComplete) {
+      startRouteLoading();
       router.replace(buildAppHref("dashboard"));
     }
   }, [router, state.onboardingComplete, state.signupVerified]);
@@ -43,6 +46,7 @@ function OnboardingRouteClientInner() {
     const nextState: AppState = { ...state, auth: "landing" };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push("/");
   }
 
@@ -50,6 +54,7 @@ function OnboardingRouteClientInner() {
     const nextState: AppState = { ...state, auth: "signed-in" };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push("/");
   }
 
@@ -65,6 +70,7 @@ function OnboardingRouteClientInner() {
     };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push(buildAppHref("dashboard"));
   }
 
@@ -99,7 +105,14 @@ export function OnboardingRouteClient() {
     () => false,
   );
 
-  if (!isClient) return null;
+  if (!isClient) {
+    return (
+      <PageLoader
+        description="Restoring verified account and onboarding progress."
+        title="Preparing onboarding"
+      />
+    );
+  }
 
   return <OnboardingRouteClientInner />;
 }

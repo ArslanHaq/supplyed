@@ -4,12 +4,13 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
 import { loadAppState, loadTweaks, saveAppState, saveTweaks } from "@/lib/supplyed-storage";
 import { applyBrandTheme } from "@/lib/theme";
 import type { AppPage, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/types/supplyed";
 
-import { ToastStack } from "../molecules";
+import { PageLoader, ToastStack } from "../molecules";
 import { AdminDashboard } from "./AdminDashboard";
 import { ApplicationStatusPage } from "./ApplicationStatusPage";
 import { AppChrome } from "./AppChrome";
@@ -73,6 +74,7 @@ function RouteShell({ page }: { page: AppPage }) {
 
   const go: GoFn = (page, ctx = {}) => {
     setState((current) => ({ ...current, page, ctx: { ...current.ctx, ...ctx }, auth: "signed-in" }));
+    startRouteLoading();
     router.push(buildAppHref(page, ctx));
   };
 
@@ -80,6 +82,7 @@ function RouteShell({ page }: { page: AppPage }) {
     const nextState: AppState = { ...state, auth: "landing" };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push("/");
   }
 
@@ -87,6 +90,7 @@ function RouteShell({ page }: { page: AppPage }) {
     const nextState: AppState = { ...state, auth: "login", page: "dashboard", ctx: {} };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push("/login");
   }
 
@@ -131,7 +135,15 @@ function RouteShell({ page }: { page: AppPage }) {
     content = activePage === "messaging" ? <MessagingPage {...routeProps} /> : <AdminDashboard />;
   }
 
-  if (!isClient) return null;
+  if (!isClient) {
+    return (
+      <PageLoader
+        compact
+        description="Restoring your saved role, workspace, and theme."
+        title="Preparing workspace"
+      />
+    );
+  }
 
   if (
     routeProps.state.role !== "individual" &&

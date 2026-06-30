@@ -48,6 +48,7 @@ const config = {
         slate: "var(--slate)",
         muted: "var(--muted)",
         border: "var(--border)",
+        "border-strong": "var(--border-2)",
         chalk: "var(--chalk)",
         surface: {
           DEFAULT: "var(--surface)",

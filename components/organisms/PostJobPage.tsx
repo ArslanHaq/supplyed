@@ -24,7 +24,7 @@ export function PostJobPage({ go, toast }: Pick<RouteProps, "go" | "toast">) {
         {["Type", "Details", "Requirements", "Review"].map((label, index) => (
           <div key={label} className="flex items-center gap-2">
             <div className={`step ${index + 1 < step ? "done" : index + 1 === step ? "active" : ""}`}>{index + 1}</div>
-            <span className={index + 1 === step ? "font-semibold" : "text-[var(--muted)]"}>{label}</span>
+            <span className={index + 1 === step ? "font-semibold" : "text-muted"}>{label}</span>
             {index < 3 ? <div className={`step-bar ${index + 1 < step ? "done" : ""}`} /> : null}
           </div>
         ))}
@@ -41,7 +41,7 @@ export function PostJobPage({ go, toast }: Pick<RouteProps, "go" | "toast">) {
               ].map((option) => (
                 <button key={option.value} className="cursor-pointer rounded-xl border p-5 text-left" onClick={() => setMode(option.value)} style={{ borderColor: mode === option.value ? option.color : "var(--border)", borderWidth: 1.5, background: mode === option.value ? option.bg : "#fff" }} type="button">
                   <div className="mb-2 font-serif text-xl">{option.title}</div>
-                  <div className="text-[var(--muted)]">{option.desc}</div>
+                  <div className="text-muted">{option.desc}</div>
                 </button>
               ))}
             </div>
@@ -81,7 +81,7 @@ export function PostJobPage({ go, toast }: Pick<RouteProps, "go" | "toast">) {
         {step === 4 ? (
           <div>
             <div className="eyebrow mb-2.5">Step 4 - Review</div>
-            <div className="card card-pad bg-[var(--chalk)]">
+            <div className="card card-pad bg-chalk">
               <div className="mb-2.5 flex flex-wrap gap-2"><Tag tone={mode === "instant" ? "" : "purple"}>{mode === "instant" ? "Instant matching" : "Open brief"}</Tag>{form.urgent ? <Tag tone="red">Urgent</Tag> : null}</div>
               <div className="font-serif text-[22px]">{form.title || "Y6 Maths Cover - 1 day"}</div>
               <div className="mt-2.5 flex flex-wrap gap-2"><span className="pill">{form.keyStage}</span><span className="pill">{form.subject}</span><span className="pill">{form.minExperience}</span><span className="pill">£{form.rate}/day</span>{form.dbsRequired ? <span className="pill">DBS required</span> : null}</div>

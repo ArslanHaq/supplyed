@@ -22,7 +22,7 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
   return (
     <div className="app-page">
       <PageHead title="Find jobs" subtitle={`${seedJobs.length} open roles near you - ranked by match score`} />
-      <div className="mb-5 grid gap-3 rounded-xl border border-[var(--border)] bg-white p-3 shadow-[var(--shadow-xs)] md:grid-cols-3">
+      <div className="mb-5 grid gap-3 rounded-xl border border-border bg-white p-3 shadow-(--shadow-xs) md:grid-cols-3">
         <Field label="Role type">
           <SelectDropdown
             options={["All jobs", "Urgent only"]}
@@ -50,10 +50,10 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
           {jobs.map((job) => (
             <div key={job.id} className="card card-pad-lg flex cursor-pointer flex-wrap items-center gap-5" onClick={() => go("job-detail", { jobId: job.id })}>
               <div className="flex-1">
-                <div className="mb-1.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><span className="text-xs text-[var(--muted)]">Posted {job.postedAt}</span></div>
+                <div className="mb-1.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><span className="text-xs text-muted">Posted {job.postedAt}</span></div>
                 <div className="mb-1 font-serif text-xl">{job.title}</div>
-                <div className="mb-3 text-[15px] text-[var(--muted)]">{job.school} - {job.city} - {job.date}</div>
-                <div className="flex flex-wrap gap-4 text-xs text-[var(--muted)]"><div className="flex items-center gap-1"><Icon name="pound" size={12} />£{job.rate}/day</div><div className="flex items-center gap-1"><Icon name="users" size={12} />{job.applicants} applied</div><div className="flex items-center gap-1"><Icon name="pin" size={12} />4.2 mi</div></div>
+                <div className="mb-3 text-[15px] text-muted">{job.school} - {job.city} - {job.date}</div>
+                <div className="flex flex-wrap gap-4 text-xs text-muted"><div className="flex items-center gap-1"><Icon name="pound" size={12} />£{job.rate}/day</div><div className="flex items-center gap-1"><Icon name="users" size={12} />{job.applicants} applied</div><div className="flex items-center gap-1"><Icon name="pin" size={12} />4.2 mi</div></div>
               </div>
               <div className="flex flex-col items-end gap-2.5"><MatchScore score={job.matchScore} /><Btn size="sm">{job.mode === "instant" ? "Accept" : "Apply"}</Btn></div>
             </div>

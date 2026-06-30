@@ -54,7 +54,7 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
         <div>
           <div className="mb-3.5 flex items-center justify-between">
             <div className="section-title mb-0">Learner requests</div>
-            <button className="cursor-pointer text-xs font-semibold text-[var(--se)]" type="button">
+            <button className="cursor-pointer text-xs font-semibold text-brand" type="button">
               New request
             </button>
           </div>
@@ -62,9 +62,9 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
             {learnerRequests.map((request, index) => (
               <div
                 key={request.id}
-                className="flex flex-wrap items-center gap-4 border-b border-[var(--border)] px-5 py-4 last:border-b-0"
+                className="flex flex-wrap items-center gap-4 border-b border-border px-5 py-4 last:border-b-0"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--se-tint)] text-[var(--se)]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
                   <Icon name="heart" size={18} />
                 </div>
                 <div className="min-w-[220px] flex-1">
@@ -72,7 +72,7 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
                     <div className="font-semibold">{request.subject}</div>
                     <Tag tone={index === 0 ? "green" : "ghost"}>{request.status}</Tag>
                   </div>
-                  <div className="text-xs text-[var(--muted)]">
+                  <div className="text-xs text-muted">
                     {request.learner} - {request.format} - {request.schedule} - {request.budget}
                   </div>
                 </div>
@@ -94,7 +94,7 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
                     {teacher.dbs ? <VerifyBadge /> : null}
                     {teacher.qts ? <Tag tone="ghost">QTS</Tag> : null}
                   </div>
-                  <div className="text-xs text-[var(--muted)]">
+                  <div className="text-xs text-muted">
                     {teacher.role} - {teacher.city} - Available {teacher.availability}
                   </div>
                 </div>
@@ -115,16 +115,16 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
 
         <div>
           <div className="section-title">Safeguarding</div>
-          <div className="card card-pad border-[var(--se)] bg-[var(--se-tint)]">
+          <div className="card card-pad border-brand bg-brand-tint">
             <Tag tone="green">Verified teachers only</Tag>
             <div className="mt-3 font-serif text-[24px]">Documents stay private</div>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            <p className="mt-2 text-sm leading-6 text-muted">
               Hirers see verification badges. Admin keeps DBS, identity, and right-to-work documents restricted.
             </p>
             <div className="mt-4 space-y-2">
               {["Account-led messaging", "No learner account required", "Location shared after accepted request"].map((item) => (
                 <div key={item} className="flex items-center gap-2 text-sm">
-                  <Icon name="checkCircle" size={15} className="text-[var(--se)]" />
+                  <Icon name="checkCircle" size={15} className="text-brand" />
                   <span>{item}</span>
                 </div>
               ))}

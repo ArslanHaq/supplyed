@@ -18,15 +18,15 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
           <h1 className="mb-2.5 font-serif text-[38px] leading-tight">{job.title}</h1>
           <div className="mb-6 flex flex-wrap gap-4"><div className="flex items-center gap-1.5"><Icon name="building" size={14} />{job.school}</div><div className="flex items-center gap-1.5"><Icon name="pin" size={14} />{job.city}</div><div className="flex items-center gap-1.5"><Icon name="clock" size={14} />Posted {job.postedAt}</div></div>
           <div className="grid-3 mb-7">
-            <div className="card card-pad text-center"><div className="text-xs text-[var(--muted)]">Day rate</div><div className="font-serif text-[26px] text-[var(--se)]">£{job.rate}</div></div>
-            <div className="card card-pad text-center"><div className="text-xs text-[var(--muted)]">Duration</div><div className="font-serif text-xl">1 Day</div></div>
-            <div className="card card-pad text-center"><div className="text-xs text-[var(--muted)]">Match score</div><div className="mt-1.5 flex justify-center"><MatchScore score={job.matchScore} /></div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">Day rate</div><div className="font-serif text-[26px] text-brand">£{job.rate}</div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">Duration</div><div className="font-serif text-xl">1 Day</div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">Match score</div><div className="mt-1.5 flex justify-center"><MatchScore score={job.matchScore} /></div></div>
           </div>
           <div className="card card-pad-lg mb-5"><div className="section-title">About this role</div><p className="leading-[1.7]">{job.description || "School-provided role details will appear here once published."}</p></div>
           <div className="card card-pad-lg"><div className="section-title">Requirements</div>{["Enhanced DBS certificate", "QTS not required", "Subject: Maths", "Available from 08:20 tomorrow"].map((item) => <div key={item} className="flex items-center gap-2.5 py-2"><Icon name="checkCircle" size={16} />{item}</div>)}</div>
         </div>
         <div className="card card-pad-lg sticky top-[88px] self-start">
-          <div className="mb-3.5 flex items-center justify-between"><div><div className="text-xs text-[var(--muted)]">Day rate</div><div className="font-serif text-[28px]">£{job.rate}</div></div><MatchScore score={job.matchScore} /></div>
+          <div className="mb-3.5 flex items-center justify-between"><div><div className="text-xs text-muted">Day rate</div><div className="font-serif text-[28px]">£{job.rate}</div></div><MatchScore score={job.matchScore} /></div>
           <div className="mb-3.5 flex flex-wrap gap-2"><span className="pill">{job.keyStage}</span><span className="pill">{job.subject}</span><span className="pill">{job.date}</span></div>
           <Btn className="w-full" size="lg" onClick={() => setOpen(true)}>{role === "teacher" ? (job.mode === "instant" ? "Accept job" : "Apply now") : "Invite candidates"}</Btn>
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging")}>Message school</Btn>

@@ -5,12 +5,12 @@ import { cn } from "@/lib/cn";
 type TagTone = "" | "green" | "amber" | "red" | "purple" | "ghost";
 
 const toneClass: Record<TagTone, string> = {
-  "": "bg-[var(--se-tint)] text-[var(--se)]",
-  green: "bg-[var(--green-tint)] text-[var(--green)]",
-  amber: "bg-[var(--amber-tint)] text-[var(--amber)]",
-  red: "bg-[var(--red-tint)] text-[var(--red)]",
-  purple: "bg-[var(--purple-tint)] text-[var(--purple)]",
-  ghost: "border border-[var(--border)] bg-[var(--chalk)] text-[var(--slate)]",
+  "": "bg-brand-tint text-brand",
+  green: "bg-success-tint text-success",
+  amber: "bg-warning-tint text-warning",
+  red: "bg-danger-tint text-danger",
+  purple: "bg-accent-purple-tint text-accent-purple",
+  ghost: "border border-border bg-chalk text-slate",
 };
 
 export function Tag({

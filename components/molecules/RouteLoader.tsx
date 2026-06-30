@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
+import { routeLoadingStartEvent } from "@/lib/navigation-loading";
+
 function isInternalNavigation(anchor: HTMLAnchorElement) {
   if (anchor.target && anchor.target !== "_self") return false;
   if (anchor.hasAttribute("download")) return false;
@@ -20,6 +22,8 @@ function isInternalNavigation(anchor: HTMLAnchorElement) {
 export function RouteLoader() {
   const pathname = usePathname();
   const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
+  const startedAtRef = useRef(0);
   const hideTimerRef = useRef<number | null>(null);
   const failSafeTimerRef = useRef<number | null>(null);
 
@@ -31,8 +35,31 @@ export function RouteLoader() {
 
     function startLoading() {
       clearTimers();
+      loadingRef.current = true;
+      startedAtRef.current = window.performance.now();
       setLoading(true);
-      failSafeTimerRef.current = window.setTimeout(() => setLoading(false), 2800);
+      failSafeTimerRef.current = window.setTimeout(() => finishLoading(0), 4200);
+    }
+
+    function finishLoading(minimumVisibleMs = 340) {
+      if (!loadingRef.current) return;
+
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+      const elapsed = window.performance.now() - startedAtRef.current;
+      const delay = Math.max(0, minimumVisibleMs - elapsed);
+
+      hideTimerRef.current = window.setTimeout(() => {
+        loadingRef.current = false;
+        setLoading(false);
+      }, delay);
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as Element | null)?.closest("a");
+      if (anchor instanceof HTMLAnchorElement && isInternalNavigation(anchor)) {
+        startLoading();
+      }
     }
 
     function handleClick(event: MouseEvent) {
@@ -43,41 +70,62 @@ export function RouteLoader() {
       }
     }
 
+    function handlePopState() {
+      startLoading();
+      window.setTimeout(() => finishLoading(), 0);
+    }
+
     const originalPushState = window.history.pushState;
     const originalReplaceState = window.history.replaceState;
 
     window.history.pushState = function pushState(...args) {
       const previousUrl = window.location.href;
       const result = originalPushState.apply(this, args);
-      if (window.location.href !== previousUrl) startLoading();
+      if (window.location.href !== previousUrl) {
+        if (!loadingRef.current) startLoading();
+        finishLoading();
+      }
       return result;
     };
 
     window.history.replaceState = function replaceState(...args) {
       const previousUrl = window.location.href;
       const result = originalReplaceState.apply(this, args);
-      if (window.location.href !== previousUrl) startLoading();
+      if (window.location.href !== previousUrl) {
+        if (!loadingRef.current) startLoading();
+        finishLoading();
+      }
       return result;
     };
 
-    window.addEventListener("popstate", startLoading);
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener(routeLoadingStartEvent, startLoading);
+    document.addEventListener("pointerdown", handlePointerDown, true);
     document.addEventListener("click", handleClick, true);
 
     return () => {
       clearTimers();
       window.history.pushState = originalPushState;
       window.history.replaceState = originalReplaceState;
-      window.removeEventListener("popstate", startLoading);
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener(routeLoadingStartEvent, startLoading);
+      document.removeEventListener("pointerdown", handlePointerDown, true);
       document.removeEventListener("click", handleClick, true);
     };
   }, []);
 
   useEffect(() => {
-    if (!loading) return;
+    if (!loadingRef.current) return;
 
     if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = window.setTimeout(() => setLoading(false), 420);
-  }, [loading, pathname]);
+    const elapsed = window.performance.now() - startedAtRef.current;
+    const delay = Math.max(0, 340 - elapsed);
+
+    hideTimerRef.current = window.setTimeout(() => {
+      loadingRef.current = false;
+      setLoading(false);
+    }, delay);
+  }, [pathname]);
 
   if (!loading) return null;
 

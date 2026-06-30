@@ -18,7 +18,7 @@ export function LandingPage() {
             <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[64px]">
               Connecting schools and learners
               <br />
-              with <em className="text-[var(--se)]">brilliant teachers.</em>
+              with <em className="text-brand">brilliant teachers.</em>
             </h1>
             <p className="mb-8 mt-5 max-w-[540px] text-base leading-[1.65] text-white/70 sm:mb-9 sm:mt-6 sm:text-[17px]">
               SupplyED is the marketplace where UK schools, learners, and hiring accounts find vetted, DBS-checked teachers for cover, tutoring, and learner support. No agency fees. Full compliance.
@@ -50,12 +50,12 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-white p-4 text-[var(--ink)] shadow-[0_40px_80px_rgba(0,0,0,0.4)] sm:p-5">
+          <div className="rounded-xl border border-border bg-white p-4 text-ink shadow-[0_40px_80px_rgba(0,0,0,0.4)] sm:p-5">
             <div className="mb-3.5 flex items-start justify-between">
               <div>
-                <div className="label-xs text-[var(--se)]">Urgent - Today</div>
+                <div className="label-xs text-brand">Urgent - Today</div>
                 <div className="mt-1 font-serif text-xl">Y6 Maths Cover</div>
-                <div className="text-sm text-[var(--muted)]">Greenfield Primary - Salford</div>
+                <div className="text-sm text-muted">Greenfield Primary - Salford</div>
               </div>
               <Tag tone="red">Urgent</Tag>
             </div>
@@ -64,14 +64,14 @@ export function LandingPage() {
               <span className="pill">£180/day</span>
               <span className="pill">DBS required</span>
             </div>
-            <div className="border-t border-[var(--border)] pt-3.5">
+            <div className="border-t border-border pt-3.5">
               <div className="label-xs mb-2.5">Top matches - AI ranked</div>
               {seedTeachers.slice(0, 3).map((teacher) => (
-                <div key={teacher.id} className="flex items-center gap-2.5 border-b border-[var(--border)] py-2">
+                <div key={teacher.id} className="flex items-center gap-2.5 border-b border-border py-2">
                   <Avatar name={teacher.name} size="sm" tone={teacher.tone} />
                   <div className="flex-1">
                     <div className="font-medium">{teacher.name}</div>
-                    <div className="text-xs text-[var(--muted)]">{teacher.role}</div>
+                    <div className="text-xs text-muted">{teacher.role}</div>
                   </div>
                   <MatchScore score={teacher.matchScore} size={36} />
                 </div>
@@ -87,7 +87,7 @@ export function LandingPage() {
           <div className="mb-12 text-center">
             <div className="eyebrow">How it works</div>
             <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">Two ways to staff a role.</h2>
-            <p className="mt-2 text-[var(--muted)]">Post urgently for instant AI matching, or open a brief and review proposals.</p>
+            <p className="mt-2 text-muted">Post urgently for instant AI matching, or open a brief and review proposals.</p>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             {[

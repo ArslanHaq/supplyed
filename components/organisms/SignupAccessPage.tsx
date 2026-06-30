@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Btn, Checkbox, Field, Logo } from "../atoms";
 import { PasswordInput } from "../atoms/PasswordInput";
@@ -8,7 +8,7 @@ type AccessErrors = Partial<Record<"email" | "password" | "confirmPassword" | "t
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function fieldClass(error?: string) {
-  return `input ${error ? "border-[var(--red)] bg-[var(--red-tint)]" : ""}`;
+  return `input ${error ? "border-danger bg-danger-tint" : ""}`;
 }
 
 export function SignupAccessPage({
@@ -25,6 +25,14 @@ export function SignupAccessPage({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [errors, setErrors] = useState<AccessErrors>({});
+  const [pending, setPending] = useState(false);
+  const pendingTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
+    };
+  }, []);
 
   function validate() {
     const nextErrors: AccessErrors = {};
@@ -42,12 +50,17 @@ export function SignupAccessPage({
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     if (!validate()) return;
-    onAccountCreated(email.trim());
+    setPending(true);
+    pendingTimerRef.current = window.setTimeout(() => {
+      onAccountCreated(email.trim());
+      setPending(false);
+    }, 420);
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[var(--chalk)] lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+    <div className="min-h-screen overflow-x-hidden bg-chalk lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       <aside className="relative flex min-h-[330px] flex-col justify-between overflow-hidden bg-[#0a0a0a] px-5 py-7 text-white sm:px-8 sm:py-10 lg:min-h-screen lg:px-14 lg:py-16">
         <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:54px_54px]" />
         <div className="relative flex items-center justify-between gap-4">
@@ -58,7 +71,7 @@ export function SignupAccessPage({
         </div>
 
         <div className="relative my-12 max-w-[520px] lg:my-0">
-          <div className="eyebrow mb-5 text-[var(--se)]">Create account</div>
+          <div className="eyebrow mb-5 text-brand">Create account</div>
           <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
             Start with secure access,
             <br />
@@ -75,7 +88,7 @@ export function SignupAccessPage({
               ["Onboard", "Role is selected only after the user is signed in."],
             ].map(([title, copy], index) => (
               <div key={title} className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-[var(--se)]">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-brand">
                   {index + 1}
                 </div>
                 <div>
@@ -93,22 +106,23 @@ export function SignupAccessPage({
       <section className="flex min-h-[calc(100vh-330px)] items-center justify-center px-4 py-8 sm:px-6 lg:min-h-screen lg:px-12 lg:py-16">
         <div className="w-full max-w-[720px]">
           <div className="mb-7">
-            <div className="eyebrow mb-2 text-[var(--se)]">Account details</div>
+            <div className="eyebrow mb-2 text-brand">Account details</div>
             <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">Create your SupplyED account.</h2>
-            <p className="mt-3 text-[var(--muted)]">
+            <p className="mt-3 text-muted">
               Already registered?{" "}
-              <button className="font-semibold text-[var(--se)]" onClick={onLogin} type="button">
+              <button className="font-semibold text-brand" onClick={onLogin} type="button">
                 Log in
               </button>
             </p>
           </div>
 
-          <form className="rounded-xl border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-xs)] sm:p-7" noValidate onSubmit={handleSubmit}>
+          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
             <div className="grid gap-x-4 sm:grid-cols-2">
               <Field label="Email address" htmlFor="signup-access-email" error={errors.email} required>
                 <input
                   autoComplete="email"
                   className={fieldClass(errors.email)}
+                  disabled={pending}
                   id="signup-access-email"
                   inputMode="email"
                   onChange={(event) => {
@@ -124,6 +138,7 @@ export function SignupAccessPage({
                 <PasswordInput
                   autoComplete="new-password"
                   className={fieldClass(errors.password)}
+                  disabled={pending}
                   id="signup-access-password"
                   onChange={(event) => {
                     setPassword(event.target.value);
@@ -137,6 +152,7 @@ export function SignupAccessPage({
                 <PasswordInput
                   autoComplete="new-password"
                   className={fieldClass(errors.confirmPassword)}
+                  disabled={pending}
                   id="signup-access-confirm"
                   onChange={(event) => {
                     setConfirmPassword(event.target.value);
@@ -159,7 +175,7 @@ export function SignupAccessPage({
               />
             </Field>
 
-            <Btn className="mt-2 w-full" size="lg" type="submit" iconRight="arrow">
+            <Btn className="mt-2 w-full" loading={pending} loadingLabel="Creating account" size="lg" type="submit" iconRight="arrow">
               Create account
             </Btn>
           </form>

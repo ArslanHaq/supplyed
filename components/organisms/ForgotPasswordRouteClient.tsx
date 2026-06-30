@@ -1,19 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { startRouteLoading } from "@/lib/navigation-loading";
 import { Btn, Field, Icon, Logo } from "../atoms";
 import { PasswordInput } from "../atoms/PasswordInput";
 import { PublicThemeControls } from "../molecules";
 
 type ResetStage = "email" | "code" | "password" | "success";
 type ResetErrors = Partial<Record<"email" | "code" | "password" | "confirmPassword", string>>;
+type ResetPending = "email" | "code" | "password" | "resend" | null;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function fieldClass(error?: string) {
-  return `input ${error ? "border-[var(--red)] bg-[var(--red-tint)]" : ""}`;
+  return `input ${error ? "border-danger bg-danger-tint" : ""}`;
 }
 
 function stageIndex(stage: ResetStage) {
@@ -31,20 +33,40 @@ export function ForgotPasswordRouteClient() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<ResetErrors>({});
+  const [pending, setPending] = useState<ResetPending>(null);
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const pendingTimerRef = useRef<number | null>(null);
   const codeValue = code.join("");
   const progress = stageIndex(stage) * 25;
 
+  useEffect(() => {
+    return () => {
+      if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
+    };
+  }, []);
+
+  function runPending(kind: Exclude<ResetPending, null>, callback: () => void) {
+    if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
+    setPending(kind);
+    pendingTimerRef.current = window.setTimeout(() => {
+      callback();
+      setPending(null);
+    }, 420);
+  }
+
   function goLanding() {
+    startRouteLoading();
     router.push("/");
   }
 
   function goLogin() {
+    startRouteLoading();
     router.push("/login");
   }
 
   function requestReset(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     const trimmedEmail = email.trim();
     const nextErrors: ResetErrors = {};
 
@@ -54,24 +76,28 @@ export function ForgotPasswordRouteClient() {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    setEmail(trimmedEmail);
-    setStage("code");
-    window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
+    runPending("email", () => {
+      setEmail(trimmedEmail);
+      setStage("code");
+      window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
+    });
   }
 
   function verifyCode(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     if (codeValue.length !== 6) {
       setErrors({ code: "Enter the 6-digit reset code." });
       return;
     }
 
     setErrors({});
-    setStage("password");
+    runPending("code", () => setStage("password"));
   }
 
   function savePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     const nextErrors: ResetErrors = {};
 
     if (password.length < 8) nextErrors.password = "Use at least 8 characters.";
@@ -80,7 +106,15 @@ export function ForgotPasswordRouteClient() {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    setStage("success");
+    runPending("password", () => setStage("success"));
+  }
+
+  function resendCode() {
+    runPending("resend", () => {
+      setCode(["", "", "", "", "", ""]);
+      setErrors({});
+      codeRefs.current[0]?.focus();
+    });
   }
 
   function handleCodeChange(index: number, value: string) {
@@ -112,7 +146,7 @@ export function ForgotPasswordRouteClient() {
 
   return (
     <>
-      <div className="min-h-screen overflow-x-hidden bg-[var(--chalk)] lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+      <div className="min-h-screen overflow-x-hidden bg-chalk lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
         <aside className="relative flex min-h-[330px] flex-col justify-between overflow-hidden bg-[#0a0a0a] px-5 py-7 text-white sm:px-8 sm:py-10 lg:min-h-screen lg:px-14 lg:py-16">
           <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:54px_54px]" />
           <div className="relative flex items-center justify-between gap-4">
@@ -123,7 +157,7 @@ export function ForgotPasswordRouteClient() {
           </div>
 
           <div className="relative my-12 max-w-[500px] lg:my-0">
-            <div className="eyebrow mb-5 text-[var(--se)]">Password reset</div>
+            <div className="eyebrow mb-5 text-brand">Password reset</div>
             <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
               Recover access
               <br />
@@ -140,21 +174,21 @@ export function ForgotPasswordRouteClient() {
         <section className="flex min-h-[calc(100vh-330px)] items-center justify-center px-4 py-8 sm:px-6 lg:min-h-screen lg:px-12 lg:py-16">
           <div className="w-full max-w-[500px]">
             <div className="mb-7">
-              <div className="eyebrow mb-2 text-[var(--se)]">Account recovery</div>
+              <div className="eyebrow mb-2 text-brand">Account recovery</div>
               <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">
                 {stage === "email" ? "Reset your password" : stage === "code" ? "Verify reset code" : stage === "password" ? "Create a new password" : "Password updated"}
               </h2>
-              <p className="mt-3 text-[var(--muted)]">
+              <p className="mt-3 text-muted">
                 {stage === "email"
                   ? "Enter the email used for your SupplyED account."
                   : stage === "code"
-                    ? <>Enter the 6-digit code sent to <span className="font-semibold text-[var(--ink)]">{email}</span>.</>
+                    ? <>Enter the 6-digit code sent to <span className="font-semibold text-ink">{email}</span>.</>
                     : stage === "password"
                       ? "Choose a new password before returning to login."
                       : "You can now log in with your new password."}
               </p>
               <div className="mt-5">
-                <div className="mb-2 flex justify-between text-xs font-semibold uppercase tracking-[1px] text-[var(--muted)]">
+                <div className="mb-2 flex justify-between text-xs font-semibold uppercase tracking-[1px] text-muted">
                   <span>Progress</span>
                   <span>{progress}%</span>
                 </div>
@@ -164,7 +198,7 @@ export function ForgotPasswordRouteClient() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-xs)] sm:p-7">
+            <div className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7">
               {stage === "email" ? (
                 <form noValidate onSubmit={requestReset}>
                   <Field label="Email address" htmlFor="reset-email" error={errors.email} required>
@@ -172,6 +206,7 @@ export function ForgotPasswordRouteClient() {
                       aria-invalid={Boolean(errors.email)}
                       autoComplete="email"
                       className={fieldClass(errors.email)}
+                      disabled={Boolean(pending)}
                       id="reset-email"
                       inputMode="email"
                       onChange={(event) => {
@@ -184,11 +219,11 @@ export function ForgotPasswordRouteClient() {
                     />
                   </Field>
 
-                  <div className="mb-6 rounded-lg bg-[var(--se-tint)] p-4 text-sm leading-6 text-[var(--se-dark)]">
+                  <div className="mb-6 rounded-lg bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
                     If this email is registered, a reset code will arrive shortly.
                   </div>
 
-                  <Btn className="w-full" size="lg" type="submit" iconRight="arrow">
+                  <Btn className="w-full" loading={pending === "email"} loadingLabel="Sending code" size="lg" type="submit" iconRight="arrow">
                     Send reset code
                   </Btn>
                 </form>
@@ -207,6 +242,7 @@ export function ForgotPasswordRouteClient() {
                           aria-label={`Reset code digit ${index + 1}`}
                           aria-invalid={Boolean(errors.code)}
                           className={fieldClass(errors.code) + " h-12 p-0 text-center text-lg font-semibold sm:h-14 sm:text-xl"}
+                          disabled={Boolean(pending)}
                           inputMode="numeric"
                           maxLength={1}
                           onChange={(event) => handleCodeChange(index, event.target.value)}
@@ -218,24 +254,23 @@ export function ForgotPasswordRouteClient() {
                     </div>
                   </Field>
 
-                  <div className="mb-6 rounded-lg bg-[var(--chalk)] p-4 text-sm leading-6 text-[var(--muted)]">
+                  <div className="mb-6 rounded-lg bg-chalk p-4 text-sm leading-6 text-muted">
                     Codes expire shortly. Request a new one if this reset code no longer works.
                   </div>
 
-                  <Btn className="w-full" size="lg" type="submit" iconRight="arrow">
+                  <Btn className="w-full" loading={pending === "code"} loadingLabel="Verifying code" size="lg" type="submit" iconRight="arrow">
                     Verify code
                   </Btn>
                   <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Btn className="w-full" variant="ghost" onClick={() => setStage("email")}>
+                    <Btn className="w-full" disabled={Boolean(pending)} variant="ghost" onClick={() => setStage("email")}>
                       Back
                     </Btn>
                     <Btn
                       className="w-full"
+                      loading={pending === "resend"}
+                      loadingLabel="Sending"
                       variant="secondary"
-                      onClick={() => {
-                        setCode(["", "", "", "", "", ""]);
-                        setErrors({});
-                      }}
+                      onClick={resendCode}
                     >
                       Resend
                     </Btn>
@@ -250,6 +285,7 @@ export function ForgotPasswordRouteClient() {
                       aria-invalid={Boolean(errors.password)}
                       autoComplete="new-password"
                       className={fieldClass(errors.password)}
+                      disabled={Boolean(pending)}
                       id="new-password"
                       onChange={(event) => {
                         setPassword(event.target.value);
@@ -264,6 +300,7 @@ export function ForgotPasswordRouteClient() {
                       aria-invalid={Boolean(errors.confirmPassword)}
                       autoComplete="new-password"
                       className={fieldClass(errors.confirmPassword)}
+                      disabled={Boolean(pending)}
                       id="confirm-new-password"
                       onChange={(event) => {
                         setConfirmPassword(event.target.value);
@@ -274,7 +311,7 @@ export function ForgotPasswordRouteClient() {
                     />
                   </Field>
 
-                  <Btn className="w-full" size="lg" type="submit">
+                  <Btn className="w-full" loading={pending === "password"} loadingLabel="Updating password" size="lg" type="submit">
                     Update password
                   </Btn>
                 </form>
@@ -282,11 +319,11 @@ export function ForgotPasswordRouteClient() {
 
               {stage === "success" ? (
                 <div>
-                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--se-tint)] text-[var(--se)]">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-tint text-brand">
                     <Icon name="checkCircle" size={24} />
                   </div>
                   <div className="font-serif text-2xl">Your password has been reset.</div>
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  <p className="mt-3 text-sm leading-6 text-muted">
                     Return to login and continue with the updated credentials. Any active reset links should be treated as expired after use.
                   </p>
                   <Btn className="mt-6 w-full" size="lg" onClick={goLogin} iconRight="arrow">

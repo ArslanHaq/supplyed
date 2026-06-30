@@ -72,7 +72,7 @@ const faqs = [
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[var(--chalk)]">
+    <div className="min-h-screen overflow-x-hidden bg-chalk">
       <PublicHeader active="pricing" />
 
       <main>
@@ -83,7 +83,7 @@ export default function PricingPage() {
               <h1 className="mt-5 font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[64px]">
                 Simple plans for flexible school staffing.
               </h1>
-              <p className="mt-5 text-base leading-7 text-[var(--muted)] sm:text-lg">
+              <p className="mt-5 text-base leading-7 text-muted sm:text-lg">
                 Dummy pricing for the prototype: keep teachers and individual hirers free, give schools predictable monthly access, and reserve custom workflows for trust-level teams.
               </p>
             </div>
@@ -95,31 +95,31 @@ export default function PricingPage() {
             {plans.map((plan) => (
               <article
                 key={plan.name}
-                className={`rounded-xl border bg-white p-6 shadow-[var(--shadow-xs)] ${plan.featured ? "border-[var(--se)] ring-2 ring-[var(--se-tint-2)]" : "border-[var(--border)]"}`}
+                className={`rounded-xl border bg-white p-6 shadow-(--shadow-xs) ${plan.featured ? "border-brand ring-2 ring-brand-tint-2" : "border-border"}`}
               >
                 <div className="mb-5 flex items-start justify-between gap-3">
                   <div>
                     <Tag tone={plan.tone}>{plan.name}</Tag>
                     <div className="mt-5 flex items-end gap-1">
                       <span className="font-serif text-4xl leading-none">{plan.price}</span>
-                      {plan.period ? <span className="pb-1 text-sm text-[var(--muted)]">{plan.period}</span> : null}
+                      {plan.period ? <span className="pb-1 text-sm text-muted">{plan.period}</span> : null}
                     </div>
                   </div>
-                  {plan.featured ? <span className="rounded-full bg-[var(--se-tint)] px-3 py-1 text-xs font-semibold text-[var(--se)]">Popular</span> : null}
+                  {plan.featured ? <span className="rounded-full bg-brand-tint px-3 py-1 text-xs font-semibold text-brand">Popular</span> : null}
                 </div>
 
-                <p className="min-h-[56px] text-sm leading-6 text-[var(--muted)]">{plan.caption}</p>
+                <p className="min-h-[56px] text-sm leading-6 text-muted">{plan.caption}</p>
 
                 <div className="mt-6 space-y-3">
                   {plan.features.map((feature) => (
                     <div key={feature} className="flex items-center gap-2.5 text-sm">
-                      <Icon name="checkCircle" size={16} className="text-[var(--se)]" />
+                      <Icon name="checkCircle" size={16} className="text-brand" />
                       <span>{feature}</span>
                     </div>
                   ))}
                 </div>
 
-                <Link className={buttonClassName({ className: "mt-7 w-full rounded-full py-3 !text-white" })} href={plan.href}>
+                <Link className={buttonClassName({ className: "mt-7 w-full rounded-full py-3 text-white!" })} href={plan.href}>
                   {plan.cta}
                 </Link>
               </article>
@@ -139,13 +139,13 @@ export default function PricingPage() {
               </Link>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+            <div className="overflow-hidden rounded-xl border border-border">
               {comparisons.map((row, index) => (
-                <div key={row[0]} className="grid grid-cols-2 border-b border-[var(--border)] bg-white last:border-b-0 md:grid-cols-5">
+                <div key={row[0]} className="grid grid-cols-2 border-b border-border bg-white last:border-b-0 md:grid-cols-5">
                   {row.map((cell, cellIndex) => (
                     <div
                       key={`${row[0]}-${cellIndex}`}
-                      className={`min-h-[56px] px-4 py-4 text-sm ${cellIndex === 0 ? "font-semibold text-[var(--ink)]" : "text-[var(--muted)]"} ${index === 0 ? "" : ""}`}
+                      className={`min-h-[56px] px-4 py-4 text-sm ${cellIndex === 0 ? "font-semibold text-ink" : "text-muted"} ${index === 0 ? "" : ""}`}
                     >
                       {cell}
                     </div>
@@ -159,9 +159,9 @@ export default function PricingPage() {
         <section className="px-4 py-14 sm:px-6 lg:px-12">
           <div className="mx-auto grid max-w-[1180px] gap-4 md:grid-cols-3">
             {faqs.map(([question, answer]) => (
-              <article key={question} className="rounded-xl border border-[var(--border)] bg-white p-5">
+              <article key={question} className="rounded-xl border border-border bg-white p-5">
                 <h3 className="font-serif text-xl">{question}</h3>
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{answer}</p>
+                <p className="mt-3 text-sm leading-6 text-muted">{answer}</p>
               </article>
             ))}
           </div>

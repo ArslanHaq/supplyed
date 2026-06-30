@@ -3,10 +3,11 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
+import { startRouteLoading } from "@/lib/navigation-loading";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
 import type { AppState } from "@/types/supplyed";
 
-import { PublicThemeControls } from "../molecules";
+import { PageLoader, PublicThemeControls } from "../molecules";
 import { SignupAccessPage } from "./SignupAccessPage";
 import { SignupVerifyPage } from "./SignupVerifyPage";
 
@@ -73,6 +74,7 @@ function SignupRouteClientInner() {
     };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push("/onboarding");
   }
 
@@ -80,6 +82,7 @@ function SignupRouteClientInner() {
     const nextState: AppState = { ...state, auth: "landing" };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push("/");
   }
 
@@ -87,6 +90,7 @@ function SignupRouteClientInner() {
     const nextState: AppState = { ...state, auth: "login" };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push("/login");
   }
 
@@ -128,7 +132,14 @@ export function SignupRouteClient() {
     () => false,
   );
 
-  if (!isClient) return null;
+  if (!isClient) {
+    return (
+      <PageLoader
+        description="Preparing account creation and verification state."
+        title="Preparing signup"
+      />
+    );
+  }
 
   return <SignupRouteClientInner />;
 }

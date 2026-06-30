@@ -91,10 +91,10 @@ export function AppChrome({
           ))}
         </div>
         <div className="app-nav-right">
-          <div className="flex items-center gap-1.5 rounded-lg bg-[var(--chalk)] px-3 py-1.5"><Icon name="search" size={13} /><input placeholder={searchPlaceholder} className="w-[140px] border-0 bg-transparent outline-none" /></div>
+          <div className="flex items-center gap-1.5 rounded-lg bg-chalk px-3 py-1.5"><Icon name="search" size={13} /><input placeholder={searchPlaceholder} className="w-[140px] border-0 bg-transparent outline-none" /></div>
           <div className="notif-btn" onClick={() => go("messaging")}><Icon name="bell" size={16} /><div className="notif-dot" /></div>
           <div className="notif-btn"><Icon name="help" size={16} /></div>
-          <div className="flex items-center gap-2"><Avatar name={userName} size="sm" /><div><div className="text-sm font-semibold">{userName}</div><div className="text-xs text-[var(--muted)]">{userSub}</div></div></div>
+          <div className="flex items-center gap-2"><Avatar name={userName} size="sm" /><div><div className="text-sm font-semibold">{userName}</div><div className="text-xs text-muted">{userSub}</div></div></div>
         </div>
       </div>
       {children}

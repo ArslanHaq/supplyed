@@ -11,7 +11,7 @@ export function CalendarPage() {
         <div className="card card-pad-lg">
           <div className="mb-[18px] flex items-center justify-between"><div className="font-serif text-2xl">March 2026</div><div className="flex gap-2"><Btn variant="ghost" size="sm">Prev</Btn><Btn variant="ghost" size="sm">Next</Btn></div></div>
           <div className="grid grid-cols-7 gap-1">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => <div key={day} className="py-2 text-center text-xs text-[var(--muted)]">{day}</div>)}
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => <div key={day} className="py-2 text-center text-xs text-muted">{day}</div>)}
             {days.map((item, index) => (
               <div key={index} className="flex aspect-square items-center justify-center rounded-md border" style={{ borderColor: item.day ? "var(--border)" : "transparent", background: item.state === "available" ? "var(--se-tint)" : item.state === "booked" ? "var(--ink)" : "#fff", color: item.state === "booked" ? "#fff" : "var(--ink)" }}>{item.day}</div>
             ))}

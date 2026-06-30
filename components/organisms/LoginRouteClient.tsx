@@ -3,11 +3,12 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
+import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
 import type { AppPage, AppState } from "@/types/supplyed";
 
-import { PublicThemeControls } from "../molecules";
+import { PageLoader, PublicThemeControls } from "../molecules";
 import { LoginPage } from "./LoginPage";
 
 type LoginChallenge = "email-verification" | "identity-verification";
@@ -24,6 +25,7 @@ function LoginRouteClientInner() {
     const nextState: AppState = { ...state, auth: "landing" };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push("/");
   }
 
@@ -40,10 +42,12 @@ function LoginRouteClientInner() {
     };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push("/signup");
   }
 
   function goForgotPassword() {
+    startRouteLoading();
     router.push("/forgot-password");
   }
 
@@ -82,6 +86,7 @@ function LoginRouteClientInner() {
       };
       setState(nextState);
       saveAppState(nextState);
+      startRouteLoading();
       router.push("/onboarding");
       return;
     }
@@ -90,6 +95,7 @@ function LoginRouteClientInner() {
     const nextState: AppState = { ...signedInState, page: nextPage };
     setState(nextState);
     saveAppState(nextState);
+    startRouteLoading();
     router.push(buildAppHref(nextPage));
   }
 
@@ -115,7 +121,14 @@ export function LoginRouteClient() {
     () => false,
   );
 
-  if (!isClient) return null;
+  if (!isClient) {
+    return (
+      <PageLoader
+        description="Checking saved session state before showing sign in."
+        title="Preparing secure sign in"
+      />
+    );
+  }
 
   return <LoginRouteClientInner />;
 }

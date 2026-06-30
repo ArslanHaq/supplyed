@@ -33,7 +33,7 @@ export function PublicThemeControls() {
     return (
       <button
         aria-label="Open theme colors"
-        className="fixed bottom-5 right-5 z-[70] flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-white/95 text-[var(--ink)] shadow-[var(--shadow-lg)] backdrop-blur transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--se)] focus-visible:ring-offset-2"
+        className="fixed bottom-5 right-5 z-[70] flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white/95 text-ink shadow-panel backdrop-blur transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         onClick={openControls}
         type="button"
       >
@@ -44,7 +44,7 @@ export function PublicThemeControls() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-[70] flex items-center gap-2 rounded-full border border-[var(--border)] bg-white/95 py-2 pl-3 pr-2 shadow-[var(--shadow-lg)] backdrop-blur">
+    <div className="fixed bottom-5 right-5 z-[70] flex items-center gap-2 rounded-full border border-border bg-white/95 py-2 pl-3 pr-2 shadow-panel backdrop-blur">
       {brandPalettes.map((palette) => {
         const selected = safeAccent.toLowerCase() === palette.accent.toLowerCase();
 
@@ -53,7 +53,7 @@ export function PublicThemeControls() {
             key={palette.accent}
             aria-label={palette.name}
             aria-pressed={selected}
-            className="h-5 w-5 rounded-full border border-white transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--ink)] focus:ring-offset-2 cursor-pointer"
+            className="h-5 w-5 rounded-full border border-white transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-2 cursor-pointer"
             onClick={() => selectAccent(palette.accent)}
             style={{
               background: palette.accent,
@@ -68,7 +68,7 @@ export function PublicThemeControls() {
       <button
         aria-label="Custom accent color"
         aria-pressed={!selectedPreset}
-        className="h-5 w-5 rounded-full border border-white transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--ink)] focus:ring-offset-2"
+        className="h-5 w-5 rounded-full border border-white transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-2"
         onClick={(event) => {
           event.stopPropagation();
           customColorInputRef.current?.click();
@@ -100,7 +100,7 @@ export function PublicThemeControls() {
 
       <button
         aria-label="Close theme colors"
-        className="ml-1 flex h-7 w-7 items-center justify-center cursor-pointer rounded-full text-[var(--muted)] transition hover:bg-[var(--chalk)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--se)] focus-visible:ring-offset-2"
+        className="ml-1 flex h-7 w-7 items-center justify-center cursor-pointer rounded-full text-muted transition hover:bg-chalk hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         onClick={(event) => {
           event.stopPropagation();
           setOpen(false);

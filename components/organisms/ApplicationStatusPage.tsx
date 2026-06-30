@@ -34,8 +34,8 @@ export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: A
   const roleLabel = state.role === "teacher" ? "Teacher application" : state.role === "institution" ? "School workspace" : "Account";
 
   return (
-    <div className="min-h-screen bg-[var(--chalk)]">
-      <header className="flex min-h-[76px] items-center justify-between border-b border-[var(--border)] bg-white px-4 py-3 sm:px-6 lg:px-12">
+    <div className="min-h-screen bg-chalk">
+      <header className="flex min-h-[76px] items-center justify-between border-b border-border bg-white px-4 py-3 sm:px-6 lg:px-12">
         <Logo size={20} onClick={onLanding} />
         <div className="flex items-center gap-2">
           <Btn variant="secondary" onClick={onLanding}>
@@ -48,15 +48,15 @@ export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: A
       </header>
 
       <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[960px] items-center px-4 py-10 sm:px-6 lg:px-8">
-        <section className="w-full rounded-xl border border-[var(--border)] bg-white p-6 shadow-[var(--shadow-xs)] sm:p-9">
-          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--se-tint)] text-[var(--se)]">
+        <section className="w-full rounded-xl border border-border bg-white p-6 shadow-(--shadow-xs) sm:p-9">
+          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-brand-tint text-brand">
             <Icon name={copy.icon} size={26} />
           </div>
           <Tag>{copy.tag}</Tag>
           <h1 className="mt-4 font-serif text-4xl leading-tight sm:text-[48px]">{copy.title}</h1>
-          <p className="mt-4 max-w-[640px] text-base leading-7 text-[var(--muted)]">{copy.copy}</p>
+          <p className="mt-4 max-w-[640px] text-base leading-7 text-muted">{copy.copy}</p>
 
-          <div className="mt-7 grid gap-3 rounded-xl border border-[var(--border)] bg-[var(--chalk)] p-4 sm:grid-cols-3">
+          <div className="mt-7 grid gap-3 rounded-xl border border-border bg-chalk p-4 sm:grid-cols-3">
             <div>
               <div className="label-xs">Application</div>
               <div className="mt-1 font-semibold">{roleLabel}</div>

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Btn, Checkbox, Field, Logo } from "../atoms";
 import { PasswordInput } from "../atoms/PasswordInput";
@@ -6,6 +6,7 @@ import { PasswordInput } from "../atoms/PasswordInput";
 type LoginErrors = Partial<Record<"email" | "password" | "code", string>>;
 type LoginStep = "credentials" | "email-verification" | "identity-verification";
 type LoginChallenge = "email-verification" | "identity-verification";
+type LoginPending = "credentials" | "email" | "identity" | "resend" | null;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -31,7 +32,24 @@ export function LoginPage({
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [errors, setErrors] = useState<LoginErrors>({});
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const pendingTimerRef = useRef<number | null>(null);
   const codeValue = code.join("");
+  const [pending, setPending] = useState<LoginPending>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
+    };
+  }, []);
+
+  function runPending(kind: Exclude<LoginPending, null>, callback: () => void) {
+    if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
+    setPending(kind);
+    pendingTimerRef.current = window.setTimeout(() => {
+      callback();
+      setPending(null);
+    }, 420);
+  }
 
   function validateCredentials() {
     const nextErrors: LoginErrors = {};
@@ -59,11 +77,14 @@ export function LoginPage({
 
   function handleCredentialSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     if (!validateCredentials()) return;
-    setStep(onCredentialsAccepted(email.trim()));
-    setCode(["", "", "", "", "", ""]);
-    setErrors({});
-    window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
+    runPending("credentials", () => {
+      setStep(onCredentialsAccepted(email.trim()));
+      setCode(["", "", "", "", "", ""]);
+      setErrors({});
+      window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
+    });
   }
 
   function handleCodeChange(index: number, value: string) {
@@ -94,25 +115,36 @@ export function LoginPage({
 
   function handleChallengeSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     if (!validateCode()) return;
 
-    if (step === "email-verification") {
-      onEmailVerified(email.trim());
+    runPending(step === "email-verification" ? "email" : "identity", () => {
+      if (step === "email-verification") {
+        onEmailVerified(email.trim());
+        setCode(["", "", "", "", "", ""]);
+        setErrors({});
+        setStep("identity-verification");
+        window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
+        return;
+      }
+
+      onLogin(email.trim());
+    });
+  }
+
+  function resendCode() {
+    runPending("resend", () => {
       setCode(["", "", "", "", "", ""]);
       setErrors({});
-      setStep("identity-verification");
-      window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
-      return;
-    }
-
-    onLogin(email.trim());
+      codeRefs.current[0]?.focus();
+    });
   }
 
   const isCredentialsStep = step === "credentials";
   const isEmailVerificationStep = step === "email-verification";
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[var(--chalk)] lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+    <div className="min-h-screen overflow-x-hidden bg-chalk lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
       <aside className="relative flex min-h-[340px] flex-col justify-between overflow-hidden bg-[#0a0a0a] px-5 py-7 text-white sm:px-8 sm:py-10 lg:min-h-screen lg:px-14 lg:py-16">
         <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:54px_54px]" />
         <div className="relative flex items-center justify-between gap-4">
@@ -128,11 +160,11 @@ export function LoginPage({
         </div>
 
         <div className="relative my-12 max-w-[470px] lg:my-0">
-          <div className="eyebrow mb-5 text-[var(--se)]">Welcome back</div>
+          <div className="eyebrow mb-5 text-brand">Welcome back</div>
           <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
             Pick up where
             <br />
-            <em className="text-[var(--se)]">staffing continues.</em>
+            <em className="text-brand">staffing continues.</em>
           </h1>
           <p className="mt-5 text-base leading-7 text-white/65">
             Sign in once. SupplyED then checks email verification, two-factor requirements, role selection, and application status before opening the right workspace.
@@ -145,27 +177,27 @@ export function LoginPage({
       <section className="flex min-h-[calc(100vh-340px)] items-center justify-center px-4 py-8 sm:px-6 lg:min-h-screen lg:px-12 lg:py-16">
         <div className="w-full max-w-[460px]">
           <div className="mb-7">
-            <div className="eyebrow mb-2 text-[var(--se)]">Secure sign in</div>
+            <div className="eyebrow mb-2 text-brand">Secure sign in</div>
             <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">
               {isCredentialsStep ? "Log in to SupplyED" : isEmailVerificationStep ? "Verify your email" : "Verify your identity"}
             </h2>
-            <p className="mt-3 text-[var(--muted)]">
+            <p className="mt-3 text-muted">
               {isCredentialsStep ? (
                 <>
                   New to SupplyED?{" "}
-                  <button className="font-semibold text-[var(--se)]" onClick={onSwitchSignup} type="button">
+                  <button className="font-semibold text-brand" onClick={onSwitchSignup} type="button">
                     Create an account
                   </button>
                 </>
               ) : isEmailVerificationStep ? (
-                <>Confirm <span className="font-semibold text-[var(--ink)]">{email.trim()}</span> before we continue your sign in.</>
+                <>Confirm <span className="font-semibold text-ink">{email.trim()}</span> before we continue your sign in.</>
               ) : (
-                <>Enter the 6-digit code sent to <span className="font-semibold text-[var(--ink)]">{email.trim()}</span>.</>
+                <>Enter the 6-digit code sent to <span className="font-semibold text-ink">{email.trim()}</span>.</>
               )}
             </p>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-xs)] sm:p-7">
+          <div className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7">
             {isCredentialsStep ? (
               <form noValidate onSubmit={handleCredentialSubmit}>
                 <Field label="Email address" htmlFor="login-email" error={errors.email} required>
@@ -173,6 +205,7 @@ export function LoginPage({
                     aria-invalid={Boolean(errors.email)}
                     autoComplete="email"
                     className="input"
+                    disabled={Boolean(pending)}
                     id="login-email"
                     inputMode="email"
                     onChange={(event) => {
@@ -190,6 +223,7 @@ export function LoginPage({
                     aria-invalid={Boolean(errors.password)}
                     autoComplete="current-password"
                     className="input"
+                    disabled={Boolean(pending)}
                     id="login-password"
                     onChange={(event) => {
                       setPassword(event.target.value);
@@ -202,12 +236,12 @@ export function LoginPage({
 
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                   <Checkbox checked={remember} onChange={setRemember} label="Remember this device" />
-                  <button className="text-sm font-semibold text-[var(--se)]" onClick={onForgotPassword} type="button">
+                  <button className="text-sm font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-50" disabled={Boolean(pending)} onClick={onForgotPassword} type="button">
                     Forgot password?
                   </button>
                 </div>
 
-                <Btn className="w-full" size="lg" type="submit" iconRight="arrow">
+                <Btn className="w-full" loading={pending === "credentials"} loadingLabel="Checking account" size="lg" type="submit" iconRight="arrow">
                   Continue securely
                 </Btn>
               </form>
@@ -223,6 +257,7 @@ export function LoginPage({
                         }}
                         aria-label={`Verification digit ${index + 1}`}
                         className="input h-12 p-0 text-center text-lg font-semibold sm:h-14 sm:text-xl"
+                        disabled={Boolean(pending)}
                         inputMode="numeric"
                         maxLength={1}
                         onChange={(event) => handleCodeChange(index, event.target.value)}
@@ -234,18 +269,25 @@ export function LoginPage({
                   </div>
                 </Field>
 
-                <div className="mb-6 rounded-lg bg-[var(--se-tint)] p-4 text-sm leading-6 text-[var(--se-dark)]">
+                <div className="mb-6 rounded-lg bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
                   {isEmailVerificationStep
                     ? "Your email is not verified yet. Enter the email verification code first, then we will continue the sign in."
                     : "Keep this browser open while you check your email. Codes expire after 10 minutes."}
                 </div>
 
-                <Btn className="w-full" size="lg" type="submit">
+                <Btn
+                  className="w-full"
+                  loading={pending === "email" || pending === "identity"}
+                  loadingLabel={isEmailVerificationStep ? "Verifying email" : "Checking identity"}
+                  size="lg"
+                  type="submit"
+                >
                   {isEmailVerificationStep ? "Verify email" : "Verify and continue"}
                 </Btn>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Btn
                     className="w-full"
+                    disabled={Boolean(pending)}
                     variant="ghost"
                     onClick={() => {
                       setStep("credentials");
@@ -257,11 +299,10 @@ export function LoginPage({
                   </Btn>
                   <Btn
                     className="w-full"
+                    loading={pending === "resend"}
+                    loadingLabel="Sending"
                     variant="secondary"
-                    onClick={() => {
-                      setCode(["", "", "", "", "", ""]);
-                      setErrors({});
-                    }}
+                    onClick={resendCode}
                   >
                     Resend code
                   </Btn>

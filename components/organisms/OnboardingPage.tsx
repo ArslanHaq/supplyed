@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import type { AppRole } from "@/types/supplyed";
@@ -9,6 +9,7 @@ import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdown
 
 type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
 type SignupStep = 1 | 2 | 3 | 4;
+type OnboardingPending = "step" | "save" | "submit" | null;
 type SignupField =
   | "accountRole"
   | "fullName"
@@ -207,20 +208,20 @@ function signupSubmitLabel(role: SignupRole) {
 }
 
 function fieldClass(error?: string) {
-  return cn("input", error ? "border-[var(--red)] bg-[var(--red-tint)]" : null);
+  return cn("input", error ? "border-danger bg-danger-tint" : null);
 }
 
 function areaClass(error?: string) {
-  return cn("textarea min-h-[132px]", error ? "border-[var(--red)] bg-[var(--red-tint)]" : null);
+  return cn("textarea min-h-[132px]", error ? "border-danger bg-danger-tint" : null);
 }
 
 function ReviewBadgeList({ items }: { items: string[] }) {
-  if (items.length === 0) return <span className="text-[var(--muted)]">Not selected</span>;
+  if (items.length === 0) return <span className="text-muted">Not selected</span>;
 
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((item) => (
-        <span key={item} className="rounded-full bg-[var(--se-tint)] px-2.5 py-1 text-xs font-semibold text-[var(--se)]">
+        <span key={item} className="rounded-full bg-brand-tint px-2.5 py-1 text-xs font-semibold text-brand">
           {item}
         </span>
       ))}
@@ -234,13 +235,13 @@ function formatFileSize(size: number) {
 }
 
 function FileSummary({ file }: { file: UploadedFile | null }) {
-  if (!file) return <span className="text-[var(--muted)]">Not uploaded</span>;
+  if (!file) return <span className="text-muted">Not uploaded</span>;
 
   return (
-    <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[var(--ink)]">
-      <Icon name={file.type.startsWith("image/") ? "image" : "file"} size={13} className="text-[var(--se)]" />
+    <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-ink">
+      <Icon name={file.type.startsWith("image/") ? "image" : "file"} size={13} className="text-brand" />
       <span className="min-w-0 truncate">{file.name}</span>
-      <span className="shrink-0 text-[var(--muted)]">{formatFileSize(file.size)}</span>
+      <span className="shrink-0 text-muted">{formatFileSize(file.size)}</span>
     </span>
   );
 }
@@ -280,17 +281,17 @@ function UploadCard({
     <div
       className={cn(
         "rounded-xl border bg-white p-5 transition",
-        error ? "border-[var(--red)] bg-[var(--red-tint)]" : file ? "border-[var(--se)] bg-[var(--se-tint)]" : "border-[var(--border)]",
+        error ? "border-danger bg-danger-tint" : file ? "border-brand bg-brand-tint" : "border-border",
       )}
     >
       <div className="flex min-h-[132px] flex-col">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--se-tint)] text-[var(--se)]">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
             <Icon name={icon} size={20} />
           </div>
           <div className="min-w-0">
             <div className="font-semibold">{title}</div>
-            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{description}</p>
+            <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
           </div>
         </div>
 
@@ -301,7 +302,7 @@ function UploadCard({
             </div>
           ) : null}
           <label
-            className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-[var(--border-2)] bg-white px-4 py-2 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--se)] hover:bg-[var(--se-tint)] focus-within:outline-none focus-within:ring-2 focus-within:ring-[var(--se)] focus-within:ring-offset-2"
+            className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border-strong bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand hover:bg-brand-tint focus-within:outline-none focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2"
             htmlFor={id}
           >
             <Icon name={file ? "upload" : icon} size={15} />
@@ -320,7 +321,7 @@ function UploadCard({
               type="file"
             />
           </label>
-          {error ? <div className="mt-2 text-xs font-semibold text-[var(--red)]">{error}</div> : null}
+          {error ? <div className="mt-2 text-xs font-semibold text-danger">{error}</div> : null}
         </div>
       </div>
     </div>
@@ -357,7 +358,24 @@ export function OnboardingPage({
   const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
   const [form, setForm] = useState<SignupForm>(() => ({ ...initialForm, email: accountEmail || "" }));
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [pending, setPending] = useState<OnboardingPending>(null);
+  const pendingTimerRef = useRef<number | null>(null);
   const progress = currentStep * 25;
+
+  useEffect(() => {
+    return () => {
+      if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
+    };
+  }, []);
+
+  function runPending(kind: Exclude<OnboardingPending, null>, callback: () => void) {
+    if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
+    setPending(kind);
+    pendingTimerRef.current = window.setTimeout(() => {
+      callback();
+      setPending(null);
+    }, 360);
+  }
   const reviewGroups = useMemo<ReviewGroup[]>(() => {
     const accountLines: ReviewLine[] = [
       { label: "Account type", value: roleLabel(activeRole) },
@@ -538,12 +556,16 @@ export function OnboardingPage({
   }
 
   function continueStep() {
+    if (pending) return;
     if (!validateStep(currentStep)) return;
-    setStep(currentStep + 1);
-    setErrors({});
+    runPending("step", () => {
+      setStep(currentStep + 1);
+      setErrors({});
+    });
   }
 
   function submitSignup() {
+    if (pending) return;
     for (const targetStep of [1, 2, 3] as SignupStep[]) {
       if (!validateStep(targetStep)) {
         setStep(targetStep);
@@ -551,24 +573,29 @@ export function OnboardingPage({
       }
     }
 
-    onFinish();
+    runPending("submit", onFinish);
+  }
+
+  function saveAndExit() {
+    setPending("save");
+    onLanding();
   }
 
   function renderReviewCard(group: ReviewGroup, featured = false) {
     return (
-      <section key={group.title} className={cn("min-w-0 rounded-xl border border-[var(--border)] bg-white", featured ? "p-5" : "p-4")}>
+      <section key={group.title} className={cn("min-w-0 rounded-xl border border-border bg-white", featured ? "p-5" : "p-4")}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--se-tint)] text-[var(--se)]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
               <Icon name={group.icon} size={19} />
             </div>
             <div className="min-w-0">
               <h3 className="font-serif text-xl leading-tight">{group.title}</h3>
-              <p className="mt-1 text-sm leading-5 text-[var(--muted)]">{group.description}</p>
+              <p className="mt-1 text-sm leading-5 text-muted">{group.description}</p>
             </div>
           </div>
           <button
-            className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold text-[var(--se)] transition hover:bg-[var(--se-tint)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--se)] focus-visible:ring-offset-2"
+            className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold text-brand transition hover:bg-brand-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             onClick={() => setStep(group.editStep)}
             type="button"
           >
@@ -580,10 +607,10 @@ export function OnboardingPage({
           {group.lines.map((line) => (
             <div
               key={line.label}
-              className={cn("min-w-0 rounded-lg bg-[var(--chalk)] px-3.5 py-3", line.wide && featured ? "sm:col-span-2" : null)}
+              className={cn("min-w-0 rounded-lg bg-chalk px-3.5 py-3", line.wide && featured ? "sm:col-span-2" : null)}
             >
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-[1px] text-[var(--muted)]">{line.label}</div>
-              <div className="min-w-0 break-words text-sm leading-6 text-[var(--ink)]">{line.value}</div>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-[1px] text-muted">{line.label}</div>
+              <div className="min-w-0 break-words text-sm leading-6 text-ink">{line.value}</div>
             </div>
           ))}
         </div>
@@ -592,21 +619,21 @@ export function OnboardingPage({
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[var(--chalk)]">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-white px-4 py-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen overflow-x-hidden bg-chalk">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white px-4 py-4 sm:px-6 lg:px-8">
         <Logo size={21} onClick={onLanding} />
         <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-[var(--muted)] sm:inline">{headerPrompt}</span>
+          <span className="hidden text-sm text-muted sm:inline">{headerPrompt}</span>
           <Btn variant="secondary" size="sm" onClick={onLogin}>{headerActionLabel}</Btn>
         </div>
       </header>
 
       <main className="mx-auto grid min-h-[calc(100vh-73px)] max-w-[1240px] grid-cols-1 px-4 py-5 sm:px-6 sm:py-8 lg:grid-cols-[380px_1fr] lg:items-stretch lg:px-8">
-        <aside className="relative overflow-hidden rounded-t-xl bg-[#0a0a0a] p-6 text-white shadow-[var(--shadow-lg)] sm:p-8 lg:rounded-l-xl lg:rounded-r-none">
+        <aside className="relative overflow-hidden rounded-t-xl bg-[#0a0a0a] p-6 text-white shadow-panel sm:p-8 lg:rounded-l-xl lg:rounded-r-none">
           <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:48px_48px]" />
           <div className="relative flex h-full flex-col">
             <div>
-              <div className="eyebrow mb-5 text-[var(--se)]">Join SupplyED</div>
+              <div className="eyebrow mb-5 text-brand">Join SupplyED</div>
               <h1 className="font-serif text-3xl leading-[1.08] sm:text-[40px]">
                 {roleSelected ? signupHeroTitle(activeRole) : "Choose your SupplyED path."}
               </h1>
@@ -659,17 +686,17 @@ export function OnboardingPage({
           </div>
         </aside>
 
-        <section className="flex min-h-[680px] flex-col rounded-b-xl border border-t-0 border-[var(--border)] bg-white p-5 shadow-[var(--shadow-xs)] sm:p-8 lg:rounded-l-none lg:rounded-r-xl lg:border-l-0 lg:border-t">
+        <section className="flex min-h-[680px] flex-col rounded-b-xl border border-t-0 border-border bg-white p-5 shadow-(--shadow-xs) sm:p-8 lg:rounded-l-none lg:rounded-r-xl lg:border-l-0 lg:border-t">
           <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
             <div>
               <Tag>Step {currentStep} of 4</Tag>
               <h2 className="mt-3 font-serif text-3xl leading-tight sm:text-[36px]">
                 {roleSelected ? signupStepTitle(activeRole, currentStep) : "Choose account type"}
               </h2>
-              <p className="mt-2 max-w-[640px] text-[var(--muted)]">{steps[currentStep - 1].description}</p>
+              <p className="mt-2 max-w-[640px] text-muted">{steps[currentStep - 1].description}</p>
             </div>
             <div className="w-full sm:w-[210px]">
-              <div className="mb-2 flex justify-between text-xs font-semibold uppercase tracking-[1px] text-[var(--muted)]">
+              <div className="mb-2 flex justify-between text-xs font-semibold uppercase tracking-[1px] text-muted">
                 <span>Progress</span>
                 <span>{progress}%</span>
               </div>
@@ -682,14 +709,14 @@ export function OnboardingPage({
           <div className="flex-1">
             {currentStep === 1 ? (
               <div className="space-y-6">
-                <div className="rounded-xl border border-[var(--se-tint-2)] bg-[var(--se-tint)] p-4">
+                <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
                       <Icon name="checkCircle" size={19} />
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-[var(--se-dark)]">Account verified</div>
-                      <div className="truncate text-sm text-[var(--se-dark)]/75">{form.email || accountEmail || "Verified email"}</div>
+                      <div className="font-semibold text-brand-dark">Account verified</div>
+                      <div className="truncate text-sm text-brand-dark/75">{form.email || accountEmail || "Verified email"}</div>
                     </div>
                   </div>
                 </div>
@@ -707,7 +734,7 @@ export function OnboardingPage({
                         <button
                           key={value}
                           aria-pressed={selected}
-                          className="rounded-xl border p-4 text-left transition hover:border-[var(--se)] hover:bg-[var(--se-tint)] sm:p-5"
+                          className="rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint sm:p-5"
                           onClick={() => {
                             setRole(value);
                             setErrors((current) => ({ ...current, accountRole: undefined }));
@@ -715,11 +742,11 @@ export function OnboardingPage({
                           style={{ borderColor: selected ? "var(--se)" : "var(--border)", background: selected ? "var(--se-tint)" : "#fff" }}
                           type="button"
                         >
-                          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-brand">
                             <Icon name={icon} size={20} />
                           </div>
                           <div className="font-serif text-xl">{title}</div>
-                          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{copy}</p>
+                          <p className="mt-2 text-sm leading-6 text-muted">{copy}</p>
                         </button>
                       );
                     })}
@@ -893,14 +920,14 @@ export function OnboardingPage({
                     <input id="compliance-email" className={fieldClass(errors.complianceEmail)} value={form.complianceEmail} onChange={(event) => updateField("complianceEmail", event.target.value)} placeholder="safeguarding@school.org.uk" type="email" />
                   </Field>
                 </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--chalk)] p-5">
+                <div className="rounded-xl border border-border bg-chalk p-5">
                   <div className="mb-3 flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
                       <Icon name="shield" size={19} />
                     </div>
                     <div>
                       <div className="font-semibold">Safeguarding responsibility</div>
-                      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">SupplyED can verify teacher documents, but schools remain responsible for local safeguarding and booking approvals.</p>
+                      <p className="mt-1 text-sm leading-6 text-muted">SupplyED can verify teacher documents, but schools remain responsible for local safeguarding and booking approvals.</p>
                     </div>
                   </div>
                   <Field error={errors.safeguardingConfirmed}>
@@ -913,27 +940,27 @@ export function OnboardingPage({
             {currentStep === 3 && activeRole === "individual" ? (
               <div className="space-y-5">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--chalk)] p-5">
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                  <div className="rounded-xl border border-border bg-chalk p-5">
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-brand">
                       <Icon name="shield" size={20} />
                     </div>
                     <div className="font-semibold">Verified teacher access</div>
-                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    <p className="mt-2 text-sm leading-6 text-muted">
                       Hirers see verification badges, while documents stay private for admin review and safeguarding checks.
                     </p>
                   </div>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--chalk)] p-5">
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                  <div className="rounded-xl border border-border bg-chalk p-5">
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-brand">
                       <Icon name="message" size={20} />
                     </div>
                     <div className="font-semibold">Account-led communication</div>
-                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    <p className="mt-2 text-sm leading-6 text-muted">
                       Requests, messages, bookings, and location details should stay under the adult account.
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[var(--border)] bg-white p-5">
+                <div className="rounded-xl border border-border bg-white p-5">
                   <div className="space-y-4">
                     <Field error={errors.individualConsent}>
                       <Checkbox
@@ -989,14 +1016,14 @@ export function OnboardingPage({
 
             {currentStep === 4 ? (
               <div className="space-y-4">
-                <div className="rounded-xl border border-[var(--se-tint-2)] bg-[var(--se-tint)] p-5">
+                <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-5">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-[var(--se)]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
                       <Icon name="checkCircle" size={20} />
                     </div>
                     <div>
-                      <div className="font-semibold text-[var(--se-dark)]">Ready to submit</div>
-                      <p className="mt-1 text-sm leading-6 text-[var(--se-dark)]/80">
+                      <div className="font-semibold text-brand-dark">Ready to submit</div>
+                      <p className="mt-1 text-sm leading-6 text-brand-dark/80">
                         Review the details below. Each section can be edited without losing the information you already entered.
                       </p>
                     </div>
@@ -1014,11 +1041,17 @@ export function OnboardingPage({
             ) : null}
           </div>
 
-          <div className="mt-8 flex flex-col-reverse gap-3 border-t border-[var(--border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <Btn variant="ghost" disabled={currentStep === 1} onClick={() => setStep(Math.max(1, currentStep - 1))}>Back</Btn>
+          <div className="mt-8 flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending)} onClick={() => setStep(Math.max(1, currentStep - 1))}>Back</Btn>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Btn variant="secondary" onClick={onLanding}>Save and exit</Btn>
-              <Btn size="lg" iconRight="arrow" onClick={() => (currentStep === 4 ? submitSignup() : continueStep())}>
+              <Btn loading={pending === "save"} loadingLabel="Saving" variant="secondary" onClick={saveAndExit}>Save and exit</Btn>
+              <Btn
+                loading={pending === "step" || pending === "submit"}
+                loadingLabel={currentStep === 4 ? "Submitting" : "Saving step"}
+                size="lg"
+                iconRight="arrow"
+                onClick={() => (currentStep === 4 ? submitSignup() : continueStep())}
+              >
                 {currentStep === 4 ? signupSubmitLabel(activeRole) : "Continue"}
               </Btn>
             </div>

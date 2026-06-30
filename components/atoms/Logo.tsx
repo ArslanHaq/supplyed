@@ -13,8 +13,8 @@ export function Logo({
   className?: string;
   href?: string;
 }) {
-  const classes = cn("select-none whitespace-nowrap border-0 bg-transparent font-light leading-none text-[var(--ink)]", href || onClick ? "cursor-pointer" : null, className);
-  const content = <>Supply<span className="font-bold text-[var(--se)]">ED</span></>;
+  const classes = cn("select-none whitespace-nowrap border-0 bg-transparent font-light leading-none text-ink", href || onClick ? "cursor-pointer" : null, className);
+  const content = <>Supply<span className="font-bold text-brand">ED</span></>;
 
   if (href) {
     return (

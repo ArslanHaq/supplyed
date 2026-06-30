@@ -2,7 +2,7 @@ export function Toggle({ on, onChange }: { on: boolean; onChange?: (on: boolean)
   return (
     <button
       aria-pressed={on}
-      className="relative h-6 w-11 cursor-pointer rounded-full bg-[var(--border-2)] transition data-[on=true]:bg-[var(--se)]"
+      className="relative h-6 w-11 cursor-pointer rounded-full bg-border-strong transition data-[on=true]:bg-brand"
       data-on={on}
       onClick={() => onChange?.(!on)}
       type="button"

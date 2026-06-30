@@ -18,14 +18,14 @@ export function Field({
   return (
     <div className="mb-4">
       {label ? (
-        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.9px] text-[var(--slate)]" htmlFor={htmlFor}>
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.9px] text-slate" htmlFor={htmlFor}>
           {label}
-          {required ? <span className="ml-1 text-[var(--red)]">*</span> : null}
+          {required ? <span className="ml-1 text-danger">*</span> : null}
         </label>
       ) : null}
       {children}
-      {error ? <div className="mt-1.5 text-xs font-medium text-[var(--red)]">{error}</div> : null}
-      {!error && hint ? <div className="mt-1 text-xs text-[var(--muted)]">{hint}</div> : null}
+      {error ? <div className="mt-1.5 text-xs font-medium text-danger">{error}</div> : null}
+      {!error && hint ? <div className="mt-1 text-xs text-muted">{hint}</div> : null}
     </div>
   );
 }

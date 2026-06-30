@@ -27,8 +27,8 @@ export function TeacherDashboard({ go }: Pick<RouteProps, "go">) {
           <div className="flex flex-col gap-3">
             {seedJobs.map((job) => (
               <div key={job.id} className="card card-pad flex cursor-pointer flex-wrap items-center gap-4" onClick={() => go("job-detail", { jobId: job.id })}>
-                <div className="flex-1"><div className="mb-0.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div><div className="text-[15px] font-semibold">{job.title}</div><div className="text-xs text-[var(--muted)]">{job.school} - {job.city} - {job.date}</div></div>
-                <div className="text-right"><div className="font-serif text-lg">£{job.rate}</div><div className="text-xs text-[var(--muted)]">per day</div></div>
+                <div className="flex-1"><div className="mb-0.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div><div className="text-[15px] font-semibold">{job.title}</div><div className="text-xs text-muted">{job.school} - {job.city} - {job.date}</div></div>
+                <div className="text-right"><div className="font-serif text-lg">£{job.rate}</div><div className="text-xs text-muted">per day</div></div>
                 <MatchScore score={job.matchScore} />
                 <Btn size="sm">View</Btn>
               </div>
@@ -41,7 +41,7 @@ export function TeacherDashboard({ go }: Pick<RouteProps, "go">) {
             <div className="mb-2.5 flex items-center justify-between"><div className="font-serif text-[28px]">92%</div><Tag tone="green">Strong</Tag></div>
             <div className="progress mb-3.5"><div className="progress-fill" style={{ width: "92%" }} /></div>
             {["Upload QTS Certificate", "Add profile photo", "Complete About you", "Add 2 references"].map((item, index) => (
-              <div key={item} className="flex items-center gap-2 py-1.5"><Icon name={index < 2 ? "checkCircle" : "plus"} size={14} /><span className={index < 2 ? "text-sm text-[var(--muted)]" : "text-sm"}>{item}</span></div>
+              <div key={item} className="flex items-center gap-2 py-1.5"><Icon name={index < 2 ? "checkCircle" : "plus"} size={14} /><span className={index < 2 ? "text-sm text-muted" : "text-sm"}>{item}</span></div>
             ))}
           </div>
           <div className="section-title mt-7">Messages</div>
@@ -49,7 +49,7 @@ export function TeacherDashboard({ go }: Pick<RouteProps, "go">) {
             {seedMessages.map((message, index) => (
               <div key={message.id} className="msg-list-item" style={{ borderBottom: index < seedMessages.length - 1 ? "0.5px solid var(--border)" : "none" }} onClick={() => go("messaging")}>
                 <Avatar name={message.with} size="sm" tone={message.tone} />
-                <div className="flex-1"><div className="font-medium">{message.with}</div><div className="text-xs text-[var(--muted)]">{message.lastMsg}</div></div>
+                <div className="flex-1"><div className="font-medium">{message.with}</div><div className="text-xs text-muted">{message.lastMsg}</div></div>
                 {message.unread ? <Tag>{message.unread}</Tag> : null}
               </div>
             ))}

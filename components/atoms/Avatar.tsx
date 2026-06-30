@@ -8,9 +8,9 @@ const sizeClass = {
 };
 
 const toneClass: Record<Exclude<Tone, "">, string> = {
-  purple: "bg-[var(--purple-tint)] text-[var(--purple)]",
-  amber: "bg-[var(--amber-tint)] text-[var(--amber)]",
-  green: "bg-[var(--green-tint)] text-[var(--green)]",
+  purple: "bg-accent-purple-tint text-accent-purple",
+  amber: "bg-warning-tint text-warning",
+  green: "bg-success-tint text-success",
 };
 
 export function Avatar({ name, size = "md", tone = "" }: { name: string; size?: keyof typeof sizeClass; tone?: Tone }) {
@@ -23,7 +23,7 @@ export function Avatar({ name, size = "md", tone = "" }: { name: string; size?: 
   return (
     <div
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full bg-[var(--se-tint)] font-bold text-[var(--se)]",
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-brand-tint font-bold text-brand",
         sizeClass[size],
         tone ? toneClass[tone] : null,
       )}

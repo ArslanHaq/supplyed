@@ -20,13 +20,13 @@ export function TweaksPanel({
   if (!state.tweaksOpen) {
     return (
       <button
-        className="fixed bottom-5 right-5 z-[70] inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-3.5 py-2.5 text-[var(--ink)] shadow-[var(--shadow-lg)]"
+        className="fixed bottom-5 right-5 z-[70] inline-flex items-center gap-2 rounded-full border border-border bg-white px-3.5 py-2.5 text-ink shadow-panel"
         onClick={() => setState((current) => ({ ...current, tweaksOpen: true }))}
         type="button"
       >
         <Icon name="palette" size={16} />
         <span className="text-sm font-semibold">Theme</span>
-        <span className="h-4 w-4 rounded-full border border-[var(--border)]" style={{ background: safeAccent }} />
+        <span className="h-4 w-4 rounded-full border border-border" style={{ background: safeAccent }} />
       </button>
     );
   }
@@ -47,7 +47,7 @@ export function TweaksPanel({
               key={palette.accent}
               aria-label={palette.name}
               aria-pressed={selected}
-              className="h-6 w-6 rounded-full border border-white transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--ink)] focus:ring-offset-2"
+              className="h-6 w-6 rounded-full border border-white transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-2"
               onClick={() => setTweaks((current) => ({ ...current, accent: palette.accent }))}
               style={{
                 background: palette.accent,
@@ -60,7 +60,7 @@ export function TweaksPanel({
         })}
         <label
           aria-label="Custom accent color"
-          className="relative h-6 w-6 cursor-pointer rounded-full border border-white transition hover:scale-105 focus-within:ring-2 focus-within:ring-[var(--ink)] focus-within:ring-offset-2"
+          className="relative h-6 w-6 cursor-pointer rounded-full border border-white transition hover:scale-105 focus-within:ring-2 focus-within:ring-ink focus-within:ring-offset-2"
           style={{
             background: "conic-gradient(from 180deg, #008CC4, #16A34A, #7C3AED, #E11D48, #D97706, #008CC4)",
             boxShadow: selectedPreset ? "0 0 0 1px rgba(15, 23, 42, 0.12)" : "0 0 0 2px #fff, 0 0 0 4px var(--ink)",

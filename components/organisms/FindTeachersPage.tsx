@@ -52,7 +52,7 @@ export function FindTeachersPage({ go, toast, role }: Pick<RouteProps, "go" | "t
         </div>
         <div>
           <div className="mb-[18px] flex items-center gap-2.5">
-            <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-[var(--border-2)] bg-white px-3.5 py-2.5"><Icon name="search" size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name, subject, school..." className="flex-1 border-0 bg-transparent outline-none" /></div>
+            <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-border-strong bg-white px-3.5 py-2.5"><Icon name="search" size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name, subject, school..." className="flex-1 border-0 bg-transparent outline-none" /></div>
             <select className="select w-[180px]"><option>Sort: Best match</option><option>Sort: Rating</option></select>
           </div>
           <div className="flex flex-col gap-3">
@@ -61,10 +61,10 @@ export function FindTeachersPage({ go, toast, role }: Pick<RouteProps, "go" | "t
                 <Avatar name={teacher.name} size="lg" tone={teacher.tone} />
                 <div className="flex-1">
                   <div className="mb-1 flex flex-wrap items-center gap-2"><div className="font-serif text-lg">{teacher.name}</div>{teacher.dbs ? <VerifyBadge /> : null}{teacher.qts ? <Tag tone="ghost">QTS</Tag> : null}</div>
-                  <div className="text-[15px] text-[var(--muted)]">{teacher.role}</div>
-                  <div className="mt-2 flex flex-wrap gap-3 text-xs"><div className="flex items-center gap-1 text-[var(--muted)]"><Icon name="pin" size={12} />{teacher.city} - {teacher.distance}</div><div className="flex items-center gap-1"><Stars rating={teacher.rating} />{teacher.rating} ({teacher.reviews})</div><div className="flex items-center gap-1 text-[var(--muted)]"><Icon name="clock" size={12} />Available {teacher.availability}</div></div>
+                  <div className="text-[15px] text-muted">{teacher.role}</div>
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs"><div className="flex items-center gap-1 text-muted"><Icon name="pin" size={12} />{teacher.city} - {teacher.distance}</div><div className="flex items-center gap-1"><Stars rating={teacher.rating} />{teacher.rating} ({teacher.reviews})</div><div className="flex items-center gap-1 text-muted"><Icon name="clock" size={12} />Available {teacher.availability}</div></div>
                 </div>
-                <div className="text-center"><div className="font-serif text-lg">£{teacher.rate}</div><div className="text-xs text-[var(--muted)]">per day</div></div>
+                <div className="text-center"><div className="font-serif text-lg">£{teacher.rate}</div><div className="text-xs text-muted">per day</div></div>
                 <MatchScore score={teacher.matchScore} />
                 <div className="flex flex-col gap-1.5"><Btn size="sm" onClick={(event) => { event.stopPropagation(); toast({ title: isIndividual ? "Request sent" : "Invited", msg: isIndividual ? `${teacher.name} has received your availability request.` : `${teacher.name} has been invited to apply.` }); }}>{isIndividual ? "Request" : "Invite"}</Btn><Btn variant="secondary" size="sm" onClick={(event) => { event.stopPropagation(); go("messaging"); }}>Message</Btn></div>
               </div>

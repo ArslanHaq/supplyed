@@ -13,7 +13,7 @@ const navItems = [
 
 export function PublicHeader({ active = "home" }: PublicHeaderProps) {
   return (
-    <header className="flex min-h-[76px] items-center gap-4 border-b border-[var(--border)] bg-white px-4 py-3 sm:px-6 lg:px-12">
+    <header className="flex min-h-[76px] items-center gap-4 border-b border-border bg-white px-4 py-3 sm:px-6 lg:px-12">
       <Logo href="/" size={20} />
 
       <nav aria-label="Public navigation" className="ml-0 hidden items-center gap-2 md:flex lg:ml-8">
@@ -31,7 +31,7 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
         <Link className={buttonClassName({ variant: "ghost", className: "h-10 rounded-full px-4 text-sm sm:h-11 sm:px-5 sm:text-[15px]" })} href="/login">
           Log in
         </Link>
-        <Link className={buttonClassName({ className: "h-10 rounded-full px-5 text-sm !text-white sm:h-11 sm:px-6 sm:text-[15px]" })} href="/signup">
+        <Link className={buttonClassName({ className: "h-10 rounded-full px-5 text-sm text-white! sm:h-11 sm:px-6 sm:text-[15px]" })} href="/signup">
           Get started
         </Link>
       </div>
