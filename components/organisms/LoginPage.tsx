@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { Btn, Checkbox, Field, Logo } from "../atoms";
+import { Btn, Checkbox, Field, Icon, Logo } from "../atoms";
 import { PasswordInput } from "../atoms/PasswordInput";
 
 type LoginErrors = Partial<Record<"email" | "password" | "code", string>>;
@@ -9,6 +9,11 @@ type LoginChallenge = "email-verification" | "identity-verification";
 type LoginPending = "credentials" | "email" | "identity" | "resend" | null;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const signinBenefits = [
+  "DBS-verified teacher network",
+  "AI-powered job matching",
+  "Same-day placement capability",
+];
 
 export function LoginPage({
   onCredentialsAccepted,
@@ -159,16 +164,25 @@ export function LoginPage({
           </Btn>
         </div>
 
-        <div className="relative my-12 max-w-[470px] lg:my-0">
-          <div className="eyebrow mb-5 text-brand">Welcome back</div>
-          <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
-            Pick up where
+        <div className="relative my-12 max-w-[540px] lg:my-0">
+          <h1 className="text-5xl font-bold leading-[0.98] text-white sm:text-6xl lg:text-[68px]">
+            Welcome back
             <br />
-            <em className="text-brand">staffing continues.</em>
+            to Supply<span className="text-brand">ED</span>
           </h1>
-          <p className="mt-5 text-base leading-7 text-white/65">
-            Sign in once. SupplyED then checks email verification, two-factor requirements, role selection, and application status before opening the right workspace.
+          <p className="mt-7 max-w-[520px] text-lg leading-8 text-white/62 sm:text-xl">
+            Log in to access your dashboard, manage jobs, and connect with schools or teachers across the UK.
           </p>
+          <ul className="mt-10 grid gap-5 text-base text-white/72 sm:text-lg">
+            {signinBenefits.map((benefit) => (
+              <li key={benefit} className="flex items-center gap-4">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-tint text-brand">
+                  <Icon name="check" size={17} />
+                </span>
+                <span>{benefit}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="relative text-xs text-white/40">© 2026 SupplyED</div>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
+import { useMounted } from "@/lib/use-mounted";
 import type { AppRole, AppState } from "@/types/supplyed";
 
 import { PageLoader, PublicThemeControls } from "../molecules";
@@ -99,11 +100,7 @@ function OnboardingRouteClientInner() {
 }
 
 export function OnboardingRouteClient() {
-  const isClient = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+  const isClient = useMounted();
 
   if (!isClient) {
     return (

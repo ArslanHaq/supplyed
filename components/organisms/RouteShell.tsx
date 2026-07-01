@@ -1,13 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
 import { loadAppState, loadTweaks, saveAppState, saveTweaks } from "@/lib/supplyed-storage";
 import { applyBrandTheme } from "@/lib/theme";
+import { useMounted } from "@/lib/use-mounted";
 import type { AppPage, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/types/supplyed";
 
 import { PageLoader, ToastStack } from "../molecules";
@@ -38,11 +39,7 @@ function readContext(searchParams: URLSearchParams) {
 function RouteShell({ page }: { page: AppPage }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isClient = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+  const isClient = useMounted();
   const [state, setState] = useState<AppState>(loadAppState);
   const [tweaks, setTweaks] = useState<Tweaks>(loadTweaks);
   const routeCtx = useMemo(() => readContext(searchParams), [searchParams]);

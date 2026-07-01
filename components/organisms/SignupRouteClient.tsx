@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
+import { useMounted } from "@/lib/use-mounted";
 import type { AppState } from "@/types/supplyed";
 
-import { PageLoader, PublicThemeControls } from "../molecules";
+import { AuthFlowLoader, PublicThemeControls } from "../molecules";
 import { SignupAccessPage } from "./SignupAccessPage";
 import { SignupVerifyPage } from "./SignupVerifyPage";
 
@@ -126,16 +127,12 @@ function SignupRouteClientInner() {
 }
 
 export function SignupRouteClient() {
-  const isClient = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+  const isClient = useMounted();
 
   if (!isClient) {
     return (
-      <PageLoader
-        description="Preparing account creation and verification state."
+      <AuthFlowLoader
+        description="Preparing account creation and email verification."
         title="Preparing signup"
       />
     );

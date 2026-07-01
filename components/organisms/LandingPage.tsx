@@ -1,9 +1,46 @@
 import Link from "next/link";
 
-import { seedTeachers } from "@/data/supplyed";
-
-import { Avatar, Btn, buttonClassName, MatchScore, Tag } from "../atoms";
+import { buttonClassName, Icon, Tag } from "../atoms";
 import { PublicHeader } from "./PublicHeader";
+
+const heroSignals = [
+  {
+    title: "Schools & MATs",
+    copy: "Post staffing needs and manage compliance from one verified workspace.",
+    icon: "building",
+  },
+  {
+    title: "Supply teachers",
+    copy: "Build a trusted profile, availability, and placement history.",
+    icon: "user",
+  },
+  {
+    title: "Individual hirers",
+    copy: "Find verified teaching support for yourself or another learner.",
+    icon: "heart",
+  },
+];
+
+const trustCards = [
+  {
+    title: "DBS verified",
+    copy: "Every teacher has enhanced DBS details on file, reviewed by the admin team before marketplace activation.",
+    icon: "shield",
+    className: "bg-brand-tint text-brand",
+  },
+  {
+    title: "Same-day staffing",
+    copy: "94% of urgent roles are filled within 2 hours of posting, so schools are not left with uncovered classes.",
+    icon: "zap",
+    className: "bg-warning-tint text-warning",
+  },
+  {
+    title: "Rated and reviewed",
+    copy: "Every placement earns a verified rating, building a reputation system that schools and hirers can trust.",
+    icon: "star",
+    className: "bg-success-tint text-success",
+  },
+];
 
 export function LandingPage() {
   return (
@@ -12,7 +49,7 @@ export function LandingPage() {
 
       <section className="relative overflow-hidden bg-[#0a0a0a] px-4 pb-14 pt-14 text-white sm:px-6 sm:pb-16 sm:pt-18 lg:px-12 lg:pb-20 lg:pt-24">
         <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.06)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.06)_1px,transparent_1px)] bg-[length:56px_56px]" />
-        <div className="relative mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
+        <div className="relative mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-32">
           <div>
             <div className="eyebrow mb-6">Infrastructure for education staffing</div>
             <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[64px]">
@@ -21,7 +58,7 @@ export function LandingPage() {
               with <em className="text-brand">brilliant teachers.</em>
             </h1>
             <p className="mb-8 mt-5 max-w-[540px] text-base leading-[1.65] text-white/70 sm:mb-9 sm:mt-6 sm:text-[17px]">
-              SupplyED is the marketplace where UK schools, learners, and hiring accounts find vetted, DBS-checked teachers for cover, tutoring, and learner support. No agency fees. Full compliance.
+              Staff your classroom in minutes, not days. SupplyED connects UK schools, learners, and hiring accounts with vetted, DBS-checked teachers for cover, tutoring, and learner support.
             </p>
             <div className="mb-12 flex flex-wrap gap-3">
               <Link className={buttonClassName({ size: "xl" })} href="/signup">I&apos;m a school</Link>
@@ -50,34 +87,56 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-white p-4 text-ink shadow-[0_40px_80px_rgba(0,0,0,0.4)] sm:p-5">
-            <div className="mb-3.5 flex items-start justify-between">
-              <div>
-                <div className="label-xs text-brand">Urgent - Today</div>
-                <div className="mt-1 font-serif text-xl">Y6 Maths Cover</div>
-                <div className="text-sm text-muted">Greenfield Primary - Salford</div>
-              </div>
-              <Tag tone="red">Urgent</Tag>
-            </div>
-            <div className="mb-3.5 flex flex-wrap gap-1.5">
-              <span className="pill">Full day</span>
-              <span className="pill">£180/day</span>
-              <span className="pill">DBS required</span>
-            </div>
-            <div className="border-t border-border pt-3.5">
-              <div className="label-xs mb-2.5">Top matches - AI ranked</div>
-              {seedTeachers.slice(0, 3).map((teacher) => (
-                <div key={teacher.id} className="flex items-center gap-2.5 border-b border-border py-2">
-                  <Avatar name={teacher.name} size="sm" tone={teacher.tone} />
-                  <div className="flex-1">
-                    <div className="font-medium">{teacher.name}</div>
-                    <div className="text-xs text-muted">{teacher.role}</div>
-                  </div>
-                  <MatchScore score={teacher.matchScore} size={36} />
+          <div className="relative overflow-hidden rounded-xl border border-border bg-white p-5 text-ink shadow-[0_40px_80px_rgba(0,0,0,0.4)] sm:p-7">
+            <div className="absolute right-0 top-0 h-32 w-32 -translate-y-12 translate-x-10 rounded-full bg-brand-tint" />
+            <div className="relative">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <div className="label-xs text-brand">Verified marketplace</div>
+                  <h2 className="mt-2 max-w-[390px] font-serif text-3xl leading-[1.02] sm:text-[38px]">
+                    <span className="block">The right teacher,</span>
+                    <span className="mt-1.5 block">right now.</span>
+                  </h2>
+                  <p className="mt-3 max-w-[360px] text-sm leading-6 text-muted">
+                    From urgent classroom cover to learner support, SupplyED keeps the path from need to verified teacher clear.
+                  </p>
                 </div>
-              ))}
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-tint  text-brand">
+                  <Icon name="shield" size={24} />
+                </span>
+              </div>
+
+              <div className="mb-5 grid gap-3">
+                {heroSignals.map((signal, index) => (
+                  <div key={signal.title} className="grid grid-cols-[auto_1fr] items-center gap-3 border-b border-border pb-3 last:border-b-0 last:pb-0">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-chalk text-brand">
+                      <Icon name={signal.icon} size={21} />
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-muted">0{index + 1}</span>
+                        <h3 className="font-semibold">{signal.title}</h3>
+                      </div>
+                      <p className="mt-0.5 text-sm leading-6 text-muted">{signal.copy}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-lg border border-brand/20 bg-brand-tint p-4">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-white text-brand">
+                    <Icon name="check" size={18} />
+                  </span>
+                  <div>
+                    <div className="font-semibold text-brand-dark">Verification before access</div>
+                    <p className="mt-1 text-sm leading-6 text-muted">
+                      DBS, identity, right-to-work, ratings, and role status stay connected before users enter the marketplace.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <Btn className="mt-3.5 w-full" iconRight="arrow">Invite top 3</Btn>
           </div>
         </div>
       </section>
@@ -108,6 +167,42 @@ export function LandingPage() {
                 ))}
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border bg-chalk px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
+        <div className="mx-auto max-w-[1200px]">
+          <div className="grid gap-4 lg:grid-cols-3">
+            {trustCards.map((card) => (
+              <article key={card.title} className="rounded-xl border border-border bg-white p-6 text-center shadow-(--shadow-xs) sm:p-8">
+                <div className={`mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl ${card.className}`}>
+                  <Icon name={card.icon} size={26} />
+                </div>
+                <h3 className="font-serif text-2xl leading-tight">{card.title}</h3>
+                <p className="mx-auto mt-4 max-w-[360px] text-sm leading-6 text-muted sm:text-[15px]">{card.copy}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border bg-white px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-12">
+        <div className="mx-auto max-w-[820px]">
+          <Tag className="mb-5">Start hiring</Tag>
+          <h2 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[58px]">
+            Ready to transform your staffing?
+          </h2>
+          <p className="mx-auto mt-5 max-w-[560px] text-base leading-7 text-muted sm:text-lg">
+            Join 2,100+ schools already using SupplyED to cover urgent staffing, long-term briefs, and learner support.
+          </p>
+          <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link className={buttonClassName({ size: "xl", className: "rounded-full px-8 text-white!" })} href="/signup">
+              Get started free
+            </Link>
+            <Link className={buttonClassName({ variant: "secondary", size: "xl", className: "rounded-full px-8" })} href="/pricing">
+              View pricing
+            </Link>
           </div>
         </div>
       </section>

@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
+import { useMounted } from "@/lib/use-mounted";
 import type { AppPage, AppState } from "@/types/supplyed";
 
-import { PageLoader, PublicThemeControls } from "../molecules";
+import { AuthFlowLoader, PublicThemeControls } from "../molecules";
 import { LoginPage } from "./LoginPage";
 
 type LoginChallenge = "email-verification" | "identity-verification";
@@ -115,17 +116,13 @@ function LoginRouteClientInner() {
 }
 
 export function LoginRouteClient() {
-  const isClient = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+  const isClient = useMounted();
 
   if (!isClient) {
     return (
-      <PageLoader
+      <AuthFlowLoader
         description="Checking saved session state before showing sign in."
-        title="Preparing secure sign in"
+        title="Preparing sign in"
       />
     );
   }

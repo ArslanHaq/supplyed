@@ -6,6 +6,11 @@ type PageLoaderProps = {
   compact?: boolean;
 };
 
+type AuthFlowLoaderProps = {
+  title?: string;
+  description?: string;
+};
+
 type SectionLoaderProps = {
   rows?: number;
   className?: string;
@@ -70,6 +75,43 @@ export function PageLoader({
         <div className="page-loader-grid">
           <CardGridLoader cards={3} />
           <SectionLoader rows={3} />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+export function AuthFlowLoader({
+  title = "Preparing secure access",
+  description = "Setting up your SupplyED account flow.",
+}: AuthFlowLoaderProps) {
+  return (
+    <main className="auth-loader-screen" aria-live="polite" role="status">
+      <section className="auth-loader-shell">
+        <aside className="auth-loader-rail" aria-hidden="true">
+          <div className="auth-loader-logo">
+            Supply<span>ED</span>
+          </div>
+          <div className="auth-loader-rail-copy">
+            <span>Account access</span>
+            <strong>Secure access for staffing, bookings, and onboarding.</strong>
+          </div>
+          <div className="auth-loader-steps">
+            <span className="auth-loader-step active" />
+            <span className="auth-loader-step" />
+            <span className="auth-loader-step" />
+          </div>
+        </aside>
+        <div className="auth-loader-content">
+          <span className="auth-loader-mark">
+            <span />
+          </span>
+          <span className="auth-loader-kicker">SupplyED secure flow</span>
+          <h1 className="auth-loader-title">{title}</h1>
+          <p className="auth-loader-copy">{description}</p>
+          <div className="auth-loader-progress" aria-hidden="true">
+            <span />
+          </div>
         </div>
       </section>
     </main>
