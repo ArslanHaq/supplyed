@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { QueryProvider } from "@/lib/query/query-client";
+
 export default function AppLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return children;
+  return <QueryProvider>{children}</QueryProvider>;
 }

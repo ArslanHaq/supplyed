@@ -1,11 +1,12 @@
 import { useState } from "react";
 
-import { seedTeachers } from "@/data/supplyed";
+import type { TeacherListFilters } from "@/features/teachers/types";
+import { useTeachers } from "@/features/teachers/use-teachers";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Checkbox, Field, Icon, MatchScore, Stars, Tag, VerifyBadge } from "../atoms";
 import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdowns";
-import { PageHead } from "../molecules";
+import { PageHead, SectionLoader } from "../molecules";
 
 const stageOptions = ["KS1", "KS2", "KS3", "KS4", "KS5"];
 const subjectOptions = ["All subjects", "Maths", "English", "Science", "Humanities", "SEN", "All Primary"];
@@ -14,12 +15,14 @@ export function FindTeachersPage({ go, toast, role }: Pick<RouteProps, "go" | "t
   const [query, setQuery] = useState("");
   const [selectedStages, setSelectedStages] = useState<string[]>([]);
   const [subject, setSubject] = useState("All subjects");
-  const results = seedTeachers.filter((teacher) => {
-    const matchesQuery = teacher.name.toLowerCase().includes(query.toLowerCase()) || teacher.role.toLowerCase().includes(query.toLowerCase());
+  const filters: TeacherListFilters = {
+    search: query,
+    subject: subject === "All subjects" ? undefined : subject,
+  };
+  const teachersQuery = useTeachers(filters);
+  const results = (teachersQuery.data ?? []).filter((teacher) => {
     const matchesStages = selectedStages.length === 0 || selectedStages.some((stage) => teacher.keyStages.includes(stage));
-    const matchesSubject = subject === "All subjects" || teacher.subjects.includes(subject);
-
-    return matchesQuery && matchesStages && matchesSubject;
+    return matchesStages;
   });
   const isIndividual = role === "individual";
 
@@ -56,6 +59,7 @@ export function FindTeachersPage({ go, toast, role }: Pick<RouteProps, "go" | "t
             <select className="select w-[180px]"><option>Sort: Best match</option><option>Sort: Rating</option></select>
           </div>
           <div className="flex flex-col gap-3">
+            {teachersQuery.isLoading ? <SectionLoader rows={4} /> : null}
             {results.map((teacher) => (
               <div key={teacher.id} className="card card-pad flex cursor-pointer flex-wrap items-center gap-5" onClick={() => go("teacher-profile", { teacherId: teacher.id })}>
                 <Avatar name={teacher.name} size="lg" tone={teacher.tone} />
@@ -69,6 +73,9 @@ export function FindTeachersPage({ go, toast, role }: Pick<RouteProps, "go" | "t
                 <div className="flex flex-col gap-1.5"><Btn size="sm" onClick={(event) => { event.stopPropagation(); toast({ title: isIndividual ? "Request sent" : "Invited", msg: isIndividual ? `${teacher.name} has received your availability request.` : `${teacher.name} has been invited to apply.` }); }}>{isIndividual ? "Request" : "Invite"}</Btn><Btn variant="secondary" size="sm" onClick={(event) => { event.stopPropagation(); go("messaging"); }}>Message</Btn></div>
               </div>
             ))}
+            {!teachersQuery.isLoading && results.length === 0 ? (
+              <div className="card card-pad text-muted">No teachers match these filters.</div>
+            ) : null}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useCreateJob } from "@/features/jobs/use-jobs";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Tag } from "../atoms";
@@ -12,9 +13,31 @@ export function PostJobPage({ go, toast }: Pick<RouteProps, "go" | "toast">) {
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<PostingMode>("instant");
   const [form, setForm] = useState({ title: "", keyStage: "KS2", subject: "Maths", startDate: "Tomorrow, Wed 25 Mar", duration: "1 day", rate: 180, urgent: false, dbsRequired: true, qtsRequired: false, minExperience: "1+ year" });
+  const createJob = useCreateJob({
+    onSuccess: async (result) => {
+      if (!result.ok) {
+        toast({ title: "Could not post job", msg: result.message });
+        return;
+      }
+
+      toast({ title: "Job posted", msg: "AI matching started - 6 candidates notified." });
+      go("applications", { jobId: "j-101" });
+    },
+    onError: () => {
+      toast({ title: "Could not post job", msg: "Please check the details and try again." });
+    },
+  });
   const publish = () => {
-    toast({ title: "Job posted", msg: "AI matching started - 6 candidates notified." });
-    go("applications", { jobId: "j-101" });
+    createJob.mutate({
+      date: form.startDate,
+      description: "Covering role details will be provided by the hiring account.",
+      keyStage: form.keyStage,
+      mode,
+      rate: form.rate,
+      subject: form.subject,
+      title: form.title || "Untitled teaching role",
+      urgent: form.urgent,
+    });
   };
 
   return (
@@ -90,7 +113,16 @@ export function PostJobPage({ go, toast }: Pick<RouteProps, "go" | "toast">) {
         ) : null}
         <div className="mt-8 flex items-center justify-between">
           <Btn variant="ghost" onClick={() => (step > 1 ? setStep(step - 1) : go("dashboard"))}>{step > 1 ? "Back" : "Cancel"}</Btn>
-          <Btn size="lg" iconRight={step === 4 ? "send" : "arrow"} onClick={() => (step < 4 ? setStep(step + 1) : publish())}>{step < 4 ? "Continue" : "Publish job"}</Btn>
+          <Btn
+            disabled={createJob.isPending}
+            iconRight={step === 4 ? "send" : "arrow"}
+            loading={step === 4 && createJob.isPending}
+            loadingLabel="Publishing"
+            onClick={() => (step < 4 ? setStep(step + 1) : publish())}
+            size="lg"
+          >
+            {step < 4 ? "Continue" : "Publish job"}
+          </Btn>
         </div>
       </div>
     </div>

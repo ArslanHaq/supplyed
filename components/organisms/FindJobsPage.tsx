@@ -1,27 +1,28 @@
 import { useState } from "react";
 
-import { seedJobs } from "@/data/supplyed";
+import type { JobListFilters } from "@/features/jobs/types";
+import { useJobs } from "@/features/jobs/use-jobs";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Field, Icon, MatchScore, Tag } from "../atoms";
 import { SelectDropdown } from "../molecules/OptionDropdowns";
-import { PageHead } from "../molecules";
+import { PageHead, SectionLoader } from "../molecules";
 
 export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
   const [urgency, setUrgency] = useState("All jobs");
   const [keyStage, setKeyStage] = useState("All stages");
   const [subject, setSubject] = useState("All subjects");
-  const jobs = seedJobs.filter((job) => {
-    const matchesUrgency = urgency === "All jobs" || job.urgent;
-    const matchesStage = keyStage === "All stages" || job.keyStage === keyStage;
-    const matchesSubject = subject === "All subjects" || job.subject === subject;
-
-    return matchesUrgency && matchesStage && matchesSubject;
-  });
+  const filters: JobListFilters = {
+    keyStage: keyStage === "All stages" ? undefined : keyStage,
+    subject: subject === "All subjects" ? undefined : subject,
+    urgent: urgency === "Urgent only" ? true : undefined,
+  };
+  const jobsQuery = useJobs(filters);
+  const jobs = jobsQuery.data ?? [];
 
   return (
     <div className="app-page">
-      <PageHead title="Find jobs" subtitle={`${seedJobs.length} open roles near you - ranked by match score`} />
+      <PageHead title="Find jobs" subtitle={`${jobs.length} open roles near you - ranked by match score`} />
       <div className="mb-5 grid gap-3 rounded-xl border border-border bg-white p-3 shadow-(--shadow-xs) md:grid-cols-3">
         <Field label="Role type">
           <SelectDropdown
@@ -47,6 +48,7 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
       </div>
       <div className="two-col">
         <div className="flex flex-col gap-3">
+          {jobsQuery.isLoading ? <SectionLoader rows={3} /> : null}
           {jobs.map((job) => (
             <div key={job.id} className="card card-pad-lg flex cursor-pointer flex-wrap items-center gap-5" onClick={() => go("job-detail", { jobId: job.id })}>
               <div className="flex-1">
@@ -58,16 +60,24 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
               <div className="flex flex-col items-end gap-2.5"><MatchScore score={job.matchScore} /><Btn size="sm">{job.mode === "instant" ? "Accept" : "Apply"}</Btn></div>
             </div>
           ))}
+          {!jobsQuery.isLoading && jobs.length === 0 ? (
+            <div className="card card-pad text-muted">No jobs match these filters.</div>
+          ) : null}
         </div>
         <div className="card card-pad">
           <div className="eyebrow mb-2.5">Map view</div>
           <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br from-[var(--se-tint)] to-[var(--chalk)]">
-            {[[30, 25], [55, 40], [40, 65], [70, 55]].map(([x, y], index) => (
-              <div key={index} className="absolute -translate-x-1/2 -translate-y-full" style={{ left: `${x}%`, top: `${y}%` }}>
-                <div className="flex h-[26px] w-[26px] -rotate-45 items-center justify-center rounded-[50%_50%_50%_0] text-[9px] font-bold text-white" style={{ background: index === 0 ? "var(--red)" : "var(--se)" }}><span className="rotate-45">£{seedJobs[index].rate}</span></div>
+            {[[30, 25], [55, 40], [40, 65], [70, 55]].map(([x, y], index) => {
+              const job = jobs[index];
+              if (!job) return null;
+
+              return (
+                <div key={job.id} className="absolute -translate-x-1/2 -translate-y-full" style={{ left: `${x}%`, top: `${y}%` }}>
+                  <div className="flex h-[26px] w-[26px] -rotate-45 items-center justify-center rounded-[50%_50%_50%_0] text-[9px] font-bold text-white" style={{ background: index === 0 ? "var(--red)" : "var(--se)" }}><span className="rotate-45">£{job.rate}</span></div>
+                </div>
+              );
+            })}
               </div>
-            ))}
-          </div>
         </div>
       </div>
     </div>
