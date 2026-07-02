@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Btn, Checkbox, Field, Icon, Logo } from "../atoms";
+import { SocialAuthButtons } from "../molecules";
 import { PasswordInput } from "../atoms/PasswordInput";
 
 type LoginErrors = Partial<Record<"email" | "password" | "code", string>>;
@@ -214,6 +215,8 @@ export function LoginPage({
           <div className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7">
             {isCredentialsStep ? (
               <form noValidate onSubmit={handleCredentialSubmit}>
+                <SocialAuthButtons disabled={Boolean(pending)} />
+
                 <Field label="Email address" htmlFor="login-email" error={errors.email} required>
                   <input
                     aria-invalid={Boolean(errors.email)}

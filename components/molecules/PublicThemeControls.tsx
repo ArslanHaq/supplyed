@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { defaultTweaks } from "@/data/supplyed";
 import { loadTweaks, saveTweaks } from "@/lib/supplyed-storage";
@@ -8,12 +8,9 @@ import { applyBrandTheme, brandPalettes, deriveBrandTheme } from "@/lib/theme";
 import { Icon } from "../atoms";
 
 export function PublicThemeControls() {
-  const customColorInputRef = useRef<HTMLInputElement | null>(null);
   const [accent, setAccent] = useState(() => deriveBrandTheme(defaultTweaks.accent).accent);
   const [open, setOpen] = useState(false);
   const safeAccent = deriveBrandTheme(accent).accent;
-  const selectedPreset = brandPalettes.some((palette) => palette.accent.toLowerCase() === safeAccent.toLowerCase());
-
   function openControls() {
     setAccent(deriveBrandTheme(loadTweaks().accent).accent);
     setOpen(true);
@@ -64,39 +61,6 @@ export function PublicThemeControls() {
           />
         );
       })}
-
-      <button
-        aria-label="Custom accent color"
-        aria-pressed={!selectedPreset}
-        className="h-5 w-5 rounded-full border border-white transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-2"
-        onClick={(event) => {
-          event.stopPropagation();
-          customColorInputRef.current?.click();
-        }}
-        style={{
-          background: "conic-gradient(from 180deg, #008CC4, #16A34A, #7C3AED, #E11D48, #D97706, #008CC4)",
-          boxShadow: selectedPreset ? "0 0 0 1px rgba(15, 23, 42, 0.12)" : "0 0 0 2px #fff, 0 0 0 3px var(--ink)",
-        }}
-        title="Custom color"
-        type="button"
-      />
-
-      <input
-        ref={customColorInputRef}
-        aria-hidden="true"
-        onChange={(event) => selectAccent(event.target.value)}
-        tabIndex={-1}
-        type="color"
-        value={safeAccent}
-        style={{
-          position: "absolute",
-          width: 1,
-          height: 1,
-          opacity: 0,
-          pointerEvents: "none",
-          transform: "translateX(-9999px)",
-        }}
-      />
 
       <button
         aria-label="Close theme colors"

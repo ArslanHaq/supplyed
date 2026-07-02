@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Btn, Checkbox, Field, Logo } from "../atoms";
+import { SocialAuthButtons } from "../molecules";
 import { PasswordInput } from "../atoms/PasswordInput";
 
 type AccessErrors = Partial<Record<"email" | "password" | "confirmPassword" | "termsAccepted", string>>;
@@ -117,6 +118,8 @@ export function SignupAccessPage({
           </div>
 
           <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
+            <SocialAuthButtons disabled={pending} intent="signup" />
+
             <div className="grid gap-x-4 sm:grid-cols-2">
               <Field label="Email address" htmlFor="signup-access-email" error={errors.email} required>
                 <input
