@@ -4,6 +4,7 @@ import { Btn, Field, Icon, Logo } from "../atoms";
 
 type VerifyErrors = Partial<Record<"code", string>>;
 type VerifyPending = "verify" | "resend" | null;
+type VerifyResult = { ok: true } | { fieldErrors?: VerifyErrors; message: string; ok: false };
 
 export function SignupVerifyPage({
   email,
@@ -16,7 +17,7 @@ export function SignupVerifyPage({
   onBack: () => void;
   onLanding: () => void;
   onLogin: () => void;
-  onVerified: () => void;
+  onVerified: (code: string) => Promise<VerifyResult>;
 }) {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [errors, setErrors] = useState<VerifyErrors>({});
@@ -76,11 +77,21 @@ export function SignupVerifyPage({
     codeRefs.current[Math.min(pasted.length, 5)]?.focus();
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
     if (!validate()) return;
-    runPending("verify", onVerified);
+    setPending("verify");
+
+    const result = await onVerified(codeValue);
+
+    if (!result.ok) {
+      setErrors(result.fieldErrors ?? { code: result.message });
+      setPending(null);
+      return;
+    }
+
+    setPending(null);
   }
 
   function resendCode() {

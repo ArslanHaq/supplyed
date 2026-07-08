@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
+import { loginAction, verifyLoginEmail } from "@/app/(auth)/login/actions";
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { buildAppHref } from "@/lib/routes";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
 import { useMounted } from "@/lib/use-mounted";
-import type { AppPage, AppState } from "@/types/supplyed";
+import type { AppState } from "@/types/supplyed";
 
 import { AuthFlowLoader, PublicThemeControls } from "../molecules";
 import { LoginPage } from "./LoginPage";
@@ -57,11 +58,44 @@ function LoginRouteClientInner() {
     return Boolean(savedEmail && savedEmail === email.trim().toLowerCase() && !state.signupVerified);
   }
 
-  function handleCredentialsAccepted(email: string): LoginChallenge {
-    return isUnverifiedAccountEmail(email) ? "email-verification" : "identity-verification";
+  function formData(values: Record<string, string>) {
+    const data = new FormData();
+    Object.entries(values).forEach(([key, value]) => data.set(key, value));
+    return data;
   }
 
-  function verifyEmailForLogin(email: string) {
+  async function handleCredentialsAccepted(email: string, password: string) {
+    const result = await loginAction(null, formData({ email, password }));
+
+    if (!result.ok) {
+      return {
+        fieldErrors: result.fieldErrors,
+        message: result.message,
+        ok: false as const,
+      };
+    }
+
+    const backendUser = result.data.user;
+    const needsEmailVerification = backendUser.emailVerified === false || isUnverifiedAccountEmail(email);
+    const challenge: LoginChallenge = needsEmailVerification ? "email-verification" : "identity-verification";
+
+    return {
+      challenge,
+      ok: true as const,
+    };
+  }
+
+  async function verifyEmailForLogin(email: string, code: string) {
+    const result = await verifyLoginEmail(null, formData({ code, email }));
+
+    if (!result.ok) {
+      return {
+        fieldErrors: result.fieldErrors,
+        message: result.message,
+        ok: false as const,
+      };
+    }
+
     const nextState: AppState = {
       ...state,
       auth: "login",
@@ -70,9 +104,24 @@ function LoginRouteClientInner() {
     };
     setState(nextState);
     saveAppState(nextState);
+    return { ok: true as const };
   }
 
-  function finishLogin(email: string) {
+  async function finishLogin(email: string, password: string) {
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+      redirectTo: "/post-auth",
+    });
+
+    if (!result?.ok) {
+      return {
+        message: "We could not sign you in with those details.",
+        ok: false as const,
+      };
+    }
+
     const signedInState: AppState = {
       ...state,
       auth: "signed-in",
@@ -88,16 +137,21 @@ function LoginRouteClientInner() {
       setState(nextState);
       saveAppState(nextState);
       startRouteLoading();
-      router.push("/onboarding");
-      return;
+      router.push("/post-auth");
+      return { ok: true as const };
     }
 
-    const nextPage: AppPage = signedInState.role === "admin" ? "admin" : "dashboard";
-    const nextState: AppState = { ...signedInState, page: nextPage };
+    const nextState: AppState = { ...signedInState, page: signedInState.role === "admin" ? "admin" : "dashboard" };
     setState(nextState);
     saveAppState(nextState);
     startRouteLoading();
-    router.push(buildAppHref(nextPage));
+    router.push("/post-auth");
+    return { ok: true as const };
+  }
+
+  function startSocialAuth(provider: "google" | "microsoft-entra-id") {
+    startRouteLoading();
+    void signIn(provider, { redirectTo: "/post-auth" });
   }
 
   return (
@@ -106,8 +160,10 @@ function LoginRouteClientInner() {
         onCredentialsAccepted={handleCredentialsAccepted}
         onEmailVerified={verifyEmailForLogin}
         onForgotPassword={goForgotPassword}
+        onGoogleAuth={() => startSocialAuth("google")}
         onLanding={goLanding}
         onLogin={finishLogin}
+        onMicrosoftAuth={() => startSocialAuth("microsoft-entra-id")}
         onSwitchSignup={goSignup}
       />
       <PublicThemeControls />

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
@@ -83,7 +84,8 @@ function RouteShell({ page }: { page: AppPage }) {
     router.push("/");
   }
 
-  function logout() {
+  async function logout() {
+    await signOut({ redirect: false });
     const nextState: AppState = { ...state, auth: "login", page: "dashboard", ctx: {} };
     setState(nextState);
     saveAppState(nextState);

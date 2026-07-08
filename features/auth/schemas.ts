@@ -1,4 +1,4 @@
-import type { ForgotPasswordInput, LoginInput, SignupInput } from "./types";
+import type { EmailVerificationInput, ForgotPasswordInput, LoginInput, SignupInput } from "./types";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,6 +22,13 @@ export function parseSignupForm(formData: FormData): SignupInput {
 
 export function parseForgotPasswordForm(formData: FormData): ForgotPasswordInput {
   return {
+    email: normalizeEmail(formData.get("email")),
+  };
+}
+
+export function parseEmailVerificationForm(formData: FormData): EmailVerificationInput {
+  return {
+    code: String(formData.get("code") ?? "").replace(/\D/g, "").slice(0, 6),
     email: normalizeEmail(formData.get("email")),
   };
 }

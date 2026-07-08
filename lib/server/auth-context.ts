@@ -9,6 +9,16 @@ export type ServerAuthContext = {
 } | null;
 
 export async function getServerAuthContext(): Promise<ServerAuthContext> {
-  // TODO: Replace this with Auth.js `auth()` once backend/auth integration starts.
-  return null;
+  const { auth } = await import("@/auth");
+  const session = await auth();
+
+  if (!session?.user?.id) return null;
+
+  return {
+    accessToken: null,
+    email: session.user.email,
+    refreshToken: null,
+    role: session.user.role,
+    userId: session.user.id,
+  };
 }

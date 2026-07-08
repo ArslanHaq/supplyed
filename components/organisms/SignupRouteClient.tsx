@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
+import { signupAction, verifySignupEmail } from "@/app/(auth)/signup/actions";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
 import { useMounted } from "@/lib/use-mounted";
@@ -26,12 +28,29 @@ function SignupRouteClientInner() {
     auth: "onboarding",
   }));
   const [stage, setStage] = useState<SignupStage>(() => resolveSignupStage({ ...loadAppState(), auth: "onboarding" }));
+  const [pendingPassword, setPendingPassword] = useState("");
 
   useEffect(() => {
     saveAppState(state);
   }, [state]);
 
-  function startVerification(email: string) {
+  function formData(values: Record<string, string>) {
+    const data = new FormData();
+    Object.entries(values).forEach(([key, value]) => data.set(key, value));
+    return data;
+  }
+
+  async function startVerification(email: string, password: string) {
+    const result = await signupAction(null, formData({ email, password }));
+
+    if (!result.ok) {
+      return {
+        fieldErrors: result.fieldErrors,
+        message: result.message,
+        ok: false as const,
+      };
+    }
+
     const nextState: AppState = {
       ...state,
       auth: "onboarding",
@@ -43,8 +62,10 @@ function SignupRouteClientInner() {
       onboardingStep: 1,
     };
     setState(nextState);
+    setPendingPassword(password);
     saveAppState(nextState);
     setStage("verify");
+    return { ok: true as const };
   }
 
   function backToAccount() {
@@ -59,11 +80,23 @@ function SignupRouteClientInner() {
       onboardingStep: 1,
     };
     setState(nextState);
+    setPendingPassword("");
     saveAppState(nextState);
     setStage("account");
   }
 
-  function finishVerification() {
+  async function finishVerification(code: string) {
+    const result = await verifySignupEmail(null, formData({ code, email: state.signupEmail }));
+
+    if (!result.ok) {
+      const codeError = result.fieldErrors && "code" in result.fieldErrors ? result.fieldErrors.code : undefined;
+      return {
+        fieldErrors: codeError ? { code: codeError } : undefined,
+        message: result.message,
+        ok: false as const,
+      };
+    }
+
     const nextState: AppState = {
       ...state,
       auth: "signed-in",
@@ -76,7 +109,28 @@ function SignupRouteClientInner() {
     setState(nextState);
     saveAppState(nextState);
     startRouteLoading();
-    router.push("/onboarding");
+
+    if (!pendingPassword) {
+      router.push("/login");
+      return { ok: true as const };
+    }
+
+    const signInResult = await signIn("credentials", {
+      email: state.signupEmail,
+      password: pendingPassword,
+      redirect: false,
+      redirectTo: "/post-auth",
+    });
+
+    if (!signInResult?.ok) {
+      return {
+        message: "Your email was verified. Log in again to continue onboarding.",
+        ok: false as const,
+      };
+    }
+
+    router.push("/post-auth");
+    return { ok: true as const };
   }
 
   function goLanding() {
@@ -95,13 +149,20 @@ function SignupRouteClientInner() {
     router.push("/login");
   }
 
+  function startSocialAuth(provider: "google" | "microsoft-entra-id") {
+    startRouteLoading();
+    void signIn(provider, { redirectTo: "/post-auth" });
+  }
+
   if (stage === "account") {
     return (
       <>
         <SignupAccessPage
           onAccountCreated={startVerification}
+          onGoogleAuth={() => startSocialAuth("google")}
           onLanding={goLanding}
           onLogin={goLogin}
+          onMicrosoftAuth={() => startSocialAuth("microsoft-entra-id")}
         />
         <PublicThemeControls />
       </>

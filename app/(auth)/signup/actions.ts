@@ -4,6 +4,7 @@ import {
   signInWithGoogleAction,
   signInWithMicrosoftAction,
   signupWithEmailAction,
+  verifyEmailAction,
 } from "@/features/auth/actions";
 
 export async function signupAction(previousState: unknown, formData: FormData) {
@@ -16,4 +17,8 @@ export async function googleSignupAction() {
 
 export async function microsoftSignupAction() {
   return signInWithMicrosoftAction();
+}
+
+export async function verifySignupEmail(previousState: unknown, formData: FormData) {
+  return verifyEmailAction(previousState, formData);
 }

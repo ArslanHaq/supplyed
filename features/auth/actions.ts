@@ -1,14 +1,10 @@
 "use server";
 
 import { actionError, actionOk } from "@/lib/server/action-response";
-import { api } from "@/lib/server/api-client";
+import { signIn } from "@/auth";
 
-import { parseForgotPasswordForm, parseLoginForm, parseSignupForm, validateEmail } from "./schemas";
-import type { AuthUser } from "./types";
-
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
+import { createEmailAccount, loginWithEmail, requestPasswordReset, verifyEmail } from "./backend";
+import { parseEmailVerificationForm, parseForgotPasswordForm, parseLoginForm, parseSignupForm, validateEmail } from "./schemas";
 
 export async function loginWithEmailAction(_previousState: unknown, formData: FormData) {
   const input = parseLoginForm(formData);
@@ -25,12 +21,7 @@ export async function loginWithEmailAction(_previousState: unknown, formData: Fo
     });
   }
 
-  if (backendEnabled()) {
-    const user = await api.post<AuthUser>("/auth/login", input, { auth: false });
-    return actionOk(user, "Signed in.");
-  }
-
-  return actionOk(null, "Email login action is ready for NestJS/Auth.js integration.");
+  return actionOk(await loginWithEmail(input), "Credentials accepted.");
 }
 
 export async function signupWithEmailAction(_previousState: unknown, formData: FormData) {
@@ -48,12 +39,7 @@ export async function signupWithEmailAction(_previousState: unknown, formData: F
     });
   }
 
-  if (backendEnabled()) {
-    const user = await api.post<AuthUser>("/auth/signup", input, { auth: false });
-    return actionOk(user, "Account created.");
-  }
-
-  return actionOk(null, "Signup action is ready for NestJS/Auth.js integration.");
+  return actionOk(await createEmailAccount(input), "Account created. Verify your email to continue.");
 }
 
 export async function forgotPasswordAction(_previousState: unknown, formData: FormData) {
@@ -65,17 +51,33 @@ export async function forgotPasswordAction(_previousState: unknown, formData: Fo
     });
   }
 
-  if (backendEnabled()) {
-    await api.post("/auth/forgot-password", input, { auth: false });
-  }
+  await requestPasswordReset(input);
 
   return actionOk(null, "If the email exists, a reset link will be sent.");
 }
 
+export async function verifyEmailAction(_previousState: unknown, formData: FormData) {
+  const input = parseEmailVerificationForm(formData);
+
+  if (!validateEmail(input.email)) {
+    return actionError("Use a valid email address.", {
+      fieldErrors: { email: "Use a valid email address." },
+    });
+  }
+
+  if (input.code.length !== 6) {
+    return actionError("Enter the 6-digit verification code.", {
+      fieldErrors: { code: "Enter the 6-digit verification code." },
+    });
+  }
+
+  return actionOk(await verifyEmail(input), "Email verified.");
+}
+
 export async function signInWithGoogleAction() {
-  return actionOk(null, "Google OAuth action is ready for Auth.js integration.");
+  await signIn("google", { redirectTo: "/post-auth" });
 }
 
 export async function signInWithMicrosoftAction() {
-  return actionOk(null, "Microsoft OAuth action is ready for Auth.js integration.");
+  await signIn("microsoft-entra-id", { redirectTo: "/post-auth" });
 }

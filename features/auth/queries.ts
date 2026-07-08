@@ -15,5 +15,16 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     });
   }
 
-  return null;
+  const { auth } = await import("@/auth");
+  const session = await auth();
+
+  if (!session?.user) return null;
+
+  return {
+    applicationStatus: session.user.applicationStatus,
+    email: session.user.email ?? "",
+    emailVerified: session.user.isEmailVerified,
+    id: session.user.id,
+    role: session.user.role,
+  };
 }

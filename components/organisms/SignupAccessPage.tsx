@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { Btn, Checkbox, Field, Logo } from "../atoms";
 import { SocialAuthButtons } from "../molecules";
 import { PasswordInput } from "../atoms/PasswordInput";
 
 type AccessErrors = Partial<Record<"email" | "password" | "confirmPassword" | "termsAccepted", string>>;
+type AccessResult = { ok: true } | { fieldErrors?: AccessErrors; message: string; ok: false };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -16,10 +17,14 @@ export function SignupAccessPage({
   onLanding,
   onLogin,
   onAccountCreated,
+  onGoogleAuth,
+  onMicrosoftAuth,
 }: {
   onLanding: () => void;
   onLogin: () => void;
-  onAccountCreated: (email: string) => void;
+  onAccountCreated: (email: string, password: string) => Promise<AccessResult>;
+  onGoogleAuth: () => void;
+  onMicrosoftAuth: () => void;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,13 +32,6 @@ export function SignupAccessPage({
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [errors, setErrors] = useState<AccessErrors>({});
   const [pending, setPending] = useState(false);
-  const pendingTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
-    };
-  }, []);
 
   function validate() {
     const nextErrors: AccessErrors = {};
@@ -49,15 +47,20 @@ export function SignupAccessPage({
     return Object.keys(nextErrors).length === 0;
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
     if (!validate()) return;
     setPending(true);
-    pendingTimerRef.current = window.setTimeout(() => {
-      onAccountCreated(email.trim());
+    const result = await onAccountCreated(email.trim(), password);
+
+    if (!result.ok) {
+      setErrors(result.fieldErrors ?? { email: result.message });
       setPending(false);
-    }, 420);
+      return;
+    }
+
+    setPending(false);
   }
 
   return (
@@ -118,7 +121,12 @@ export function SignupAccessPage({
           </div>
 
           <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
-            <SocialAuthButtons disabled={pending} intent="signup" />
+            <SocialAuthButtons
+              disabled={pending}
+              intent="signup"
+              onGoogle={onGoogleAuth}
+              onMicrosoft={onMicrosoftAuth}
+            />
 
             <div className="grid gap-x-4 sm:grid-cols-2">
               <Field label="Email address" htmlFor="signup-access-email" error={errors.email} required>

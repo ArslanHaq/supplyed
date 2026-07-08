@@ -8,6 +8,10 @@ type LoginErrors = Partial<Record<"email" | "password" | "code", string>>;
 type LoginStep = "credentials" | "email-verification" | "identity-verification";
 type LoginChallenge = "email-verification" | "identity-verification";
 type LoginPending = "credentials" | "email" | "identity" | "resend" | null;
+type LoginResult = { message?: string; ok: true } | { fieldErrors?: LoginErrors; message: string; ok: false };
+type CredentialsResult =
+  | { challenge: LoginChallenge; ok: true }
+  | { fieldErrors?: LoginErrors; message: string; ok: false };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const signinBenefits = [
@@ -19,16 +23,20 @@ const signinBenefits = [
 export function LoginPage({
   onCredentialsAccepted,
   onEmailVerified,
+  onGoogleAuth,
   onLogin,
   onLanding,
   onForgotPassword,
+  onMicrosoftAuth,
   onSwitchSignup,
 }: {
-  onCredentialsAccepted: (email: string) => LoginChallenge;
-  onEmailVerified: (email: string) => void;
-  onLogin: (email: string) => void;
+  onCredentialsAccepted: (email: string, password: string) => Promise<CredentialsResult>;
+  onEmailVerified: (email: string, code: string) => Promise<LoginResult>;
+  onGoogleAuth: () => void;
+  onLogin: (email: string, password: string, code: string) => Promise<LoginResult>;
   onLanding: () => void;
   onForgotPassword: () => void;
+  onMicrosoftAuth: () => void;
   onSwitchSignup: () => void;
 }) {
   const [step, setStep] = useState<LoginStep>("credentials");
@@ -81,16 +89,25 @@ export function LoginPage({
     return true;
   }
 
-  function handleCredentialSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCredentialSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
     if (!validateCredentials()) return;
-    runPending("credentials", () => {
-      setStep(onCredentialsAccepted(email.trim()));
-      setCode(["", "", "", "", "", ""]);
-      setErrors({});
-      window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
-    });
+
+    setPending("credentials");
+    const result = await onCredentialsAccepted(email.trim(), password);
+
+    if (!result.ok) {
+      setErrors(result.fieldErrors ?? { password: result.message });
+      setPending(null);
+      return;
+    }
+
+    setStep(result.challenge);
+    setCode(["", "", "", "", "", ""]);
+    setErrors({});
+    setPending(null);
+    window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
   }
 
   function handleCodeChange(index: number, value: string) {
@@ -119,23 +136,34 @@ export function LoginPage({
     codeRefs.current[Math.min(pasted.length, 5)]?.focus();
   }
 
-  function handleChallengeSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleChallengeSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
     if (!validateCode()) return;
 
-    runPending(step === "email-verification" ? "email" : "identity", () => {
-      if (step === "email-verification") {
-        onEmailVerified(email.trim());
-        setCode(["", "", "", "", "", ""]);
-        setErrors({});
-        setStep("identity-verification");
-        window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
+    setPending(step === "email-verification" ? "email" : "identity");
+
+    if (step === "email-verification") {
+      const result = await onEmailVerified(email.trim(), codeValue);
+      if (!result.ok) {
+        setErrors(result.fieldErrors ?? { code: result.message });
+        setPending(null);
         return;
       }
 
-      onLogin(email.trim());
-    });
+      setCode(["", "", "", "", "", ""]);
+      setErrors({});
+      setStep("identity-verification");
+      setPending(null);
+      window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
+      return;
+    }
+
+    const result = await onLogin(email.trim(), password, codeValue);
+    if (!result.ok) {
+      setErrors(result.fieldErrors ?? { code: result.message });
+      setPending(null);
+    }
   }
 
   function resendCode() {
@@ -215,7 +243,7 @@ export function LoginPage({
           <div className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7">
             {isCredentialsStep ? (
               <form noValidate onSubmit={handleCredentialSubmit}>
-                <SocialAuthButtons disabled={Boolean(pending)} />
+                <SocialAuthButtons disabled={Boolean(pending)} onGoogle={onGoogleAuth} onMicrosoft={onMicrosoftAuth} />
 
                 <Field label="Email address" htmlFor="login-email" error={errors.email} required>
                   <input

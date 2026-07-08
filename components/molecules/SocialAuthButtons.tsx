@@ -3,6 +3,8 @@ import { cn } from "@/lib/cn";
 type SocialAuthButtonsProps = {
   disabled?: boolean;
   intent?: "login" | "signup";
+  onGoogle?: () => void;
+  onMicrosoft?: () => void;
 };
 
 const socialProviders = [
@@ -25,7 +27,7 @@ const socialProviders = [
   },
 ];
 
-export function SocialAuthButtons({ disabled = false, intent = "login" }: SocialAuthButtonsProps) {
+export function SocialAuthButtons({ disabled = false, intent = "login", onGoogle, onMicrosoft }: SocialAuthButtonsProps) {
   const action = intent === "signup" ? "Sign up" : "Continue";
 
   return (
@@ -41,6 +43,7 @@ export function SocialAuthButtons({ disabled = false, intent = "login" }: Social
               "disabled:cursor-not-allowed disabled:opacity-50",
             )}
             disabled={disabled}
+            onClick={provider.id === "google" ? onGoogle : onMicrosoft}
             title={`${action} with ${provider.name}`}
             type="button"
           >

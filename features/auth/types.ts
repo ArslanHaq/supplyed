@@ -21,3 +21,27 @@ export type SignupInput = {
 export type ForgotPasswordInput = {
   email: string;
 };
+
+export type EmailVerificationInput = {
+  code: string;
+  email: string;
+};
+
+export type BackendAuthResponse = {
+  accessToken?: string;
+  accessTokenExpiresAt?: number;
+  refreshToken?: string;
+  user: AuthUser;
+};
+
+export type OAuthProvider = "google" | "microsoft-entra-id";
+
+export type OAuthBackendInput = {
+  email: string;
+  image?: string | null;
+  name?: string | null;
+  provider: OAuthProvider;
+  providerAccessToken?: string;
+  providerAccountId: string;
+  providerIdToken?: string;
+};
