@@ -2,6 +2,7 @@ import "server-only";
 
 import { api } from "@/lib/server/api-client";
 
+import { normalizeAuthUser } from "./backend";
 import type { AuthUser } from "./types";
 
 function backendEnabled() {
@@ -10,9 +11,11 @@ function backendEnabled() {
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
   if (backendEnabled()) {
-    return api.get<AuthUser>("/auth/me", {
-      next: { tags: ["auth", "auth:me"] },
-    });
+    return normalizeAuthUser(
+      await api.get<unknown>("/auth/me", {
+        next: { tags: ["auth", "auth:me"] },
+      }),
+    );
   }
 
   const { auth } = await import("@/auth");

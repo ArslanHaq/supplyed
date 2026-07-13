@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
@@ -20,16 +21,19 @@ type PostAuthSessionUser = {
 function resolveNextState(savedState: AppState, sessionUser: PostAuthSessionUser): AppState {
   const sessionHasRole = Boolean(sessionUser.role);
   const role = sessionUser.role ?? savedState.role;
-  const roleSelected = sessionHasRole || savedState.roleSelected || savedState.onboardingComplete;
+  const onboardingComplete =
+    sessionUser.role === "admin" || (sessionHasRole && sessionUser.applicationStatus !== "none");
 
   return {
     ...savedState,
-    applicationStatus: sessionUser.applicationStatus || savedState.applicationStatus,
+    applicationStatus: sessionUser.applicationStatus,
     auth: "signed-in",
     role,
-    roleSelected,
+    roleSelected: sessionHasRole,
+    onboardingComplete,
+    onboardingStep: sessionHasRole ? savedState.onboardingStep : 1,
     signupEmail: sessionUser.email || savedState.signupEmail,
-    signupVerified: sessionUser.emailVerified || savedState.signupVerified,
+    signupVerified: sessionUser.emailVerified,
   };
 }
 
@@ -41,8 +45,10 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
     saveAppState(nextState);
     startRouteLoading();
 
-    if (!nextState.signupVerified) {
-      router.replace("/login");
+    if (!sessionUser.emailVerified) {
+      void signOut({ redirect: false }).finally(() => {
+        router.replace("/login");
+      });
       return;
     }
 

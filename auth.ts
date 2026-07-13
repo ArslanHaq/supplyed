@@ -3,14 +3,23 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
-import { exchangeOAuthAccount, loginWithEmail, normalizeRole, normalizeStatus, refreshBackendAuth } from "@/features/auth/backend";
+import { exchangeOAuthAccount, loginWithEmail, normalizeRole, normalizeStatus, refreshBackendAuth, verifyEmail } from "@/features/auth/backend";
 import { validateEmail } from "@/features/auth/schemas";
 import type { BackendAuthResponse } from "@/features/auth/types";
 
-const authSecret =
+export const authSecret =
   process.env.AUTH_SECRET ||
   process.env.NEXTAUTH_SECRET ||
   (process.env.NODE_ENV === "production" ? undefined : "supplyed-local-dev-auth-secret-change-before-production");
+
+function readEnv(key: string) {
+  const value = process.env[key]?.trim();
+  return value || undefined;
+}
+
+function readCredential(credentials: Partial<Record<string, unknown>> | undefined, key: string) {
+  return String(credentials?.[key] ?? "");
+}
 
 function toAuthUser(response: BackendAuthResponse) {
   const user = response.user;
@@ -22,9 +31,9 @@ function toAuthUser(response: BackendAuthResponse) {
     applicationStatus: user.applicationStatus,
     email: user.email,
     id: user.id,
-    name: user.email.split("@")[0],
+    name: user.name ?? user.email.split("@")[0],
     refreshToken: response.refreshToken,
-    role: user.role,
+    role: normalizeRole(user.role),
   };
 }
 
@@ -33,10 +42,43 @@ function assignBackendSession(token: Record<string, unknown>, response: BackendA
   token.role = normalizeRole(response.user.role);
   token.applicationStatus = normalizeStatus(response.user.applicationStatus);
   token.appEmailVerified = response.user.emailVerified;
-  token.accessToken = response.accessToken;
-  token.refreshToken = response.refreshToken ?? token.refreshToken;
-  token.accessTokenExpiresAt = response.accessTokenExpiresAt;
+  if (response.accessToken) token.accessToken = response.accessToken;
+  if (response.refreshToken) token.refreshToken = response.refreshToken;
+  if (response.accessTokenExpiresAt) token.accessTokenExpiresAt = response.accessTokenExpiresAt;
 }
+
+const googleClientId = readEnv("AUTH_GOOGLE_ID");
+const googleClientSecret = readEnv("AUTH_GOOGLE_SECRET");
+const microsoftClientId = readEnv("AUTH_MICROSOFT_ENTRA_ID_ID");
+const microsoftClientSecret = readEnv("AUTH_MICROSOFT_ENTRA_ID_SECRET");
+const microsoftIssuer = readEnv("AUTH_MICROSOFT_ENTRA_ID_ISSUER");
+
+const socialProviders = [
+  ...(googleClientId && googleClientSecret
+    ? [
+        Google({
+          authorization: {
+            params: {
+              access_type: "offline",
+              prompt: "consent",
+              response_type: "code",
+            },
+          },
+          clientId: googleClientId,
+          clientSecret: googleClientSecret,
+        }),
+      ]
+    : []),
+  ...(microsoftClientId && microsoftClientSecret
+    ? [
+        MicrosoftEntraID({
+          clientId: microsoftClientId,
+          clientSecret: microsoftClientSecret,
+          issuer: microsoftIssuer,
+        }),
+      ]
+    : []),
+];
 
 export const {
   auth,
@@ -57,10 +99,13 @@ export const {
       }
 
       if (account && account.provider !== "credentials") {
+        const email = String(user?.email ?? token.email ?? "").trim().toLowerCase();
+        if (!validateEmail(email)) return token;
+
         const response = await exchangeOAuthAccount({
-          email: user.email ?? token.email ?? "",
-          image: user.image ?? token.picture ?? null,
-          name: user.name ?? token.name ?? null,
+          email,
+          image: user?.image ?? token.picture ?? null,
+          name: user?.name ?? token.name ?? null,
           provider: account.provider === "microsoft-entra-id" ? "microsoft-entra-id" : "google",
           providerAccessToken: account.access_token,
           providerAccountId: account.providerAccountId,
@@ -103,27 +148,30 @@ export const {
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
+        flow: { label: "Flow", type: "text" },
+        code: { label: "Code", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = String(credentials?.email ?? "").trim().toLowerCase();
-        const password = String(credentials?.password ?? "");
+        const email = readCredential(credentials, "email").trim().toLowerCase();
+        const flow = readCredential(credentials, "flow") || "password";
 
-        if (!validateEmail(email) || password.length < 8) return null;
+        if (!validateEmail(email)) return null;
+
+        if (flow === "verify-email") {
+          const code = readCredential(credentials, "code").replace(/\D/g, "").slice(0, 6);
+          if (code.length !== 6) return null;
+          return toAuthUser(await verifyEmail({ code, email }));
+        }
+
+        const password = readCredential(credentials, "password");
+
+        if (password.length < 8) return null;
 
         return toAuthUser(await loginWithEmail({ email, password }));
       },
     }),
-    Google({
-      authorization: {
-        params: {
-          access_type: "offline",
-          prompt: "consent",
-          response_type: "code",
-        },
-      },
-    }),
-    MicrosoftEntraID,
+    ...socialProviders,
   ],
   secret: authSecret,
   session: {

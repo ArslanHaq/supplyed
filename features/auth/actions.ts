@@ -2,9 +2,31 @@
 
 import { actionError, actionOk } from "@/lib/server/action-response";
 import { signIn } from "@/auth";
+import { ApiError } from "@/lib/server/api-client";
 
-import { createEmailAccount, loginWithEmail, requestPasswordReset, verifyEmail } from "./backend";
-import { parseEmailVerificationForm, parseForgotPasswordForm, parseLoginForm, parseSignupForm, validateEmail } from "./schemas";
+import { createEmailAccount, loginWithEmail, requestPasswordReset, resendEmailVerification, verifyEmail } from "./backend";
+import {
+  parseEmailVerificationForm,
+  parseForgotPasswordForm,
+  parseLoginForm,
+  parseResendEmailVerificationForm,
+  parseSignupForm,
+  passwordRequirementsMessage,
+  validateEmail,
+  validatePassword,
+} from "./schemas";
+
+function toAuthActionError(error: unknown, fallback = "We could not complete that auth request.") {
+  if (error instanceof ApiError) {
+    return actionError(error.message || fallback);
+  }
+
+  if (error instanceof Error && error.message) {
+    return actionError(error.message);
+  }
+
+  return actionError(fallback);
+}
 
 export async function loginWithEmailAction(_previousState: unknown, formData: FormData) {
   const input = parseLoginForm(formData);
@@ -21,7 +43,11 @@ export async function loginWithEmailAction(_previousState: unknown, formData: Fo
     });
   }
 
-  return actionOk(await loginWithEmail(input), "Credentials accepted.");
+  try {
+    return actionOk(await loginWithEmail(input), "Credentials accepted.");
+  } catch (error) {
+    return toAuthActionError(error, "We could not sign you in with those details.");
+  }
 }
 
 export async function signupWithEmailAction(_previousState: unknown, formData: FormData) {
@@ -33,13 +59,17 @@ export async function signupWithEmailAction(_previousState: unknown, formData: F
     });
   }
 
-  if (input.password.length < 8) {
-    return actionError("Use at least 8 characters.", {
-      fieldErrors: { password: "Use at least 8 characters." },
+  if (!validatePassword(input.password)) {
+    return actionError(passwordRequirementsMessage, {
+      fieldErrors: { password: passwordRequirementsMessage },
     });
   }
 
-  return actionOk(await createEmailAccount(input), "Account created. Verify your email to continue.");
+  try {
+    return actionOk(await createEmailAccount(input), "Account created. Verify your email to continue.");
+  } catch (error) {
+    return toAuthActionError(error, "We could not create this account.");
+  }
 }
 
 export async function forgotPasswordAction(_previousState: unknown, formData: FormData) {
@@ -51,7 +81,11 @@ export async function forgotPasswordAction(_previousState: unknown, formData: Fo
     });
   }
 
-  await requestPasswordReset(input);
+  try {
+    await requestPasswordReset(input);
+  } catch (error) {
+    return toAuthActionError(error, "We could not request a password reset.");
+  }
 
   return actionOk(null, "If the email exists, a reset link will be sent.");
 }
@@ -71,7 +105,29 @@ export async function verifyEmailAction(_previousState: unknown, formData: FormD
     });
   }
 
-  return actionOk(await verifyEmail(input), "Email verified.");
+  try {
+    return actionOk(await verifyEmail(input), "Email verified.");
+  } catch (error) {
+    return toAuthActionError(error, "We could not verify that code.");
+  }
+}
+
+export async function resendEmailVerificationAction(_previousState: unknown, formData: FormData) {
+  const input = parseResendEmailVerificationForm(formData);
+
+  if (!validateEmail(input.email)) {
+    return actionError("Use a valid email address.", {
+      fieldErrors: { email: "Use a valid email address." },
+    });
+  }
+
+  try {
+    await resendEmailVerification(input);
+  } catch (error) {
+    return toAuthActionError(error, "We could not resend the verification code.");
+  }
+
+  return actionOk(null, "If this account needs verification, a new code will be sent.");
 }
 
 export async function signInWithGoogleAction() {

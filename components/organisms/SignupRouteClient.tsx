@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
-import { signupAction, verifySignupEmail } from "@/app/(auth)/signup/actions";
+import { resendSignupVerification, signupAction } from "@/app/(auth)/signup/actions";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
 import { useMounted } from "@/lib/use-mounted";
@@ -28,7 +28,6 @@ function SignupRouteClientInner() {
     auth: "onboarding",
   }));
   const [stage, setStage] = useState<SignupStage>(() => resolveSignupStage({ ...loadAppState(), auth: "onboarding" }));
-  const [pendingPassword, setPendingPassword] = useState("");
 
   useEffect(() => {
     saveAppState(state);
@@ -62,7 +61,6 @@ function SignupRouteClientInner() {
       onboardingStep: 1,
     };
     setState(nextState);
-    setPendingPassword(password);
     saveAppState(nextState);
     setStage("verify");
     return { ok: true as const };
@@ -80,19 +78,22 @@ function SignupRouteClientInner() {
       onboardingStep: 1,
     };
     setState(nextState);
-    setPendingPassword("");
     saveAppState(nextState);
     setStage("account");
   }
 
   async function finishVerification(code: string) {
-    const result = await verifySignupEmail(null, formData({ code, email: state.signupEmail }));
+    const signInResult = await signIn("credentials", {
+      code,
+      email: state.signupEmail,
+      flow: "verify-email",
+      redirect: false,
+      redirectTo: "/post-auth",
+    });
 
-    if (!result.ok) {
-      const codeError = result.fieldErrors && "code" in result.fieldErrors ? result.fieldErrors.code : undefined;
+    if (!signInResult?.ok) {
       return {
-        fieldErrors: codeError ? { code: codeError } : undefined,
-        message: result.message,
+        message: "Your email was verified. Log in again to continue onboarding.",
         ok: false as const,
       };
     }
@@ -109,27 +110,20 @@ function SignupRouteClientInner() {
     setState(nextState);
     saveAppState(nextState);
     startRouteLoading();
+    router.push("/post-auth");
+    return { ok: true as const };
+  }
 
-    if (!pendingPassword) {
-      router.push("/login");
-      return { ok: true as const };
-    }
+  async function resendVerification() {
+    const result = await resendSignupVerification(null, formData({ email: state.signupEmail }));
 
-    const signInResult = await signIn("credentials", {
-      email: state.signupEmail,
-      password: pendingPassword,
-      redirect: false,
-      redirectTo: "/post-auth",
-    });
-
-    if (!signInResult?.ok) {
+    if (!result.ok) {
       return {
-        message: "Your email was verified. Log in again to continue onboarding.",
+        message: result.message,
         ok: false as const,
       };
     }
 
-    router.push("/post-auth");
     return { ok: true as const };
   }
 
@@ -177,6 +171,7 @@ function SignupRouteClientInner() {
           onBack={backToAccount}
           onLanding={goLanding}
           onLogin={goLogin}
+          onResend={resendVerification}
           onVerified={finishVerification}
         />
         <PublicThemeControls />

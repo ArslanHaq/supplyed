@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { Btn, Field, Icon, Logo } from "../atoms";
 
@@ -11,35 +11,21 @@ export function SignupVerifyPage({
   onBack,
   onLanding,
   onLogin,
+  onResend,
   onVerified,
 }: {
   email: string;
   onBack: () => void;
   onLanding: () => void;
   onLogin: () => void;
+  onResend: () => Promise<VerifyResult>;
   onVerified: (code: string) => Promise<VerifyResult>;
 }) {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [errors, setErrors] = useState<VerifyErrors>({});
   const [pending, setPending] = useState<VerifyPending>(null);
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const pendingTimerRef = useRef<number | null>(null);
   const codeValue = code.join("");
-
-  useEffect(() => {
-    return () => {
-      if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
-    };
-  }, []);
-
-  function runPending(kind: Exclude<VerifyPending, null>, callback: () => void) {
-    if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
-    setPending(kind);
-    pendingTimerRef.current = window.setTimeout(() => {
-      callback();
-      setPending(null);
-    }, 420);
-  }
 
   function validate() {
     if (codeValue.length !== 6) {
@@ -94,12 +80,22 @@ export function SignupVerifyPage({
     setPending(null);
   }
 
-  function resendCode() {
-    runPending("resend", () => {
-      setCode(["", "", "", "", "", ""]);
-      setErrors({});
-      codeRefs.current[0]?.focus();
-    });
+  async function resendCode() {
+    if (pending) return;
+    setPending("resend");
+
+    const result = await onResend();
+
+    if (!result.ok) {
+      setErrors(result.fieldErrors ?? { code: result.message });
+      setPending(null);
+      return;
+    }
+
+    setCode(["", "", "", "", "", ""]);
+    setErrors({});
+    setPending(null);
+    window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
   }
 
   return (
@@ -162,7 +158,7 @@ export function SignupVerifyPage({
             </Field>
 
             <div className="mb-6 rounded-lg bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
-              This prototype accepts any 6-digit code. In production, the backend would store the email verification challenge and expiry.
+              Codes are validated by SupplyED before your workspace session is created. Request a new code if this one expires.
             </div>
 
             <Btn className="w-full" loading={pending === "verify"} loadingLabel="Verifying email" size="lg" type="submit" iconRight="arrow">

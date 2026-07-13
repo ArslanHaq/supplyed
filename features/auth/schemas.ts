@@ -1,6 +1,16 @@
-import type { EmailVerificationInput, ForgotPasswordInput, LoginInput, SignupInput } from "./types";
+import type {
+  EmailVerificationInput,
+  ForgotPasswordInput,
+  LoginInput,
+  ResendEmailVerificationInput,
+  SignupInput,
+} from "./types";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const strongPasswordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
+export const passwordRequirementsMessage =
+  "Use at least 8 characters with an uppercase letter, a number, and a special character.";
 
 export function normalizeEmail(email: FormDataEntryValue | string | null): string {
   return String(email ?? "").trim().toLowerCase();
@@ -33,6 +43,16 @@ export function parseEmailVerificationForm(formData: FormData): EmailVerificatio
   };
 }
 
+export function parseResendEmailVerificationForm(formData: FormData): ResendEmailVerificationInput {
+  return {
+    email: normalizeEmail(formData.get("email")),
+  };
+}
+
 export function validateEmail(email: string) {
   return emailPattern.test(email);
+}
+
+export function validatePassword(password: string) {
+  return strongPasswordPattern.test(password);
 }

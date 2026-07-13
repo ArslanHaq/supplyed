@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { passwordRequirementsMessage, validatePassword } from "@/features/auth/schemas";
+
 import { Btn, Checkbox, Field, Logo } from "../atoms";
 import { SocialAuthButtons } from "../molecules";
 import { PasswordInput } from "../atoms/PasswordInput";
@@ -39,7 +41,7 @@ export function SignupAccessPage({
 
     if (!trimmedEmail) nextErrors.email = "Enter your email address.";
     else if (!emailPattern.test(trimmedEmail)) nextErrors.email = "Use a valid email address.";
-    if (password.length < 8) nextErrors.password = "Use at least 8 characters.";
+    if (!validatePassword(password)) nextErrors.password = passwordRequirementsMessage;
     if (confirmPassword !== password) nextErrors.confirmPassword = "Passwords must match.";
     if (!termsAccepted) nextErrors.termsAccepted = "Accept the terms to continue.";
 
@@ -145,7 +147,7 @@ export function SignupAccessPage({
                   value={email}
                 />
               </Field>
-              <Field label="Password" htmlFor="signup-access-password" error={errors.password} hint="Use at least 8 characters." required>
+              <Field label="Password" htmlFor="signup-access-password" error={errors.password} hint={passwordRequirementsMessage} required>
                 <PasswordInput
                   autoComplete="new-password"
                   className={fieldClass(errors.password)}

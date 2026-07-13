@@ -31,6 +31,31 @@ export class ApiError extends Error {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isApiEnvelope(value: unknown): value is { data: unknown; message?: unknown; success?: unknown } {
+  return isRecord(value) && "data" in value && ("success" in value || "message" in value);
+}
+
+function readErrorMessage(payload: unknown, fallback: string) {
+  if (isApiEnvelope(payload) && typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message;
+  }
+
+  if (isRecord(payload) && typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message;
+  }
+
+  return fallback;
+}
+
+function unwrapApiPayload<Data>(payload: unknown): Data {
+  if (isApiEnvelope(payload)) return payload.data as Data;
+  return payload as Data;
+}
+
 function getApiBaseUrl() {
   const baseUrl = process.env.API_BASE_URL;
   if (!baseUrl) {
@@ -96,13 +121,13 @@ async function request<Data>(
 
   if (!response.ok) {
     throw new ApiError(
-      typeof payload === "string" && payload ? payload : `Request failed with status ${response.status}`,
+      typeof payload === "string" && payload ? payload : readErrorMessage(payload, `Request failed with status ${response.status}`),
       response.status,
       payload,
     );
   }
 
-  return payload as Data;
+  return unwrapApiPayload<Data>(payload);
 }
 
 function bodyInit(body?: unknown) {

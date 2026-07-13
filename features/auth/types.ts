@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string;
   emailVerified: boolean;
   id: string;
+  name?: string | null;
   role: AppRole | null;
 };
 
@@ -24,6 +25,10 @@ export type ForgotPasswordInput = {
 
 export type EmailVerificationInput = {
   code: string;
+  email: string;
+};
+
+export type ResendEmailVerificationInput = {
   email: string;
 };
 
