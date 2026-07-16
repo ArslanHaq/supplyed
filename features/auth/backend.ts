@@ -354,7 +354,7 @@ export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<Ba
 
   if (backendEnabled()) {
     if (!backendOAuthExchangeEnabled()) {
-      throw new Error("Backend OAuth exchange is disabled. Enable AUTH_BACKEND_OAUTH_ENABLED to use social sign-in.");
+      throw new Error("Social sign-in is not available yet. Use email and password while we finish connecting Google sign-in.");
     }
 
     if (input.provider !== "google") {

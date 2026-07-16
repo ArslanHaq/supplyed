@@ -14,6 +14,12 @@ function firstParam(value: string | string[] | undefined) {
 export function sanitizeAuthErrorMessage(message: string | undefined, fallback = "Authentication failed. Try again.") {
   const normalized = message?.replace(/\s+/g, " ").trim();
   if (!normalized) return fallback;
+  if (/AUTH_BACKEND_OAUTH_ENABLED|Backend OAuth exchange is disabled/i.test(normalized)) {
+    return "Social sign-in is not available yet. Use email and password while we finish connecting Google sign-in.";
+  }
+  if (/Microsoft sign-in is not connected/i.test(normalized)) {
+    return "Microsoft sign-in is not available yet. Use email and password, or continue with Google when it is enabled.";
+  }
   return normalized.length > 240 ? `${normalized.slice(0, 237)}...` : normalized;
 }
 

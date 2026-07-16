@@ -1,24 +1,20 @@
 import type { Toast } from "@/types/supplyed";
-import { cn } from "@/lib/cn";
 
 import { Icon } from "../atoms";
 
 export function ToastStack({ toasts }: { toasts: Toast[] }) {
+  if (toasts.length === 0) return null;
+
   return (
-    <div className="fixed bottom-5 right-5 z-[60] flex w-[min(360px,calc(100vw-32px))] flex-col gap-2">
+    <div className="toast-stack" aria-live="polite" role="status">
       {toasts.map((toast) => (
-        <div key={toast.id} className="flex gap-3 rounded-xl border border-border bg-white p-3 shadow-panel">
-          <div
-            className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-              toast.tone === "danger" ? "bg-danger-tint text-danger" : "bg-brand-tint text-brand",
-            )}
-          >
+        <div key={toast.id} className={`toast ${toast.tone === "danger" ? "toast-danger" : "toast-success"}`}>
+          <div className="toast-icon">
             <Icon name={toast.icon || "check"} size={13} />
           </div>
-          <div>
-            <div className="font-semibold">{toast.title}</div>
-            <div className="text-sm text-slate">{toast.msg}</div>
+          <div className="min-w-0">
+            <div className="toast-title">{toast.title}</div>
+            <div className="toast-message">{toast.msg}</div>
           </div>
         </div>
       ))}

@@ -5,6 +5,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { sanitizeAuthErrorMessage } from "@/features/auth/error-messages";
 import type { Toast } from "@/types/supplyed";
 
+function getAuthToastTitle(message: string) {
+  if (/social sign-(in|up)|Google sign-in|Microsoft sign-in|not available/i.test(message)) {
+    return "Social sign-in unavailable";
+  }
+
+  if (/verification|code|OTP/i.test(message)) {
+    return "Verification failed";
+  }
+
+  return "Authentication failed";
+}
+
 export function useAuthToasts(initialError?: string) {
   const [authToasts, setAuthToasts] = useState<Toast[]>([]);
   const initialShownRef = useRef(false);
@@ -20,7 +32,7 @@ export function useAuthToasts(initialError?: string) {
         icon: "x",
         id,
         msg,
-        title: "Authentication failed",
+        title: getAuthToastTitle(msg),
         tone: "danger",
       },
     ]);
