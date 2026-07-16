@@ -6,7 +6,7 @@ import { signIn } from "next-auth/react";
 
 import { loginAction, resendLoginVerification, verifyLoginEmail } from "@/app/(auth)/login/actions";
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
+import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppState } from "@/types/supplyed";
 
@@ -24,17 +24,29 @@ function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
 
-function isVerificationChallenge(value: unknown): value is { email: string; emailVerified: false; otpToken?: string } {
+function readCooldownUntil(expiresInMinutes: unknown) {
+  return typeof expiresInMinutes === "number" && Number.isFinite(expiresInMinutes) && expiresInMinutes > 0
+    ? Date.now() + expiresInMinutes * 60 * 1000
+    : undefined;
+}
+
+function isVerificationChallenge(value: unknown): value is {
+  email: string;
+  emailVerified: false;
+  expiresInMinutes?: number;
+  otpToken?: string;
+} {
   return isRecord(value) && value.emailVerified === false && Boolean(readString(value.email));
 }
 
 function LoginRouteClientInner() {
   const router = useRouter();
-  const [state, setState] = useState<AppState>(() => ({ ...loadAppState(), auth: "login" }));
+  const [state, setState] = useState<AppState>(() => resetAuthFlowState(loadAppState(), "login"));
   const [stage, setStage] = useState<LoginStage>("login");
   const [verificationEmail, setVerificationEmail] = useState(state.signupEmail);
   const [verificationNotice, setVerificationNotice] = useState<string>();
   const [verificationToken, setVerificationToken] = useState<string>();
+  const [resendAvailableAt, setResendAvailableAt] = useState<number>();
 
   useEffect(() => {
     saveAppState(state);
@@ -46,7 +58,12 @@ function LoginRouteClientInner() {
     return data;
   }
 
-  function startEmailVerification(email: string, otpToken: string | undefined, message?: string) {
+  function startEmailVerification(
+    email: string,
+    otpToken: string | undefined,
+    message?: string,
+    expiresInMinutes?: number,
+  ) {
     const nextState: AppState = {
       ...state,
       auth: "login",
@@ -63,6 +80,7 @@ function LoginRouteClientInner() {
     setVerificationEmail(email);
     setVerificationNotice(message);
     setVerificationToken(otpToken);
+    setResendAvailableAt(readCooldownUntil(expiresInMinutes));
     setStage("verify");
   }
 
@@ -75,16 +93,7 @@ function LoginRouteClientInner() {
   }
 
   function goSignup() {
-    const nextState: AppState = {
-      ...state,
-      auth: "onboarding",
-      signupEmail: "",
-      signupVerified: false,
-      roleSelected: false,
-      onboardingComplete: false,
-      applicationStatus: "none",
-      onboardingStep: 1,
-    };
+    const nextState = resetAuthFlowState(state, "onboarding");
     setState(nextState);
     saveAppState(nextState);
     startRouteLoading();
@@ -108,7 +117,12 @@ function LoginRouteClientInner() {
     }
 
     if (isVerificationChallenge(loginResult.data)) {
-      startEmailVerification(loginResult.data.email, loginResult.data.otpToken, loginResult.message);
+      startEmailVerification(
+        loginResult.data.email,
+        loginResult.data.otpToken,
+        loginResult.message,
+        loginResult.data.expiresInMinutes,
+      );
       return { ok: true as const };
     }
 
@@ -157,6 +171,7 @@ function LoginRouteClientInner() {
     setStage("login");
     setVerificationNotice(undefined);
     setVerificationToken(undefined);
+    setResendAvailableAt(undefined);
   }
 
   async function finishVerification(code: string) {
@@ -224,6 +239,7 @@ function LoginRouteClientInner() {
     if (!result.data.emailVerified) {
       setVerificationToken(result.data.otpToken);
       setVerificationNotice(result.message);
+      setResendAvailableAt(readCooldownUntil(result.data.expiresInMinutes));
     }
 
     return { ok: true as const };
@@ -245,6 +261,7 @@ function LoginRouteClientInner() {
           onLogin={backToLogin}
           onResend={resendVerification}
           onVerified={finishVerification}
+          resendAvailableAt={resendAvailableAt}
         />
         <PublicThemeControls />
       </>

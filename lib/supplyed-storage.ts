@@ -1,5 +1,5 @@
 import { defaultState, defaultTweaks } from "@/data/supplyed";
-import type { AppRole, AppState, Toast, Tweaks } from "@/types/supplyed";
+import type { AppRole, AppState, AuthState, Toast, Tweaks } from "@/types/supplyed";
 
 const stateKey = "supplyed_state";
 const tweaksKey = "supplyed_tweaks";
@@ -29,6 +29,21 @@ export function saveAppState(state: AppState) {
 
   const { toasts, ...persistedState } = state;
   window.localStorage.setItem(stateKey, JSON.stringify(persistedState));
+}
+
+export function resetAuthFlowState(state: AppState, auth: Extract<AuthState, "landing" | "login" | "onboarding">): AppState {
+  return {
+    ...state,
+    applicationStatus: "none",
+    auth,
+    ctx: {},
+    onboardingComplete: false,
+    onboardingStep: 1,
+    page: "dashboard",
+    roleSelected: false,
+    signupEmail: "",
+    signupVerified: false,
+  };
 }
 
 export function loadTweaks(): Tweaks {

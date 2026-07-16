@@ -6,7 +6,7 @@ import { signIn } from "next-auth/react";
 
 import { resendSignupVerification, signupAction, verifySignupEmail } from "@/app/(auth)/signup/actions";
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
+import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppState } from "@/types/supplyed";
 
@@ -16,20 +16,19 @@ import { SignupVerifyPage } from "./SignupVerifyPage";
 
 type SignupStage = "account" | "verify";
 
-function resolveSignupStage(state: AppState): SignupStage {
-  if (state.signupEmail && !state.signupVerified && !state.onboardingComplete) return "verify";
-  return "account";
+function readCooldownUntil(expiresInMinutes: unknown) {
+  return typeof expiresInMinutes === "number" && Number.isFinite(expiresInMinutes) && expiresInMinutes > 0
+    ? Date.now() + expiresInMinutes * 60 * 1000
+    : undefined;
 }
 
 function SignupRouteClientInner() {
   const router = useRouter();
-  const [state, setState] = useState<AppState>(() => ({
-    ...loadAppState(),
-    auth: "onboarding",
-  }));
-  const [stage, setStage] = useState<SignupStage>(() => resolveSignupStage({ ...loadAppState(), auth: "onboarding" }));
+  const [state, setState] = useState<AppState>(() => resetAuthFlowState(loadAppState(), "onboarding"));
+  const [stage, setStage] = useState<SignupStage>("account");
   const [verificationNotice, setVerificationNotice] = useState<string>();
   const [verificationToken, setVerificationToken] = useState<string>();
+  const [resendAvailableAt, setResendAvailableAt] = useState<number>();
 
   useEffect(() => {
     saveAppState(state);
@@ -68,6 +67,7 @@ function SignupRouteClientInner() {
     saveAppState(nextState);
     setVerificationToken(result.data.otpToken);
     setVerificationNotice(passwordNotice);
+    setResendAvailableAt(readCooldownUntil(result.data.expiresInMinutes));
     setStage("verify");
     return { ok: true as const };
   }
@@ -87,6 +87,7 @@ function SignupRouteClientInner() {
     saveAppState(nextState);
     setVerificationToken(undefined);
     setVerificationNotice(undefined);
+    setResendAvailableAt(undefined);
     setStage("account");
   }
 
@@ -158,6 +159,7 @@ function SignupRouteClientInner() {
     if (!result.data.emailVerified) {
       setVerificationToken(result.data.otpToken);
       setVerificationNotice(result.message);
+      setResendAvailableAt(readCooldownUntil(result.data.expiresInMinutes));
     }
 
     return { ok: true as const };
@@ -172,7 +174,7 @@ function SignupRouteClientInner() {
   }
 
   function goLogin() {
-    const nextState: AppState = { ...state, auth: "login" };
+    const nextState = resetAuthFlowState(state, "login");
     setState(nextState);
     saveAppState(nextState);
     startRouteLoading();
@@ -210,6 +212,7 @@ function SignupRouteClientInner() {
           onLogin={goLogin}
           onResend={resendVerification}
           onVerified={finishVerification}
+          resendAvailableAt={resendAvailableAt}
         />
         <PublicThemeControls />
       </>

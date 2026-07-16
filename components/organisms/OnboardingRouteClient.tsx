@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
-import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
+import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppRole, AppState } from "@/types/supplyed";
 
@@ -63,13 +63,7 @@ function OnboardingRouteClientInner({ accountEmail }: { accountEmail?: string })
 
   async function logout() {
     await signOut({ redirect: false });
-    const nextState: AppState = {
-      ...state,
-      auth: "login",
-      signupVerified: false,
-      page: "dashboard",
-      ctx: {},
-    };
+    const nextState = resetAuthFlowState(state, "login");
     setState(nextState);
     saveAppState(nextState);
     startRouteLoading();

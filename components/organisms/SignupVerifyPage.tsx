@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Btn, Field, Icon, Logo } from "../atoms";
 
@@ -14,6 +14,7 @@ export function SignupVerifyPage({
   onLogin,
   onResend,
   onVerified,
+  resendAvailableAt,
 }: {
   email: string;
   notice?: string;
@@ -22,12 +23,39 @@ export function SignupVerifyPage({
   onLogin: () => void;
   onResend: () => Promise<VerifyResult>;
   onVerified: (code: string) => Promise<VerifyResult>;
+  resendAvailableAt?: number;
 }) {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [errors, setErrors] = useState<VerifyErrors>({});
   const [pending, setPending] = useState<VerifyPending>(null);
+  const [resendRemainingSeconds, setResendRemainingSeconds] = useState(0);
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
   const codeValue = code.join("");
+  const resendLocked = resendRemainingSeconds > 0;
+
+  useEffect(() => {
+    function syncResendTimer() {
+      if (!resendAvailableAt) {
+        setResendRemainingSeconds(0);
+        return;
+      }
+
+      setResendRemainingSeconds(Math.max(0, Math.ceil((resendAvailableAt - Date.now()) / 1000)));
+    }
+
+    syncResendTimer();
+    if (!resendAvailableAt) return undefined;
+
+    const timer = window.setInterval(syncResendTimer, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [resendAvailableAt]);
+
+  function formatCountdown(seconds: number) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  }
 
   function validate() {
     if (codeValue.length !== 6) {
@@ -83,7 +111,7 @@ export function SignupVerifyPage({
   }
 
   async function resendCode() {
-    if (pending) return;
+    if (pending || resendLocked) return;
     setPending("resend");
 
     const result = await onResend();
@@ -166,7 +194,7 @@ export function SignupVerifyPage({
             </Field>
 
             <div className="mb-6 rounded-lg bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
-              Codes are validated by SupplyED before your workspace session is created. Request a new code if this one expires.
+              Codes are validated by SupplyED before your workspace session is created. Request a new code after the current one expires.
             </div>
 
             <Btn className="w-full" loading={pending === "verify"} loadingLabel="Verifying email" size="lg" type="submit" iconRight="arrow">
@@ -178,14 +206,21 @@ export function SignupVerifyPage({
               </Btn>
               <Btn
                 className="w-full"
+                disabled={Boolean(pending) || resendLocked}
                 loading={pending === "resend"}
                 loadingLabel="Sending"
                 variant="secondary"
                 onClick={resendCode}
               >
-                Resend code
+                {resendLocked ? `Resend in ${formatCountdown(resendRemainingSeconds)}` : "Resend code"}
               </Btn>
             </div>
+
+            {resendLocked ? (
+              <p className="mt-3 text-center text-xs text-muted" aria-live="polite">
+                You can request a new code when this one expires.
+              </p>
+            ) : null}
 
             <div className="mt-5 flex items-center gap-2 rounded-lg bg-chalk px-3 py-2 text-xs text-muted">
               <Icon name="shield" size={14} className="text-brand" />

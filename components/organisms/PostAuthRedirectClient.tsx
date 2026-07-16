@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
-import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
+import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 import type { AppRole, ApplicationStatus, AppState } from "@/types/supplyed";
 
 import { AuthFlowLoader } from "../molecules";
@@ -47,6 +47,7 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
 
     if (!sessionUser.emailVerified) {
       void signOut({ redirect: false }).finally(() => {
+        saveAppState(resetAuthFlowState(loadAppState(), "login"));
         router.replace("/login");
       });
       return;

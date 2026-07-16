@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
+import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 
 import { Avatar, Icon } from "../atoms";
 
@@ -104,13 +104,7 @@ export function PublicAccountMenu({ email, name, role }: PublicAccountMenuProps)
     setOpen(false);
     await signOut({ redirect: false });
 
-    const nextState = {
-      ...loadAppState(),
-      auth: "login" as const,
-      signupVerified: false,
-      page: "dashboard" as const,
-      ctx: {},
-    };
+    const nextState = resetAuthFlowState(loadAppState(), "login");
 
     saveAppState(nextState);
     startRouteLoading();

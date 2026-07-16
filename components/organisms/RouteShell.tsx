@@ -7,7 +7,7 @@ import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
-import { loadAppState, loadTweaks, saveAppState, saveTweaks } from "@/lib/supplyed-storage";
+import { loadAppState, loadTweaks, resetAuthFlowState, saveAppState, saveTweaks } from "@/lib/supplyed-storage";
 import { applyBrandTheme } from "@/lib/theme";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppPage, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/types/supplyed";
@@ -86,7 +86,7 @@ function RouteShell({ page }: { page: AppPage }) {
 
   async function logout() {
     await signOut({ redirect: false });
-    const nextState: AppState = { ...state, auth: "login", page: "dashboard", ctx: {} };
+    const nextState = resetAuthFlowState(state, "login");
     setState(nextState);
     saveAppState(nextState);
     startRouteLoading();
