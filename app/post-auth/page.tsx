@@ -17,6 +17,8 @@ export default async function PostAuthPage() {
     <PostAuthRedirectClient
       sessionUser={{
         applicationStatus: session.user.applicationStatus,
+        authErrorMessage: session.user.authErrorMessage,
+        authErrorProvider: session.user.authErrorProvider,
         email: session.user.email ?? "",
         emailVerified: session.user.isEmailVerified,
         role: session.user.role,

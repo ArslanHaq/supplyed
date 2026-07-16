@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 import { loginAction, resendLoginVerification, verifyLoginEmail } from "@/app/(auth)/login/actions";
+import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
+import { useAuthToasts } from "@/lib/use-auth-toasts";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppState } from "@/types/supplyed";
 
-import { AuthFlowLoader, PublicThemeControls } from "../molecules";
+import { AuthFlowLoader, PublicThemeControls, ToastStack } from "../molecules";
 import { LoginPage } from "./LoginPage";
 import { SignupVerifyPage } from "./SignupVerifyPage";
 
@@ -39,7 +41,7 @@ function isVerificationChallenge(value: unknown): value is {
   return isRecord(value) && value.emailVerified === false && Boolean(readString(value.email));
 }
 
-function LoginRouteClientInner() {
+function LoginRouteClientInner({ initialError }: { initialError?: string }) {
   const router = useRouter();
   const [state, setState] = useState<AppState>(() => resetAuthFlowState(loadAppState(), "login"));
   const [stage, setStage] = useState<LoginStage>("login");
@@ -47,6 +49,7 @@ function LoginRouteClientInner() {
   const [verificationNotice, setVerificationNotice] = useState<string>();
   const [verificationToken, setVerificationToken] = useState<string>();
   const [resendAvailableAt, setResendAvailableAt] = useState<number>();
+  const { authToasts, showAuthError } = useAuthToasts(initialError);
 
   useEffect(() => {
     saveAppState(state);
@@ -106,9 +109,18 @@ function LoginRouteClientInner() {
   }
 
   async function finishLogin(email: string, password: string) {
-    const loginResult = await loginAction(null, formData({ email, password }));
+    let loginResult: Awaited<ReturnType<typeof loginAction>>;
+
+    try {
+      loginResult = await loginAction(null, formData({ email, password }));
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "We could not sign you in with those details.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
 
     if (!loginResult.ok) {
+      showAuthError(loginResult.message);
       return {
         fieldErrors: loginResult.fieldErrors,
         message: loginResult.message,
@@ -128,22 +140,34 @@ function LoginRouteClientInner() {
 
     const ticket = isRecord(loginResult.data) ? readString(loginResult.data.ticket) : undefined;
     if (!ticket) {
+      const message = "We could not create your session. Try signing in again.";
+      showAuthError(message);
       return {
-        message: "We could not create your session. Try signing in again.",
+        message,
         ok: false as const,
       };
     }
 
-    const result = await signIn("credentials", {
-      flow: "verified-email-session",
-      redirect: false,
-      redirectTo: "/post-auth",
-      ticket,
-    });
+    let result: Awaited<ReturnType<typeof signIn>>;
+
+    try {
+      result = await signIn("credentials", {
+        flow: "verified-email-session",
+        redirect: false,
+        redirectTo: "/post-auth",
+        ticket,
+      });
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "We could not create your session. Try signing in again.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
 
     if (!result?.ok) {
+      const message = result?.error || "We could not sign you in with those details.";
+      showAuthError(message);
       return {
-        message: "We could not sign you in with those details.",
+        message,
         ok: false as const,
       };
     }
@@ -175,12 +199,21 @@ function LoginRouteClientInner() {
   }
 
   async function finishVerification(code: string) {
-    const verificationResult = await verifyLoginEmail(
-      null,
-      formData({ code, email: verificationEmail, otpToken: verificationToken ?? "" }),
-    );
+    let verificationResult: Awaited<ReturnType<typeof verifyLoginEmail>>;
+
+    try {
+      verificationResult = await verifyLoginEmail(
+        null,
+        formData({ code, email: verificationEmail, otpToken: verificationToken ?? "" }),
+      );
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "We could not verify that code.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
 
     if (!verificationResult.ok) {
+      showAuthError(verificationResult.message);
       return {
         message: verificationResult.message,
         ok: false as const,
@@ -189,22 +222,34 @@ function LoginRouteClientInner() {
 
     const ticket = isRecord(verificationResult.data) ? readString(verificationResult.data.ticket) : undefined;
     if (!ticket) {
+      const message = "Email verified, but we could not create your session. Log in again to continue.";
+      showAuthError(message);
       return {
-        message: "Email verified, but we could not create your session. Log in again to continue.",
+        message,
         ok: false as const,
       };
     }
 
-    const signInResult = await signIn("credentials", {
-      flow: "verified-email-session",
-      redirect: false,
-      redirectTo: "/post-auth",
-      ticket,
-    });
+    let signInResult: Awaited<ReturnType<typeof signIn>>;
+
+    try {
+      signInResult = await signIn("credentials", {
+        flow: "verified-email-session",
+        redirect: false,
+        redirectTo: "/post-auth",
+        ticket,
+      });
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "Email verified, but we could not create your session.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
 
     if (!signInResult?.ok) {
+      const message = signInResult?.error || "Email verified, but we could not create your session. Log in again to continue.";
+      showAuthError(message);
       return {
-        message: "Email verified, but we could not create your session. Log in again to continue.",
+        message,
         ok: false as const,
       };
     }
@@ -227,9 +272,18 @@ function LoginRouteClientInner() {
   }
 
   async function resendVerification() {
-    const result = await resendLoginVerification(null, formData({ email: verificationEmail }));
+    let result: Awaited<ReturnType<typeof resendLoginVerification>>;
+
+    try {
+      result = await resendLoginVerification(null, formData({ email: verificationEmail }));
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "We could not resend the verification code.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
 
     if (!result.ok) {
+      showAuthError(result.message);
       return {
         message: result.message,
         ok: false as const,
@@ -247,7 +301,9 @@ function LoginRouteClientInner() {
 
   function startSocialAuth(provider: "google" | "microsoft-entra-id") {
     startRouteLoading();
-    void signIn(provider, { redirectTo: "/post-auth" });
+    void signIn(provider, { redirectTo: "/post-auth?authSource=login" }).catch((error) => {
+      showAuthError(readUnknownAuthErrorMessage(error, "Social sign-in could not start."));
+    });
   }
 
   if (stage === "verify") {
@@ -264,6 +320,7 @@ function LoginRouteClientInner() {
           resendAvailableAt={resendAvailableAt}
         />
         <PublicThemeControls />
+        <ToastStack toasts={authToasts} />
       </>
     );
   }
@@ -279,11 +336,12 @@ function LoginRouteClientInner() {
         onSwitchSignup={goSignup}
       />
       <PublicThemeControls />
+      <ToastStack toasts={authToasts} />
     </>
   );
 }
 
-export function LoginRouteClient() {
+export function LoginRouteClient({ initialError }: { initialError?: string }) {
   const isClient = useMounted();
 
   if (!isClient) {
@@ -295,5 +353,5 @@ export function LoginRouteClient() {
     );
   }
 
-  return <LoginRouteClientInner />;
+  return <LoginRouteClientInner initialError={initialError} />;
 }

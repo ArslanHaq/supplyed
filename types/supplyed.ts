@@ -85,6 +85,7 @@ export type ToastInput = {
   title: string;
   msg: string;
   icon?: string;
+  tone?: "danger" | "success";
 };
 
 export type Toast = ToastInput & {

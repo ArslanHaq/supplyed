@@ -6,6 +6,8 @@ declare module "next-auth" {
   interface Session {
     user: {
       applicationStatus: ApplicationStatus;
+      authErrorMessage?: string;
+      authErrorProvider?: string;
       id: string;
       isEmailVerified: boolean;
       role: AppRole | null;
@@ -17,7 +19,9 @@ declare module "next-auth" {
     accessTokenExpiresAt?: number;
     applicationStatus?: ApplicationStatus;
     appEmailVerified?: boolean;
-    backendAuthError?: "RefreshAccessTokenError";
+    backendAuthError?: "OAuthBackendExchangeError" | "RefreshAccessTokenError";
+    backendAuthErrorMessage?: string;
+    backendAuthErrorProvider?: string;
     refreshToken?: string;
     role?: AppRole | null;
   }
@@ -29,6 +33,9 @@ declare module "next-auth/jwt" {
     accessTokenExpiresAt?: number;
     applicationStatus?: ApplicationStatus;
     appEmailVerified?: boolean;
+    backendAuthError?: "OAuthBackendExchangeError" | "RefreshAccessTokenError";
+    backendAuthErrorMessage?: string;
+    backendAuthErrorProvider?: string;
     refreshToken?: string;
     role?: AppRole | null;
     userId?: string;

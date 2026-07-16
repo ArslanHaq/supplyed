@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
@@ -13,6 +13,8 @@ import { AuthFlowLoader } from "../molecules";
 
 type PostAuthSessionUser = {
   applicationStatus: ApplicationStatus;
+  authErrorMessage?: string;
+  authErrorProvider?: string;
   email: string;
   emailVerified: boolean;
   role: AppRole | null;
@@ -39,11 +41,23 @@ function resolveNextState(savedState: AppState, sessionUser: PostAuthSessionUser
 
 export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthSessionUser }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    const authSource = searchParams.get("authSource") === "signup" ? "signup" : "login";
+
     const nextState = resolveNextState(loadAppState(), sessionUser);
     saveAppState(nextState);
     startRouteLoading();
+
+    if (sessionUser.authErrorMessage) {
+      void signOut({ redirect: false }).finally(() => {
+        const params = new URLSearchParams({ auth_error: sessionUser.authErrorMessage ?? "Social sign-in failed." });
+        saveAppState(resetAuthFlowState(loadAppState(), authSource === "signup" ? "onboarding" : "login"));
+        router.replace(`/${authSource}?${params.toString()}`);
+      });
+      return;
+    }
 
     if (!sessionUser.emailVerified) {
       void signOut({ redirect: false }).finally(() => {
@@ -59,7 +73,7 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
     }
 
     router.replace(buildAppHref(nextState.role === "admin" ? "admin" : "dashboard"));
-  }, [router, sessionUser]);
+  }, [router, searchParams, sessionUser]);
 
   return (
     <AuthFlowLoader

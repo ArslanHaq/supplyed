@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
 import { exchangeOAuthAccount, loginWithEmail, normalizeRole, normalizeStatus, refreshBackendAuth, verifyEmail } from "@/features/auth/backend";
+import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { validateEmail } from "@/features/auth/schemas";
 import { readVerifiedEmailSessionTicket } from "@/features/auth/session-ticket";
 import type { BackendAuthResponse } from "@/features/auth/types";
@@ -47,6 +48,20 @@ function assignBackendSession(token: Record<string, unknown>, response: BackendA
   if (response.refreshToken) token.refreshToken = response.refreshToken;
   if (response.accessTokenExpiresAt) token.accessTokenExpiresAt = response.accessTokenExpiresAt;
   delete token.backendAuthError;
+  delete token.backendAuthErrorMessage;
+  delete token.backendAuthErrorProvider;
+}
+
+function assignBackendAuthError(token: Record<string, unknown>, provider: string, error: unknown) {
+  token.backendAuthError = "OAuthBackendExchangeError";
+  token.backendAuthErrorMessage = readUnknownAuthErrorMessage(error, "Social sign-in failed. Try again.");
+  token.backendAuthErrorProvider = provider;
+  token.appEmailVerified = false;
+  delete token.accessToken;
+  delete token.accessTokenExpiresAt;
+  delete token.refreshToken;
+  delete token.role;
+  delete token.applicationStatus;
 }
 
 const googleClientId = readEnv("AUTH_GOOGLE_ID");
@@ -102,19 +117,28 @@ export const {
 
       if (account && account.provider !== "credentials") {
         const email = String(user?.email ?? token.email ?? "").trim().toLowerCase();
-        if (!validateEmail(email)) return token;
+        const provider = account.provider === "microsoft-entra-id" ? "microsoft-entra-id" : "google";
 
-        const response = await exchangeOAuthAccount({
-          email,
-          image: user?.image ?? token.picture ?? null,
-          name: user?.name ?? token.name ?? null,
-          provider: account.provider === "microsoft-entra-id" ? "microsoft-entra-id" : "google",
-          providerAccessToken: account.access_token,
-          providerAccountId: account.providerAccountId,
-          providerIdToken: account.id_token,
-        });
+        if (!validateEmail(email)) {
+          assignBackendAuthError(token, provider, "The social provider did not return a valid email address.");
+          return token;
+        }
 
-        assignBackendSession(token, response);
+        try {
+          const response = await exchangeOAuthAccount({
+            email,
+            image: user?.image ?? token.picture ?? null,
+            name: user?.name ?? token.name ?? null,
+            provider,
+            providerAccessToken: account.access_token,
+            providerAccountId: account.providerAccountId,
+            providerIdToken: account.id_token,
+          });
+
+          assignBackendSession(token, response);
+        } catch (error) {
+          assignBackendAuthError(token, provider, error);
+        }
       }
 
       const expiresAt = typeof token.accessTokenExpiresAt === "number" ? token.accessTokenExpiresAt : null;
@@ -147,10 +171,15 @@ export const {
       session.user.role = normalizeRole(token.role);
       session.user.applicationStatus = normalizeStatus(token.applicationStatus);
       session.user.isEmailVerified = Boolean(token.appEmailVerified);
+      session.user.authErrorMessage =
+        typeof token.backendAuthErrorMessage === "string" ? token.backendAuthErrorMessage : undefined;
+      session.user.authErrorProvider =
+        typeof token.backendAuthErrorProvider === "string" ? token.backendAuthErrorProvider : undefined;
       return session;
     },
   },
   pages: {
+    error: "/login",
     signIn: "/login",
   },
   providers: [

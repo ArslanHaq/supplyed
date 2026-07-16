@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 import { resendSignupVerification, signupAction, verifySignupEmail } from "@/app/(auth)/signup/actions";
+import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
+import { useAuthToasts } from "@/lib/use-auth-toasts";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppState } from "@/types/supplyed";
 
-import { AuthFlowLoader, PublicThemeControls } from "../molecules";
+import { AuthFlowLoader, PublicThemeControls, ToastStack } from "../molecules";
 import { SignupAccessPage } from "./SignupAccessPage";
 import { SignupVerifyPage } from "./SignupVerifyPage";
 
@@ -22,13 +24,14 @@ function readCooldownUntil(expiresInMinutes: unknown) {
     : undefined;
 }
 
-function SignupRouteClientInner() {
+function SignupRouteClientInner({ initialError }: { initialError?: string }) {
   const router = useRouter();
   const [state, setState] = useState<AppState>(() => resetAuthFlowState(loadAppState(), "onboarding"));
   const [stage, setStage] = useState<SignupStage>("account");
   const [verificationNotice, setVerificationNotice] = useState<string>();
   const [verificationToken, setVerificationToken] = useState<string>();
   const [resendAvailableAt, setResendAvailableAt] = useState<number>();
+  const { authToasts, showAuthError } = useAuthToasts(initialError);
 
   useEffect(() => {
     saveAppState(state);
@@ -41,9 +44,18 @@ function SignupRouteClientInner() {
   }
 
   async function startVerification(email: string, password: string) {
-    const result = await signupAction(null, formData({ email, password }));
+    let result: Awaited<ReturnType<typeof signupAction>>;
+
+    try {
+      result = await signupAction(null, formData({ email, password }));
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "We could not create this account.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
 
     if (!result.ok) {
+      showAuthError(result.message);
       return {
         fieldErrors: result.fieldErrors,
         message: result.message,
@@ -92,12 +104,21 @@ function SignupRouteClientInner() {
   }
 
   async function finishVerification(code: string) {
-    const verificationResult = await verifySignupEmail(
-      null,
-      formData({ code, email: state.signupEmail, otpToken: verificationToken ?? "" }),
-    );
+    let verificationResult: Awaited<ReturnType<typeof verifySignupEmail>>;
+
+    try {
+      verificationResult = await verifySignupEmail(
+        null,
+        formData({ code, email: state.signupEmail, otpToken: verificationToken ?? "" }),
+      );
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "We could not verify that code.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
 
     if (!verificationResult.ok) {
+      showAuthError(verificationResult.message);
       return {
         message: verificationResult.message,
         ok: false as const,
@@ -110,22 +131,34 @@ function SignupRouteClientInner() {
         : "";
 
     if (!ticket) {
+      const message = "Email verified, but we could not create your session. Log in again to continue.";
+      showAuthError(message);
       return {
-        message: "Email verified, but we could not create your session. Log in again to continue.",
+        message,
         ok: false as const,
       };
     }
 
-    const signInResult = await signIn("credentials", {
-      flow: "verified-email-session",
-      redirect: false,
-      redirectTo: "/post-auth",
-      ticket,
-    });
+    let signInResult: Awaited<ReturnType<typeof signIn>>;
+
+    try {
+      signInResult = await signIn("credentials", {
+        flow: "verified-email-session",
+        redirect: false,
+        redirectTo: "/post-auth",
+        ticket,
+      });
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "Email verified, but we could not create your session.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
 
     if (!signInResult?.ok) {
+      const message = signInResult?.error || "Email verified, but we could not create your session. Log in again to continue.";
+      showAuthError(message);
       return {
-        message: "Email verified, but we could not create your session. Log in again to continue.",
+        message,
         ok: false as const,
       };
     }
@@ -147,9 +180,18 @@ function SignupRouteClientInner() {
   }
 
   async function resendVerification() {
-    const result = await resendSignupVerification(null, formData({ email: state.signupEmail }));
+    let result: Awaited<ReturnType<typeof resendSignupVerification>>;
+
+    try {
+      result = await resendSignupVerification(null, formData({ email: state.signupEmail }));
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "We could not resend the verification code.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
 
     if (!result.ok) {
+      showAuthError(result.message);
       return {
         message: result.message,
         ok: false as const,
@@ -183,7 +225,9 @@ function SignupRouteClientInner() {
 
   function startSocialAuth(provider: "google" | "microsoft-entra-id") {
     startRouteLoading();
-    void signIn(provider, { redirectTo: "/post-auth" });
+    void signIn(provider, { redirectTo: "/post-auth?authSource=signup" }).catch((error) => {
+      showAuthError(readUnknownAuthErrorMessage(error, "Social sign-up could not start."));
+    });
   }
 
   if (stage === "account") {
@@ -197,6 +241,7 @@ function SignupRouteClientInner() {
           onMicrosoftAuth={() => startSocialAuth("microsoft-entra-id")}
         />
         <PublicThemeControls />
+        <ToastStack toasts={authToasts} />
       </>
     );
   }
@@ -215,6 +260,7 @@ function SignupRouteClientInner() {
           resendAvailableAt={resendAvailableAt}
         />
         <PublicThemeControls />
+        <ToastStack toasts={authToasts} />
       </>
     );
   }
@@ -222,7 +268,7 @@ function SignupRouteClientInner() {
   return null;
 }
 
-export function SignupRouteClient() {
+export function SignupRouteClient({ initialError }: { initialError?: string }) {
   const isClient = useMounted();
 
   if (!isClient) {
@@ -234,5 +280,5 @@ export function SignupRouteClient() {
     );
   }
 
-  return <SignupRouteClientInner />;
+  return <SignupRouteClientInner initialError={initialError} />;
 }
