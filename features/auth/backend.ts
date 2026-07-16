@@ -1,12 +1,15 @@
 import "server-only";
 
 import { api } from "@/lib/server/api-client";
+import { readUnverifiedJwtExpiresAt } from "@/lib/server/jwt";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 import type {
   AuthUser,
   BackendAuthResponse,
+  EmailVerificationChallenge,
   EmailVerificationInput,
+  EmailVerificationResendResponse,
   ForgotPasswordInput,
   LoginInput,
   OAuthBackendInput,
@@ -25,7 +28,7 @@ function backendOAuthExchangeEnabled() {
 const backendAuthEndpoints = {
   forgotPassword: "/auth/password/forgot",
   login: "/auth/login",
-  oauth: "/auth/oauth",
+  oauthGoogle: "/auth/oauth/google",
   refresh: "/auth/refresh",
   register: "/auth/register",
   resendEmailVerification: "/auth/email/otp/resend",
@@ -72,6 +75,7 @@ function safeConsolePayload(payload: Record<string, unknown>) {
     providerAccessToken: payload.providerAccessToken ? "[redacted]" : undefined,
     providerIdToken: payload.providerIdToken ? "[redacted]" : undefined,
     refreshToken: payload.refreshToken ? "[redacted]" : undefined,
+    otpToken: payload.otpToken ? "[redacted]" : undefined,
   };
 }
 
@@ -100,7 +104,7 @@ function readTokenPair(record: Record<string, unknown>) {
   };
 }
 
-function readAccessTokenExpiresAt(record: Record<string, unknown>) {
+function readAccessTokenExpiresAt(record: Record<string, unknown>, accessToken?: string) {
   const tokens = isRecord(record.tokens) ? record.tokens : {};
   const explicitExpiresAt =
     readNumber(record.accessTokenExpiresAt) ??
@@ -119,11 +123,19 @@ function readAccessTokenExpiresAt(record: Record<string, unknown>) {
   const expiresInSeconds =
     readNumber(record.accessTokenExpiresIn) ?? readNumber(record.expiresIn) ?? readNumber(tokens.accessTokenExpiresIn);
 
-  return expiresInSeconds ? Date.now() + expiresInSeconds * 1000 : undefined;
+  if (expiresInSeconds) return Date.now() + expiresInSeconds * 1000;
+
+  return readUnverifiedJwtExpiresAt(accessToken);
 }
 
 function readUserPayload(payload: unknown) {
   if (!isRecord(payload)) throw new Error("Backend auth response was not an object.");
+  if (isRecord(payload.user)) return payload.user;
+  return payload;
+}
+
+function readOptionalUserPayload(payload: unknown) {
+  if (!isRecord(payload)) return {};
   if (isRecord(payload.user)) return payload.user;
   return payload;
 }
@@ -181,29 +193,80 @@ function normalizeAuthResponse(payload: unknown): BackendAuthResponse {
   const response = isRecord(payload) ? payload : {};
   const user = normalizeAuthUser(readUserPayload(response));
   const { accessToken, refreshToken } = readTokenPair(response);
+  const expiresInMinutes =
+    readNumber(response.expiresInMinutes) ??
+    readNumber(response.emailVerificationExpiresInMinutes) ??
+    readNumber(response.otpExpiresInMinutes);
 
   return {
     accessToken,
-    accessTokenExpiresAt: readAccessTokenExpiresAt(response),
+    accessTokenExpiresAt: readAccessTokenExpiresAt(response, accessToken),
+    expiresInMinutes,
+    otpToken: readString(response.otpToken),
     refreshToken,
     user,
   };
 }
 
-export async function createEmailAccount(input: SignupInput): Promise<BackendAuthResponse> {
+function normalizeEmailVerificationChallenge(payload: unknown, fallbackEmail: string): EmailVerificationChallenge {
+  const response = isRecord(payload) ? payload : {};
+  const user = readOptionalUserPayload(response);
+  const email = readString(response.email) ?? readString(user.email) ?? fallbackEmail;
+  const backendCode = readString(response.code);
+  const passwordUpdated = readBoolean(response.passwordUpdated);
+  const expiresInMinutes =
+    readNumber(response.expiresInMinutes) ??
+    readNumber(response.emailVerificationExpiresInMinutes) ??
+    readNumber(response.otpExpiresInMinutes);
+
+  return {
+    code: backendCode === "EMAIL_VERIFICATION_PENDING" ? "EMAIL_VERIFICATION_PENDING" : "EMAIL_VERIFICATION_REQUIRED",
+    email,
+    emailVerified: false,
+    expiresInMinutes,
+    message: readString(response.message),
+    otpToken: readString(response.otpToken),
+    passwordUpdated,
+  };
+}
+
+function normalizeEmailVerificationResendResponse(
+  payload: unknown,
+  fallbackEmail: string,
+): EmailVerificationResendResponse {
+  const response = isRecord(payload) ? payload : {};
+  const user = readOptionalUserPayload(response);
+
+  return {
+    code: readString(response.code),
+    email: readString(response.email) ?? readString(user.email) ?? fallbackEmail,
+    emailVerified: readBoolean(response.emailVerified ?? user.emailVerified) ?? false,
+    expiresInMinutes:
+      readNumber(response.expiresInMinutes) ??
+      readNumber(response.emailVerificationExpiresInMinutes) ??
+      readNumber(response.otpExpiresInMinutes),
+    message: readString(response.message),
+    otpToken: readString(response.otpToken),
+  };
+}
+
+export async function createEmailAccount(input: SignupInput): Promise<EmailVerificationChallenge> {
   logBackendPayload(`POST ${backendAuthEndpoints.register}`, {
     email: input.email,
     password: input.password,
   });
 
   if (backendEnabled()) {
-    return normalizeAuthResponse(await api.post<unknown>(backendAuthEndpoints.register, input, { auth: false }));
+    return normalizeEmailVerificationChallenge(
+      await api.post<unknown>(backendAuthEndpoints.register, input, { auth: false }),
+      input.email,
+    );
   }
 
   return {
-    user: mockUser(input.email, {
-      emailVerified: false,
-    }),
+    code: "EMAIL_VERIFICATION_REQUIRED",
+    email: input.email,
+    emailVerified: false,
   };
 }
 
@@ -224,14 +287,25 @@ export async function loginWithEmail(input: LoginInput): Promise<BackendAuthResp
 
 export async function verifyEmail(input: EmailVerificationInput): Promise<BackendAuthResponse> {
   const payload = {
-    email: input.email,
     otp: input.code,
   };
 
-  logBackendPayload(`POST ${backendAuthEndpoints.verifyEmail}`, payload);
+  logBackendPayload(`POST ${backendAuthEndpoints.verifyEmail}`, {
+    ...payload,
+    otpToken: input.otpToken,
+  });
 
   if (backendEnabled()) {
-    return normalizeAuthResponse(await api.post<unknown>(backendAuthEndpoints.verifyEmail, payload, { auth: false }));
+    if (!input.otpToken) {
+      throw new Error("Request a new verification code before verifying this email.");
+    }
+
+    return normalizeAuthResponse(
+      await api.post<unknown>(backendAuthEndpoints.verifyEmail, payload, {
+        auth: false,
+        headers: { Authorization: `Bearer ${input.otpToken}` },
+      }),
+    );
   }
 
   return {
@@ -239,14 +313,22 @@ export async function verifyEmail(input: EmailVerificationInput): Promise<Backen
   };
 }
 
-export async function resendEmailVerification(input: ResendEmailVerificationInput) {
+export async function resendEmailVerification(input: ResendEmailVerificationInput): Promise<EmailVerificationResendResponse> {
   logBackendPayload(`POST ${backendAuthEndpoints.resendEmailVerification}`, {
     email: input.email,
   });
 
   if (backendEnabled()) {
-    await api.post<unknown>(backendAuthEndpoints.resendEmailVerification, input, { auth: false });
+    return normalizeEmailVerificationResendResponse(
+      await api.post<unknown>(backendAuthEndpoints.resendEmailVerification, input, { auth: false }),
+      input.email,
+    );
   }
+
+  return {
+    email: input.email,
+    emailVerified: false,
+  };
 }
 
 export async function requestPasswordReset(input: ForgotPasswordInput) {
@@ -260,7 +342,7 @@ export async function requestPasswordReset(input: ForgotPasswordInput) {
 }
 
 export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<BackendAuthResponse> {
-  logBackendPayload(`POST ${backendAuthEndpoints.oauth}`, {
+  logBackendPayload(`POST ${backendAuthEndpoints.oauthGoogle}`, {
     email: input.email,
     image: input.image,
     name: input.name,
@@ -270,8 +352,22 @@ export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<Ba
     providerIdToken: input.providerIdToken,
   });
 
-  if (backendEnabled() && backendOAuthExchangeEnabled()) {
-    return normalizeAuthResponse(await api.post<unknown>(backendAuthEndpoints.oauth, input, { auth: false }));
+  if (backendEnabled()) {
+    if (!backendOAuthExchangeEnabled()) {
+      throw new Error("Backend OAuth exchange is disabled. Enable AUTH_BACKEND_OAUTH_ENABLED to use social sign-in.");
+    }
+
+    if (input.provider !== "google") {
+      throw new Error("Microsoft sign-in is not connected to the SupplyED backend yet.");
+    }
+
+    if (!input.providerIdToken) {
+      throw new Error("Google did not return an ID token for backend sign-in.");
+    }
+
+    return normalizeAuthResponse(
+      await api.post<unknown>(backendAuthEndpoints.oauthGoogle, { credential: input.providerIdToken }, { auth: false }),
+    );
   }
 
   return {

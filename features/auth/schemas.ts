@@ -40,6 +40,7 @@ export function parseEmailVerificationForm(formData: FormData): EmailVerificatio
   return {
     code: String(formData.get("code") ?? "").replace(/\D/g, "").slice(0, 6),
     email: normalizeEmail(formData.get("email")),
+    otpToken: String(formData.get("otpToken") ?? "").trim() || undefined,
   };
 }
 

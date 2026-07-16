@@ -5,6 +5,7 @@ import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
 import { exchangeOAuthAccount, loginWithEmail, normalizeRole, normalizeStatus, refreshBackendAuth, verifyEmail } from "@/features/auth/backend";
 import { validateEmail } from "@/features/auth/schemas";
+import { readVerifiedEmailSessionTicket } from "@/features/auth/session-ticket";
 import type { BackendAuthResponse } from "@/features/auth/types";
 
 export const authSecret =
@@ -45,6 +46,7 @@ function assignBackendSession(token: Record<string, unknown>, response: BackendA
   if (response.accessToken) token.accessToken = response.accessToken;
   if (response.refreshToken) token.refreshToken = response.refreshToken;
   if (response.accessTokenExpiresAt) token.accessTokenExpiresAt = response.accessTokenExpiresAt;
+  delete token.backendAuthError;
 }
 
 const googleClientId = readEnv("AUTH_GOOGLE_ID");
@@ -119,8 +121,15 @@ export const {
       const refreshToken = typeof token.refreshToken === "string" ? token.refreshToken : null;
 
       if (expiresAt && refreshToken && Date.now() > expiresAt - 60_000) {
-        const refreshed = await refreshBackendAuth(refreshToken);
-        if (refreshed) assignBackendSession(token, refreshed);
+        try {
+          const refreshed = await refreshBackendAuth(refreshToken);
+          if (refreshed) assignBackendSession(token, refreshed);
+        } catch {
+          token.backendAuthError = "RefreshAccessTokenError";
+          delete token.accessToken;
+          delete token.accessTokenExpiresAt;
+          delete token.refreshToken;
+        }
       }
 
       return token;
@@ -150,25 +159,34 @@ export const {
         email: { label: "Email", type: "email" },
         flow: { label: "Flow", type: "text" },
         code: { label: "Code", type: "text" },
+        otpToken: { label: "OTP token", type: "text" },
         password: { label: "Password", type: "password" },
+        ticket: { label: "Ticket", type: "text" },
       },
       async authorize(credentials) {
         const email = readCredential(credentials, "email").trim().toLowerCase();
         const flow = readCredential(credentials, "flow") || "password";
 
+        if (flow === "verified-email-session") {
+          const response = readVerifiedEmailSessionTicket(readCredential(credentials, "ticket"));
+          return response ? toAuthUser(response) : null;
+        }
+
         if (!validateEmail(email)) return null;
 
         if (flow === "verify-email") {
           const code = readCredential(credentials, "code").replace(/\D/g, "").slice(0, 6);
+          const otpToken = readCredential(credentials, "otpToken");
           if (code.length !== 6) return null;
-          return toAuthUser(await verifyEmail({ code, email }));
+          return toAuthUser(await verifyEmail({ code, email, otpToken }));
         }
 
         const password = readCredential(credentials, "password");
 
         if (password.length < 8) return null;
 
-        return toAuthUser(await loginWithEmail({ email, password }));
+        const response = await loginWithEmail({ email, password });
+        return response.user.emailVerified ? toAuthUser(response) : null;
       },
     }),
     ...socialProviders,

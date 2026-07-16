@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
-import { resendSignupVerification, signupAction } from "@/app/(auth)/signup/actions";
+import { resendSignupVerification, signupAction, verifySignupEmail } from "@/app/(auth)/signup/actions";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { loadAppState, saveAppState } from "@/lib/supplyed-storage";
 import { useMounted } from "@/lib/use-mounted";
@@ -28,6 +28,8 @@ function SignupRouteClientInner() {
     auth: "onboarding",
   }));
   const [stage, setStage] = useState<SignupStage>(() => resolveSignupStage({ ...loadAppState(), auth: "onboarding" }));
+  const [verificationNotice, setVerificationNotice] = useState<string>();
+  const [verificationToken, setVerificationToken] = useState<string>();
 
   useEffect(() => {
     saveAppState(state);
@@ -50,10 +52,12 @@ function SignupRouteClientInner() {
       };
     }
 
+    const signupEmail = result.data.email || email;
+    const passwordNotice = result.data.passwordUpdated === false ? result.message : undefined;
     const nextState: AppState = {
       ...state,
       auth: "onboarding",
-      signupEmail: email,
+      signupEmail,
       signupVerified: false,
       roleSelected: false,
       onboardingComplete: false,
@@ -62,6 +66,8 @@ function SignupRouteClientInner() {
     };
     setState(nextState);
     saveAppState(nextState);
+    setVerificationToken(result.data.otpToken);
+    setVerificationNotice(passwordNotice);
     setStage("verify");
     return { ok: true as const };
   }
@@ -79,21 +85,46 @@ function SignupRouteClientInner() {
     };
     setState(nextState);
     saveAppState(nextState);
+    setVerificationToken(undefined);
+    setVerificationNotice(undefined);
     setStage("account");
   }
 
   async function finishVerification(code: string) {
+    const verificationResult = await verifySignupEmail(
+      null,
+      formData({ code, email: state.signupEmail, otpToken: verificationToken ?? "" }),
+    );
+
+    if (!verificationResult.ok) {
+      return {
+        message: verificationResult.message,
+        ok: false as const,
+      };
+    }
+
+    const ticket =
+      verificationResult.data && typeof verificationResult.data === "object" && "ticket" in verificationResult.data
+        ? String(verificationResult.data.ticket ?? "")
+        : "";
+
+    if (!ticket) {
+      return {
+        message: "Email verified, but we could not create your session. Log in again to continue.",
+        ok: false as const,
+      };
+    }
+
     const signInResult = await signIn("credentials", {
-      code,
-      email: state.signupEmail,
-      flow: "verify-email",
+      flow: "verified-email-session",
       redirect: false,
       redirectTo: "/post-auth",
+      ticket,
     });
 
     if (!signInResult?.ok) {
       return {
-        message: "Your email was verified. Log in again to continue onboarding.",
+        message: "Email verified, but we could not create your session. Log in again to continue.",
         ok: false as const,
       };
     }
@@ -122,6 +153,11 @@ function SignupRouteClientInner() {
         message: result.message,
         ok: false as const,
       };
+    }
+
+    if (!result.data.emailVerified) {
+      setVerificationToken(result.data.otpToken);
+      setVerificationNotice(result.message);
     }
 
     return { ok: true as const };
@@ -168,6 +204,7 @@ function SignupRouteClientInner() {
       <>
         <SignupVerifyPage
           email={state.signupEmail}
+          notice={verificationNotice}
           onBack={backToAccount}
           onLanding={goLanding}
           onLogin={goLogin}

@@ -1,6 +1,8 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest } from "next/server";
 
+const appRoles = new Set(["institution", "teacher", "individual", "admin"]);
+
 function getAuthCookieSecret() {
   return (
     process.env.AUTH_SECRET ||
@@ -22,6 +24,10 @@ function redirectTo(request: NextRequest, pathname: string) {
   return NextResponse.redirect(url);
 }
 
+function readAppRole(role: unknown) {
+  return typeof role === "string" && appRoles.has(role) ? role : null;
+}
+
 export async function proxy(request: NextRequest) {
   const token = await getToken({
     req: request,
@@ -36,6 +42,19 @@ export async function proxy(request: NextRequest) {
   }
 
   if (token?.appEmailVerified !== true) {
+    return redirectTo(request, "/post-auth");
+  }
+
+  const role = readAppRole(token.role);
+  const applicationStatus = typeof token.applicationStatus === "string" ? token.applicationStatus : "none";
+  const setupComplete = role === "admin" || Boolean(role && applicationStatus !== "none");
+  const isOnboardingRoute = request.nextUrl.pathname.startsWith("/onboarding");
+
+  if (!setupComplete && !isOnboardingRoute) {
+    return redirectTo(request, "/onboarding");
+  }
+
+  if (setupComplete && isOnboardingRoute) {
     return redirectTo(request, "/post-auth");
   }
 

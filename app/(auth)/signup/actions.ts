@@ -5,7 +5,7 @@ import {
   signInWithMicrosoftAction,
   resendEmailVerificationAction,
   signupWithEmailAction,
-  verifyEmailAction,
+  verifyEmailSessionAction,
 } from "@/features/auth/actions";
 
 export async function signupAction(previousState: unknown, formData: FormData) {
@@ -21,7 +21,7 @@ export async function microsoftSignupAction() {
 }
 
 export async function verifySignupEmail(previousState: unknown, formData: FormData) {
-  return verifyEmailAction(previousState, formData);
+  return verifyEmailSessionAction(previousState, formData);
 }
 
 export async function resendSignupVerification(previousState: unknown, formData: FormData) {

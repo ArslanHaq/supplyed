@@ -71,8 +71,10 @@ export function RouteLoader() {
     }
 
     function handlePopState() {
-      startLoading();
-      window.setTimeout(() => finishLoading(), 0);
+      window.setTimeout(() => {
+        startLoading();
+        finishLoading();
+      }, 0);
     }
 
     const originalPushState = window.history.pushState;
@@ -82,8 +84,10 @@ export function RouteLoader() {
       const previousUrl = window.location.href;
       const result = originalPushState.apply(this, args);
       if (window.location.href !== previousUrl) {
-        if (!loadingRef.current) startLoading();
-        finishLoading();
+        window.setTimeout(() => {
+          if (!loadingRef.current) startLoading();
+          finishLoading();
+        }, 0);
       }
       return result;
     };
@@ -92,8 +96,10 @@ export function RouteLoader() {
       const previousUrl = window.location.href;
       const result = originalReplaceState.apply(this, args);
       if (window.location.href !== previousUrl) {
-        if (!loadingRef.current) startLoading();
-        finishLoading();
+        window.setTimeout(() => {
+          if (!loadingRef.current) startLoading();
+          finishLoading();
+        }, 0);
       }
       return result;
     };

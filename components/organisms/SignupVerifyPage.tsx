@@ -8,6 +8,7 @@ type VerifyResult = { ok: true } | { fieldErrors?: VerifyErrors; message: string
 
 export function SignupVerifyPage({
   email,
+  notice,
   onBack,
   onLanding,
   onLogin,
@@ -15,6 +16,7 @@ export function SignupVerifyPage({
   onVerified,
 }: {
   email: string;
+  notice?: string;
   onBack: () => void;
   onLanding: () => void;
   onLogin: () => void;
@@ -135,6 +137,12 @@ export function SignupVerifyPage({
           </div>
 
           <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
+            {notice ? (
+              <div className="mb-5 rounded-lg border border-warning/30 bg-warning-tint p-4 text-sm leading-6 text-warning">
+                {notice}
+              </div>
+            ) : null}
+
             <Field label="Verification code" error={errors.code} required>
               <div className="grid grid-cols-6 gap-2 sm:gap-3">
                 {code.map((digit, index) => (

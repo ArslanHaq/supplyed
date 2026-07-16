@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
@@ -14,9 +15,18 @@ import { OnboardingPage } from "./OnboardingPage";
 
 type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
 
-function OnboardingRouteClientInner() {
+function OnboardingRouteClientInner({ accountEmail }: { accountEmail?: string }) {
   const router = useRouter();
-  const [state, setState] = useState<AppState>(() => ({ ...loadAppState(), auth: "signed-in" }));
+  const [state, setState] = useState<AppState>(() => {
+    const savedState = loadAppState();
+
+    return {
+      ...savedState,
+      auth: "signed-in",
+      signupEmail: accountEmail || savedState.signupEmail,
+      signupVerified: true,
+    };
+  });
 
   useEffect(() => {
     saveAppState(state);
@@ -44,19 +54,26 @@ function OnboardingRouteClientInner() {
   }
 
   function goLanding() {
-    const nextState: AppState = { ...state, auth: "landing" };
+    const nextState: AppState = { ...state, auth: "signed-in" };
     setState(nextState);
     saveAppState(nextState);
     startRouteLoading();
     router.push("/");
   }
 
-  function exitOnboarding() {
-    const nextState: AppState = { ...state, auth: "signed-in" };
+  async function logout() {
+    await signOut({ redirect: false });
+    const nextState: AppState = {
+      ...state,
+      auth: "login",
+      signupVerified: false,
+      page: "dashboard",
+      ctx: {},
+    };
     setState(nextState);
     saveAppState(nextState);
     startRouteLoading();
-    router.push("/");
+    router.push("/login");
   }
 
   function finishOnboarding() {
@@ -83,11 +100,11 @@ function OnboardingRouteClientInner() {
     <>
       <OnboardingPage
         accountEmail={state.signupEmail}
-        headerActionLabel="Exit"
-        headerPrompt="Signed in"
+        headerActionLabel="Logout"
+        headerPrompt={state.signupEmail || accountEmail || "Account"}
         onFinish={finishOnboarding}
         onLanding={goLanding}
-        onLogin={exitOnboarding}
+        onLogin={logout}
         role={activeRole}
         roleSelected={state.roleSelected}
         setRole={setRole}
@@ -99,7 +116,7 @@ function OnboardingRouteClientInner() {
   );
 }
 
-export function OnboardingRouteClient() {
+export function OnboardingRouteClient({ accountEmail }: { accountEmail?: string }) {
   const isClient = useMounted();
 
   if (!isClient) {
@@ -111,5 +128,5 @@ export function OnboardingRouteClient() {
     );
   }
 
-  return <OnboardingRouteClientInner />;
+  return <OnboardingRouteClientInner accountEmail={accountEmail} />;
 }

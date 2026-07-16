@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { auth } from "@/auth";
+
 import { buttonClassName, Icon, Tag } from "../atoms";
 import { PublicHeader } from "./PublicHeader";
 
@@ -42,10 +44,15 @@ const trustCards = [
   },
 ];
 
-export function LandingPage() {
+export async function LandingPage() {
+  const session = await auth();
+  const account = session?.user ?? null;
+  const isSignedIn = Boolean(account);
+  const startHref = isSignedIn ? "/post-auth" : "/signup";
+
   return (
     <div className="overflow-x-hidden">
-      <PublicHeader active="home" />
+      <PublicHeader active="home" user={account} />
 
       <section className="relative overflow-hidden bg-[#0a0a0a] px-4 pb-14 pt-14 text-white sm:px-6 sm:pb-16 sm:pt-18 lg:px-12 lg:pb-20 lg:pt-24">
         <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.06)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.06)_1px,transparent_1px)] bg-[length:56px_56px]" />
@@ -61,21 +68,27 @@ export function LandingPage() {
               Staff your classroom in minutes, not days. SupplyED connects UK schools, learners, and hiring accounts with vetted, DBS-checked teachers for cover, tutoring, and learner support.
             </p>
             <div className="mb-12 flex flex-wrap gap-3">
-              <Link className={buttonClassName({ size: "xl" })} href="/signup">I&apos;m a school</Link>
-              <Link
-                className={buttonClassName({ variant: "secondary", size: "xl" })}
-                href="/signup"
-                style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
-              >
-                I&apos;m a teacher
-              </Link>
-              <Link
-                className={buttonClassName({ variant: "secondary", size: "xl" })}
-                href="/signup"
-                style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
-              >
-                I&apos;m hiring talent
-              </Link>
+              {isSignedIn ? (
+                <Link className={buttonClassName({ size: "xl" })} href={startHref}>Open workspace</Link>
+              ) : (
+                <>
+                  <Link className={buttonClassName({ size: "xl" })} href={startHref}>I&apos;m a school</Link>
+                  <Link
+                    className={buttonClassName({ variant: "secondary", size: "xl" })}
+                    href={startHref}
+                    style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
+                  >
+                    I&apos;m a teacher
+                  </Link>
+                  <Link
+                    className={buttonClassName({ variant: "secondary", size: "xl" })}
+                    href={startHref}
+                    style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
+                  >
+                    I&apos;m hiring talent
+                  </Link>
+                </>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-5 sm:flex sm:flex-wrap sm:gap-6">
               {[["8,400+", "Verified teachers"], ["2,100+", "Partner schools"], ["94%", "Filled within 2h"], ["4.9★", "Average rating"]].map(([value, label]) => (
@@ -197,8 +210,8 @@ export function LandingPage() {
             Join 2,100+ schools already using SupplyED to cover urgent staffing, long-term briefs, and learner support.
           </p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link className={buttonClassName({ size: "xl", className: "rounded-full px-8 text-white!" })} href="/signup">
-              Get started free
+            <Link className={buttonClassName({ size: "xl", className: "rounded-full px-8 text-white!" })} href={startHref}>
+              {isSignedIn ? "Open workspace" : "Get started free"}
             </Link>
             <Link className={buttonClassName({ variant: "secondary", size: "xl", className: "rounded-full px-8" })} href="/pricing">
               View pricing

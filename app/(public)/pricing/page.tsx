@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { auth } from "@/auth";
 import { PublicThemeControls } from "@/components/molecules";
 import { PublicHeader } from "@/components/organisms/PublicHeader";
 import { buttonClassName, Icon, Tag } from "@/components/atoms";
@@ -18,7 +19,6 @@ const plans = [
     name: "Teacher",
     price: "Free",
     caption: "For supply teachers building a verified profile.",
-    href: "/signup",
     cta: "Join as teacher",
     tone: "ghost" as const,
     features: ["Verified profile", "Job matching", "Availability tools", "Direct school messages"],
@@ -28,7 +28,6 @@ const plans = [
     price: "£149",
     period: "/month",
     caption: "For schools filling day-to-day and planned cover.",
-    href: "/signup",
     cta: "Start school plan",
     tone: "" as const,
     featured: true,
@@ -38,7 +37,6 @@ const plans = [
     name: "Individual",
     price: "Free",
     caption: "For individuals requesting safe learner support for themselves or another learner.",
-    href: "/signup",
     cta: "Hire talent",
     tone: "green" as const,
     features: ["Learner requests", "Verified teacher badges", "Account-led messaging", "Booking preparation tools"],
@@ -47,7 +45,6 @@ const plans = [
     name: "Trust",
     price: "Custom",
     caption: "For MATs coordinating cover across multiple schools.",
-    href: "/signup",
     cta: "Create trust workspace",
     tone: "purple" as const,
     features: ["Multi-school workspace", "Regional talent pools", "Shared compliance reporting", "Priority onboarding support"],
@@ -70,10 +67,15 @@ const faqs = [
   ["Does pricing include compliance checks?", "The example plans include compliance visibility. Real verification costs can be added later."],
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const session = await auth();
+  const account = session?.user ?? null;
+  const isSignedIn = Boolean(account);
+  const actionHref = isSignedIn ? "/post-auth" : "/signup";
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-chalk">
-      <PublicHeader active="pricing" />
+      <PublicHeader active="pricing" user={account} />
 
       <main>
         <section className="bg-white px-4 py-16 sm:px-6 lg:px-12 lg:py-20">
@@ -119,8 +121,8 @@ export default function PricingPage() {
                   ))}
                 </div>
 
-                <Link className={buttonClassName({ className: "mt-7 w-full rounded-full py-3 text-white!" })} href={plan.href}>
-                  {plan.cta}
+                <Link className={buttonClassName({ className: "mt-7 w-full rounded-full py-3 text-white!" })} href={actionHref}>
+                  {isSignedIn ? "Open workspace" : plan.cta}
                 </Link>
               </article>
             ))}

@@ -17,6 +17,7 @@ declare module "next-auth" {
     accessTokenExpiresAt?: number;
     applicationStatus?: ApplicationStatus;
     appEmailVerified?: boolean;
+    backendAuthError?: "RefreshAccessTokenError";
     refreshToken?: string;
     role?: AppRole | null;
   }

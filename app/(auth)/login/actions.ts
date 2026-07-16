@@ -2,9 +2,10 @@
 
 import {
   loginWithEmailAction,
+  resendEmailVerificationAction,
   signInWithGoogleAction,
   signInWithMicrosoftAction,
-  verifyEmailAction,
+  verifyEmailSessionAction,
 } from "@/features/auth/actions";
 
 export async function loginAction(previousState: unknown, formData: FormData) {
@@ -20,5 +21,9 @@ export async function microsoftLoginAction() {
 }
 
 export async function verifyLoginEmail(previousState: unknown, formData: FormData) {
-  return verifyEmailAction(previousState, formData);
+  return verifyEmailSessionAction(previousState, formData);
+}
+
+export async function resendLoginVerification(previousState: unknown, formData: FormData) {
+  return resendEmailVerificationAction(previousState, formData);
 }

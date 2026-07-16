@@ -19,6 +19,16 @@ export type SignupInput = {
   password: string;
 };
 
+export type EmailVerificationChallenge = {
+  code: "EMAIL_VERIFICATION_PENDING" | "EMAIL_VERIFICATION_REQUIRED";
+  email: string;
+  emailVerified: false;
+  expiresInMinutes?: number;
+  message?: string;
+  otpToken?: string;
+  passwordUpdated?: boolean;
+};
+
 export type ForgotPasswordInput = {
   email: string;
 };
@@ -26,15 +36,27 @@ export type ForgotPasswordInput = {
 export type EmailVerificationInput = {
   code: string;
   email: string;
+  otpToken?: string;
 };
 
 export type ResendEmailVerificationInput = {
   email: string;
 };
 
+export type EmailVerificationResendResponse = {
+  code?: string;
+  email: string;
+  emailVerified: boolean;
+  expiresInMinutes?: number;
+  message?: string;
+  otpToken?: string;
+};
+
 export type BackendAuthResponse = {
   accessToken?: string;
   accessTokenExpiresAt?: number;
+  expiresInMinutes?: number;
+  otpToken?: string;
   refreshToken?: string;
   user: AuthUser;
 };

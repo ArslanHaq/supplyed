@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getServerAuthContext } from "./auth-context";
-import { getValidAccessToken } from "./token-refresh";
+import { getValidAccessToken, refreshBackendAccessToken } from "./token-refresh";
 
 type QueryValue = boolean | number | string | null | undefined;
 
@@ -89,6 +89,10 @@ function buildUrl(path: string, query?: ApiQuery) {
   return url.toString();
 }
 
+function isAuthFailureStatus(status: number) {
+  return status === 401 || status === 302 || status === 307 || status === 308;
+}
+
 async function parseResponse(response: Response) {
   const contentType = response.headers.get("content-type") ?? "";
   if (response.status === 204) return undefined;
@@ -103,19 +107,33 @@ async function request<Data>(
 ): Promise<Data> {
   const authContext = options.auth === false ? null : await getServerAuthContext();
   const accessToken = options.auth === false ? null : await getValidAccessToken(authContext);
+  const url = buildUrl(path, options.query);
 
-  const response = await fetch(buildUrl(path, options.query), {
-    ...init,
-    cache: options.cache,
-    headers: {
-      Accept: "application/json",
-      ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...options.headers,
-      ...init.headers,
-    },
-    next: options.next,
-  } as RequestInit & { next?: NextFetchOptions });
+  function requestInit(token: string | null): RequestInit & { next?: NextFetchOptions } {
+    return {
+      ...init,
+      cache: options.cache,
+      headers: {
+        Accept: "application/json",
+        ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+        ...init.headers,
+      },
+      next: options.next,
+      redirect: "manual",
+    } as RequestInit & { next?: NextFetchOptions };
+  }
+
+  let response = await fetch(url, requestInit(accessToken));
+
+  if (options.auth !== false && isAuthFailureStatus(response.status) && authContext?.refreshToken) {
+    const refreshed = await refreshBackendAccessToken(authContext.refreshToken);
+
+    if (refreshed?.accessToken) {
+      response = await fetch(url, requestInit(refreshed.accessToken));
+    }
+  }
 
   const payload = await parseResponse(response);
 

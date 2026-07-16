@@ -9,7 +9,7 @@ import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdown
 
 type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
 type SignupStep = 1 | 2 | 3 | 4;
-type OnboardingPending = "step" | "save" | "submit" | null;
+type OnboardingPending = "step" | "submit" | null;
 type SignupField =
   | "accountRole"
   | "fullName"
@@ -125,6 +125,88 @@ const initialForm: SignupForm = {
   complianceEmail: "",
   safeguardingConfirmed: false,
 };
+
+const onboardingDraftPrefix = "supplyed_onboarding_draft";
+
+function onboardingDraftKey(email?: string) {
+  return `${onboardingDraftPrefix}:${(email || "anonymous").trim().toLowerCase()}`;
+}
+
+function readStringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function readUploadedFile(value: unknown): UploadedFile | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const file = value as Partial<UploadedFile>;
+
+  if (typeof file.name !== "string" || typeof file.type !== "string" || typeof file.size !== "number") {
+    return null;
+  }
+
+  return {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+  };
+}
+
+function readOnboardingDraft(email?: string): SignupForm {
+  if (typeof window === "undefined") return { ...initialForm, email: email || "" };
+
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(onboardingDraftKey(email)) || "{}") as Partial<SignupForm>;
+
+    return {
+      ...initialForm,
+      fullName: typeof saved.fullName === "string" ? saved.fullName : "",
+      email: email || (typeof saved.email === "string" ? saved.email : ""),
+      phone: typeof saved.phone === "string" ? saved.phone : "",
+      postcode: typeof saved.postcode === "string" ? saved.postcode : "",
+      password: "",
+      confirmPassword: "",
+      termsAccepted: Boolean(saved.termsAccepted),
+      schoolName: typeof saved.schoolName === "string" ? saved.schoolName : "",
+      contactRole: typeof saved.contactRole === "string" ? saved.contactRole : "",
+      localAuthority: typeof saved.localAuthority === "string" ? saved.localAuthority : "",
+      coverTypes: readStringArray(saved.coverTypes),
+      subjects: readStringArray(saved.subjects),
+      keyStages: readStringArray(saved.keyStages),
+      yearsExperience: typeof saved.yearsExperience === "string" ? saved.yearsExperience : "",
+      bio: typeof saved.bio === "string" ? saved.bio : "",
+      dbsNumber: typeof saved.dbsNumber === "string" ? saved.dbsNumber : "",
+      teachingReferenceNumber: typeof saved.teachingReferenceNumber === "string" ? saved.teachingReferenceNumber : "",
+      rightToWorkFile: readUploadedFile(saved.rightToWorkFile),
+      identityPhoto: readUploadedFile(saved.identityPhoto),
+      individualRelationship: typeof saved.individualRelationship === "string" ? saved.individualRelationship : "",
+      learningMode: typeof saved.learningMode === "string" ? saved.learningMode : "",
+      preferredSchedule: typeof saved.preferredSchedule === "string" ? saved.preferredSchedule : "",
+      budgetRange: typeof saved.budgetRange === "string" ? saved.budgetRange : "",
+      learnerNotes: typeof saved.learnerNotes === "string" ? saved.learnerNotes : "",
+      individualConsent: Boolean(saved.individualConsent),
+      complianceContact: typeof saved.complianceContact === "string" ? saved.complianceContact : "",
+      complianceEmail: typeof saved.complianceEmail === "string" ? saved.complianceEmail : "",
+      safeguardingConfirmed: Boolean(saved.safeguardingConfirmed),
+    };
+  } catch {
+    return { ...initialForm, email: email || "" };
+  }
+}
+
+function writeOnboardingDraft(email: string | undefined, form: SignupForm) {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    onboardingDraftKey(email),
+    JSON.stringify({
+      ...form,
+      email: email || form.email,
+      password: "",
+      confirmPassword: "",
+    }),
+  );
+}
 
 const subjects = ["Maths", "English", "Science", "Humanities", "SEN", "All Primary"];
 const keyStages = ["EYFS", "KS1", "KS2", "KS3", "KS4", "KS5"];
@@ -356,7 +438,7 @@ export function OnboardingPage({
   const activeRole: SignupRole = role === "teacher" ? "teacher" : role === "individual" ? "individual" : "institution";
   const currentStep = Math.min(4, Math.max(1, step)) as SignupStep;
   const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
-  const [form, setForm] = useState<SignupForm>(() => ({ ...initialForm, email: accountEmail || "" }));
+  const [form, setForm] = useState<SignupForm>(() => readOnboardingDraft(accountEmail));
   const [errors, setErrors] = useState<SignupErrors>({});
   const [pending, setPending] = useState<OnboardingPending>(null);
   const pendingTimerRef = useRef<number | null>(null);
@@ -367,6 +449,10 @@ export function OnboardingPage({
       if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    writeOnboardingDraft(accountEmail, form);
+  }, [accountEmail, form]);
 
   function runPending(kind: Exclude<OnboardingPending, null>, callback: () => void) {
     if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
@@ -574,11 +660,6 @@ export function OnboardingPage({
     }
 
     runPending("submit", onFinish);
-  }
-
-  function saveAndExit() {
-    setPending("save");
-    onLanding();
   }
 
   function renderReviewCard(group: ReviewGroup, featured = false) {
@@ -1044,7 +1125,7 @@ export function OnboardingPage({
           <div className="mt-8 flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
             <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending)} onClick={() => setStep(Math.max(1, currentStep - 1))}>Back</Btn>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Btn loading={pending === "save"} loadingLabel="Saving" variant="secondary" onClick={saveAndExit}>Save and exit</Btn>
+              <span className="self-center text-xs font-semibold uppercase tracking-[1px] text-muted">Autosaved</span>
               <Btn
                 loading={pending === "step" || pending === "submit"}
                 loadingLabel={currentStep === 4 ? "Submitting" : "Saving step"}
