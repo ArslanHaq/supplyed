@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 
@@ -62,13 +62,14 @@ function RouteShell({ page }: { page: AppPage }) {
     saveTweaks(tweaks);
   }, [tweaks, isClient]);
 
-  const toast: ToastFn = (entry) => {
+  const dismissToast = useCallback((id: string) => {
+    setState((current) => ({ ...current, toasts: current.toasts.filter((item) => item.id !== id) }));
+  }, []);
+
+  const toast = useCallback<ToastFn>((entry) => {
     const id = Math.random().toString(36).slice(2);
     setState((current) => ({ ...current, toasts: [...current.toasts, { id, ...entry }] }));
-    window.setTimeout(() => {
-      setState((current) => ({ ...current, toasts: current.toasts.filter((item) => item.id !== id) }));
-    }, 3200);
-  };
+  }, []);
 
   const go: GoFn = (page, ctx = {}) => {
     setState((current) => ({ ...current, page, ctx: { ...current.ctx, ...ctx }, auth: "signed-in" }));
@@ -171,7 +172,7 @@ function RouteShell({ page }: { page: AppPage }) {
         {content}
       </AppChrome>
       <TweaksPanel state={routeProps.state} setState={setState} tweaks={tweaks} setTweaks={setTweaks} />
-      <ToastStack toasts={state.toasts} />
+      <ToastStack autoCloseMs={3200} onDismiss={dismissToast} toasts={state.toasts} />
     </>
   );
 }

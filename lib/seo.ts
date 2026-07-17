@@ -4,7 +4,7 @@ export const siteConfig = {
   name: "SupplyED",
   title: "SupplyED | Vetted Teachers for Schools and Families",
   description:
-    "SupplyED helps UK schools and families find vetted, DBS-checked teachers for same-day cover, long-term roles, tutoring, and learner support.",
+    "SupplyED helps UK schools and families find vetted, DBS-checked teachers for same-day cover, long-term roles, tutoring, and learner support, with founding-school onboarding now open.",
   url: process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://supplyed.co.uk",
   locale: "en_GB",
 };
@@ -14,6 +14,8 @@ export const seoKeywords = [
   "supply teachers",
   "school staffing",
   "DBS checked teachers",
+  "Enhanced DBS supply teachers",
+  "founding schools programme",
   "UK schools",
   "individual tutor marketplace",
   "private tutors UK",

@@ -1,9 +1,16 @@
 import { useState } from "react";
 
 import { passwordRequirementsMessage, validatePassword } from "@/features/auth/schemas";
+import type { SocialAuthAvailability } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Logo } from "../atoms";
-import { SocialAuthButtons } from "../molecules";
+import {
+  ConfirmPasswordMismatch,
+  hasConfirmPasswordMismatch,
+  PasswordRequirementHint,
+  passwordMismatchMessage,
+  SocialAuthButtons,
+} from "../molecules";
 import { PasswordInput } from "../atoms/PasswordInput";
 
 type AccessErrors = Partial<Record<"email" | "password" | "confirmPassword" | "termsAccepted", string>>;
@@ -21,12 +28,14 @@ export function SignupAccessPage({
   onAccountCreated,
   onGoogleAuth,
   onMicrosoftAuth,
+  socialAuth,
 }: {
   onLanding: () => void;
   onLogin: () => void;
   onAccountCreated: (email: string, password: string) => Promise<AccessResult>;
   onGoogleAuth: () => void;
   onMicrosoftAuth: () => void;
+  socialAuth: SocialAuthAvailability;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,8 +50,10 @@ export function SignupAccessPage({
 
     if (!trimmedEmail) nextErrors.email = "Enter your email address.";
     else if (!emailPattern.test(trimmedEmail)) nextErrors.email = "Use a valid email address.";
-    if (!validatePassword(password)) nextErrors.password = passwordRequirementsMessage;
-    if (confirmPassword !== password) nextErrors.confirmPassword = "Passwords must match.";
+    if (!password) nextErrors.password = "Create a password.";
+    else if (!validatePassword(password)) nextErrors.password = passwordRequirementsMessage;
+    if (!confirmPassword) nextErrors.confirmPassword = "Confirm your password.";
+    else if (confirmPassword !== password) nextErrors.confirmPassword = passwordMismatchMessage;
     if (!termsAccepted) nextErrors.termsAccepted = "Accept the terms to continue.";
 
     setErrors(nextErrors);
@@ -64,6 +75,11 @@ export function SignupAccessPage({
 
     setPending(false);
   }
+
+  const confirmPasswordMismatch = hasConfirmPasswordMismatch(password, confirmPassword);
+  const passwordError = errors.password === passwordRequirementsMessage ? undefined : errors.password;
+  const confirmPasswordError =
+    confirmPasswordMismatch || errors.confirmPassword === passwordMismatchMessage ? undefined : errors.confirmPassword;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-chalk lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -124,6 +140,7 @@ export function SignupAccessPage({
 
           <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
             <SocialAuthButtons
+              available={socialAuth}
               disabled={pending}
               intent="signup"
               onGoogle={onGoogleAuth}
@@ -147,10 +164,10 @@ export function SignupAccessPage({
                   value={email}
                 />
               </Field>
-              <Field label="Password" htmlFor="signup-access-password" error={errors.password} hint={passwordRequirementsMessage} required>
+              <Field label="Password" htmlFor="signup-access-password" error={passwordError} required>
                 <PasswordInput
                   autoComplete="new-password"
-                  className={fieldClass(errors.password)}
+                  className={fieldClass(passwordError)}
                   disabled={pending}
                   id="signup-access-password"
                   onChange={(event) => {
@@ -160,11 +177,12 @@ export function SignupAccessPage({
                   placeholder="Create a password"
                   value={password}
                 />
+                <PasswordRequirementHint password={password} />
               </Field>
-              <Field label="Confirm password" htmlFor="signup-access-confirm" error={errors.confirmPassword} required>
+              <Field label="Confirm password" htmlFor="signup-access-confirm" error={confirmPasswordError} required>
                 <PasswordInput
                   autoComplete="new-password"
-                  className={fieldClass(errors.confirmPassword)}
+                  className={fieldClass(confirmPasswordError)}
                   disabled={pending}
                   id="signup-access-confirm"
                   onChange={(event) => {
@@ -174,6 +192,7 @@ export function SignupAccessPage({
                   placeholder="Repeat your password"
                   value={confirmPassword}
                 />
+                <ConfirmPasswordMismatch confirmPassword={confirmPassword} password={password} />
               </Field>
             </div>
 

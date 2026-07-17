@@ -1,6 +1,8 @@
+import type { SocialAuthAvailability } from "@/types/supplyed";
 import { cn } from "@/lib/cn";
 
 type SocialAuthButtonsProps = {
+  available?: SocialAuthAvailability;
   disabled?: boolean;
   intent?: "login" | "signup";
   onGoogle?: () => void;
@@ -27,31 +29,49 @@ const socialProviders = [
   },
 ];
 
-export function SocialAuthButtons({ disabled = false, intent = "login", onGoogle, onMicrosoft }: SocialAuthButtonsProps) {
+export function SocialAuthButtons({
+  available = { google: true, microsoft: true },
+  disabled = false,
+  intent = "login",
+  onGoogle,
+  onMicrosoft,
+}: SocialAuthButtonsProps) {
   const action = intent === "signup" ? "Sign up" : "Continue";
 
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {socialProviders.map((provider) => (
-          <button
-            key={provider.id}
-            aria-label={`${action} with ${provider.name}`}
-            className={cn(
-              "flex h-12 cursor-pointer items-center justify-center gap-3 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-ink transition",
-              "hover:border-brand hover:bg-brand-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-            )}
-            disabled={disabled}
-            onClick={provider.id === "google" ? onGoogle : onMicrosoft}
-            title={`${action} with ${provider.name}`}
-            type="button"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-chalk">{provider.mark}</span>
-            <span>{provider.name}</span>
-          </button>
-        ))}
+        {socialProviders.map((provider) => {
+          const providerAvailable = provider.id === "google" ? available.google : available.microsoft;
+          const unavailableLabel = `${provider.name} sign-in is not configured`;
+
+          return (
+            <button
+              key={provider.id}
+              aria-disabled={!providerAvailable}
+              aria-label={providerAvailable ? `${action} with ${provider.name}` : unavailableLabel}
+              className={cn(
+                "flex h-12 cursor-pointer items-center justify-center gap-3 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-ink transition",
+                "hover:border-brand hover:bg-brand-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                !providerAvailable && "opacity-60",
+              )}
+              disabled={disabled}
+              onClick={provider.id === "google" ? onGoogle : onMicrosoft}
+              title={providerAvailable ? `${action} with ${provider.name}` : unavailableLabel}
+              type="button"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-chalk">{provider.mark}</span>
+              <span>{provider.name}</span>
+            </button>
+          );
+        })}
       </div>
+      {!available.google || !available.microsoft ? (
+        <p className="mt-3 text-xs leading-5 text-muted">
+          Unavailable social providers need credentials configured and the app restarted before they can connect.
+        </p>
+      ) : null}
 
       <div className="my-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
         <span className="h-px flex-1 bg-border" />

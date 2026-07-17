@@ -92,6 +92,11 @@ export type Toast = ToastInput & {
   id: string;
 };
 
+export type SocialAuthAvailability = {
+  google: boolean;
+  microsoft: boolean;
+};
+
 export type AppState = {
   role: AppRole;
   page: AppPage;

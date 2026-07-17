@@ -13,6 +13,9 @@ import type {
   ForgotPasswordInput,
   LoginInput,
   OAuthBackendInput,
+  PasswordResetChallenge,
+  PasswordResetInput,
+  PasswordResetResponse,
   ResendEmailVerificationInput,
   SignupInput,
 } from "./types";
@@ -31,6 +34,7 @@ const backendAuthEndpoints = {
   oauthGoogle: "/auth/oauth/google",
   refresh: "/auth/refresh",
   register: "/auth/register",
+  resetPassword: "/auth/password/reset",
   resendEmailVerification: "/auth/email/otp/resend",
   verifyEmail: "/auth/email/otp/verify",
 } as const;
@@ -250,6 +254,18 @@ function normalizeEmailVerificationResendResponse(
   };
 }
 
+function normalizePasswordResetChallenge(payload: unknown): PasswordResetChallenge {
+  const response = isRecord(payload) ? payload : {};
+
+  return {
+    expiresInMinutes:
+      readNumber(response.expiresInMinutes) ??
+      readNumber(response.passwordResetExpiresInMinutes) ??
+      readNumber(response.otpExpiresInMinutes),
+    otpToken: readString(response.otpToken),
+  };
+}
+
 export async function createEmailAccount(input: SignupInput): Promise<EmailVerificationChallenge> {
   logBackendPayload(`POST ${backendAuthEndpoints.register}`, {
     email: input.email,
@@ -331,14 +347,52 @@ export async function resendEmailVerification(input: ResendEmailVerificationInpu
   };
 }
 
-export async function requestPasswordReset(input: ForgotPasswordInput) {
+export async function requestPasswordReset(input: ForgotPasswordInput): Promise<PasswordResetChallenge> {
   logBackendPayload(`POST ${backendAuthEndpoints.forgotPassword}`, {
     email: input.email,
   });
 
   if (backendEnabled()) {
-    await api.post<unknown>(backendAuthEndpoints.forgotPassword, input, { auth: false });
+    return normalizePasswordResetChallenge(
+      await api.post<unknown>(backendAuthEndpoints.forgotPassword, input, { auth: false }),
+    );
   }
+
+  return {
+    expiresInMinutes: 10,
+    otpToken: "local-password-reset-token",
+  };
+}
+
+export async function resetPassword(input: PasswordResetInput): Promise<PasswordResetResponse> {
+  const payload = {
+    otp: input.code,
+    password: input.password,
+  };
+
+  logBackendPayload(`POST ${backendAuthEndpoints.resetPassword}`, {
+    ...payload,
+    otpToken: input.otpToken,
+  });
+
+  if (backendEnabled()) {
+    if (!input.otpToken) {
+      throw new Error("Request a new reset code before changing your password.");
+    }
+
+    const response = await api.post<unknown>(backendAuthEndpoints.resetPassword, payload, {
+      auth: false,
+      headers: { Authorization: `Bearer ${input.otpToken}` },
+    });
+
+    const record = isRecord(response) ? response : {};
+
+    return {
+      passwordReset: readBoolean(record.passwordReset) ?? true,
+    };
+  }
+
+  return { passwordReset: true };
 }
 
 export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<BackendAuthResponse> {

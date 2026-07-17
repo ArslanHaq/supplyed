@@ -33,6 +33,21 @@ export type ForgotPasswordInput = {
   email: string;
 };
 
+export type PasswordResetChallenge = {
+  expiresInMinutes?: number;
+  otpToken?: string;
+};
+
+export type PasswordResetInput = {
+  code: string;
+  otpToken?: string;
+  password: string;
+};
+
+export type PasswordResetResponse = {
+  passwordReset: boolean;
+};
+
 export type EmailVerificationInput = {
   code: string;
   email: string;

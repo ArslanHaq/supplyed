@@ -1,6 +1,12 @@
 export { Modal } from "./Modal";
 export { AuthFlowLoader, CardGridLoader, InlineLoader, PageLoader, SectionLoader } from "./Loaders";
 export { PageHead } from "./PageHead";
+export {
+  ConfirmPasswordMismatch,
+  hasConfirmPasswordMismatch,
+  PasswordRequirementHint,
+  passwordMismatchMessage,
+} from "./PasswordFeedback";
 export { PublicThemeControls } from "./PublicThemeControls";
 export { RouteLoader } from "./RouteLoader";
 export { RouteErrorState } from "./RouteErrorState";

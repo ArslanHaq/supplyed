@@ -4,11 +4,12 @@ import { actionError, actionOk } from "@/lib/server/action-response";
 import { signIn } from "@/auth";
 import { ApiError } from "@/lib/server/api-client";
 
-import { createEmailAccount, loginWithEmail, requestPasswordReset, resendEmailVerification, verifyEmail } from "./backend";
+import { createEmailAccount, loginWithEmail, requestPasswordReset, resendEmailVerification, resetPassword, verifyEmail } from "./backend";
 import {
   parseEmailVerificationForm,
   parseForgotPasswordForm,
   parseLoginForm,
+  parsePasswordResetForm,
   parseResendEmailVerificationForm,
   parseSignupForm,
   passwordRequirementsMessage,
@@ -217,12 +218,39 @@ export async function forgotPasswordAction(_previousState: unknown, formData: Fo
   }
 
   try {
-    await requestPasswordReset(input);
+    const challenge = await requestPasswordReset(input);
+    return actionOk(challenge, "Check your email for a 6-digit reset code. If this address is registered, it should arrive shortly.");
   } catch (error) {
     return toAuthActionError(error, "We could not request a password reset.");
   }
+}
 
-  return actionOk(null, "If the email exists, a reset link will be sent.");
+export async function resetPasswordAction(_previousState: unknown, formData: FormData) {
+  const input = parsePasswordResetForm(formData);
+
+  if (input.code.length !== 6) {
+    return actionError("Enter the 6-digit reset code.", {
+      fieldErrors: { code: "Enter the 6-digit reset code." },
+    });
+  }
+
+  if (!validatePassword(input.password)) {
+    return actionError(passwordRequirementsMessage, {
+      fieldErrors: { password: passwordRequirementsMessage },
+    });
+  }
+
+  if (!input.otpToken) {
+    return actionError("Request a new reset code before changing your password.", {
+      fieldErrors: { code: "Request a new reset code before changing your password." },
+    });
+  }
+
+  try {
+    return actionOk(await resetPassword(input), "Password reset successfully. Log in with your new password.");
+  } catch (error) {
+    return toAuthActionError(error, "We could not reset your password.");
+  }
 }
 
 export async function verifyEmailAction(_previousState: unknown, formData: FormData) {

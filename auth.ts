@@ -4,7 +4,7 @@ import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
 import { exchangeOAuthAccount, loginWithEmail, normalizeRole, normalizeStatus, refreshBackendAuth, verifyEmail } from "@/features/auth/backend";
-import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
+import { readUnknownSocialAuthErrorMessage } from "@/features/auth/error-messages";
 import { validateEmail } from "@/features/auth/schemas";
 import { readVerifiedEmailSessionTicket } from "@/features/auth/session-ticket";
 import type { BackendAuthResponse } from "@/features/auth/types";
@@ -54,7 +54,7 @@ function assignBackendSession(token: Record<string, unknown>, response: BackendA
 
 function assignBackendAuthError(token: Record<string, unknown>, provider: string, error: unknown) {
   token.backendAuthError = "OAuthBackendExchangeError";
-  token.backendAuthErrorMessage = readUnknownAuthErrorMessage(error, "Social sign-in failed. Try again.");
+  token.backendAuthErrorMessage = readUnknownSocialAuthErrorMessage(error, "Social sign-in failed. Try again.");
   token.backendAuthErrorProvider = provider;
   token.appEmailVerified = false;
   delete token.accessToken;

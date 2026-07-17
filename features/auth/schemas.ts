@@ -2,6 +2,7 @@ import type {
   EmailVerificationInput,
   ForgotPasswordInput,
   LoginInput,
+  PasswordResetInput,
   ResendEmailVerificationInput,
   SignupInput,
 } from "./types";
@@ -33,6 +34,14 @@ export function parseSignupForm(formData: FormData): SignupInput {
 export function parseForgotPasswordForm(formData: FormData): ForgotPasswordInput {
   return {
     email: normalizeEmail(formData.get("email")),
+  };
+}
+
+export function parsePasswordResetForm(formData: FormData): PasswordResetInput {
+  return {
+    code: String(formData.get("code") ?? "").replace(/\D/g, "").slice(0, 6),
+    otpToken: String(formData.get("otpToken") ?? "").trim() || undefined,
+    password: String(formData.get("password") ?? ""),
   };
 }
 

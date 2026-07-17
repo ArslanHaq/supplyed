@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import type { SocialAuthAvailability } from "@/types/supplyed";
+
 import { Btn, Checkbox, Field, Icon, Logo } from "../atoms";
 import { PasswordInput } from "../atoms/PasswordInput";
 import { SocialAuthButtons } from "../molecules";
@@ -21,6 +23,7 @@ export function LoginPage({
   onForgotPassword,
   onMicrosoftAuth,
   onSwitchSignup,
+  socialAuth,
 }: {
   onGoogleAuth: () => void;
   onLogin: (email: string, password: string) => Promise<LoginResult>;
@@ -28,6 +31,7 @@ export function LoginPage({
   onForgotPassword: () => void;
   onMicrosoftAuth: () => void;
   onSwitchSignup: () => void;
+  socialAuth: SocialAuthAvailability;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -117,7 +121,7 @@ export function LoginPage({
           </div>
 
           <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleCredentialSubmit}>
-            <SocialAuthButtons disabled={pending} onGoogle={onGoogleAuth} onMicrosoft={onMicrosoftAuth} />
+            <SocialAuthButtons available={socialAuth} disabled={pending} onGoogle={onGoogleAuth} onMicrosoft={onMicrosoftAuth} />
 
             <Field label="Email address" htmlFor="login-email" error={errors.email} required>
               <input

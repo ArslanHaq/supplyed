@@ -11,6 +11,10 @@ type SignupPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
+function hasEnvValue(key: string) {
+  return Boolean(process.env[key]?.trim());
+}
+
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const session = await auth();
 
@@ -18,5 +22,13 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
     redirect("/post-auth");
   }
 
-  return <SignupRouteClient initialError={resolveAuthErrorMessage((await searchParams) ?? {})} />;
+  return (
+    <SignupRouteClient
+      initialError={resolveAuthErrorMessage((await searchParams) ?? {})}
+      socialAuth={{
+        google: hasEnvValue("AUTH_GOOGLE_ID") && hasEnvValue("AUTH_GOOGLE_SECRET"),
+        microsoft: hasEnvValue("AUTH_MICROSOFT_ENTRA_ID_ID") && hasEnvValue("AUTH_MICROSOFT_ENTRA_ID_SECRET"),
+      }}
+    />
+  );
 }

@@ -10,7 +10,7 @@ import { startRouteLoading } from "@/lib/navigation-loading";
 import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 import { useAuthToasts } from "@/lib/use-auth-toasts";
 import { useMounted } from "@/lib/use-mounted";
-import type { AppState } from "@/types/supplyed";
+import type { AppState, SocialAuthAvailability } from "@/types/supplyed";
 
 import { AuthFlowLoader, PublicThemeControls, ToastStack } from "../molecules";
 import { LoginPage } from "./LoginPage";
@@ -41,7 +41,17 @@ function isVerificationChallenge(value: unknown): value is {
   return isRecord(value) && value.emailVerified === false && Boolean(readString(value.email));
 }
 
-function LoginRouteClientInner({ initialError }: { initialError?: string }) {
+function socialUnavailableMessage(provider: "google" | "microsoft-entra-id") {
+  return provider === "google"
+    ? "Google sign-in is not configured. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET, then restart the app."
+    : "Microsoft sign-in is not configured. Add AUTH_MICROSOFT_ENTRA_ID_ID and AUTH_MICROSOFT_ENTRA_ID_SECRET, then restart the app.";
+}
+
+function isSocialProviderAvailable(provider: "google" | "microsoft-entra-id", socialAuth: SocialAuthAvailability) {
+  return provider === "google" ? socialAuth.google : socialAuth.microsoft;
+}
+
+function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
   const router = useRouter();
   const [state, setState] = useState<AppState>(() => resetAuthFlowState(loadAppState(), "login"));
   const [stage, setStage] = useState<LoginStage>("login");
@@ -49,7 +59,7 @@ function LoginRouteClientInner({ initialError }: { initialError?: string }) {
   const [verificationNotice, setVerificationNotice] = useState<string>();
   const [verificationToken, setVerificationToken] = useState<string>();
   const [resendAvailableAt, setResendAvailableAt] = useState<number>();
-  const { authToasts, showAuthError } = useAuthToasts(initialError);
+  const { authToasts, dismissAuthToast, showAuthError } = useAuthToasts(initialError);
 
   useEffect(() => {
     saveAppState(state);
@@ -300,6 +310,11 @@ function LoginRouteClientInner({ initialError }: { initialError?: string }) {
   }
 
   function startSocialAuth(provider: "google" | "microsoft-entra-id") {
+    if (!isSocialProviderAvailable(provider, socialAuth)) {
+      showAuthError(socialUnavailableMessage(provider));
+      return;
+    }
+
     startRouteLoading();
     void signIn(provider, { redirectTo: "/post-auth?authSource=login" }).catch((error) => {
       showAuthError(readUnknownAuthErrorMessage(error, "Social sign-in could not start."));
@@ -320,7 +335,7 @@ function LoginRouteClientInner({ initialError }: { initialError?: string }) {
           resendAvailableAt={resendAvailableAt}
         />
         <PublicThemeControls />
-        <ToastStack toasts={authToasts} />
+        <ToastStack autoCloseMs={7000} onDismiss={dismissAuthToast} toasts={authToasts} />
       </>
     );
   }
@@ -334,14 +349,15 @@ function LoginRouteClientInner({ initialError }: { initialError?: string }) {
         onLogin={finishLogin}
         onMicrosoftAuth={() => startSocialAuth("microsoft-entra-id")}
         onSwitchSignup={goSignup}
+        socialAuth={socialAuth}
       />
       <PublicThemeControls />
-      <ToastStack toasts={authToasts} />
+      <ToastStack autoCloseMs={7000} onDismiss={dismissAuthToast} toasts={authToasts} />
     </>
   );
 }
 
-export function LoginRouteClient({ initialError }: { initialError?: string }) {
+export function LoginRouteClient({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
   const isClient = useMounted();
 
   if (!isClient) {
@@ -353,5 +369,5 @@ export function LoginRouteClient({ initialError }: { initialError?: string }) {
     );
   }
 
-  return <LoginRouteClientInner initialError={initialError} />;
+  return <LoginRouteClientInner initialError={initialError} socialAuth={socialAuth} />;
 }
