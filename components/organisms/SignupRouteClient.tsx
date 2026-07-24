@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 import { resendSignupVerification, signupAction, verifySignupEmail } from "@/app/(auth)/signup/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 import { useAuthToasts } from "@/lib/use-auth-toasts";
 import { useMounted } from "@/lib/use-mounted";
-import type { AppState, SocialAuthAvailability } from "@/types/supplyed";
+import type { SocialAuthAvailability } from "@/types/supplyed";
 
 import { AuthFlowLoader, PublicThemeControls, ToastStack } from "../molecules";
 import { SignupAccessPage } from "./SignupAccessPage";
@@ -36,16 +35,12 @@ function isSocialProviderAvailable(provider: "google" | "microsoft-entra-id", so
 
 function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
   const router = useRouter();
-  const [state, setState] = useState<AppState>(() => resetAuthFlowState(loadAppState(), "onboarding"));
   const [stage, setStage] = useState<SignupStage>("account");
+  const [signupEmail, setSignupEmail] = useState("");
   const [verificationNotice, setVerificationNotice] = useState<string>();
   const [verificationToken, setVerificationToken] = useState<string>();
   const [resendAvailableAt, setResendAvailableAt] = useState<number>();
   const { authToasts, dismissAuthToast, showAuthError } = useAuthToasts(initialError);
-
-  useEffect(() => {
-    saveAppState(state);
-  }, [state]);
 
   function formData(values: Record<string, string>) {
     const data = new FormData();
@@ -75,18 +70,7 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
 
     const signupEmail = result.data.email || email;
     const passwordNotice = result.data.passwordUpdated === false ? result.message : undefined;
-    const nextState: AppState = {
-      ...state,
-      auth: "onboarding",
-      signupEmail,
-      signupVerified: false,
-      roleSelected: false,
-      onboardingComplete: false,
-      applicationStatus: "none",
-      onboardingStep: 1,
-    };
-    setState(nextState);
-    saveAppState(nextState);
+    setSignupEmail(signupEmail);
     setVerificationToken(result.data.otpToken);
     setVerificationNotice(passwordNotice);
     setResendAvailableAt(readCooldownUntil(result.data.expiresInMinutes));
@@ -95,18 +79,7 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
   }
 
   function backToAccount() {
-    const nextState: AppState = {
-      ...state,
-      auth: "onboarding",
-      signupEmail: "",
-      signupVerified: false,
-      roleSelected: false,
-      onboardingComplete: false,
-      applicationStatus: "none",
-      onboardingStep: 1,
-    };
-    setState(nextState);
-    saveAppState(nextState);
+    setSignupEmail("");
     setVerificationToken(undefined);
     setVerificationNotice(undefined);
     setResendAvailableAt(undefined);
@@ -119,7 +92,7 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
     try {
       verificationResult = await verifySignupEmail(
         null,
-        formData({ code, email: state.signupEmail, otpToken: verificationToken ?? "" }),
+        formData({ code, email: signupEmail, otpToken: verificationToken ?? "" }),
       );
     } catch (error) {
       const message = readUnknownAuthErrorMessage(error, "We could not verify that code.");
@@ -173,17 +146,6 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
       };
     }
 
-    const nextState: AppState = {
-      ...state,
-      auth: "signed-in",
-      signupVerified: true,
-      roleSelected: false,
-      onboardingComplete: false,
-      applicationStatus: "none",
-      onboardingStep: 1,
-    };
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/post-auth");
     return { ok: true as const };
@@ -193,7 +155,7 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
     let result: Awaited<ReturnType<typeof resendSignupVerification>>;
 
     try {
-      result = await resendSignupVerification(null, formData({ email: state.signupEmail }));
+      result = await resendSignupVerification(null, formData({ email: signupEmail }));
     } catch (error) {
       const message = readUnknownAuthErrorMessage(error, "We could not resend the verification code.");
       showAuthError(message);
@@ -218,17 +180,11 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
   }
 
   function goLanding() {
-    const nextState: AppState = { ...state, auth: "landing" };
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/");
   }
 
   function goLogin() {
-    const nextState = resetAuthFlowState(state, "login");
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/login");
   }
@@ -266,7 +222,7 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
     return (
       <>
         <SignupVerifyPage
-          email={state.signupEmail}
+          email={signupEmail}
           notice={verificationNotice}
           onBack={backToAccount}
           onLanding={goLanding}

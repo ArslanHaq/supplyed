@@ -9,6 +9,8 @@ declare module "next-auth" {
       authErrorMessage?: string;
       authErrorProvider?: string;
       id: string;
+      instructorProfileId?: string;
+      institutionProfileId?: string;
       isEmailVerified: boolean;
       role: AppRole | null;
     } & DefaultSession["user"];
@@ -22,6 +24,8 @@ declare module "next-auth" {
     backendAuthError?: "OAuthBackendExchangeError" | "RefreshAccessTokenError";
     backendAuthErrorMessage?: string;
     backendAuthErrorProvider?: string;
+    instructorProfileId?: string;
+    institutionProfileId?: string;
     refreshToken?: string;
     role?: AppRole | null;
   }
@@ -36,6 +40,8 @@ declare module "next-auth/jwt" {
     backendAuthError?: "OAuthBackendExchangeError" | "RefreshAccessTokenError";
     backendAuthErrorMessage?: string;
     backendAuthErrorProvider?: string;
+    instructorProfileId?: string;
+    institutionProfileId?: string;
     refreshToken?: string;
     role?: AppRole | null;
     userId?: string;

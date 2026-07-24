@@ -57,7 +57,11 @@ function readAccessTokenExpiresAt(record: Record<string, unknown>, accessToken?:
   }
 
   const expiresInSeconds =
-    readNumber(record.accessTokenExpiresIn) ?? readNumber(record.expiresIn) ?? readNumber(tokens.accessTokenExpiresIn);
+    readNumber(record.accessTokenExpiresInSeconds) ??
+    readNumber(record.accessTokenExpiresIn) ??
+    readNumber(record.expiresIn) ??
+    readNumber(tokens.accessTokenExpiresInSeconds) ??
+    readNumber(tokens.accessTokenExpiresIn);
 
   if (expiresInSeconds) return Date.now() + expiresInSeconds * 1000;
 

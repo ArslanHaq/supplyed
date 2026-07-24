@@ -1,414 +1,38 @@
-import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-import { cn } from "@/lib/cn";
+import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import type { AppRole } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Icon, Logo, Tag } from "../atoms";
 import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdowns";
-
-type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
-type SignupStep = 1 | 2 | 3 | 4;
-type OnboardingPending = "step" | "submit" | null;
-type SignupField =
-  | "accountRole"
-  | "fullName"
-  | "email"
-  | "phone"
-  | "postcode"
-  | "password"
-  | "confirmPassword"
-  | "termsAccepted"
-  | "schoolName"
-  | "contactRole"
-  | "localAuthority"
-  | "coverTypes"
-  | "subjects"
-  | "keyStages"
-  | "yearsExperience"
-  | "bio"
-  | "dbsNumber"
-  | "rightToWorkFile"
-  | "identityPhoto"
-  | "individualRelationship"
-  | "learningMode"
-  | "preferredSchedule"
-  | "budgetRange"
-  | "learnerNotes"
-  | "individualConsent"
-  | "complianceContact"
-  | "complianceEmail"
-  | "safeguardingConfirmed";
-
-type SignupErrors = Partial<Record<SignupField, string>>;
-
-type UploadedFile = {
-  name: string;
-  size: number;
-  type: string;
-};
-
-type SignupForm = {
-  fullName: string;
-  email: string;
-  phone: string;
-  postcode: string;
-  password: string;
-  confirmPassword: string;
-  termsAccepted: boolean;
-  schoolName: string;
-  contactRole: string;
-  localAuthority: string;
-  coverTypes: string[];
-  subjects: string[];
-  keyStages: string[];
-  yearsExperience: string;
-  bio: string;
-  dbsNumber: string;
-  teachingReferenceNumber: string;
-  rightToWorkFile: UploadedFile | null;
-  identityPhoto: UploadedFile | null;
-  individualRelationship: string;
-  learningMode: string;
-  preferredSchedule: string;
-  budgetRange: string;
-  learnerNotes: string;
-  individualConsent: boolean;
-  complianceContact: string;
-  complianceEmail: string;
-  safeguardingConfirmed: boolean;
-};
-
-type ReviewLine = {
-  label: string;
-  value: ReactNode;
-  wide?: boolean;
-};
-
-type ReviewGroup = {
-  title: string;
-  description: string;
-  icon: string;
-  editStep: SignupStep;
-  lines: ReviewLine[];
-};
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const phonePattern = /^[0-9+()\s-]{10,}$/;
-const initialForm: SignupForm = {
-  fullName: "",
-  email: "",
-  phone: "",
-  postcode: "",
-  password: "",
-  confirmPassword: "",
-  termsAccepted: false,
-  schoolName: "",
-  contactRole: "",
-  localAuthority: "",
-  coverTypes: [],
-  subjects: [],
-  keyStages: [],
-  yearsExperience: "",
-  bio: "",
-  dbsNumber: "",
-  teachingReferenceNumber: "",
-  rightToWorkFile: null,
-  identityPhoto: null,
-  individualRelationship: "",
-  learningMode: "",
-  preferredSchedule: "",
-  budgetRange: "",
-  learnerNotes: "",
-  individualConsent: false,
-  complianceContact: "",
-  complianceEmail: "",
-  safeguardingConfirmed: false,
-};
-
-const onboardingDraftPrefix = "supplyed_onboarding_draft";
-
-function onboardingDraftKey(email?: string) {
-  return `${onboardingDraftPrefix}:${(email || "anonymous").trim().toLowerCase()}`;
-}
-
-function readStringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function readUploadedFile(value: unknown): UploadedFile | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-
-  const file = value as Partial<UploadedFile>;
-
-  if (typeof file.name !== "string" || typeof file.type !== "string" || typeof file.size !== "number") {
-    return null;
-  }
-
-  return {
-    name: file.name,
-    size: file.size,
-    type: file.type,
-  };
-}
-
-function readOnboardingDraft(email?: string): SignupForm {
-  if (typeof window === "undefined") return { ...initialForm, email: email || "" };
-
-  try {
-    const saved = JSON.parse(window.localStorage.getItem(onboardingDraftKey(email)) || "{}") as Partial<SignupForm>;
-
-    return {
-      ...initialForm,
-      fullName: typeof saved.fullName === "string" ? saved.fullName : "",
-      email: email || (typeof saved.email === "string" ? saved.email : ""),
-      phone: typeof saved.phone === "string" ? saved.phone : "",
-      postcode: typeof saved.postcode === "string" ? saved.postcode : "",
-      password: "",
-      confirmPassword: "",
-      termsAccepted: Boolean(saved.termsAccepted),
-      schoolName: typeof saved.schoolName === "string" ? saved.schoolName : "",
-      contactRole: typeof saved.contactRole === "string" ? saved.contactRole : "",
-      localAuthority: typeof saved.localAuthority === "string" ? saved.localAuthority : "",
-      coverTypes: readStringArray(saved.coverTypes),
-      subjects: readStringArray(saved.subjects),
-      keyStages: readStringArray(saved.keyStages),
-      yearsExperience: typeof saved.yearsExperience === "string" ? saved.yearsExperience : "",
-      bio: typeof saved.bio === "string" ? saved.bio : "",
-      dbsNumber: typeof saved.dbsNumber === "string" ? saved.dbsNumber : "",
-      teachingReferenceNumber: typeof saved.teachingReferenceNumber === "string" ? saved.teachingReferenceNumber : "",
-      rightToWorkFile: readUploadedFile(saved.rightToWorkFile),
-      identityPhoto: readUploadedFile(saved.identityPhoto),
-      individualRelationship: typeof saved.individualRelationship === "string" ? saved.individualRelationship : "",
-      learningMode: typeof saved.learningMode === "string" ? saved.learningMode : "",
-      preferredSchedule: typeof saved.preferredSchedule === "string" ? saved.preferredSchedule : "",
-      budgetRange: typeof saved.budgetRange === "string" ? saved.budgetRange : "",
-      learnerNotes: typeof saved.learnerNotes === "string" ? saved.learnerNotes : "",
-      individualConsent: Boolean(saved.individualConsent),
-      complianceContact: typeof saved.complianceContact === "string" ? saved.complianceContact : "",
-      complianceEmail: typeof saved.complianceEmail === "string" ? saved.complianceEmail : "",
-      safeguardingConfirmed: Boolean(saved.safeguardingConfirmed),
-    };
-  } catch {
-    return { ...initialForm, email: email || "" };
-  }
-}
-
-function writeOnboardingDraft(email: string | undefined, form: SignupForm) {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(
-    onboardingDraftKey(email),
-    JSON.stringify({
-      ...form,
-      email: email || form.email,
-      password: "",
-      confirmPassword: "",
-    }),
-  );
-}
-
-const subjects = ["Maths", "English", "Science", "Humanities", "SEN", "All Primary"];
-const keyStages = ["EYFS", "KS1", "KS2", "KS3", "KS4", "KS5"];
-const coverTypes = ["Same-day cover", "Long-term roles", "Intervention groups", "Exam season", "SEN support"];
-const supportForOptions = ["Myself", "My child", "Another learner", "A small group"];
-const learningModes = ["In person", "Online", "Hybrid"];
-const preferredSchedules = ["Weekday evenings", "Weekends", "After school", "Flexible"];
-const budgetRanges = ["Under £25/hr", "£25-£40/hr", "£40-£60/hr", "Flexible"];
-const unselectedSteps = [
-  { label: "Choose role", description: "Select how you want to use SupplyED" },
-  { label: "Role details", description: "Complete the details needed for that path" },
-  { label: "Verification", description: "Provide required safety or compliance details" },
-  { label: "Review", description: "Confirm before submitting" },
-];
-
-function stepContent(role: SignupRole) {
-  if (role === "teacher") {
-    return [
-      { label: "Profile basics", description: "Add contact details for your verified account" },
-      { label: "Teaching profile", description: "Subjects, stages, experience, and bio" },
-      { label: "Compliance", description: "DBS, right to work, and identity checks" },
-      { label: "Review", description: "Confirm your teacher profile" },
-    ];
-  }
-
-  if (role === "individual") {
-    return [
-      { label: "Your details", description: "Choose how you want to hire talent and add contact details" },
-      { label: "Learner needs", description: "Subject, stage, schedule, and location preferences" },
-      { label: "Safeguarding", description: "Privacy, contact, and verified teacher expectations" },
-      { label: "Review", description: "Confirm the learner request before matching" },
-    ];
-  }
-
-  return [
-    { label: "Contact details", description: "Add contact details for your verified account" },
-    { label: "School details", description: "Organisation, cover needs, and authority" },
-    { label: "Compliance", description: "Safeguarding contact and approval details" },
-    { label: "Review", description: "Confirm your school workspace" },
-  ];
-}
-
-function roleLabel(role: SignupRole) {
-  if (role === "teacher") return "Supply teacher";
-  if (role === "individual") return "Individual hirer";
-  return "School / MAT";
-}
-
-function signupHeroTitle(role: SignupRole) {
-  if (role === "teacher") return "Build your trusted teacher profile.";
-  if (role === "individual") return "Find trusted support for a learner.";
-  return "Create your school staffing workspace.";
-}
-
-function signupHeroCopy(role: SignupRole) {
-  if (role === "teacher") {
-    return "Complete your teaching profile once, then use it for matching, messaging, bookings, and compliance checks.";
-  }
-
-  if (role === "individual") {
-    return "Create a safe request, browse verified teachers, and keep every conversation under the verified hiring account.";
-  }
-
-  return "Set up a verified workspace for posting cover, reviewing ranked matches, and keeping compliance visible.";
-}
-
-function signupStepTitle(role: SignupRole, step: SignupStep) {
-  if (step === 1) return "Complete profile basics";
-  if (step === 2) {
-    if (role === "teacher") return "Build your teacher profile";
-    if (role === "individual") return "Add learner needs";
-    return "Add school details";
-  }
-  if (step === 3) return role === "individual" ? "Set safeguarding preferences" : "Complete compliance";
-  return "Review and submit";
-}
-
-function signupSubmitLabel(role: SignupRole) {
-  if (role === "individual") return "Create learner request";
-  return "Submit for review";
-}
-
-function fieldClass(error?: string) {
-  return cn("input", error ? "border-danger bg-danger-tint" : null);
-}
-
-function areaClass(error?: string) {
-  return cn("textarea min-h-[132px]", error ? "border-danger bg-danger-tint" : null);
-}
-
-function ReviewBadgeList({ items }: { items: string[] }) {
-  if (items.length === 0) return <span className="text-muted">Not selected</span>;
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {items.map((item) => (
-        <span key={item} className="rounded-full bg-brand-tint px-2.5 py-1 text-xs font-semibold text-brand">
-          {item}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function formatFileSize(size: number) {
-  if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function FileSummary({ file }: { file: UploadedFile | null }) {
-  if (!file) return <span className="text-muted">Not uploaded</span>;
-
-  return (
-    <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-ink">
-      <Icon name={file.type.startsWith("image/") ? "image" : "file"} size={13} className="text-brand" />
-      <span className="min-w-0 truncate">{file.name}</span>
-      <span className="shrink-0 text-muted">{formatFileSize(file.size)}</span>
-    </span>
-  );
-}
-
-function toUploadedFile(file: File): UploadedFile {
-  return {
-    name: file.name,
-    size: file.size,
-    type: file.type,
-  };
-}
-
-function UploadCard({
-  id,
-  title,
-  description,
-  icon,
-  accept,
-  capture,
-  file,
-  error,
-  actionLabel,
-  onFile,
-}: {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  accept: string;
-  capture?: "user" | "environment";
-  file: UploadedFile | null;
-  error?: string;
-  actionLabel: string;
-  onFile: (file: UploadedFile) => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl border bg-white p-5 transition",
-        error ? "border-danger bg-danger-tint" : file ? "border-brand bg-brand-tint" : "border-border",
-      )}
-    >
-      <div className="flex min-h-[132px] flex-col">
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
-            <Icon name={icon} size={20} />
-          </div>
-          <div className="min-w-0">
-            <div className="font-semibold">{title}</div>
-            <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
-          </div>
-        </div>
-
-        <div className="mt-auto pt-5">
-          {file ? (
-            <div className="mb-3">
-              <FileSummary file={file} />
-            </div>
-          ) : null}
-          <label
-            className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border-strong bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand hover:bg-brand-tint focus-within:outline-none focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2"
-            htmlFor={id}
-          >
-            <Icon name={file ? "upload" : icon} size={15} />
-            {file ? "Replace file" : actionLabel}
-            <input
-              accept={accept}
-              capture={capture}
-              className="sr-only"
-              id={id}
-              onChange={(event) => {
-                const selectedFile = event.target.files?.[0];
-                if (!selectedFile) return;
-                onFile(toUploadedFile(selectedFile));
-                event.target.value = "";
-              }}
-              type="file"
-            />
-          </label>
-          {error ? <div className="mt-2 text-xs font-semibold text-danger">{error}</div> : null}
-        </div>
-      </div>
-    </div>
-  );
-}
+import {
+  budgetRanges,
+  countryCodes,
+  coverTypes,
+  currencies,
+  keyStages,
+  learningModes,
+  preferredSchedules,
+  subjects,
+  supportForOptions,
+  teacherSkills,
+} from "./onboarding/constants";
+import { ReviewCard } from "./onboarding/ReviewCard";
+import type {
+  OnboardingDocumentDownloadActionResult,
+  OnboardingDocumentUploadActionResult,
+  OnboardingFinishResult,
+  SignupRole,
+} from "./onboarding/types";
+import { UploadCard } from "./onboarding/UploadCard";
+import { useOnboardingForm } from "./onboarding/useOnboardingForm";
+import {
+  areaClass,
+  fieldClass,
+  roleLabel,
+  signupHeroCopy,
+  signupHeroTitle,
+  signupStepTitle,
+  signupSubmitLabel,
+} from "./onboarding/utils";
 
 export function OnboardingPage({
   accountEmail,
@@ -419,285 +43,61 @@ export function OnboardingPage({
   setStep,
   role,
   setRole,
+  initialSnapshot,
   onFinish,
+  onDocumentView,
+  onDocumentUpload,
+  onStepSave,
   onLanding,
   onLogin,
 }: {
   accountEmail?: string;
   headerActionLabel?: string;
   headerPrompt?: string;
+  initialSnapshot?: OnboardingProfileSnapshot;
   roleSelected: boolean;
   step: number;
   setStep: (step: number) => void;
   role: AppRole;
   setRole: (role: SignupRole) => void;
-  onFinish: () => void;
+  onFinish: (payload: FormData) => Promise<OnboardingFinishResult>;
+  onDocumentView: (payload: FormData) => Promise<OnboardingDocumentDownloadActionResult>;
+  onDocumentUpload: (payload: FormData) => Promise<OnboardingDocumentUploadActionResult>;
+  onStepSave: (payload: FormData) => Promise<OnboardingFinishResult>;
   onLanding: () => void;
   onLogin: () => void;
 }) {
-  const activeRole: SignupRole = role === "teacher" ? "teacher" : role === "individual" ? "individual" : "institution";
-  const currentStep = Math.min(4, Math.max(1, step)) as SignupStep;
-  const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
-  const [form, setForm] = useState<SignupForm>(() => readOnboardingDraft(accountEmail));
-  const [errors, setErrors] = useState<SignupErrors>({});
-  const [pending, setPending] = useState<OnboardingPending>(null);
-  const pendingTimerRef = useRef<number | null>(null);
-  const progress = currentStep * 25;
-
-  useEffect(() => {
-    return () => {
-      if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    writeOnboardingDraft(accountEmail, form);
-  }, [accountEmail, form]);
-
-  function runPending(kind: Exclude<OnboardingPending, null>, callback: () => void) {
-    if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
-    setPending(kind);
-    pendingTimerRef.current = window.setTimeout(() => {
-      callback();
-      setPending(null);
-    }, 360);
-  }
-  const reviewGroups = useMemo<ReviewGroup[]>(() => {
-    const accountLines: ReviewLine[] = [
-      { label: "Account type", value: roleLabel(activeRole) },
-      { label: "Name", value: form.fullName || "Not provided" },
-      { label: "Email", value: form.email || accountEmail || "Not provided" },
-      { label: "Phone", value: form.phone || "Not provided" },
-      { label: "Postcode", value: form.postcode || "Not provided" },
-    ];
-
-    if (activeRole === "teacher") {
-      return [
-        {
-          title: "Account",
-          description: "Login and contact details",
-          icon: "user",
-          editStep: 1,
-          lines: accountLines,
-        },
-        {
-          title: "Teaching Profile",
-          description: "Subjects, stages, and classroom fit",
-          icon: "award",
-          editStep: 2,
-          lines: [
-            { label: "Subjects", value: <ReviewBadgeList items={form.subjects} />, wide: true },
-            { label: "Key stages", value: <ReviewBadgeList items={form.keyStages} />, wide: true },
-            { label: "Experience", value: form.yearsExperience ? `${form.yearsExperience} years` : "Not provided" },
-            { label: "TRN", value: form.teachingReferenceNumber || "Optional" },
-            { label: "Bio", value: form.bio || "Not provided", wide: true },
-          ],
-        },
-        {
-          title: "Compliance",
-          description: "Verification readiness",
-          icon: "shield",
-          editStep: 3,
-          lines: [
-            { label: "DBS certificate", value: form.dbsNumber || "Not provided" },
-            { label: "Right-to-work document", value: <FileSummary file={form.rightToWorkFile} />, wide: true },
-            { label: "Photo ID picture", value: <FileSummary file={form.identityPhoto} />, wide: true },
-          ],
-        },
-      ];
-    }
-
-    if (activeRole === "individual") {
-      return [
-        {
-          title: "Account",
-          description: "Login and contact details",
-          icon: "user",
-          editStep: 1,
-          lines: accountLines,
-        },
-        {
-          title: "Learner Request",
-          description: "Subject, stage, and scheduling needs",
-          icon: "heart",
-          editStep: 2,
-          lines: [
-            { label: "Support for", value: form.individualRelationship || "Not provided" },
-            { label: "Subjects", value: <ReviewBadgeList items={form.subjects} />, wide: true },
-            { label: "Stage", value: <ReviewBadgeList items={form.keyStages} />, wide: true },
-            { label: "Format", value: form.learningMode || "Not provided" },
-            { label: "Schedule", value: form.preferredSchedule || "Not provided" },
-            { label: "Budget", value: form.budgetRange || "Not provided" },
-            { label: "Notes", value: form.learnerNotes || "Optional", wide: true },
-          ],
-        },
-        {
-          title: "Safeguarding",
-          description: "Privacy and verified-teacher expectations",
-          icon: "shield",
-          editStep: 3,
-          lines: [
-            { label: "Hiring consent", value: form.individualConsent ? "Hiring responsibility confirmed" : "Not confirmed", wide: true },
-            { label: "Platform safety", value: form.safeguardingConfirmed ? "Messaging and bookings stay inside SupplyED" : "Not confirmed", wide: true },
-          ],
-        },
-      ];
-    }
-
-    return [
-      {
-        title: "Account",
-        description: "Login and contact details",
-        icon: "user",
-        editStep: 1,
-        lines: accountLines,
-      },
-      {
-        title: "School Workspace",
-        description: "Organisation and staffing needs",
-        icon: "building",
-        editStep: 2,
-        lines: [
-          { label: "School / MAT", value: form.schoolName || "Not provided" },
-          { label: "Your role", value: form.contactRole || "Not provided" },
-          { label: "Region", value: form.localAuthority || "Not provided" },
-          { label: "Pupil count", value: form.yearsExperience || "Optional" },
-          { label: "Needs", value: <ReviewBadgeList items={form.coverTypes} />, wide: true },
-        ],
-      },
-      {
-        title: "Compliance",
-        description: "Safeguarding approval",
-        icon: "shield",
-        editStep: 3,
-        lines: [
-          { label: "Compliance lead", value: form.complianceContact || "Not provided" },
-          { label: "Compliance email", value: form.complianceEmail || "Not provided" },
-          { label: "Safeguarding", value: form.safeguardingConfirmed ? "Authorised staff confirmed" : "Not confirmed" },
-        ],
-      },
-    ];
-  }, [accountEmail, activeRole, form]);
-
-  function updateField<FieldName extends keyof SignupForm>(field: FieldName, value: SignupForm[FieldName]) {
-    setForm((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
-  }
-
-  function validateStep(targetStep: SignupStep) {
-    const nextErrors: SignupErrors = {};
-
-    if (targetStep === 1) {
-      if (!roleSelected) nextErrors.accountRole = "Choose how you want to use SupplyED.";
-      if (!form.fullName.trim()) nextErrors.fullName = "Enter your full name.";
-      if (!form.phone.trim()) nextErrors.phone = "Enter a contact number.";
-      else if (!phonePattern.test(form.phone.trim())) nextErrors.phone = "Use a valid phone number.";
-      if (!form.postcode.trim()) nextErrors.postcode = "Enter your postcode.";
-    }
-
-    if (targetStep === 2 && activeRole === "institution") {
-      if (!form.schoolName.trim()) nextErrors.schoolName = "Enter the school or MAT name.";
-      if (!form.contactRole.trim()) nextErrors.contactRole = "Enter your role.";
-      if (!form.localAuthority.trim()) nextErrors.localAuthority = "Enter the local authority or region.";
-      if (form.coverTypes.length === 0) nextErrors.coverTypes = "Choose at least one staffing need.";
-    }
-
-    if (targetStep === 2 && activeRole === "teacher") {
-      if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
-      if (form.keyStages.length === 0) nextErrors.keyStages = "Choose at least one key stage.";
-      if (!form.yearsExperience.trim()) nextErrors.yearsExperience = "Enter your years of experience.";
-      else if (Number(form.yearsExperience) < 0) nextErrors.yearsExperience = "Experience cannot be negative.";
-      if (form.bio.trim().length < 40) nextErrors.bio = "Write at least 40 characters so schools understand your teaching style.";
-    }
-
-    if (targetStep === 2 && activeRole === "individual") {
-      if (!form.individualRelationship) nextErrors.individualRelationship = "Choose who needs support.";
-      if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
-      if (form.keyStages.length === 0) nextErrors.keyStages = "Choose the learner stage.";
-      if (!form.learningMode) nextErrors.learningMode = "Choose online, in-person, or hybrid support.";
-      if (!form.preferredSchedule) nextErrors.preferredSchedule = "Choose a preferred schedule.";
-      if (!form.budgetRange) nextErrors.budgetRange = "Choose a budget range.";
-    }
-
-    if (targetStep === 3 && activeRole === "institution") {
-      if (!form.complianceContact.trim()) nextErrors.complianceContact = "Enter the safeguarding or compliance lead.";
-      if (!form.complianceEmail.trim()) nextErrors.complianceEmail = "Enter the compliance email.";
-      else if (!emailPattern.test(form.complianceEmail.trim())) nextErrors.complianceEmail = "Use a valid email address.";
-      if (!form.safeguardingConfirmed) nextErrors.safeguardingConfirmed = "Confirm safeguarding responsibility.";
-    }
-
-    if (targetStep === 3 && activeRole === "teacher") {
-      if (!form.dbsNumber.trim()) nextErrors.dbsNumber = "Enter your enhanced DBS certificate number.";
-      if (!form.rightToWorkFile) nextErrors.rightToWorkFile = "Upload your right-to-work evidence.";
-      if (!form.identityPhoto) nextErrors.identityPhoto = "Upload or capture a photo of your ID.";
-    }
-
-    if (targetStep === 3 && activeRole === "individual") {
-      if (!form.individualConsent) nextErrors.individualConsent = "Confirm you are authorised to arrange learning support.";
-      if (!form.safeguardingConfirmed) nextErrors.safeguardingConfirmed = "Confirm communication will stay inside SupplyED.";
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  }
-
-  function continueStep() {
-    if (pending) return;
-    if (!validateStep(currentStep)) return;
-    runPending("step", () => {
-      setStep(currentStep + 1);
-      setErrors({});
-    });
-  }
-
-  function submitSignup() {
-    if (pending) return;
-    for (const targetStep of [1, 2, 3] as SignupStep[]) {
-      if (!validateStep(targetStep)) {
-        setStep(targetStep);
-        return;
-      }
-    }
-
-    runPending("submit", onFinish);
-  }
-
-  function renderReviewCard(group: ReviewGroup, featured = false) {
-    return (
-      <section key={group.title} className={cn("min-w-0 rounded-xl border border-border bg-white", featured ? "p-5" : "p-4")}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
-              <Icon name={group.icon} size={19} />
-            </div>
-            <div className="min-w-0">
-              <h3 className="font-serif text-xl leading-tight">{group.title}</h3>
-              <p className="mt-1 text-sm leading-5 text-muted">{group.description}</p>
-            </div>
-          </div>
-          <button
-            className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold text-brand transition hover:bg-brand-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-            onClick={() => setStep(group.editStep)}
-            type="button"
-          >
-            Edit
-          </button>
-        </div>
-
-        <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-          {group.lines.map((line) => (
-            <div
-              key={line.label}
-              className={cn("min-w-0 rounded-lg bg-chalk px-3.5 py-3", line.wide && featured ? "sm:col-span-2" : null)}
-            >
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-[1px] text-muted">{line.label}</div>
-              <div className="min-w-0 break-words text-sm leading-6 text-ink">{line.value}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
+  const {
+    activeRole,
+    clearFieldError,
+    continueStep,
+    currentStep,
+    errors,
+    form,
+    isLastStep,
+    pending,
+    progress,
+    reviewGroups,
+    steps,
+    submitError,
+    submitSignup,
+    uploadDocument,
+    uploadPending,
+    updateField,
+    viewDocument,
+    viewPending,
+  } = useOnboardingForm({
+    accountEmail,
+    initialSnapshot,
+    onFinish,
+    onDocumentView,
+    onDocumentUpload,
+    onStepSave,
+    role,
+    roleSelected,
+    setStep,
+    step,
+  });
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-chalk">
@@ -770,7 +170,7 @@ export function OnboardingPage({
         <section className="flex min-h-[680px] flex-col rounded-b-xl border border-t-0 border-border bg-white p-5 shadow-(--shadow-xs) sm:p-8 lg:rounded-l-none lg:rounded-r-xl lg:border-l-0 lg:border-t">
           <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <Tag>Step {currentStep} of 4</Tag>
+              <Tag>Step {currentStep} of {steps.length}</Tag>
               <h2 className="mt-3 font-serif text-3xl leading-tight sm:text-[36px]">
                 {roleSelected ? signupStepTitle(activeRole, currentStep) : "Choose account type"}
               </h2>
@@ -818,7 +218,7 @@ export function OnboardingPage({
                           className="rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint sm:p-5"
                           onClick={() => {
                             setRole(value);
-                            setErrors((current) => ({ ...current, accountRole: undefined }));
+                            clearFieldError("accountRole");
                           }}
                           style={{ borderColor: selected ? "var(--se)" : "var(--border)", background: selected ? "var(--se-tint)" : "#fff" }}
                           type="button"
@@ -845,6 +245,84 @@ export function OnboardingPage({
                     <input id="signup-postcode" className={fieldClass(errors.postcode)} value={form.postcode} onChange={(event) => updateField("postcode", event.target.value.toUpperCase())} placeholder="M1 1AE" />
                   </Field>
                 </div>
+
+                {activeRole === "teacher" ? (
+                  <div className="space-y-6 rounded-xl border border-border bg-chalk p-4 sm:p-5">
+                    <div>
+                      <h3 className="font-serif text-2xl leading-tight">Teaching profile</h3>
+                      <p className="mt-1 text-sm leading-6 text-muted">
+                        These details are sent to the instructor profile endpoint and used for matching after review.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-6 xl:grid-cols-2">
+                      <Field label="Primary subjects" error={errors.subjects} required>
+                        <MultiSelectDropdown
+                          error={Boolean(errors.subjects)}
+                          options={subjects}
+                          placeholder="Select primary subjects"
+                          value={form.subjects}
+                          onChange={(value) => updateField("subjects", value)}
+                        />
+                      </Field>
+                      <Field label="Key stages" error={errors.keyStages} required>
+                        <MultiSelectDropdown
+                          error={Boolean(errors.keyStages)}
+                          options={keyStages}
+                          placeholder="Select key stages"
+                          value={form.keyStages}
+                          onChange={(value) => updateField("keyStages", value)}
+                        />
+                      </Field>
+                    </div>
+
+                    <Field label="Skills" hint="Optional, but useful for matching.">
+                      <MultiSelectDropdown
+                        options={teacherSkills}
+                        placeholder="Select skills"
+                        value={form.skills}
+                        onChange={(value) => updateField("skills", value)}
+                      />
+                    </Field>
+
+                    <div className="grid gap-x-4 sm:grid-cols-2 xl:grid-cols-3">
+                      <Field label="Years of experience" htmlFor="experience" error={errors.yearsExperience} required>
+                        <input id="experience" className={fieldClass(errors.yearsExperience)} value={form.yearsExperience} onChange={(event) => updateField("yearsExperience", event.target.value.replace(/[^\d]/g, ""))} placeholder="5" inputMode="numeric" />
+                      </Field>
+                      <Field label="Daily rate" htmlFor="daily-rate" error={errors.dailyRate} hint="Optional">
+                        <input id="daily-rate" className={fieldClass(errors.dailyRate)} value={form.dailyRate} onChange={(event) => updateField("dailyRate", event.target.value.replace(/[^\d.]/g, ""))} placeholder="180" inputMode="decimal" />
+                      </Field>
+                      <Field label="Hourly rate" htmlFor="hourly-rate" error={errors.hourlyRate} hint="Optional">
+                        <input id="hourly-rate" className={fieldClass(errors.hourlyRate)} value={form.hourlyRate} onChange={(event) => updateField("hourlyRate", event.target.value.replace(/[^\d.]/g, ""))} placeholder="35" inputMode="decimal" />
+                      </Field>
+                      <Field label="Currency" error={errors.currency}>
+                        <SelectDropdown
+                          error={Boolean(errors.currency)}
+                          options={currencies}
+                          placeholder="Select currency"
+                          value={form.currency}
+                          onChange={(value) => updateField("currency", value)}
+                        />
+                      </Field>
+                      <Field label="Maximum travel distance" htmlFor="travel-distance" error={errors.maxTravelDistance} hint="Miles, optional">
+                        <input id="travel-distance" className={fieldClass(errors.maxTravelDistance)} value={form.maxTravelDistance} onChange={(event) => updateField("maxTravelDistance", event.target.value.replace(/[^\d.]/g, ""))} placeholder="25" inputMode="decimal" />
+                      </Field>
+                      <Field label="Teaching reference number" htmlFor="trn" hint="Optional for now.">
+                        <input id="trn" className="input" value={form.teachingReferenceNumber} onChange={(event) => updateField("teachingReferenceNumber", event.target.value)} placeholder="TRN number" />
+                      </Field>
+                    </div>
+
+                    <Field label="Teaching bio" htmlFor="bio" error={errors.bio} required>
+                      <textarea
+                        id="bio"
+                        className={areaClass(errors.bio)}
+                        value={form.bio}
+                        onChange={(event) => updateField("bio", event.target.value)}
+                        placeholder="Describe your classroom style, specialist subjects, behaviour approach, and availability."
+                      />
+                    </Field>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -857,8 +335,29 @@ export function OnboardingPage({
                   <Field label="Your role" htmlFor="contact-role" error={errors.contactRole} required>
                     <input id="contact-role" className={fieldClass(errors.contactRole)} value={form.contactRole} onChange={(event) => updateField("contactRole", event.target.value)} placeholder="Headteacher, HR lead, cover manager" />
                   </Field>
-                  <Field label="Local authority / region" htmlFor="authority" error={errors.localAuthority} required>
+                  <Field label="School / trust domain" htmlFor="institution-domain" error={errors.institutionDomain} required>
+                    <input id="institution-domain" className={fieldClass(errors.institutionDomain)} value={form.institutionDomain} onChange={(event) => updateField("institutionDomain", event.target.value.replace(/^https?:\/\//i, "").split("/")[0].toLowerCase())} placeholder="greenfield.ac.uk" />
+                  </Field>
+                  <Field label="Registration ID" htmlFor="institution-registration-id" hint="Optional">
+                    <input id="institution-registration-id" className="input" value={form.institutionRegistrationId} onChange={(event) => updateField("institutionRegistrationId", event.target.value)} placeholder="URN, company number, or trust ID" />
+                  </Field>
+                  <Field label="Address" htmlFor="institution-address" error={errors.institutionAddress} required>
+                    <input id="institution-address" className={fieldClass(errors.institutionAddress)} value={form.institutionAddress} onChange={(event) => updateField("institutionAddress", event.target.value)} placeholder="1 School Lane" />
+                  </Field>
+                  <Field label="City" htmlFor="institution-city" error={errors.institutionCity} required>
+                    <input id="institution-city" className={fieldClass(errors.institutionCity)} value={form.institutionCity} onChange={(event) => updateField("institutionCity", event.target.value)} placeholder="Manchester" />
+                  </Field>
+                  <Field label="County / region" htmlFor="authority" error={errors.localAuthority} required>
                     <input id="authority" className={fieldClass(errors.localAuthority)} value={form.localAuthority} onChange={(event) => updateField("localAuthority", event.target.value)} placeholder="Greater Manchester" />
+                  </Field>
+                  <Field label="Country" error={errors.institutionCountryCode}>
+                    <SelectDropdown
+                      error={Boolean(errors.institutionCountryCode)}
+                      options={countryCodes}
+                      placeholder="Select country"
+                      value={form.institutionCountryCode}
+                      onChange={(value) => updateField("institutionCountryCode", value)}
+                    />
                   </Field>
                   <Field label="Typical pupil count" htmlFor="pupils" hint="Optional, helps estimate staffing needs.">
                     <input id="pupils" className="input" value={form.yearsExperience} onChange={(event) => updateField("yearsExperience", event.target.value.replace(/\D/g, ""))} placeholder="420" inputMode="numeric" />
@@ -878,41 +377,82 @@ export function OnboardingPage({
 
             {currentStep === 2 && activeRole === "teacher" ? (
               <div className="space-y-6">
-                <Field label="Primary subjects" error={errors.subjects} required>
-                  <MultiSelectDropdown
-                    error={Boolean(errors.subjects)}
-                    options={subjects}
-                    placeholder="Select primary subjects"
-                    value={form.subjects}
-                    onChange={(value) => updateField("subjects", value)}
-                  />
-                </Field>
-                <Field label="Key stages" error={errors.keyStages} required>
-                  <MultiSelectDropdown
-                    error={Boolean(errors.keyStages)}
-                    options={keyStages}
-                    placeholder="Select key stages"
-                    value={form.keyStages}
-                    onChange={(value) => updateField("keyStages", value)}
-                  />
-                </Field>
-                <div className="grid gap-x-4 sm:grid-cols-2">
-                  <Field label="Years of experience" htmlFor="experience" error={errors.yearsExperience} required>
-                    <input id="experience" className={fieldClass(errors.yearsExperience)} value={form.yearsExperience} onChange={(event) => updateField("yearsExperience", event.target.value.replace(/[^\d.]/g, ""))} placeholder="5" inputMode="decimal" />
-                  </Field>
-                  <Field label="Teaching reference number" htmlFor="trn" hint="Optional for now.">
-                    <input id="trn" className="input" value={form.teachingReferenceNumber} onChange={(event) => updateField("teachingReferenceNumber", event.target.value)} placeholder="TRN number" />
-                  </Field>
+                <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
+                      <Icon name="shield" size={19} />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-brand-dark">Instructor documents</div>
+                      <p className="mt-1 text-sm leading-6 text-brand-dark/80">
+                        Upload PDF, JPG, or PNG files only. Each file must be 10 MB or smaller.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <Field label="Teaching bio" htmlFor="bio" error={errors.bio} required>
-                  <textarea
-                    id="bio"
-                    className={areaClass(errors.bio)}
-                    value={form.bio}
-                    onChange={(event) => updateField("bio", event.target.value)}
-                    placeholder="Describe your classroom style, specialist subjects, behaviour approach, and availability."
-                  />
+
+                <Field label="Enhanced DBS certificate number" htmlFor="dbs-number" error={errors.dbsNumber} required>
+                  <input id="dbs-number" className={fieldClass(errors.dbsNumber)} value={form.dbsNumber} onChange={(event) => updateField("dbsNumber", event.target.value)} placeholder="Certificate number" />
                 </Field>
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <UploadCard
+                    id="dbs-certificate-file"
+                    title="DBS Certificate"
+                    description="Upload the certificate file that matches the DBS number above."
+                    icon="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    file={form.dbsCertificateFile}
+                    error={errors.dbsCertificateFile}
+                    pending={uploadPending === "dbsCertificateFile"}
+                    viewPending={viewPending === "dbsCertificateFile"}
+                    actionLabel="Upload certificate"
+                    onFile={(file) => uploadDocument("dbsCertificateFile", file)}
+                    onView={() => viewDocument("dbsCertificateFile", form.dbsCertificateFile)}
+                  />
+                  <UploadCard
+                    id="identity-photo"
+                    title="Photo ID (Passport / Driving Licence)"
+                    description="Upload a clear passport, driving licence, or official photo ID."
+                    icon="image"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    capture="environment"
+                    file={form.identityPhoto}
+                    error={errors.identityPhoto}
+                    pending={uploadPending === "identityPhoto"}
+                    viewPending={viewPending === "identityPhoto"}
+                    actionLabel="Upload ID"
+                    onFile={(file) => uploadDocument("identityPhoto", file)}
+                    onView={() => viewDocument("identityPhoto", form.identityPhoto)}
+                  />
+                  <UploadCard
+                    id="qualification-file"
+                    title="Teaching Qualifications / QTS"
+                    description="Upload a certificate or QTS evidence document."
+                    icon="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    file={form.qualificationFile}
+                    error={errors.qualificationFile}
+                    pending={uploadPending === "qualificationFile"}
+                    viewPending={viewPending === "qualificationFile"}
+                    actionLabel="Upload qualification"
+                    onFile={(file) => uploadDocument("qualificationFile", file)}
+                    onView={() => viewDocument("qualificationFile", form.qualificationFile)}
+                  />
+                  <UploadCard
+                    id="right-to-work-file"
+                    title="Proof of Address"
+                    description="Upload a recent bill, bank statement, or official address evidence."
+                    icon="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    file={form.rightToWorkFile}
+                    error={errors.rightToWorkFile}
+                    pending={uploadPending === "rightToWorkFile"}
+                    viewPending={viewPending === "rightToWorkFile"}
+                    actionLabel="Upload evidence"
+                    onFile={(file) => uploadDocument("rightToWorkFile", file)}
+                    onView={() => viewDocument("rightToWorkFile", form.rightToWorkFile)}
+                  />
+                </div>
               </div>
             ) : null}
 
@@ -1062,40 +602,7 @@ export function OnboardingPage({
               </div>
             ) : null}
 
-            {currentStep === 3 && activeRole === "teacher" ? (
-              <div className="space-y-6">
-                <Field label="Enhanced DBS certificate number" htmlFor="dbs-number" error={errors.dbsNumber} required>
-                  <input id="dbs-number" className={fieldClass(errors.dbsNumber)} value={form.dbsNumber} onChange={(event) => updateField("dbsNumber", event.target.value)} placeholder="Certificate number" />
-                </Field>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <UploadCard
-                    id="right-to-work-file"
-                    title="Right-to-work evidence"
-                    description="Upload the exact document you will use for verification, such as passport, share-code proof, or visa evidence."
-                    icon="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.heic,.webp"
-                    file={form.rightToWorkFile}
-                    error={errors.rightToWorkFile}
-                    actionLabel="Upload document"
-                    onFile={(file) => updateField("rightToWorkFile", file)}
-                  />
-                  <UploadCard
-                    id="identity-photo"
-                    title="Photo ID picture"
-                    description="Take or upload a clear picture of your photo ID. Use the full document, not a cropped corner."
-                    icon="image"
-                    accept="image/*"
-                    capture="environment"
-                    file={form.identityPhoto}
-                    error={errors.identityPhoto}
-                    actionLabel="Take picture"
-                    onFile={(file) => updateField("identityPhoto", file)}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {currentStep === 4 ? (
+            {isLastStep ? (
               <div className="space-y-4">
                 <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-5">
                   <div className="flex items-start gap-3">
@@ -1113,27 +620,40 @@ export function OnboardingPage({
 
                 <div className="grid gap-4 xl:grid-cols-2">
                   <div className="space-y-4">
-                    {reviewGroups[0] ? renderReviewCard(reviewGroups[0]) : null}
-                    {reviewGroups[2] ? renderReviewCard(reviewGroups[2]) : null}
+                    {reviewGroups[0] ? (
+                      <ReviewCard group={reviewGroups[0]} onEdit={() => setStep(reviewGroups[0].editStep)} />
+                    ) : null}
+                    {reviewGroups[2] ? (
+                      <ReviewCard group={reviewGroups[2]} onEdit={() => setStep(reviewGroups[2].editStep)} />
+                    ) : null}
                   </div>
-                  {reviewGroups[1] ? renderReviewCard(reviewGroups[1], true) : null}
+                  {reviewGroups[1] ? (
+                    <ReviewCard featured group={reviewGroups[1]} onEdit={() => setStep(reviewGroups[1].editStep)} />
+                  ) : null}
                 </div>
               </div>
             ) : null}
           </div>
 
+          {submitError ? (
+            <div className="mt-6 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
+              {submitError}
+            </div>
+          ) : null}
+
           <div className="mt-8 flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
             <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending)} onClick={() => setStep(Math.max(1, currentStep - 1))}>Back</Btn>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <span className="self-center text-xs font-semibold uppercase tracking-[1px] text-muted">Autosaved</span>
+              <span className="self-center text-xs font-semibold uppercase tracking-[1px] text-muted">Saved on continue</span>
               <Btn
                 loading={pending === "step" || pending === "submit"}
-                loadingLabel={currentStep === 4 ? "Submitting" : "Saving step"}
+                loadingLabel={isLastStep ? "Submitting" : "Saving step"}
                 size="lg"
                 iconRight="arrow"
-                onClick={() => (currentStep === 4 ? submitSignup() : continueStep())}
+                disabled={Boolean(uploadPending)}
+                onClick={() => (isLastStep ? submitSignup() : continueStep())}
               >
-                {currentStep === 4 ? signupSubmitLabel(activeRole) : "Continue"}
+                {isLastStep ? signupSubmitLabel(activeRole) : "Continue"}
               </Btn>
             </div>
           </div>

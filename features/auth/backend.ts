@@ -125,7 +125,11 @@ function readAccessTokenExpiresAt(record: Record<string, unknown>, accessToken?:
   }
 
   const expiresInSeconds =
-    readNumber(record.accessTokenExpiresIn) ?? readNumber(record.expiresIn) ?? readNumber(tokens.accessTokenExpiresIn);
+    readNumber(record.accessTokenExpiresInSeconds) ??
+    readNumber(record.accessTokenExpiresIn) ??
+    readNumber(record.expiresIn) ??
+    readNumber(tokens.accessTokenExpiresInSeconds) ??
+    readNumber(tokens.accessTokenExpiresIn);
 
   if (expiresInSeconds) return Date.now() + expiresInSeconds * 1000;
 
@@ -188,6 +192,16 @@ export function normalizeAuthUser(payload: unknown): AuthUser {
     email,
     emailVerified: readBoolean(user.emailVerified ?? user.isEmailVerified) ?? false,
     id,
+    instructorProfileId:
+      readString(user.instructorProfileId) ??
+      readString(user.instructorProfileID) ??
+      readString(user.instructorId) ??
+      (isRecord(user.instructorProfile) ? readString(user.instructorProfile.id) : undefined),
+    institutionProfileId:
+      readString(user.institutionProfileId) ??
+      readString(user.institutionProfileID) ??
+      readString(user.institutionId) ??
+      (isRecord(user.institutionProfile) ? readString(user.institutionProfile.id) : undefined),
     name: readString(user.name) ?? readString(user.fullName) ?? null,
     role: normalizeRole(user.role),
   };

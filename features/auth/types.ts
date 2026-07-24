@@ -5,6 +5,8 @@ export type AuthUser = {
   email: string;
   emailVerified: boolean;
   id: string;
+  instructorProfileId?: string;
+  institutionProfileId?: string;
   name?: string | null;
   role: AppRole | null;
 };

@@ -6,7 +6,6 @@ import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 
 import { Avatar, Icon } from "../atoms";
 
@@ -103,10 +102,6 @@ export function PublicAccountMenu({ email, name, role }: PublicAccountMenuProps)
   async function logout() {
     setOpen(false);
     await signOut({ redirect: false });
-
-    const nextState = resetAuthFlowState(loadAppState(), "login");
-
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/login");
   }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { defaultTweaks } from "@/data/supplyed";
-import { loadTweaks, saveTweaks } from "@/lib/supplyed-storage";
+import { loadTweaks, saveTweaks } from "@/lib/supplyed-preferences";
 import { applyBrandTheme, brandPalettes, deriveBrandTheme } from "@/lib/theme";
 import { Icon } from "../atoms";
 

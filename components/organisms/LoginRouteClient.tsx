@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 import { loginAction, resendLoginVerification, verifyLoginEmail } from "@/app/(auth)/login/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 import { useAuthToasts } from "@/lib/use-auth-toasts";
 import { useMounted } from "@/lib/use-mounted";
-import type { AppState, SocialAuthAvailability } from "@/types/supplyed";
+import type { SocialAuthAvailability } from "@/types/supplyed";
 
 import { AuthFlowLoader, PublicThemeControls, ToastStack } from "../molecules";
 import { LoginPage } from "./LoginPage";
@@ -53,17 +52,12 @@ function isSocialProviderAvailable(provider: "google" | "microsoft-entra-id", so
 
 function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
   const router = useRouter();
-  const [state, setState] = useState<AppState>(() => resetAuthFlowState(loadAppState(), "login"));
   const [stage, setStage] = useState<LoginStage>("login");
-  const [verificationEmail, setVerificationEmail] = useState(state.signupEmail);
+  const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationNotice, setVerificationNotice] = useState<string>();
   const [verificationToken, setVerificationToken] = useState<string>();
   const [resendAvailableAt, setResendAvailableAt] = useState<number>();
   const { authToasts, dismissAuthToast, showAuthError } = useAuthToasts(initialError);
-
-  useEffect(() => {
-    saveAppState(state);
-  }, [state]);
 
   function formData(values: Record<string, string>) {
     const data = new FormData();
@@ -77,19 +71,6 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     message?: string,
     expiresInMinutes?: number,
   ) {
-    const nextState: AppState = {
-      ...state,
-      auth: "login",
-      signupEmail: email,
-      signupVerified: false,
-      roleSelected: false,
-      onboardingComplete: false,
-      applicationStatus: "none",
-      onboardingStep: 1,
-    };
-
-    setState(nextState);
-    saveAppState(nextState);
     setVerificationEmail(email);
     setVerificationNotice(message);
     setVerificationToken(otpToken);
@@ -98,17 +79,11 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
   }
 
   function goLanding() {
-    const nextState: AppState = { ...state, auth: "landing" };
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/");
   }
 
   function goSignup() {
-    const nextState = resetAuthFlowState(state, "onboarding");
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/signup");
   }
@@ -182,27 +157,14 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       };
     }
 
-    const nextState: AppState = {
-      ...state,
-      auth: "signed-in",
-      signupEmail: state.signupEmail || email,
-      signupVerified: true,
-    };
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/post-auth");
     return { ok: true as const };
   }
 
   function backToLogin() {
-    const nextState: AppState = {
-      ...state,
-      auth: "login",
-    };
-    setState(nextState);
-    saveAppState(nextState);
     setStage("login");
+    setVerificationEmail("");
     setVerificationNotice(undefined);
     setVerificationToken(undefined);
     setResendAvailableAt(undefined);
@@ -264,18 +226,6 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       };
     }
 
-    const nextState: AppState = {
-      ...state,
-      auth: "signed-in",
-      signupEmail: verificationEmail,
-      signupVerified: true,
-      roleSelected: false,
-      onboardingComplete: false,
-      applicationStatus: "none",
-      onboardingStep: 1,
-    };
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/post-auth");
     return { ok: true as const };

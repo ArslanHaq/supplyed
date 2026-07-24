@@ -5,12 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 
+import { defaultState } from "@/data/supplyed";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
-import { loadAppState, loadTweaks, resetAuthFlowState, saveAppState, saveTweaks } from "@/lib/supplyed-storage";
+import { loadTweaks, saveTweaks } from "@/lib/supplyed-preferences";
 import { applyBrandTheme } from "@/lib/theme";
 import { useMounted } from "@/lib/use-mounted";
-import type { AppPage, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/types/supplyed";
+import type { AppPage, AppRole, ApplicationStatus, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/types/supplyed";
 
 import { PageLoader, ToastStack } from "../molecules";
 import { AdminDashboard } from "./AdminDashboard";
@@ -37,24 +38,35 @@ function readContext(searchParams: URLSearchParams) {
   };
 }
 
-function RouteShell({ page }: { page: AppPage }) {
+type SessionRouteState = {
+  applicationStatus: ApplicationStatus;
+  email: string;
+  role: AppRole;
+};
+
+function createInitialRouteState(page: AppPage, sessionState: SessionRouteState): AppState {
+  return {
+    ...defaultState,
+    applicationStatus: sessionState.applicationStatus,
+    auth: "signed-in",
+    onboardingComplete: true,
+    page,
+    role: sessionState.role,
+    roleSelected: true,
+    signupEmail: sessionState.email,
+    signupVerified: true,
+    toasts: [],
+  };
+}
+
+function RouteShell({ page, sessionState }: { page: AppPage; sessionState: SessionRouteState }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isClient = useMounted();
-  const [state, setState] = useState<AppState>(loadAppState);
+  const [state, setState] = useState<AppState>(() => createInitialRouteState(page, sessionState));
   const [tweaks, setTweaks] = useState<Tweaks>(loadTweaks);
   const routeCtx = useMemo(() => readContext(searchParams), [searchParams]);
   const activePage = page;
-
-  useEffect(() => {
-    if (!isClient) return;
-    saveAppState({
-      ...state,
-      auth: "signed-in",
-      page: activePage,
-      ctx: routeCtx,
-    });
-  }, [state, isClient, activePage, routeCtx]);
 
   useEffect(() => {
     if (!isClient) return;
@@ -80,16 +92,12 @@ function RouteShell({ page }: { page: AppPage }) {
   function goHome() {
     const nextState: AppState = { ...state, auth: "landing" };
     setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/");
   }
 
   async function logout() {
     await signOut({ redirect: false });
-    const nextState = resetAuthFlowState(state, "login");
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/login");
   }
@@ -177,6 +185,6 @@ function RouteShell({ page }: { page: AppPage }) {
   );
 }
 
-export function AppRouteShellClient({ page }: { page: AppPage }) {
-  return <RouteShell page={page} />;
+export function AppRouteShellClient({ page, sessionState }: { page: AppPage; sessionState: SessionRouteState }) {
+  return <RouteShell page={page} sessionState={sessionState} />;
 }

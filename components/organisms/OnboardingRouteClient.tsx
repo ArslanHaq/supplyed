@@ -2,115 +2,167 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 
+import {
+  downloadOnboardingDocument,
+  saveOnboardingAction,
+  saveOnboardingStep,
+  uploadOnboardingDocument,
+} from "@/app/(app)/onboarding/actions";
+import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref } from "@/lib/routes";
-import { loadAppState, resetAuthFlowState, saveAppState } from "@/lib/supplyed-storage";
 import { useMounted } from "@/lib/use-mounted";
-import type { AppRole, AppState } from "@/types/supplyed";
+import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 import { PageLoader, PublicThemeControls } from "../molecules";
 import { OnboardingPage } from "./OnboardingPage";
 
 type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
 
-function OnboardingRouteClientInner({ accountEmail }: { accountEmail?: string }) {
-  const router = useRouter();
-  const [state, setState] = useState<AppState>(() => {
-    const savedState = loadAppState();
+function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
+  if (role === "teacher") return "teacher";
+  if (role === "individual") return "individual";
+  return "institution";
+}
 
-    return {
-      ...savedState,
-      auth: "signed-in",
-      signupEmail: accountEmail || savedState.signupEmail,
-      signupVerified: true,
-    };
+function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfileSnapshot) {
+  if (role === "teacher") {
+    if (snapshot.documents.dbs && snapshot.documents.id && snapshot.documents.qualification && snapshot.documents.addressProof) return 3;
+    return 2;
+  }
+
+  if (role === "institution" && snapshot.institution) return 3;
+
+  return 1;
+}
+
+async function refreshSessionFromTicket(ticket?: string) {
+  if (!ticket) return { ok: true as const };
+
+  const signInResult = await signIn("credentials", {
+    flow: "verified-email-session",
+    redirect: false,
+    redirectTo: "/post-auth",
+    ticket,
   });
 
-  useEffect(() => {
-    saveAppState(state);
-  }, [state]);
+  if (!signInResult?.ok) {
+    return {
+      message: signInResult?.error || "Your onboarding was saved, but we could not refresh your session. Sign in again to continue.",
+      ok: false as const,
+    };
+  }
+
+  return { ok: true as const };
+}
+
+function OnboardingRouteClientInner({
+  accountEmail,
+  initialApplicationStatus,
+  initialProfileSnapshot,
+  initialRole,
+}: {
+  accountEmail?: string;
+  initialApplicationStatus: ApplicationStatus;
+  initialProfileSnapshot: OnboardingProfileSnapshot;
+  initialRole: AppRole | null;
+}) {
+  const router = useRouter();
+  const [role, setRoleState] = useState<SignupRole>(() => normalizeSignupRole(initialRole));
+  const [roleSelected, setRoleSelected] = useState(Boolean(initialRole));
+  const [step, setStep] = useState(() => initialStep(initialRole, initialProfileSnapshot));
+  const [profileSnapshot, setProfileSnapshot] = useState(initialProfileSnapshot);
 
   useEffect(() => {
-    if (!state.signupVerified) {
-      startRouteLoading();
-      router.replace("/signup");
-      return;
-    }
-
-    if (state.onboardingComplete) {
+    if (initialRole === "admin" || (initialRole && initialApplicationStatus !== "none")) {
       startRouteLoading();
       router.replace(buildAppHref("dashboard"));
     }
-  }, [router, state.onboardingComplete, state.signupVerified]);
+  }, [initialApplicationStatus, initialRole, router]);
 
   function setRole(role: SignupRole) {
-    setState((current) => ({ ...current, role, roleSelected: true, auth: "signed-in" }));
-  }
-
-  function setStep(step: number) {
-    setState((current) => ({ ...current, auth: "signed-in", onboardingStep: step }));
+    setRoleState(role);
+    setRoleSelected(true);
+    setStep(1);
   }
 
   function goLanding() {
-    const nextState: AppState = { ...state, auth: "signed-in" };
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/");
   }
 
   async function logout() {
     await signOut({ redirect: false });
-    const nextState = resetAuthFlowState(state, "login");
-    setState(nextState);
-    saveAppState(nextState);
     startRouteLoading();
     router.push("/login");
   }
 
-  function finishOnboarding() {
-    const nextStatus = state.role === "teacher" || state.role === "institution" ? "pending_review" : "approved";
-    const nextState: AppState = {
-      ...state,
-      auth: "signed-in",
-      roleSelected: true,
-      onboardingComplete: true,
-      applicationStatus: nextStatus,
-      page: "dashboard",
-    };
-    setState(nextState);
-    saveAppState(nextState);
-    startRouteLoading();
-    router.push(buildAppHref("dashboard"));
+  async function saveStep(payload: FormData) {
+    const result = await saveOnboardingStep(payload);
+    if (!result.ok) return result;
+
+    const sessionRefresh = await refreshSessionFromTicket(result.data.ticket);
+    if (!sessionRefresh.ok) return sessionRefresh;
+    setProfileSnapshot(result.data.snapshot);
+    router.refresh();
+
+    return result;
   }
 
-  const activeRole: SignupRole = state.role === "teacher" ? "teacher" : state.role === "individual" ? "individual" : "institution";
+  async function finishOnboarding(payload: FormData) {
+    const result = await saveOnboardingAction(payload);
+    if (!result.ok) return result;
 
-  if (!state.signupVerified || state.onboardingComplete) return null;
+    const sessionRefresh = await refreshSessionFromTicket(result.data.ticket);
+    if (!sessionRefresh.ok) return sessionRefresh;
+
+    if (result.data.snapshot) setProfileSnapshot(result.data.snapshot);
+    startRouteLoading();
+    router.push(buildAppHref("dashboard"));
+    router.refresh();
+
+    return result;
+  }
+
+  if (initialRole === "admin" || (initialRole && initialApplicationStatus !== "none")) return null;
 
   return (
     <>
       <OnboardingPage
-        accountEmail={state.signupEmail}
+        accountEmail={accountEmail}
         headerActionLabel="Logout"
-        headerPrompt={state.signupEmail || accountEmail || "Account"}
+        headerPrompt={accountEmail || "Account"}
+        initialSnapshot={profileSnapshot}
+        onDocumentView={downloadOnboardingDocument}
+        onDocumentUpload={uploadOnboardingDocument}
         onFinish={finishOnboarding}
         onLanding={goLanding}
         onLogin={logout}
-        role={activeRole}
-        roleSelected={state.roleSelected}
+        onStepSave={saveStep}
+        role={role}
+        roleSelected={roleSelected}
         setRole={setRole}
         setStep={setStep}
-        step={state.onboardingStep}
+        step={step}
       />
       <PublicThemeControls />
     </>
   );
 }
 
-export function OnboardingRouteClient({ accountEmail }: { accountEmail?: string }) {
+export function OnboardingRouteClient({
+  accountEmail,
+  initialApplicationStatus,
+  initialProfileSnapshot,
+  initialRole,
+}: {
+  accountEmail?: string;
+  initialApplicationStatus: ApplicationStatus;
+  initialProfileSnapshot: OnboardingProfileSnapshot;
+  initialRole: AppRole | null;
+}) {
   const isClient = useMounted();
 
   if (!isClient) {
@@ -122,5 +174,12 @@ export function OnboardingRouteClient({ accountEmail }: { accountEmail?: string 
     );
   }
 
-  return <OnboardingRouteClientInner accountEmail={accountEmail} />;
+  return (
+    <OnboardingRouteClientInner
+      accountEmail={accountEmail}
+      initialApplicationStatus={initialApplicationStatus}
+      initialProfileSnapshot={initialProfileSnapshot}
+      initialRole={initialRole}
+    />
+  );
 }

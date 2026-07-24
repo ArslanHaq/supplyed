@@ -33,6 +33,8 @@ function toAuthUser(response: BackendAuthResponse) {
     applicationStatus: user.applicationStatus,
     email: user.email,
     id: user.id,
+    instructorProfileId: user.instructorProfileId,
+    institutionProfileId: user.institutionProfileId,
     name: user.name ?? user.email.split("@")[0],
     refreshToken: response.refreshToken,
     role: normalizeRole(user.role),
@@ -44,6 +46,8 @@ function assignBackendSession(token: Record<string, unknown>, response: BackendA
   token.role = normalizeRole(response.user.role);
   token.applicationStatus = normalizeStatus(response.user.applicationStatus);
   token.appEmailVerified = response.user.emailVerified;
+  token.instructorProfileId = response.user.instructorProfileId;
+  token.institutionProfileId = response.user.institutionProfileId;
   if (response.accessToken) token.accessToken = response.accessToken;
   if (response.refreshToken) token.refreshToken = response.refreshToken;
   if (response.accessTokenExpiresAt) token.accessTokenExpiresAt = response.accessTokenExpiresAt;
@@ -113,6 +117,8 @@ export const {
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;
         token.accessTokenExpiresAt = user.accessTokenExpiresAt;
+        token.instructorProfileId = user.instructorProfileId;
+        token.institutionProfileId = user.institutionProfileId;
       }
 
       if (account && account.provider !== "credentials") {
@@ -171,6 +177,10 @@ export const {
       session.user.role = normalizeRole(token.role);
       session.user.applicationStatus = normalizeStatus(token.applicationStatus);
       session.user.isEmailVerified = Boolean(token.appEmailVerified);
+      session.user.instructorProfileId =
+        typeof token.instructorProfileId === "string" ? token.instructorProfileId : undefined;
+      session.user.institutionProfileId =
+        typeof token.institutionProfileId === "string" ? token.institutionProfileId : undefined;
       session.user.authErrorMessage =
         typeof token.backendAuthErrorMessage === "string" ? token.backendAuthErrorMessage : undefined;
       session.user.authErrorProvider =

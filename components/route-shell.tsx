@@ -26,7 +26,14 @@ export async function AppRouteShell(props: { page: AppPage }) {
 
   return (
     <Suspense fallback={null}>
-      <AppRouteShellClient {...props} />
+      <AppRouteShellClient
+        {...props}
+        sessionState={{
+          applicationStatus: session.user.applicationStatus,
+          email: session.user.email ?? "",
+          role: session.user.role ?? "institution",
+        }}
+      />
     </Suspense>
   );
 }
