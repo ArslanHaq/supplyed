@@ -575,3 +575,5 @@ export function useOnboardingForm({
     viewPending,
   };
 }
+
+export type OnboardingFormController = ReturnType<typeof useOnboardingForm>;

@@ -64,7 +64,7 @@ export function ReviewCard({
         {group.lines.map((line) => (
           <div
             key={line.label}
-            className={cn("min-w-0 rounded-lg bg-chalk px-3.5 py-3", line.wide && featured ? "sm:col-span-2" : null)}
+            className={cn("min-w-0 rounded-lg bg-chalk px-3.5 py-3", line.wide ? "sm:col-span-2" : null)}
           >
             <div className="mb-1 text-[10px] font-bold uppercase tracking-[1px] text-muted">{line.label}</div>
             <div className="min-w-0 break-words text-sm leading-6 text-ink">{line.value}</div>
