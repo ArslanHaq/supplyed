@@ -25,12 +25,14 @@ async function createSessionRepairTicket(session: Session, snapshot: OnboardingP
 
   const instructorProfileId = snapshot.instructor?.id ?? authContext.instructorProfileId ?? user.instructorProfileId;
   const institutionProfileId = snapshot.institution?.id ?? authContext.institutionProfileId ?? user.institutionProfileId;
+  const recruiterProfileId = snapshot.recruiter?.id ?? authContext.recruiterProfileId ?? user.recruiterProfileId;
   const applicationStatus = snapshot.applicationStatus !== "none" ? snapshot.applicationStatus : user.applicationStatus;
   const role = user.role ?? snapshot.role;
   const needsRepair =
     applicationStatus !== user.applicationStatus ||
     instructorProfileId !== user.instructorProfileId ||
-    institutionProfileId !== user.institutionProfileId;
+    institutionProfileId !== user.institutionProfileId ||
+    recruiterProfileId !== user.recruiterProfileId;
 
   if (!needsRepair) return undefined;
 
@@ -45,7 +47,8 @@ async function createSessionRepairTicket(session: Session, snapshot: OnboardingP
       id: user.id,
       instructorProfileId: readOptional(instructorProfileId),
       institutionProfileId: readOptional(institutionProfileId),
-      name: user.name ?? snapshot.instructor?.fullName ?? snapshot.institution?.name ?? null,
+      recruiterProfileId: readOptional(recruiterProfileId),
+      name: user.name ?? snapshot.instructor?.fullName ?? snapshot.institution?.name ?? snapshot.recruiter?.displayName ?? null,
       role,
     },
   };

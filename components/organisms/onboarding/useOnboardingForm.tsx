@@ -41,6 +41,7 @@ function snapshotFingerprint(snapshot?: OnboardingProfileSnapshot) {
     documents: snapshot.documents,
     institution: snapshot.institution,
     instructor: snapshot.instructor,
+    recruiter: snapshot.recruiter,
     role: snapshot.role,
     user: snapshot.user,
   });
@@ -86,6 +87,7 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     phone: snapshotString(current.phone, next.phone),
     postcode: snapshotString(current.postcode, next.postcode),
     qualificationFile: next.qualificationFile ?? current.qualificationFile,
+    recruiterProfileId: snapshotString(current.recruiterProfileId, next.recruiterProfileId),
     rightToWorkFile: next.rightToWorkFile ?? current.rightToWorkFile,
     schoolName: snapshotString(current.schoolName, next.schoolName),
     safeguardingConfirmed: current.safeguardingConfirmed || next.safeguardingConfirmed,
@@ -212,36 +214,11 @@ export function useOnboardingForm({
     if (activeRole === "individual") {
       return [
         {
-          title: "Account",
-          description: "Login and contact details",
+          title: "Individual Profile",
+          description: "Contact details for your hiring account",
           icon: "user",
           editStep: 1,
           lines: accountLines,
-        },
-        {
-          title: "Learner Request",
-          description: "Subject, stage, and scheduling needs",
-          icon: "heart",
-          editStep: 2,
-          lines: [
-            { label: "Support for", value: form.individualRelationship || "Not provided" },
-            { label: "Subjects", value: <ReviewBadgeList items={form.subjects} />, wide: true },
-            { label: "Stage", value: <ReviewBadgeList items={form.keyStages} />, wide: true },
-            { label: "Format", value: form.learningMode || "Not provided" },
-            { label: "Schedule", value: form.preferredSchedule || "Not provided" },
-            { label: "Budget", value: form.budgetRange || "Not provided" },
-            { label: "Notes", value: form.learnerNotes || "Optional", wide: true },
-          ],
-        },
-        {
-          title: "Safeguarding",
-          description: "Privacy and verified-teacher expectations",
-          icon: "shield",
-          editStep: 3,
-          lines: [
-            { label: "Hiring consent", value: form.individualConsent ? "Hiring responsibility confirmed" : "Not confirmed", wide: true },
-            { label: "Platform safety", value: form.safeguardingConfirmed ? "Messaging and bookings stay inside SupplyED" : "Not confirmed", wide: true },
-          ],
         },
       ];
     }
@@ -480,25 +457,11 @@ export function useOnboardingForm({
       if (rightToWorkFileError) nextErrors.rightToWorkFile = rightToWorkFileError;
     }
 
-    if (targetStep === 2 && activeRole === "individual") {
-      if (!form.individualRelationship) nextErrors.individualRelationship = "Choose who needs support.";
-      if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
-      if (form.keyStages.length === 0) nextErrors.keyStages = "Choose the learner stage.";
-      if (!form.learningMode) nextErrors.learningMode = "Choose online, in-person, or hybrid support.";
-      if (!form.preferredSchedule) nextErrors.preferredSchedule = "Choose a preferred schedule.";
-      if (!form.budgetRange) nextErrors.budgetRange = "Choose a budget range.";
-    }
-
     if (targetStep === 3 && activeRole === "institution") {
       if (!form.complianceContact.trim()) nextErrors.complianceContact = "Enter the safeguarding or compliance lead.";
       if (!form.complianceEmail.trim()) nextErrors.complianceEmail = "Enter the compliance email.";
       else if (!emailPattern.test(form.complianceEmail.trim())) nextErrors.complianceEmail = "Use a valid email address.";
       if (!form.safeguardingConfirmed) nextErrors.safeguardingConfirmed = "Confirm safeguarding responsibility.";
-    }
-
-    if (targetStep === 3 && activeRole === "individual") {
-      if (!form.individualConsent) nextErrors.individualConsent = "Confirm you are authorised to arrange learning support.";
-      if (!form.safeguardingConfirmed) nextErrors.safeguardingConfirmed = "Confirm communication will stay inside SupplyED.";
     }
 
     setErrors(nextErrors);

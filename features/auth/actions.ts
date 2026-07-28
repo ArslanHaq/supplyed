@@ -32,9 +32,11 @@ import {
 import { createVerifiedEmailSessionTicket } from "./session-ticket";
 import type { BackendAuthResponse, EmailVerificationResendResponse } from "./types";
 
-function createVerifiedSessionPayload(response: BackendAuthResponse) {
+async function createVerifiedSessionPayload(response: BackendAuthResponse) {
   const role = normalizeRole(response.user.role);
-  const applicationStatus = normalizeStatus(response.user.applicationStatus);
+  const responseStatus = normalizeStatus(response.user.applicationStatus);
+  const profileStatus = await readProfileApplicationStatus(role, response.accessToken);
+  const applicationStatus = profileStatus !== "none" ? profileStatus : responseStatus;
   const sessionResponse: BackendAuthResponse = {
     ...response,
     user: {
@@ -80,29 +82,28 @@ function buildBearerHeaders(accessToken: string) {
 async function readProfileApplicationStatus(role: AppRole | null, accessToken?: string | null): Promise<ApplicationStatus> {
   if (!accessToken) return "none";
 
-  if (role === "teacher") {
-    const profile = await api.get<unknown>("/instructors/me", {
+  const profilePath =
+    role === "teacher" ? "/instructors/me" : role === "institution" ? "/institutions/me" : role === "individual" ? "/recruiters/me" : null;
+
+  if (!profilePath) return "none";
+
+  try {
+    const profile = await api.get<unknown>(profilePath, {
       auth: false,
       cache: "no-store",
       headers: buildBearerHeaders(accessToken),
     });
 
-    return normalizeStatus(isRecord(profile) ? profile.status : undefined);
-  }
-
-  if (role === "institution") {
-    const profile = await api.get<unknown>("/institutions/me", {
-      auth: false,
-      cache: "no-store",
-      headers: buildBearerHeaders(accessToken),
-    });
+    if (role === "individual" && isRecord(profile)) {
+      const status = normalizeStatus(profile.status);
+      return status === "rejected" || status === "suspended" ? status : "approved";
+    }
 
     return normalizeStatus(isRecord(profile) ? profile.status : undefined);
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 403 || error.status === 404)) return "none";
+    throw error;
   }
-
-  if (role === "individual") return "approved";
-
-  return "none";
 }
 
 function isRegisteredEmailError(error: unknown) {
@@ -203,7 +204,7 @@ export async function loginWithEmailAction(_previousState: unknown, formData: Fo
       );
     }
 
-    return actionOk(createVerifiedSessionPayload(response), "Credentials accepted.");
+    return actionOk(await createVerifiedSessionPayload(response), "Credentials accepted.");
   } catch (error) {
     if (isEmailNotVerifiedError(error)) {
       try {
@@ -370,7 +371,7 @@ export async function verifyEmailSessionAction(_previousState: unknown, formData
 
     return actionOk(
       {
-        ...createVerifiedSessionPayload(response),
+        ...(await createVerifiedSessionPayload(response)),
       },
       "Email verified.",
     );

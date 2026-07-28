@@ -75,11 +75,25 @@ export type OnboardingInstitutionSnapshot = {
   verified: boolean;
 };
 
+export type OnboardingRecruiterSnapshot = {
+  address: string;
+  bio: string;
+  city: string;
+  countryCode: string;
+  county: string;
+  displayName: string;
+  id: string;
+  imageUrl: string;
+  postalCode: string;
+  status: ApplicationStatus;
+};
+
 export type OnboardingProfileSnapshot = {
   applicationStatus: ApplicationStatus;
   documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>;
   institution?: OnboardingInstitutionSnapshot;
   instructor?: OnboardingInstructorSnapshot;
+  recruiter?: OnboardingRecruiterSnapshot;
   role: AppRole | null;
   user?: OnboardingUserSnapshot;
 };

@@ -63,6 +63,10 @@ function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfi
     return 2;
   }
 
+  if (role === "individual") {
+    return snapshot.recruiter ? 2 : 1;
+  }
+
   return 1;
 }
 

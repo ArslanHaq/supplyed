@@ -40,7 +40,7 @@ export function signupStepTitle(role: string, step: number) {
 }
 
 export function signupSubmitLabel(role: string) {
-  if (role === "individual") return "Create learner request";
+  if (role === "individual") return "Create profile";
   return "Submit for review";
 }
 
@@ -102,6 +102,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
   const user = snapshot?.user;
   const instructor = snapshot?.instructor;
   const institution = snapshot?.institution;
+  const recruiter = snapshot?.recruiter;
   const documents = snapshot?.documents ?? {};
   const dbsDocument = documents.dbs;
   const idDocument = documents.id;
@@ -110,7 +111,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
 
   return {
     ...initialForm,
-    bio: instructor?.bio ?? "",
+    bio: instructor?.bio ?? recruiter?.bio ?? "",
     complianceContact: institution?.complianceContact ?? "",
     complianceEmail: institution?.complianceEmail ?? "",
     contactRole: institution?.userRole ?? "",
@@ -122,7 +123,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
       : null,
     dbsNumber: dbsDocument?.dbsNumber ?? "",
     email: user?.email || accountEmail || "",
-    fullName: instructor?.fullName || user?.fullName || "",
+    fullName: instructor?.fullName || recruiter?.displayName || user?.fullName || "",
     hourlyRate: instructor?.hourlyRate ?? "",
     identityPhoto: idDocument
       ? { id: idDocument.id, name: idDocument.name, size: idDocument.size, status: idDocument.status, type: idDocument.type }
@@ -137,7 +138,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     localAuthority: institution?.county ?? "",
     maxTravelDistance: instructor?.maxTravelDistance ?? "",
     phone: user?.phone ?? "",
-    postcode: instructor?.postalCode || institution?.postalCode || user?.postcode || "",
+    postcode: instructor?.postalCode || institution?.postalCode || recruiter?.postalCode || user?.postcode || "",
     qualificationFile: qualificationDocument
       ? {
           id: qualificationDocument.id,
@@ -147,6 +148,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
           type: qualificationDocument.type,
         }
       : null,
+    recruiterProfileId: recruiter?.id ?? "",
     rightToWorkFile: addressDocument
       ? { id: addressDocument.id, name: addressDocument.name, size: addressDocument.size, status: addressDocument.status, type: addressDocument.type }
       : null,
@@ -175,6 +177,7 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("postcode", form.postcode.trim());
   data.set("teacherProfileId", form.teacherProfileId);
   data.set("institutionProfileId", form.institutionProfileId);
+  data.set("recruiterProfileId", form.recruiterProfileId);
   data.set("schoolName", form.schoolName.trim());
   data.set("contactRole", form.contactRole.trim());
   data.set("institutionAddress", form.institutionAddress.trim());

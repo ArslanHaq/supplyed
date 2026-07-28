@@ -32,7 +32,7 @@ export function isApprovedApplicationStatus(status: ApplicationStatus) {
 }
 
 export function shouldShowApplicationStatusPage(role: AppRole | null | undefined, status: ApplicationStatus) {
-  return role !== "individual" && (status === "pending_review" || status === "rejected" || status === "suspended");
+  return Boolean(role) && (status === "pending_review" || status === "rejected" || status === "suspended");
 }
 
 export function getAuthenticatedEntryHref({

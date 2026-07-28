@@ -7,6 +7,7 @@ export type AuthUser = {
   id: string;
   instructorProfileId?: string;
   institutionProfileId?: string;
+  recruiterProfileId?: string;
   name?: string | null;
   role: AppRole | null;
 };

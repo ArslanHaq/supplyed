@@ -5,7 +5,6 @@ export const maxDocumentSizeBytes = 10 * 1024 * 1024;
 
 export const initialForm: SignupForm = {
   bio: "",
-  budgetRange: "",
   confirmPassword: "",
   contactRole: "",
   complianceContact: "",
@@ -19,8 +18,6 @@ export const initialForm: SignupForm = {
   fullName: "",
   hourlyRate: "",
   identityPhoto: null,
-  individualConsent: false,
-  individualRelationship: "",
   institutionAddress: "",
   institutionCity: "",
   institutionCountryCode: "GB",
@@ -28,15 +25,13 @@ export const initialForm: SignupForm = {
   institutionProfileId: "",
   institutionRegistrationId: "",
   keyStages: [],
-  learnerNotes: "",
-  learningMode: "",
   localAuthority: "",
   maxTravelDistance: "",
   password: "",
   phone: "",
   postcode: "",
-  preferredSchedule: "",
   qualificationFile: null,
+  recruiterProfileId: "",
   rightToWorkFile: null,
   safeguardingConfirmed: false,
   schoolName: "",
@@ -56,10 +51,6 @@ export const teacherSkills = ["Classroom management", "SEN support", "Safeguardi
 export const coverTypes = ["Same-day cover", "Long-term roles", "Intervention groups", "Exam season", "SEN support"];
 export const currencies = ["GBP"];
 export const countryCodes = ["GB"];
-export const supportForOptions = ["Myself", "My child", "Another learner", "A small group"];
-export const learningModes = ["In person", "Online", "Hybrid"];
-export const preferredSchedules = ["Weekday evenings", "Weekends", "After school", "Flexible"];
-export const budgetRanges = ["Under £25/hr", "£25-£40/hr", "£40-£60/hr", "Flexible"];
 
 export const unselectedSteps = [
   { label: "Choose role", description: "Select how you want to use SupplyED" },
@@ -79,10 +70,8 @@ export function stepContent(role: SignupRole) {
 
   if (role === "individual") {
     return [
-      { label: "Your details", description: "Choose how you want to hire talent and add contact details" },
-      { label: "Learner needs", description: "Subject, stage, schedule, and location preferences" },
-      { label: "Safeguarding", description: "Privacy, contact, and verified teacher expectations" },
-      { label: "Review", description: "Confirm the learner request before matching" },
+      { label: "Your profile", description: "Create your hiring profile with basic contact details" },
+      { label: "Review", description: "Confirm your profile before opening the hiring workspace" },
     ];
   }
 

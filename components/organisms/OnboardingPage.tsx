@@ -12,8 +12,6 @@ import { DocumentPreviewModal } from "./onboarding/DocumentPreviewModal";
 import type { OnboardingFormController } from "./onboarding/useOnboardingForm";
 import { useOnboardingForm } from "./onboarding/useOnboardingForm";
 import { AccountBasicsStep } from "./onboarding/steps/AccountBasicsStep";
-import { IndividualLearnerNeedsStep } from "./onboarding/steps/IndividualLearnerNeedsStep";
-import { IndividualSafeguardingStep } from "./onboarding/steps/IndividualSafeguardingStep";
 import { InstitutionComplianceStep } from "./onboarding/steps/InstitutionComplianceStep";
 import { InstitutionDetailsStep } from "./onboarding/steps/InstitutionDetailsStep";
 import { ReviewStep } from "./onboarding/steps/ReviewStep";
@@ -263,12 +261,10 @@ function OnboardingStepContent({
 
   if (currentStep === 2) {
     if (activeRole === "teacher") return <TeacherDocumentsStep controller={controller} />;
-    if (activeRole === "individual") return <IndividualLearnerNeedsStep controller={controller} />;
     return <InstitutionDetailsStep controller={controller} />;
   }
 
   if (currentStep === 3) {
-    if (activeRole === "individual") return <IndividualSafeguardingStep controller={controller} />;
     if (activeRole === "institution") return <InstitutionComplianceStep controller={controller} />;
   }
 

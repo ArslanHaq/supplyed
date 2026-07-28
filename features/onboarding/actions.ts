@@ -20,6 +20,7 @@ import type {
   OnboardingInstitutionSnapshot,
   OnboardingProfileSnapshot,
   OnboardingProgressResult,
+  OnboardingRecruiterSnapshot,
   OnboardingSubmitInput,
   OnboardingSubmitResult,
   OnboardingUserSnapshot,
@@ -91,6 +92,12 @@ type InstitutionProfilePayload = {
   userRole?: string;
 };
 
+type RecruiterProfilePayload = {
+  countryCode?: string;
+  displayName: string;
+  postalCode?: string;
+};
+
 type BackendDocumentType = "ADDRESS_PROOF" | "DBS" | "ID" | "QUALIFICATION";
 
 type UploadDocumentResponse = {
@@ -151,6 +158,19 @@ type BackendInstitutionProfile = {
   typicalPupilCount?: unknown;
   userRole?: string | null;
   verified?: boolean;
+};
+
+type BackendRecruiterProfile = {
+  address?: string | null;
+  bio?: string | null;
+  city?: string | null;
+  countryCode?: string;
+  county?: string | null;
+  displayName?: string;
+  id?: string;
+  imageUrl?: string | null;
+  postalCode?: string | null;
+  status?: unknown;
 };
 
 type BackendDocumentProfile = {
@@ -228,6 +248,29 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
     typicalPupilCount: numberString(profile.typicalPupilCount),
     userRole: profile.userRole || "",
     verified: Boolean(profile.verified),
+  };
+}
+
+function normalizeRecruiterProfileStatus(profile: { id?: string; status?: unknown }) {
+  const status = normalizeStatus(profile.status);
+  if (status === "rejected" || status === "suspended") return status;
+  return profile.id ? "approved" : "none";
+}
+
+function normalizeRecruiterSnapshot(profile: BackendRecruiterProfile): OnboardingRecruiterSnapshot | undefined {
+  if (!profile.id) return undefined;
+
+  return {
+    address: profile.address || "",
+    bio: profile.bio || "",
+    city: profile.city || "",
+    countryCode: profile.countryCode || "GB",
+    county: profile.county || "",
+    displayName: profile.displayName || "",
+    id: profile.id,
+    imageUrl: profile.imageUrl || "",
+    postalCode: profile.postalCode || "",
+    status: normalizeRecruiterProfileStatus(profile),
   };
 }
 
@@ -422,6 +465,14 @@ function buildInstitutionProfilePayload(formData: FormData): InstitutionProfileP
   };
 }
 
+function buildRecruiterProfilePayload(formData: FormData): RecruiterProfilePayload {
+  return {
+    countryCode: "GB",
+    displayName: readFormString(formData, "fullName"),
+    postalCode: readFormString(formData, "postcode") || undefined,
+  };
+}
+
 function buildBearerHeaders(accessToken: string) {
   return { Authorization: `Bearer ${accessToken}` };
 }
@@ -491,6 +542,25 @@ async function getInstitutionSnapshot(accessToken?: string) {
   }
 }
 
+async function getRecruiterSnapshot(accessToken?: string) {
+  try {
+    return normalizeRecruiterSnapshot(
+      await api.get<BackendRecruiterProfile>(
+        "/recruiters/me",
+        accessToken
+          ? {
+              auth: false,
+              headers: buildBearerHeaders(accessToken),
+            }
+          : undefined,
+      ),
+    );
+  } catch (error) {
+    if (notFoundOrForbidden(error)) return undefined;
+    throw error;
+  }
+}
+
 async function getDocumentSnapshots(accessToken?: string) {
   const documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>> = {};
 
@@ -546,6 +616,11 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
       snapshot.applicationStatus = snapshot.institution?.status ?? "none";
     }
 
+    if (role === "individual") {
+      snapshot.recruiter = await getRecruiterSnapshot();
+      snapshot.applicationStatus = snapshot.recruiter?.status ?? "none";
+    }
+
     return snapshot;
   } catch {
     return emptySnapshot(role, authContext.email ?? undefined);
@@ -557,6 +632,7 @@ function createSessionResponse({
   auth,
   instructorProfileId,
   institutionProfileId,
+  recruiterProfileId,
   name,
   role,
 }: {
@@ -564,6 +640,7 @@ function createSessionResponse({
   auth: BackendAuthResponse;
   instructorProfileId?: string;
   institutionProfileId?: string;
+  recruiterProfileId?: string;
   name?: string;
   role: AppRole;
 }): BackendAuthResponse {
@@ -574,6 +651,7 @@ function createSessionResponse({
       applicationStatus,
       instructorProfileId: instructorProfileId ?? auth.user.instructorProfileId,
       institutionProfileId: institutionProfileId ?? auth.user.institutionProfileId,
+      recruiterProfileId: recruiterProfileId ?? auth.user.recruiterProfileId,
       name: auth.user.name ?? name ?? null,
       role,
     },
@@ -586,6 +664,7 @@ async function refreshSessionForRole(
     applicationStatus: OnboardingSubmitResult["applicationStatus"];
     instructorProfileId?: string;
     institutionProfileId?: string;
+    recruiterProfileId?: string;
     name?: string;
     role: AppRole;
   },
@@ -781,6 +860,49 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string, e
 
     if (error instanceof ApiError && error.status === 409) {
       return getInstitutionSnapshot(accessToken);
+    }
+
+    throw error;
+  }
+}
+
+async function saveRecruiterProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+  const profile = buildRecruiterProfilePayload(formData);
+  const profileId = readFormString(formData, "recruiterProfileId") || existingProfileId || "";
+
+  if (!profile.displayName) {
+    throw new Error("Enter your full name before continuing.");
+  }
+
+  if (profileId) {
+    return normalizeRecruiterSnapshot(
+      await api.patch<BackendRecruiterProfile>("/recruiters/me", profile, {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
+  }
+
+  const currentRecruiter = await getRecruiterSnapshot(accessToken);
+  if (currentRecruiter?.id) {
+    return normalizeRecruiterSnapshot(
+      await api.patch<BackendRecruiterProfile>("/recruiters/me", profile, {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
+  }
+
+  try {
+    return normalizeRecruiterSnapshot(
+      await api.post<BackendRecruiterProfile>("/recruiters", profile, {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      return getRecruiterSnapshot(accessToken);
     }
 
     throw error;
@@ -1111,6 +1233,10 @@ export async function saveOnboardingStepAction(formData: FormData) {
       snapshot.institution = await getInstitutionSnapshot();
     }
 
+    if (role === "individual") {
+      snapshot.recruiter = await getRecruiterSnapshot(authContext.accessToken);
+    }
+
     revalidateTag("onboarding", "max");
     return actionOk<OnboardingProgressResult>(
       {
@@ -1253,6 +1379,67 @@ async function submitInstitutionOnboarding(formData: FormData) {
   }
 }
 
+async function submitIndividualOnboarding(formData: FormData) {
+  if (!backendEnabled()) {
+    revalidateTag("onboarding", "max");
+    return actionOk<OnboardingProgressResult>(
+      {
+        applicationStatus: "pending_review",
+        savedStep: Number(readFormString(formData, "step")) || 4,
+        snapshot: emptySnapshot("individual", readFormString(formData, "email")),
+      },
+      "Individual onboarding is ready for backend integration.",
+    );
+  }
+
+  const authContext = await getServerAuthContext();
+  if (!authContext?.accessToken || !authContext.refreshToken) {
+    return actionError("Your session expired. Sign in again before submitting onboarding.");
+  }
+
+  try {
+    const postcode = readFormString(formData, "postcode");
+    const user = await saveUserBasics(formData, postcode);
+    const recruiter = await saveRecruiterProfile(formData, authContext.accessToken, authContext.recruiterProfileId);
+    if (!recruiter) throw new Error("The backend did not return the saved individual profile.");
+
+    const refreshedAuth = await refreshBackendAuth(authContext.refreshToken);
+    if (!refreshedAuth?.accessToken) {
+      return actionError("Your individual profile was created, but we could not refresh your session. Sign in again to continue.");
+    }
+
+    const savedRecruiter = (await getRecruiterSnapshot(refreshedAuth.accessToken)) ?? recruiter;
+    const applicationStatus = savedRecruiter.status === "none" ? "approved" : savedRecruiter.status;
+
+    revalidateTag("onboarding", "max");
+    return actionOk<OnboardingProgressResult>(
+      {
+        applicationStatus,
+        savedStep: Number(readFormString(formData, "step")) || 4,
+        snapshot: {
+          applicationStatus,
+          documents: {},
+          recruiter: savedRecruiter,
+          role: "individual",
+          user,
+        },
+        ticket: createVerifiedEmailSessionTicket(
+          createSessionResponse({
+            applicationStatus,
+            auth: refreshedAuth,
+            name: savedRecruiter.displayName || readFormString(formData, "fullName"),
+            recruiterProfileId: savedRecruiter.id,
+            role: "individual",
+          }),
+        ),
+      },
+      "Your individual profile was created.",
+    );
+  } catch (error) {
+    return onboardingError(error);
+  }
+}
+
 export async function submitOnboardingAction(input: FormData | OnboardingSubmitInput) {
   if (isFormData(input)) {
     const role = readFormString(input, "role");
@@ -1266,13 +1453,7 @@ export async function submitOnboardingAction(input: FormData | OnboardingSubmitI
     }
 
     if (role === "individual") {
-      revalidateTag("onboarding", "max");
-      return actionOk<OnboardingSubmitResult>(
-        {
-          applicationStatus: "approved",
-        },
-        "Learner request onboarding submitted.",
-      );
+      return submitIndividualOnboarding(input);
     }
 
     const normalizedInput = normalizeOnboardingSubmitInput(buildGenericSubmitInput(input));
@@ -1285,7 +1466,7 @@ export async function submitOnboardingAction(input: FormData | OnboardingSubmitI
     revalidateTag("onboarding", "max");
     return actionOk<OnboardingSubmitResult>(
       {
-        applicationStatus: role === "individual" ? "approved" : "pending_review",
+        applicationStatus: "pending_review",
       },
       "Onboarding submitted.",
     );

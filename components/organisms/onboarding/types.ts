@@ -44,6 +44,7 @@ export type SignupField =
   | "accountRole"
   | "fullName"
   | "email"
+  | "recruiterProfileId"
   | "phone"
   | "postcode"
   | "password"
@@ -76,12 +77,6 @@ export type SignupField =
   | "rightToWorkFile"
   | "identityPhoto"
   | "qualificationFile"
-  | "individualRelationship"
-  | "learningMode"
-  | "preferredSchedule"
-  | "budgetRange"
-  | "learnerNotes"
-  | "individualConsent"
   | "safeguardingConfirmed";
 
 export type SignupErrors = Partial<Record<SignupField, string>>;
@@ -97,7 +92,6 @@ export type UploadedFile = {
 
 export type SignupForm = {
   bio: string;
-  budgetRange: string;
   confirmPassword: string;
   contactRole: string;
   complianceContact: string;
@@ -111,8 +105,6 @@ export type SignupForm = {
   fullName: string;
   hourlyRate: string;
   identityPhoto: UploadedFile | null;
-  individualConsent: boolean;
-  individualRelationship: string;
   institutionAddress: string;
   institutionCity: string;
   institutionCountryCode: string;
@@ -120,15 +112,13 @@ export type SignupForm = {
   institutionProfileId: string;
   institutionRegistrationId: string;
   keyStages: string[];
-  learnerNotes: string;
-  learningMode: string;
   localAuthority: string;
   maxTravelDistance: string;
   password: string;
   phone: string;
   postcode: string;
-  preferredSchedule: string;
   qualificationFile: UploadedFile | null;
+  recruiterProfileId: string;
   rightToWorkFile: UploadedFile | null;
   safeguardingConfirmed: boolean;
   schoolName: string;

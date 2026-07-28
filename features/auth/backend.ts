@@ -173,7 +173,9 @@ export function normalizeRole(role: unknown): AppRole | null {
 
   if (normalized === "INSTITUTION" || normalized === "SCHOOL") return "institution";
   if (normalized === "INSTRUCTOR" || normalized === "TEACHER") return "teacher";
-  if (normalized === "INDIVIDUAL" || normalized === "GUARDIAN" || normalized === "PARENT") return "individual";
+  if (normalized === "INDIVIDUAL" || normalized === "GUARDIAN" || normalized === "PARENT" || normalized === "RECRUITER") {
+    return "individual";
+  }
 
   return null;
 }
@@ -233,6 +235,11 @@ export function normalizeAuthUser(payload: unknown): AuthUser {
       readString(user.institutionProfileID) ??
       readString(user.institutionId) ??
       (isRecord(user.institutionProfile) ? readString(user.institutionProfile.id) : undefined),
+    recruiterProfileId:
+      readString(user.recruiterProfileId) ??
+      readString(user.recruiterProfileID) ??
+      readString(user.recruiterId) ??
+      (isRecord(user.recruiterProfile) ? readString(user.recruiterProfile.id) : undefined),
     name: readString(user.name) ?? readString(user.fullName) ?? null,
     role: normalizeRole(user.role),
   };
