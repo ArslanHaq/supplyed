@@ -600,13 +600,11 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
 
   const name = readFormString(formData, "fullName");
   const phone = readFormString(formData, "phone");
-  const postCode = readFormString(formData, "postcode");
 
-  if (name || phone || postCode) {
+  if (name || phone) {
     await api.patch("/users/me", {
       name: name || undefined,
       phone: phone || undefined,
-      postCode: postCode || undefined,
     });
   }
 

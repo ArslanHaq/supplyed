@@ -14,7 +14,6 @@ import { useMounted } from "@/lib/use-mounted";
 import type { AppPage, AppRole, ApplicationStatus, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/types/supplyed";
 
 import { PageLoader, ToastStack } from "../molecules";
-import { AdminDashboard } from "./AdminDashboard";
 import { ApplicationStatusPage } from "./ApplicationStatusPage";
 import { AppChrome } from "./AppChrome";
 import { ApplicationsPage } from "./ApplicationsPage";
@@ -139,8 +138,6 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "calendar") content = <CalendarPage />;
     else if (activePage === "billing") content = <BillingPage />;
     else content = <IndividualDashboard {...routeProps} />;
-  } else {
-    content = activePage === "messaging" ? <MessagingPage {...routeProps} /> : <AdminDashboard />;
   }
 
   if (!isClient) {

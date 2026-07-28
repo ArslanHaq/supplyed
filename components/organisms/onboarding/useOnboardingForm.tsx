@@ -190,7 +190,7 @@ export function useOnboardingForm({
         },
         {
           title: "Required Documents",
-          description: "Documents sent to admin review",
+          description: "Documents sent to verification review",
           icon: "shield",
           editStep: 2,
           lines: [

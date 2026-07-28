@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { auth } from "@/auth";
 import { PublicThemeControls } from "@/components/molecules";
 import { PublicHeader } from "@/components/organisms/PublicHeader";
 import { buttonClassName, Icon, Tag } from "@/components/atoms";
@@ -46,15 +45,12 @@ const metrics = [
   ["4.9", "average teacher rating"],
 ];
 
-export default async function HowItWorksPage() {
-  const session = await auth();
-  const account = session?.user ?? null;
-  const isSignedIn = Boolean(account);
-  const actionHref = isSignedIn ? "/post-auth" : "/signup";
+export default function HowItWorksPage() {
+  const actionHref = "/signup";
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-chalk">
-      <PublicHeader active="how-it-works" user={account} />
+      <PublicHeader active="how-it-works" />
 
       <main>
         <section className="bg-[#0a0a0a] px-4 py-16 text-white sm:px-6 lg:px-12 lg:py-20">
@@ -68,31 +64,23 @@ export default async function HowItWorksPage() {
                 Dummy product flow for the prototype: schools post staffing needs, individuals create learner requests, teachers build trusted profiles, and each side moves through matching, messaging, and booking.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                {isSignedIn ? (
-                  <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href={actionHref}>
-                    Open workspace
-                  </Link>
-                ) : (
-                  <>
-                    <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href={actionHref}>
-                      Start as school
-                    </Link>
-                    <Link
-                      className={buttonClassName({ variant: "secondary", className: "rounded-full px-6 py-3" })}
-                      href={actionHref}
-                      style={{ background: "transparent", borderColor: "rgba(255,255,255,0.28)", color: "#fff" }}
-                    >
-                      Start as teacher
-                    </Link>
-                    <Link
-                      className={buttonClassName({ variant: "secondary", className: "rounded-full px-6 py-3" })}
-                      href={actionHref}
-                      style={{ background: "transparent", borderColor: "rgba(255,255,255,0.28)", color: "#fff" }}
-                    >
-                      Hire talent
-                    </Link>
-                  </>
-                )}
+                <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href={actionHref}>
+                  Start as school
+                </Link>
+                <Link
+                  className={buttonClassName({ variant: "secondary", className: "rounded-full px-6 py-3" })}
+                  href={actionHref}
+                  style={{ background: "transparent", borderColor: "rgba(255,255,255,0.28)", color: "#fff" }}
+                >
+                  Start as teacher
+                </Link>
+                <Link
+                  className={buttonClassName({ variant: "secondary", className: "rounded-full px-6 py-3" })}
+                  href={actionHref}
+                  style={{ background: "transparent", borderColor: "rgba(255,255,255,0.28)", color: "#fff" }}
+                >
+                  Hire talent
+                </Link>
               </div>
             </div>
 
@@ -188,7 +176,7 @@ export default async function HowItWorksPage() {
               <h2 className="mt-2 font-serif text-3xl">Create a workspace and test the full flow.</h2>
             </div>
             <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href={actionHref}>
-              {isSignedIn ? "Open workspace" : "Get started"}
+              Get started
             </Link>
           </div>
         </section>

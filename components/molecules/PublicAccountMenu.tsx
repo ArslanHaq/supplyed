@@ -27,7 +27,6 @@ function getRoleLabel(role?: string | null) {
   if (role === "institution") return "School workspace";
   if (role === "teacher") return "Teacher account";
   if (role === "individual") return "Hiring account";
-  if (role === "admin") return "Admin account";
   return "Verified account";
 }
 
@@ -56,13 +55,6 @@ function getAccountLinks(role?: string | null) {
       { href: "/find-teachers", icon: "search", label: "Teachers", sub: "Review verified teachers" },
       { href: "/calendar", icon: "calendar", label: "Schedule", sub: "Review upcoming activity" },
       { href: "/billing", icon: "settings", label: "Settings & payments", sub: "Manage account details" },
-    ];
-  }
-
-  if (role === "admin") {
-    return [
-      { href: "/post-auth", icon: "shield", label: "Console", sub: "Open operations workspace" },
-      { href: "/messaging", icon: "message", label: "Messages", sub: "Review support conversations" },
     ];
   }
 

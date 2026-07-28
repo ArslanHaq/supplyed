@@ -174,7 +174,6 @@ export function normalizeRole(role: unknown): AppRole | null {
   if (normalized === "INSTITUTION" || normalized === "SCHOOL") return "institution";
   if (normalized === "INSTRUCTOR" || normalized === "TEACHER") return "teacher";
   if (normalized === "INDIVIDUAL" || normalized === "GUARDIAN" || normalized === "PARENT") return "individual";
-  if (normalized === "ADMIN" || normalized === "SUPER_ADMIN") return "admin";
 
   return null;
 }

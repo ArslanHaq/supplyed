@@ -7,7 +7,7 @@ function statusCopy(status: AppState["applicationStatus"]) {
     return {
       tag: "Action needed",
       title: "Your application needs updates.",
-      copy: "An admin has reviewed the application and needs more information before approval.",
+      copy: "The review team needs more information before approval.",
       icon: "file",
     };
   }

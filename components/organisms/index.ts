@@ -1,4 +1,3 @@
-export { AdminDashboard } from "./AdminDashboard";
 export { ApplicationStatusPage } from "./ApplicationStatusPage";
 export { AppChrome } from "./AppChrome";
 export { ApplicationsPage } from "./ApplicationsPage";

@@ -1,7 +1,8 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest } from "next/server";
 
-const appRoles = new Set(["institution", "teacher", "individual", "admin"]);
+const appRoles = new Set(["institution", "teacher", "individual"]);
+const guestOnlyRoutes = new Set(["/forgot-password", "/login", "/signup"]);
 
 function getAuthCookieSecret() {
   return (
@@ -29,6 +30,8 @@ function readAppRole(role: unknown) {
 }
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const isGuestOnlyRoute = guestOnlyRoutes.has(pathname);
   const token = await getToken({
     req: request,
     secret: getAuthCookieSecret(),
@@ -38,6 +41,7 @@ export async function proxy(request: NextRequest) {
   const userId = typeof token?.userId === "string" ? token.userId : token?.sub;
 
   if (!userId) {
+    if (isGuestOnlyRoute) return NextResponse.next();
     return redirectTo(request, "/login");
   }
 
@@ -47,15 +51,19 @@ export async function proxy(request: NextRequest) {
 
   const role = readAppRole(token.role);
   const applicationStatus = typeof token.applicationStatus === "string" ? token.applicationStatus : "none";
-  const setupComplete = role === "admin" || Boolean(role && applicationStatus !== "none");
-  const isOnboardingRoute = request.nextUrl.pathname.startsWith("/onboarding");
+  const setupComplete = Boolean(role && applicationStatus !== "none");
+  const isOnboardingRoute = pathname.startsWith("/onboarding");
+
+  if (isGuestOnlyRoute) {
+    return redirectTo(request, setupComplete ? "/dashboard" : "/onboarding");
+  }
 
   if (!setupComplete && !isOnboardingRoute) {
     return redirectTo(request, "/onboarding");
   }
 
   if (setupComplete && isOnboardingRoute) {
-    return redirectTo(request, "/post-auth");
+    return redirectTo(request, "/dashboard");
   }
 
   return NextResponse.next();
@@ -63,17 +71,19 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin/:path*",
     "/applications/:path*",
     "/billing/:path*",
     "/calendar/:path*",
     "/dashboard/:path*",
     "/find-jobs/:path*",
     "/find-teachers/:path*",
+    "/forgot-password",
     "/job-detail/:path*",
+    "/login",
     "/messaging/:path*",
     "/onboarding/:path*",
     "/post-job/:path*",
+    "/signup",
     "/teacher-profile/:path*",
   ],
 };

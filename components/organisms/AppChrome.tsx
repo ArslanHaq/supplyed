@@ -34,11 +34,6 @@ const individualNav: NavItem[] = [
   { id: "billing", label: "Payments", icon: "file" },
 ];
 
-const adminNav: NavItem[] = [
-  { id: "admin", label: "Console", icon: "shield" },
-  { id: "messaging", label: "Messages", icon: "message" },
-];
-
 export function AppChrome({
   state,
   setState,
@@ -47,21 +42,19 @@ export function AppChrome({
   onLanding,
   onLogout,
 }: Pick<RouteProps, "state" | "setState" | "go"> & { children: ReactNode; onLanding: () => void; onLogout: () => void }) {
-  const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : state.role === "individual" ? individualNav : adminNav;
-  const userName = state.role === "institution" ? "Greenfield Primary" : state.role === "teacher" ? "Sarah Johnson" : state.role === "individual" ? "Aisha Khan" : "Admin Team";
-  const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Supply teacher" : state.role === "individual" ? "Talent seeker" : "Operations";
-  const roleCrumb = state.role === "institution" ? "School view" : state.role === "teacher" ? "Teacher view" : state.role === "individual" ? "Talent seeker view" : "Admin view";
+  const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : individualNav;
+  const userName = state.role === "institution" ? "Greenfield Primary" : state.role === "teacher" ? "Sarah Johnson" : "Aisha Khan";
+  const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Supply teacher" : "Talent seeker";
+  const roleCrumb = state.role === "institution" ? "School view" : state.role === "teacher" ? "Teacher view" : "Talent seeker view";
   const searchPlaceholder = state.role === "teacher" ? "Search jobs..." : state.role === "individual" ? "Search tutors..." : "Search teachers...";
   const roles: Array<{ v: AppRole; label: string; icon: string }> = [
     { v: "institution", label: "School", icon: "building" },
     { v: "teacher", label: "Teacher", icon: "user" },
     { v: "individual", label: "Hirer", icon: "heart" },
-    { v: "admin", label: "Admin", icon: "shield" },
   ];
   const selectRole = (role: AppRole) => {
-    const nextPage = role === "admin" ? "admin" : "dashboard";
-    setState((current) => ({ ...current, role, page: nextPage, auth: "signed-in" }));
-    go(nextPage);
+    setState((current) => ({ ...current, role, page: "dashboard", auth: "signed-in" }));
+    go("dashboard");
   };
 
   return (

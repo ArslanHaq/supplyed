@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { auth } from "@/auth";
 import { PublicThemeControls } from "@/components/molecules";
 import { PublicHeader } from "@/components/organisms/PublicHeader";
 import { buttonClassName, Icon, Tag } from "@/components/atoms";
@@ -67,15 +66,12 @@ const faqs = [
   ["Does pricing include compliance checks?", "The example plans include compliance visibility. Real verification costs can be added later."],
 ];
 
-export default async function PricingPage() {
-  const session = await auth();
-  const account = session?.user ?? null;
-  const isSignedIn = Boolean(account);
-  const actionHref = isSignedIn ? "/post-auth" : "/signup";
+export default function PricingPage() {
+  const actionHref = "/signup";
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-chalk">
-      <PublicHeader active="pricing" user={account} />
+      <PublicHeader active="pricing" />
 
       <main>
         <section className="bg-white px-4 py-16 sm:px-6 lg:px-12 lg:py-20">
@@ -122,7 +118,7 @@ export default async function PricingPage() {
                 </div>
 
                 <Link className={buttonClassName({ className: "mt-7 w-full rounded-full py-3 text-white!" })} href={actionHref}>
-                  {isSignedIn ? "Open workspace" : plan.cta}
+                  {plan.cta}
                 </Link>
               </article>
             ))}

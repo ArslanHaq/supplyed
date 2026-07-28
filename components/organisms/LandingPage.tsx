@@ -1,8 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
-import { auth } from "@/auth";
-
 import { buttonClassName, Icon, Tag } from "../atoms";
 import { PublicHeader } from "./PublicHeader";
 import { RegisterInterestForm } from "./RegisterInterestForm";
@@ -33,7 +31,7 @@ const heroSignals = [
 const trustCards = [
   {
     title: "DBS verified",
-    copy: "Every teacher has enhanced DBS details on file, reviewed by the admin team before marketplace activation.",
+    copy: "Every teacher has enhanced DBS details on file, reviewed by the verification team before marketplace activation.",
     icon: "shield",
     className: "bg-brand-tint text-brand",
     color: "var(--se)",
@@ -77,15 +75,12 @@ function themedGlowStyle(color: string): CSSProperties {
   };
 }
 
-export async function LandingPage() {
-  const session = await auth();
-  const account = session?.user ?? null;
-  const isSignedIn = Boolean(account);
-  const startHref = isSignedIn ? "/post-auth" : "/signup";
+export function LandingPage() {
+  const startHref = "/signup";
 
   return (
     <div className="overflow-x-hidden">
-      <PublicHeader active="home" user={account} />
+      <PublicHeader active="home" />
 
       <section className="relative overflow-hidden bg-[#0a0a0a] px-4 pb-14 pt-14 text-white sm:px-6 sm:pb-16 sm:pt-18 lg:px-12 lg:pb-20 lg:pt-24">
         <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.06)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.06)_1px,transparent_1px)] bg-[length:56px_56px]" />
@@ -104,27 +99,21 @@ export async function LandingPage() {
               The right teacher, right now. SupplyED connects UK schools, learners, and hiring accounts with vetted, DBS-checked teachers for urgent cover, planned staffing, tutoring, and learner support. We are onboarding founding schools now.
             </p>
             <div className="mb-12 flex flex-wrap gap-3">
-              {isSignedIn ? (
-                <Link className={buttonClassName({ size: "xl" })} href={startHref}>Open workspace</Link>
-              ) : (
-                <>
-                  <Link className={buttonClassName({ size: "xl" })} href={startHref}>I&apos;m a school</Link>
-                  <Link
-                    className={buttonClassName({ variant: "secondary", size: "xl" })}
-                    href={startHref}
-                    style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
-                  >
-                    I&apos;m a teacher
-                  </Link>
-                  <Link
-                    className={buttonClassName({ variant: "secondary", size: "xl" })}
-                    href={startHref}
-                    style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
-                  >
-                    I&apos;m hiring talent
-                  </Link>
-                </>
-              )}
+              <Link className={buttonClassName({ size: "xl" })} href={startHref}>I&apos;m a school</Link>
+              <Link
+                className={buttonClassName({ variant: "secondary", size: "xl" })}
+                href={startHref}
+                style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
+              >
+                I&apos;m a teacher
+              </Link>
+              <Link
+                className={buttonClassName({ variant: "secondary", size: "xl" })}
+                href={startHref}
+                style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
+              >
+                I&apos;m hiring talent
+              </Link>
             </div>
             <div className="grid grid-cols-2 gap-5 sm:flex sm:flex-wrap sm:gap-6">
               {heroStats.map(([value, label]) => (
@@ -288,7 +277,7 @@ export async function LandingPage() {
           </p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
             <Link className={buttonClassName({ size: "xl", className: "rounded-full px-8 text-white!" })} href={startHref}>
-              {isSignedIn ? "Open workspace" : "Get started free"}
+              Get started free
             </Link>
             <Link className={buttonClassName({ variant: "secondary", size: "xl", className: "rounded-full px-8" })} href="/pricing">
               View pricing

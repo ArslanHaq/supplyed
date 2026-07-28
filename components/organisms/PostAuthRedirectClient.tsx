@@ -42,15 +42,14 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
       return;
     }
 
-    const hasCompleteSetup =
-      sessionUser.role === "admin" || Boolean(sessionUser.role && sessionUser.applicationStatus !== "none");
+    const hasCompleteSetup = Boolean(sessionUser.role && sessionUser.applicationStatus !== "none");
 
     if (!hasCompleteSetup) {
       router.replace("/onboarding");
       return;
     }
 
-    router.replace(buildAppHref(sessionUser.role === "admin" ? "admin" : "dashboard"));
+    router.replace(buildAppHref("dashboard"));
   }, [router, searchParams, sessionUser]);
 
   return (

@@ -2,7 +2,7 @@ import type { AppRole } from "@/types/supplyed";
 
 import type { OnboardingSubmitInput } from "./types";
 
-const roles: AppRole[] = ["admin", "individual", "institution", "teacher"];
+const roles: AppRole[] = ["individual", "institution", "teacher"];
 
 export function normalizeOnboardingSubmitInput(input: OnboardingSubmitInput): OnboardingSubmitInput {
   if (!roles.includes(input.role)) {

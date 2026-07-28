@@ -16,9 +16,7 @@ export async function AppRouteShell(props: { page: AppPage }) {
     redirect("/post-auth");
   }
 
-  const setupComplete =
-    session.user.role === "admin" ||
-    Boolean(session.user.role && session.user.applicationStatus !== "none");
+  const setupComplete = Boolean(session.user.role && session.user.applicationStatus !== "none");
 
   if (!setupComplete) {
     redirect("/onboarding");

@@ -110,10 +110,10 @@ function OnboardingRouteClientInner({
     initialApplicationStatus !== "none" ? initialApplicationStatus : initialProfileSnapshot.applicationStatus;
 
   useEffect(() => {
-    if (initialRole === "admin" || (initialRole && effectiveApplicationStatus !== "none")) {
+    if (initialRole && effectiveApplicationStatus !== "none") {
       startRouteLoading();
       if (!sessionRepairTicket) {
-        router.replace(buildAppHref(initialRole === "admin" ? "admin" : "dashboard"));
+        router.replace(buildAppHref("dashboard"));
         return;
       }
 
@@ -123,7 +123,7 @@ function OnboardingRouteClientInner({
           return;
         }
 
-        router.replace(buildAppHref(initialRole === "admin" ? "admin" : "dashboard"));
+        router.replace(buildAppHref("dashboard"));
         router.refresh();
       });
     }
@@ -173,7 +173,7 @@ function OnboardingRouteClientInner({
     return result;
   }
 
-  if (initialRole === "admin" || (initialRole && effectiveApplicationStatus !== "none")) {
+  if (initialRole && effectiveApplicationStatus !== "none") {
     return (
       <PageLoader
         description={sessionRepairError || "Syncing your latest backend profile status before opening the workspace."}

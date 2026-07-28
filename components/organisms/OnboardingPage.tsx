@@ -570,7 +570,7 @@ export function OnboardingPage({
                     </div>
                     <div className="font-semibold">Verified teacher access</div>
                     <p className="mt-2 text-sm leading-6 text-muted">
-                      Hirers see verification badges, while documents stay private for admin review and safeguarding checks.
+                      Hirers see verification badges, while documents stay private for verification review and safeguarding checks.
                     </p>
                   </div>
                   <div className="rounded-xl border border-border bg-chalk p-5">

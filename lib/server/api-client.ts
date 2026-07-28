@@ -44,8 +44,18 @@ function readErrorMessage(payload: unknown, fallback: string) {
     return payload.message;
   }
 
+  if (isApiEnvelope(payload) && Array.isArray(payload.message)) {
+    const message = payload.message.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).join(" ");
+    if (message) return message;
+  }
+
   if (isRecord(payload) && typeof payload.message === "string" && payload.message.trim()) {
     return payload.message;
+  }
+
+  if (isRecord(payload) && Array.isArray(payload.message)) {
+    const message = payload.message.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).join(" ");
+    if (message) return message;
   }
 
   return fallback;

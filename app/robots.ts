@@ -2,7 +2,6 @@ import type { MetadataRoute } from "next";
 import { siteConfig } from "@/lib/seo";
 
 const privateRoutes = [
-  "/admin",
   "/applications",
   "/billing",
   "/calendar",

@@ -119,7 +119,7 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
             <Tag tone="green">Verified teachers only</Tag>
             <div className="mt-3 font-serif text-[24px]">Documents stay private</div>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Hirers see verification badges. Admin keeps DBS, identity, and right-to-work documents restricted.
+              Hirers see verification badges. DBS, identity, and right-to-work documents stay restricted.
             </p>
             <div className="mt-4 space-y-2">
               {["Account-led messaging", "No learner account required", "Location shared after accepted request"].map((item) => (

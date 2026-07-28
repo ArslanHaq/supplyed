@@ -11,7 +11,6 @@ export const appPathByPage: Record<AppPage, string> = {
   messaging: "/messaging",
   calendar: "/calendar",
   billing: "/billing",
-  admin: "/admin",
 };
 
 export function buildAppHref(page: AppPage, ctx: RouteContext = {}) {
