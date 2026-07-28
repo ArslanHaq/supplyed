@@ -12,6 +12,12 @@ export type SignupStep = 1 | 2 | 3 | 4;
 export type OnboardingPending = "step" | "submit" | null;
 export type DocumentUploadField = "dbsCertificateFile" | "identityPhoto" | "qualificationFile" | "rightToWorkFile";
 
+export type DocumentPreview = {
+  expiresAt?: string;
+  file: UploadedFile;
+  url: string;
+};
+
 export type OnboardingFinishResult = {
   data?: {
     applicationStatus?: string;

@@ -88,6 +88,23 @@ function logBackendPayload(event: string, payload: Record<string, unknown>) {
   console.info(`[SupplyED backend payload] ${event}\n${JSON.stringify(safeConsolePayload(payload), null, 2)}`);
 }
 
+function logLoginUserData(response: BackendAuthResponse) {
+  if (process.env.NODE_ENV === "production") return;
+
+  console.info(
+    `[SupplyED login user]\n${JSON.stringify(
+      {
+        accessTokenExpiresAt: response.accessTokenExpiresAt,
+        hasAccessToken: Boolean(response.accessToken),
+        hasRefreshToken: Boolean(response.refreshToken),
+        user: response.user,
+      },
+      null,
+      2,
+    )}`,
+  );
+}
+
 function mockUser(email: string, overrides: Partial<AuthUser> = {}): AuthUser {
   return {
     applicationStatus: "none",
@@ -165,8 +182,23 @@ export function normalizeRole(role: unknown): AppRole | null {
 export function normalizeStatus(status: unknown): ApplicationStatus {
   const value = readString(status)?.replace(/-/g, "_").toLowerCase();
 
-  if (!value || value === "none" || value === "not_started") return "none";
-  if (value === "pending" || value === "pending_review" || value === "requires_info" || value === "under_review") {
+  if (
+    !value ||
+    value === "none" ||
+    value === "deactivated" ||
+    value === "incomplete" ||
+    value === "not_completed" ||
+    value === "not_started"
+  ) {
+    return "none";
+  }
+  if (
+    value === "pending" ||
+    value === "pending_approval" ||
+    value === "pending_review" ||
+    value === "requires_info" ||
+    value === "under_review"
+  ) {
     return "pending_review";
   }
   if (value === "approved" || value === "verified" || value === "active") return "approved";
@@ -307,12 +339,16 @@ export async function loginWithEmail(input: LoginInput): Promise<BackendAuthResp
   });
 
   if (backendEnabled()) {
-    return normalizeAuthResponse(await api.post<unknown>(backendAuthEndpoints.login, input, { auth: false }));
+    const response = normalizeAuthResponse(await api.post<unknown>(backendAuthEndpoints.login, input, { auth: false }));
+    logLoginUserData(response);
+    return response;
   }
 
-  return {
+  const response = {
     user: mockUser(input.email),
   };
+  logLoginUserData(response);
+  return response;
 }
 
 export async function verifyEmail(input: EmailVerificationInput): Promise<BackendAuthResponse> {

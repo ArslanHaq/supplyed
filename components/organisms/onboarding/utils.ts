@@ -135,7 +135,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     localAuthority: institution?.county ?? "",
     maxTravelDistance: instructor?.maxTravelDistance ?? "",
     phone: user?.phone ?? "",
-    postcode: institution?.postalCode || user?.postcode || "",
+    postcode: instructor?.postalCode || institution?.postalCode || user?.postcode || "",
     qualificationFile: qualificationDocument
       ? {
           id: qualificationDocument.id,

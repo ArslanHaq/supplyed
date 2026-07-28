@@ -80,10 +80,20 @@ function appendQuery(url: URL, query?: ApiQuery) {
   });
 }
 
+function buildApiPath(basePath: string, path: string) {
+  const normalizedBasePath = basePath === "/" ? "" : basePath.replace(/\/+$/, "");
+  const normalizedPath = path.replace(/^\/+/, "");
+
+  return [normalizedBasePath, normalizedPath].filter(Boolean).join("/");
+}
+
 function buildUrl(path: string, query?: ApiQuery) {
-  const url = path.startsWith("http")
-    ? new URL(path)
-    : new URL(path.startsWith("/") ? path : `/${path}`, getApiBaseUrl());
+  const url = path.startsWith("http") ? new URL(path) : new URL(getApiBaseUrl());
+
+  if (!path.startsWith("http")) {
+    url.pathname = buildApiPath(url.pathname, path);
+    url.search = "";
+  }
 
   appendQuery(url, query);
   return url.toString();

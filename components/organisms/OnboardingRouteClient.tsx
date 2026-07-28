@@ -20,6 +20,29 @@ import { PageLoader, PublicThemeControls } from "../molecules";
 import { OnboardingPage } from "./OnboardingPage";
 
 type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
+const sessionRefreshTimeoutMs = 12_000;
+
+function withClientTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      timeout = setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]).finally(() => {
+    if (timeout) clearTimeout(timeout);
+  });
+}
+
+function hasAllInstructorDocuments(snapshot: OnboardingProfileSnapshot) {
+  return Boolean(
+    snapshot.documents.dbs?.uploadedAt &&
+      snapshot.documents.id?.uploadedAt &&
+      snapshot.documents.qualification?.uploadedAt &&
+      snapshot.documents.addressProof?.uploadedAt,
+  );
+}
 
 function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
   if (role === "teacher") return "teacher";
@@ -29,7 +52,8 @@ function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
 
 function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfileSnapshot) {
   if (role === "teacher") {
-    if (snapshot.documents.dbs && snapshot.documents.id && snapshot.documents.qualification && snapshot.documents.addressProof) return 3;
+    if (!snapshot.instructor) return 1;
+    if (hasAllInstructorDocuments(snapshot)) return 3;
     return 2;
   }
 
@@ -41,12 +65,16 @@ function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfi
 async function refreshSessionFromTicket(ticket?: string) {
   if (!ticket) return { ok: true as const };
 
-  const signInResult = await signIn("credentials", {
-    flow: "verified-email-session",
-    redirect: false,
-    redirectTo: "/post-auth",
-    ticket,
-  });
+  const signInResult = await withClientTimeout(
+    signIn("credentials", {
+      flow: "verified-email-session",
+      redirect: false,
+      redirectTo: "/post-auth",
+      ticket,
+    }),
+    sessionRefreshTimeoutMs,
+    "Your profile was saved, but the session refresh timed out. Refresh the page and sign in again before uploading documents.",
+  );
 
   if (!signInResult?.ok) {
     return {
@@ -63,24 +91,43 @@ function OnboardingRouteClientInner({
   initialApplicationStatus,
   initialProfileSnapshot,
   initialRole,
+  sessionRepairTicket,
 }: {
   accountEmail?: string;
   initialApplicationStatus: ApplicationStatus;
   initialProfileSnapshot: OnboardingProfileSnapshot;
   initialRole: AppRole | null;
+  sessionRepairTicket?: string;
 }) {
   const router = useRouter();
+  const [sessionRepairError, setSessionRepairError] = useState<string>();
   const [role, setRoleState] = useState<SignupRole>(() => normalizeSignupRole(initialRole));
   const [roleSelected, setRoleSelected] = useState(Boolean(initialRole));
   const [step, setStep] = useState(() => initialStep(initialRole, initialProfileSnapshot));
-  const [profileSnapshot, setProfileSnapshot] = useState(initialProfileSnapshot);
+  const [savedProfileSnapshot, setSavedProfileSnapshot] = useState<OnboardingProfileSnapshot>();
+  const profileSnapshot = savedProfileSnapshot ?? initialProfileSnapshot;
+  const effectiveApplicationStatus =
+    initialApplicationStatus !== "none" ? initialApplicationStatus : initialProfileSnapshot.applicationStatus;
 
   useEffect(() => {
-    if (initialRole === "admin" || (initialRole && initialApplicationStatus !== "none")) {
+    if (initialRole === "admin" || (initialRole && effectiveApplicationStatus !== "none")) {
       startRouteLoading();
-      router.replace(buildAppHref("dashboard"));
+      if (!sessionRepairTicket) {
+        router.replace(buildAppHref(initialRole === "admin" ? "admin" : "dashboard"));
+        return;
+      }
+
+      void refreshSessionFromTicket(sessionRepairTicket).then((result) => {
+        if (!result.ok) {
+          setSessionRepairError(result.message);
+          return;
+        }
+
+        router.replace(buildAppHref(initialRole === "admin" ? "admin" : "dashboard"));
+        router.refresh();
+      });
     }
-  }, [initialApplicationStatus, initialRole, router]);
+  }, [effectiveApplicationStatus, initialRole, router, sessionRepairTicket]);
 
   function setRole(role: SignupRole) {
     setRoleState(role);
@@ -105,7 +152,7 @@ function OnboardingRouteClientInner({
 
     const sessionRefresh = await refreshSessionFromTicket(result.data.ticket);
     if (!sessionRefresh.ok) return sessionRefresh;
-    setProfileSnapshot(result.data.snapshot);
+    setSavedProfileSnapshot(result.data.snapshot);
     router.refresh();
 
     return result;
@@ -118,7 +165,7 @@ function OnboardingRouteClientInner({
     const sessionRefresh = await refreshSessionFromTicket(result.data.ticket);
     if (!sessionRefresh.ok) return sessionRefresh;
 
-    if (result.data.snapshot) setProfileSnapshot(result.data.snapshot);
+    if (result.data.snapshot) setSavedProfileSnapshot(result.data.snapshot);
     startRouteLoading();
     router.push(buildAppHref("dashboard"));
     router.refresh();
@@ -126,7 +173,14 @@ function OnboardingRouteClientInner({
     return result;
   }
 
-  if (initialRole === "admin" || (initialRole && initialApplicationStatus !== "none")) return null;
+  if (initialRole === "admin" || (initialRole && effectiveApplicationStatus !== "none")) {
+    return (
+      <PageLoader
+        description={sessionRepairError || "Syncing your latest backend profile status before opening the workspace."}
+        title={sessionRepairError ? "Session refresh failed" : "Updating account status"}
+      />
+    );
+  }
 
   return (
     <>
@@ -157,11 +211,13 @@ export function OnboardingRouteClient({
   initialApplicationStatus,
   initialProfileSnapshot,
   initialRole,
+  sessionRepairTicket,
 }: {
   accountEmail?: string;
   initialApplicationStatus: ApplicationStatus;
   initialProfileSnapshot: OnboardingProfileSnapshot;
   initialRole: AppRole | null;
+  sessionRepairTicket?: string;
 }) {
   const isClient = useMounted();
 
@@ -180,6 +236,7 @@ export function OnboardingRouteClient({
       initialApplicationStatus={initialApplicationStatus}
       initialProfileSnapshot={initialProfileSnapshot}
       initialRole={initialRole}
+      sessionRepairTicket={sessionRepairTicket}
     />
   );
 }

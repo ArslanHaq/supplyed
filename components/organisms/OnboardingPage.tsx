@@ -22,6 +22,7 @@ import type {
   OnboardingFinishResult,
   SignupRole,
 } from "./onboarding/types";
+import { DocumentPreviewModal } from "./onboarding/DocumentPreviewModal";
 import { UploadCard } from "./onboarding/UploadCard";
 import { useOnboardingForm } from "./onboarding/useOnboardingForm";
 import {
@@ -70,8 +71,10 @@ export function OnboardingPage({
   const {
     activeRole,
     clearFieldError,
+    closeDocumentPreview,
     continueStep,
     currentStep,
+    documentPreview,
     errors,
     form,
     isLastStep,
@@ -241,8 +244,8 @@ export function OnboardingPage({
                   <Field label="Phone" htmlFor="signup-phone" error={errors.phone} required>
                     <input id="signup-phone" className={fieldClass(errors.phone)} value={form.phone} onChange={(event) => updateField("phone", event.target.value)} placeholder="+44 7700 900000" inputMode="tel" />
                   </Field>
-                  <Field label="Postcode" htmlFor="signup-postcode" error={errors.postcode} required>
-                    <input id="signup-postcode" className={fieldClass(errors.postcode)} value={form.postcode} onChange={(event) => updateField("postcode", event.target.value.toUpperCase())} placeholder="M1 1AE" />
+                  <Field label="Postalcode / location" htmlFor="signup-location" error={errors.postcode} required>
+                    <input id="signup-location" className={fieldClass(errors.postcode)} value={form.postcode} onChange={(event) => updateField("postcode", event.target.value)} placeholder="M1 1AE or Manchester" />
                   </Field>
                 </div>
 
@@ -659,6 +662,7 @@ export function OnboardingPage({
           </div>
         </section>
       </main>
+      <DocumentPreviewModal preview={documentPreview} onClose={closeDocumentPreview} />
     </div>
   );
 }

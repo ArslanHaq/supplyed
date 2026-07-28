@@ -47,6 +47,7 @@ export type OnboardingInstructorSnapshot = {
   id: string;
   keyStages: string[];
   maxTravelDistance: string;
+  postalCode: string;
   skills: string[];
   status: ApplicationStatus;
   subjects: string[];
@@ -63,6 +64,7 @@ export type OnboardingInstitutionSnapshot = {
   name: string;
   postalCode: string;
   registrationId: string;
+  status: ApplicationStatus;
   staffingNeeds: string[];
   userRole: string;
   verified: boolean;

@@ -47,14 +47,16 @@ function readNumber(value: unknown): number | undefined {
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  let timeout: ReturnType<typeof setTimeout>;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
 
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => {
       timeout = setTimeout(() => reject(new Error(message)), ms);
     }),
-  ]).finally(() => clearTimeout(timeout));
+  ]).finally(() => {
+    if (timeout) clearTimeout(timeout);
+  });
 }
 
 type InstructorProfilePayload = {
@@ -66,6 +68,7 @@ type InstructorProfilePayload = {
   hourlyRate?: number;
   keyStages?: string[];
   maxTravelDistance?: number;
+  postalCode?: string;
   skills?: string[];
   subjects?: string[];
 };
@@ -118,6 +121,7 @@ type BackendInstructorProfile = {
   id?: string;
   keyStages?: string[];
   maxTravelDistance?: unknown;
+  postalCode?: string | null;
   skills?: string[];
   status?: unknown;
   subjects?: string[];
@@ -133,6 +137,7 @@ type BackendInstitutionProfile = {
   name?: string;
   postalCode?: string | null;
   registrationId?: string | null;
+  status?: unknown;
   staffingNeeds?: string | null;
   userRole?: string | null;
   verified?: boolean;
@@ -191,6 +196,7 @@ function normalizeInstructorSnapshot(profile: BackendInstructorProfile): Onboard
     id: profile.id,
     keyStages: readStringArray(profile.keyStages),
     maxTravelDistance: numberString(profile.maxTravelDistance),
+    postalCode: profile.postalCode || "",
     skills: readStringArray(profile.skills),
     status: normalizeStatus(profile.status),
     subjects: readStringArray(profile.subjects),
@@ -211,6 +217,7 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
     name: profile.name || "",
     postalCode: profile.postalCode || "",
     registrationId: profile.registrationId || "",
+    status: normalizeStatus(profile.status),
     staffingNeeds: splitStaffingNeeds(profile.staffingNeeds),
     userRole: profile.userRole || "",
     verified: Boolean(profile.verified),
@@ -236,7 +243,11 @@ function backendDocumentType(kind: string): BackendDocumentType | undefined {
 
 function normalizeDocumentSnapshot(document: BackendDocumentProfile): OnboardingDocumentSnapshot | undefined {
   const kind = documentKind(document.type);
-  if (!kind || !document.id || !document.name || !document.contentType || !document.sizeBytes) return undefined;
+  const uploadedAt = document.uploadedAt instanceof Date ? document.uploadedAt.toISOString() : readString(document.uploadedAt);
+
+  if (!kind || !document.id || !document.name || !document.contentType || !document.sizeBytes || !uploadedAt) {
+    return undefined;
+  }
 
   return {
     dbsNumber: document.dbsNumber,
@@ -245,8 +256,17 @@ function normalizeDocumentSnapshot(document: BackendDocumentProfile): Onboarding
     size: document.sizeBytes,
     status: readString(document.status),
     type: document.contentType,
-    uploadedAt: document.uploadedAt instanceof Date ? document.uploadedAt.toISOString() : document.uploadedAt,
+    uploadedAt,
   };
+}
+
+function hasCompletedInstructorDocuments(documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>) {
+  return Boolean(
+    documents.dbs?.uploadedAt &&
+      documents.id?.uploadedAt &&
+      documents.qualification?.uploadedAt &&
+      documents.addressProof?.uploadedAt,
+  );
 }
 
 function emptySnapshot(role: AppRole | null, email?: string): OnboardingProfileSnapshot {
@@ -349,6 +369,7 @@ function validateDocumentFile(file: File | null, label: string) {
 }
 
 function buildInstructorProfilePayload(formData: FormData): InstructorProfilePayload {
+  const postalCode = readFormString(formData, "postcode");
   const profile: InstructorProfilePayload = {
     bio: readFormString(formData, "bio") || undefined,
     currency: readFormString(formData, "currency") || "GBP",
@@ -358,6 +379,7 @@ function buildInstructorProfilePayload(formData: FormData): InstructorProfilePay
     hourlyRate: readFormNumber(formData, "hourlyRate"),
     keyStages: readFormStringArray(formData, "keyStages"),
     maxTravelDistance: readFormNumber(formData, "maxTravelDistance"),
+    postalCode: postalCode || undefined,
     skills: readFormStringArray(formData, "skills"),
     subjects: readFormStringArray(formData, "subjects"),
   };
@@ -394,6 +416,10 @@ function notFoundOrForbidden(error: unknown) {
   return error instanceof ApiError && (error.status === 403 || error.status === 404);
 }
 
+function isStatusTransitionRace(error: unknown) {
+  return error instanceof ApiError && (error.status === 400 || error.status === 409);
+}
+
 async function getCurrentUserSnapshot(postcodeFallback = "") {
   const authContext = await getServerAuthContext();
   if (!authContext?.userId) return undefined;
@@ -413,9 +439,38 @@ async function getInstructorSnapshotById(id: string | null | undefined) {
   }
 }
 
-async function getInstitutionSnapshot() {
+async function getCurrentInstructorSnapshot(accessToken?: string) {
   try {
-    return normalizeInstitutionSnapshot(await api.get<BackendInstitutionProfile>("/institutions/me"));
+    return normalizeInstructorSnapshot(
+      await api.get<BackendInstructorProfile>(
+        "/instructors/me",
+        accessToken
+          ? {
+              auth: false,
+              headers: buildBearerHeaders(accessToken),
+            }
+          : undefined,
+      ),
+    );
+  } catch (error) {
+    if (notFoundOrForbidden(error)) return undefined;
+    throw error;
+  }
+}
+
+async function getInstitutionSnapshot(accessToken?: string) {
+  try {
+    return normalizeInstitutionSnapshot(
+      await api.get<BackendInstitutionProfile>(
+        "/institutions/me",
+        accessToken
+          ? {
+              auth: false,
+              headers: buildBearerHeaders(accessToken),
+            }
+          : undefined,
+      ),
+    );
   } catch (error) {
     if (notFoundOrForbidden(error)) return undefined;
     throw error;
@@ -466,14 +521,15 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
     };
 
     if (role === "teacher") {
-      snapshot.instructor = await getInstructorSnapshotById(authContext.instructorProfileId);
+      snapshot.instructor =
+        (await getInstructorSnapshotById(authContext.instructorProfileId)) ?? (await getCurrentInstructorSnapshot());
       snapshot.documents = await getDocumentSnapshots();
       snapshot.applicationStatus = snapshot.instructor?.status ?? "none";
     }
 
     if (role === "institution") {
       snapshot.institution = await getInstitutionSnapshot();
-      snapshot.applicationStatus = snapshot.institution ? "pending_review" : "none";
+      snapshot.applicationStatus = snapshot.institution?.status ?? "none";
     }
 
     return snapshot;
@@ -544,11 +600,13 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
 
   const name = readFormString(formData, "fullName");
   const phone = readFormString(formData, "phone");
+  const postCode = readFormString(formData, "postcode");
 
-  if (name || phone) {
+  if (name || phone || postCode) {
     await api.patch("/users/me", {
       name: name || undefined,
       phone: phone || undefined,
+      postCode: postCode || undefined,
     });
   }
 
@@ -636,6 +694,16 @@ async function saveInstructorProfile(formData: FormData, accessToken: string, ex
     );
   }
 
+  const currentInstructor = await getCurrentInstructorSnapshot(accessToken);
+  if (currentInstructor?.id) {
+    return normalizeInstructorSnapshot(
+      await api.patch<BackendInstructorProfile>(`/instructors/${currentInstructor.id}`, profile, {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
+  }
+
   try {
     return normalizeInstructorSnapshot(
       await api.post<BackendInstructorProfile>("/instructors", profile, {
@@ -644,6 +712,12 @@ async function saveInstructorProfile(formData: FormData, accessToken: string, ex
       }),
     );
   } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      throw new Error(
+        "We found an existing teacher profile for this account, but could not restore it in this session. Sign out and sign in again, then try once more.",
+      );
+    }
+
     if (error instanceof ApiError && error.status === 409) {
       throw new Error("Your teacher profile already exists, but the backend does not expose an authenticated instructor profile lookup yet.");
     }
@@ -680,6 +754,44 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string, e
     if (error instanceof ApiError && error.status === 409) {
       return getInstitutionSnapshot();
     }
+
+    throw error;
+  }
+}
+
+async function submitInstructorProfileForReview(accessToken: string, fallback?: OnboardingInstructorSnapshot) {
+  try {
+    return normalizeInstructorSnapshot(
+      await api.patch<BackendInstructorProfile>("/instructors/me/status", undefined, {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
+  } catch (error) {
+    if (!isStatusTransitionRace(error)) throw error;
+
+    const currentInstructor = await getCurrentInstructorSnapshot(accessToken);
+    if (currentInstructor && currentInstructor.status !== "none") return currentInstructor;
+    if (fallback && fallback.status !== "none") return fallback;
+
+    throw error;
+  }
+}
+
+async function submitInstitutionProfileForReview(accessToken: string, fallback?: OnboardingInstitutionSnapshot) {
+  try {
+    return normalizeInstitutionSnapshot(
+      await api.patch<BackendInstitutionProfile>("/institutions/me/status", undefined, {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
+  } catch (error) {
+    if (!isStatusTransitionRace(error)) throw error;
+
+    const currentInstitution = await getInstitutionSnapshot(accessToken);
+    if (currentInstitution && currentInstitution.status !== "none") return currentInstitution;
+    if (fallback && fallback.status !== "none") return fallback;
 
     throw error;
   }
@@ -748,10 +860,16 @@ async function uploadInstructorDocuments(formData: FormData, accessToken: string
     if (snapshot) documents.addressProof = snapshot;
   }
 
-  return {
-    ...(await getDocumentSnapshots()),
+  const completedDocuments = {
+    ...(await getDocumentSnapshots(accessToken)),
     ...documents,
   };
+
+  if (!hasCompletedInstructorDocuments(completedDocuments)) {
+    throw new Error("Upload all required instructor documents before continuing.");
+  }
+
+  return completedDocuments;
 }
 
 export async function uploadOnboardingDocumentAction(formData: FormData) {
@@ -833,6 +951,7 @@ export async function uploadOnboardingDocumentAction(formData: FormData) {
 
 export async function downloadOnboardingDocumentAction(formData: FormData) {
   const documentId = readFormString(formData, "documentId");
+  const fileName = readFormString(formData, "fileName");
 
   if (!documentId) {
     return actionError("Choose an uploaded document to view.");
@@ -850,10 +969,14 @@ export async function downloadOnboardingDocumentAction(formData: FormData) {
       throw new Error("The backend did not return a document preview URL.");
     }
 
+    const previewPath = `/api/onboarding/documents/${encodeURIComponent(documentId)}/preview${
+      fileName ? `?name=${encodeURIComponent(fileName)}` : ""
+    }`;
+
     return actionOk<OnboardingDocumentDownloadResult>(
       {
         expiresAt: readString(response.expiresAt),
-        url,
+        url: previewPath,
       },
       "Document preview ready.",
     );
@@ -925,8 +1048,14 @@ export async function saveOnboardingStepAction(formData: FormData) {
         throw new Error("Upload all required instructor documents before continuing.");
       }
 
-      snapshot.instructor = await getInstructorSnapshotById(authContext.instructorProfileId || readFormString(formData, "teacherProfileId"));
       snapshot.documents = await getDocumentSnapshots();
+      if (!hasCompletedInstructorDocuments(snapshot.documents)) {
+        throw new Error("Upload all required instructor documents before continuing.");
+      }
+
+      snapshot.instructor =
+        (await getInstructorSnapshotById(authContext.instructorProfileId || readFormString(formData, "teacherProfileId"))) ??
+        (await getCurrentInstructorSnapshot(authContext.accessToken));
     }
 
     if (role === "institution" && step === 2) {
@@ -995,25 +1124,29 @@ async function submitInstructorOnboarding(formData: FormData) {
     }
 
     const documents = await uploadInstructorDocuments(formData, refreshedAuth.accessToken);
+    const submittedInstructor = await submitInstructorProfileForReview(refreshedAuth.accessToken, instructor);
+    if (!submittedInstructor || submittedInstructor.status === "none") {
+      throw new Error("The backend did not mark your teacher profile as pending review.");
+    }
 
     revalidateTag("onboarding", "max");
     return actionOk<OnboardingProgressResult>(
       {
-        applicationStatus: "pending_review",
+        applicationStatus: submittedInstructor.status,
         savedStep: Number(readFormString(formData, "step")) || 3,
         snapshot: {
-          applicationStatus: "pending_review",
+          applicationStatus: submittedInstructor.status,
           documents,
-          instructor,
+          instructor: submittedInstructor,
           role: "teacher",
           user,
         },
         ticket: createVerifiedEmailSessionTicket(
           createSessionResponse({
-            applicationStatus: "pending_review",
+            applicationStatus: submittedInstructor.status,
             auth: refreshedAuth,
-            instructorProfileId: instructor?.id,
-            name: instructor?.fullName || readFormString(formData, "fullName"),
+            instructorProfileId: submittedInstructor.id,
+            name: submittedInstructor.fullName || readFormString(formData, "fullName"),
             role: "teacher",
           }),
         ),
@@ -1054,24 +1187,29 @@ async function submitInstitutionOnboarding(formData: FormData) {
       return actionError("Your school profile was created, but we could not refresh your session. Sign in again to continue.");
     }
 
+    const submittedInstitution = await submitInstitutionProfileForReview(refreshedAuth.accessToken, institution);
+    if (!submittedInstitution || submittedInstitution.status === "none") {
+      throw new Error("The backend did not mark your school profile as pending review.");
+    }
+
     revalidateTag("onboarding", "max");
     return actionOk<OnboardingProgressResult>(
       {
-        applicationStatus: "pending_review",
+        applicationStatus: submittedInstitution.status,
         savedStep: Number(readFormString(formData, "step")) || 4,
         snapshot: {
-          applicationStatus: "pending_review",
+          applicationStatus: submittedInstitution.status,
           documents: {},
-          institution,
+          institution: submittedInstitution,
           role: "institution",
           user,
         },
         ticket: createVerifiedEmailSessionTicket(
           createSessionResponse({
-            applicationStatus: "pending_review",
+            applicationStatus: submittedInstitution.status,
             auth: refreshedAuth,
-            institutionProfileId: institution.id,
-            name: institution.name,
+            institutionProfileId: submittedInstitution.id,
+            name: submittedInstitution.name,
             role: "institution",
           }),
         ),

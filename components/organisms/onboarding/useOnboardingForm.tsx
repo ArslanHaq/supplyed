@@ -9,6 +9,7 @@ import { FileSummary, ReviewBadgeList } from "./ReviewCard";
 import { stepContent, unselectedSteps } from "./constants";
 import type {
   DocumentUploadField,
+  DocumentPreview,
   OnboardingDocumentDownloadActionResult,
   OnboardingDocumentUploadActionResult,
   OnboardingFinishResult,
@@ -33,6 +34,26 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phonePattern = /^[0-9+()\s-]{10,}$/;
 const domainPattern = /^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,}$/i;
 
+function snapshotFingerprint(snapshot?: OnboardingProfileSnapshot) {
+  if (!snapshot) return "";
+
+  return JSON.stringify({
+    documents: snapshot.documents,
+    institution: snapshot.institution,
+    instructor: snapshot.instructor,
+    role: snapshot.role,
+    user: snapshot.user,
+  });
+}
+
+function snapshotString(current: string, next: string) {
+  return next.trim() ? next : current;
+}
+
+function snapshotStringArray(current: string[], next: string[]) {
+  return next.length > 0 ? next : current;
+}
+
 function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined, snapshot?: OnboardingProfileSnapshot) {
   if (!snapshot) return current;
 
@@ -40,11 +61,35 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
 
   return {
     ...current,
-    ...next,
+    bio: snapshotString(current.bio, next.bio),
+    contactRole: snapshotString(current.contactRole, next.contactRole),
+    coverTypes: snapshotStringArray(current.coverTypes, next.coverTypes),
+    currency: next.currency || current.currency || "GBP",
+    dailyRate: snapshotString(current.dailyRate, next.dailyRate),
     dbsCertificateFile: next.dbsCertificateFile ?? current.dbsCertificateFile,
+    dbsNumber: snapshotString(current.dbsNumber, next.dbsNumber),
+    email: snapshotString(current.email, next.email),
+    fullName: snapshotString(current.fullName, next.fullName),
+    hourlyRate: snapshotString(current.hourlyRate, next.hourlyRate),
     identityPhoto: next.identityPhoto ?? current.identityPhoto,
+    institutionAddress: snapshotString(current.institutionAddress, next.institutionAddress),
+    institutionCity: snapshotString(current.institutionCity, next.institutionCity),
+    institutionCountryCode: next.institutionCountryCode || current.institutionCountryCode || "GB",
+    institutionDomain: snapshotString(current.institutionDomain, next.institutionDomain),
+    institutionProfileId: snapshotString(current.institutionProfileId, next.institutionProfileId),
+    institutionRegistrationId: snapshotString(current.institutionRegistrationId, next.institutionRegistrationId),
+    keyStages: snapshotStringArray(current.keyStages, next.keyStages),
+    localAuthority: snapshotString(current.localAuthority, next.localAuthority),
+    maxTravelDistance: snapshotString(current.maxTravelDistance, next.maxTravelDistance),
+    phone: snapshotString(current.phone, next.phone),
+    postcode: snapshotString(current.postcode, next.postcode),
     qualificationFile: next.qualificationFile ?? current.qualificationFile,
     rightToWorkFile: next.rightToWorkFile ?? current.rightToWorkFile,
+    schoolName: snapshotString(current.schoolName, next.schoolName),
+    skills: snapshotStringArray(current.skills, next.skills),
+    subjects: snapshotStringArray(current.subjects, next.subjects),
+    teacherProfileId: snapshotString(current.teacherProfileId, next.teacherProfileId),
+    yearsExperience: snapshotString(current.yearsExperience, next.yearsExperience),
   };
 }
 
@@ -79,16 +124,36 @@ export function useOnboardingForm({
   const [pending, setPending] = useState<OnboardingPending>(null);
   const [uploadPending, setUploadPending] = useState<DocumentUploadField | null>(null);
   const [viewPending, setViewPending] = useState<DocumentUploadField | null>(null);
+  const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
   const [submitError, setSubmitError] = useState<string>();
   const progress = Math.round((currentStep / steps.length) * 100);
   const isLastStep = currentStep === steps.length;
   const mountedRef = useRef(true);
+  const previousStepRef = useRef(currentStep);
+  const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
+  const previousSnapshotFingerprintRef = useRef(initialSnapshotFingerprint);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (previousStepRef.current === currentStep) return;
+
+    previousStepRef.current = currentStep;
+    setPending((current) => (current === "step" ? null : current));
+  }, [currentStep]);
+
+  useEffect(() => {
+    if (previousSnapshotFingerprintRef.current === initialSnapshotFingerprint) return;
+
+    previousSnapshotFingerprintRef.current = initialSnapshotFingerprint;
+    setForm((current) => mergeSnapshotForm(current, accountEmail, initialSnapshot));
+  }, [accountEmail, initialSnapshot, initialSnapshotFingerprint]);
 
   function buildPayload() {
     return buildOnboardingPayload(form, activeRole, currentStep, accountEmail);
@@ -100,7 +165,7 @@ export function useOnboardingForm({
       { label: "Name", value: form.fullName || "Not provided" },
       { label: "Email", value: form.email || accountEmail || "Not provided" },
       { label: "Phone", value: form.phone || "Not provided" },
-      { label: "Postcode", value: form.postcode || "Not provided" },
+      { label: "Postalcode / location", value: form.postcode || "Not provided" },
     ];
 
     if (activeRole === "teacher") {
@@ -245,7 +310,7 @@ export function useOnboardingForm({
   }
 
   async function uploadDocument(field: DocumentUploadField, file: UploadedFile) {
-    if (pending || uploadPending) return;
+    if (pending === "submit" || uploadPending) return;
 
     const label = documentLabelForField(field);
     const selectedFile = file.file;
@@ -317,15 +382,9 @@ export function useOnboardingForm({
   async function viewDocument(field: DocumentUploadField, file: UploadedFile | null) {
     if (!file?.id || viewPending) return;
 
-    const previewWindow = window.open("about:blank", "_blank");
-    if (previewWindow) {
-      previewWindow.opener = null;
-      previewWindow.document.title = "Preparing document preview";
-      previewWindow.document.body.textContent = "Preparing secure document preview...";
-    }
-
     const data = new FormData();
     data.set("documentId", file.id);
+    data.set("fileName", file.name);
     setViewPending(field);
     setSubmitError(undefined);
 
@@ -333,7 +392,6 @@ export function useOnboardingForm({
       const result = await onDocumentView(data);
 
       if (!result.ok || !result.data?.url) {
-        previewWindow?.close();
         setErrors((current) => ({
           ...current,
           [documentErrorField(field)]: result.message || "This document could not be opened.",
@@ -341,13 +399,12 @@ export function useOnboardingForm({
         return;
       }
 
-      if (previewWindow) {
-        previewWindow.location.href = result.data.url;
-      } else {
-        window.location.assign(result.data.url);
-      }
+      setDocumentPreview({
+        expiresAt: result.data.expiresAt,
+        file,
+        url: result.data.url,
+      });
     } catch (error) {
-      previewWindow?.close();
       setErrors((current) => ({
         ...current,
         [documentErrorField(field)]:
@@ -356,6 +413,10 @@ export function useOnboardingForm({
     } finally {
       if (mountedRef.current) setViewPending(null);
     }
+  }
+
+  function closeDocumentPreview() {
+    setDocumentPreview(null);
   }
 
   function clearFieldError(field: keyof SignupErrors) {
@@ -376,7 +437,7 @@ export function useOnboardingForm({
       if (!form.fullName.trim()) nextErrors.fullName = "Enter your full name.";
       if (!form.phone.trim()) nextErrors.phone = "Enter a contact number.";
       else if (!phonePattern.test(form.phone.trim())) nextErrors.phone = "Use a valid phone number.";
-      if (!form.postcode.trim()) nextErrors.postcode = "Enter your postcode.";
+      if (!form.postcode.trim()) nextErrors.postcode = "Enter your postalcode or location.";
 
       if (activeRole === "teacher") {
         if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
@@ -494,7 +555,9 @@ export function useOnboardingForm({
     activeRole,
     clearFieldError,
     continueStep,
+    closeDocumentPreview,
     currentStep,
+    documentPreview,
     errors,
     form,
     isLastStep,
