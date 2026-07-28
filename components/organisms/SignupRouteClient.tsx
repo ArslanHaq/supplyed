@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 
 import { resendSignupVerification, signupAction, verifySignupEmail } from "@/app/(auth)/signup/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
+import { readAuthSessionTicketPayload } from "@/lib/auth-session-routing";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { useAuthToasts } from "@/lib/use-auth-toasts";
 import { useMounted } from "@/lib/use-mounted";
@@ -108,12 +109,8 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
       };
     }
 
-    const ticket =
-      verificationResult.data && typeof verificationResult.data === "object" && "ticket" in verificationResult.data
-        ? String(verificationResult.data.ticket ?? "")
-        : "";
-
-    if (!ticket) {
+    const sessionPayload = readAuthSessionTicketPayload(verificationResult.data);
+    if (!sessionPayload) {
       const message = "Email verified, but we could not create your session. Log in again to continue.";
       showAuthError(message);
       return {
@@ -128,8 +125,8 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
       signInResult = await signIn("credentials", {
         flow: "verified-email-session",
         redirect: false,
-        redirectTo: "/post-auth",
-        ticket,
+        redirectTo: sessionPayload.nextHref,
+        ticket: sessionPayload.ticket,
       });
     } catch (error) {
       const message = readUnknownAuthErrorMessage(error, "Email verified, but we could not create your session.");
@@ -147,7 +144,8 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
     }
 
     startRouteLoading();
-    router.push("/post-auth");
+    router.replace(sessionPayload.nextHref);
+    router.refresh();
     return { ok: true as const };
   }
 

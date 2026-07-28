@@ -1,13 +1,16 @@
 import { seedJobs, seedMessages } from "@/data/supplyed";
+import { getFirstName } from "@/lib/user-display";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, MatchScore, Stat, Tag } from "../atoms";
 import { PageHead } from "../molecules";
 
-export function TeacherDashboard({ go }: Pick<RouteProps, "go">) {
+export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">) {
+  const firstName = getFirstName(state.accountName, state.signupEmail);
+
   return (
     <div className="app-page">
-      <PageHead title="Morning, Sarah" subtitle="Tuesday, 24 March 2026 - 3 new job matches - 1 booking confirmed" actions={<><Btn variant="secondary" icon="calendar" onClick={() => go("calendar")}>My calendar</Btn><Btn icon="search" onClick={() => go("find-jobs")}>Find jobs</Btn></>} />
+      <PageHead title={`Morning, ${firstName}`} subtitle="Tuesday, 24 March 2026 - 3 new job matches - 1 booking confirmed" actions={<><Btn variant="secondary" icon="calendar" onClick={() => go("calendar")}>My calendar</Btn><Btn icon="search" onClick={() => go("find-jobs")}>Find jobs</Btn></>} />
       <div className="grid-4 mb-7">
         <Stat value="£3,240" label="Earned this month" delta="+£185 yesterday" />
         <Stat value="12" label="Days booked" delta="3 this week" />

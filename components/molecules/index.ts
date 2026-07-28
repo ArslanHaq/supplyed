@@ -1,4 +1,5 @@
 export { Modal } from "./Modal";
+export { AppAccountMenu } from "./AppAccountMenu";
 export { AuthFlowLoader, CardGridLoader, InlineLoader, PageLoader, SectionLoader } from "./Loaders";
 export { PageHead } from "./PageHead";
 export {

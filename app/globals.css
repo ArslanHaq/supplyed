@@ -542,50 +542,6 @@ a {
   text-overflow: ellipsis;
 }
 
-.workspace-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 20px;
-  border-bottom: 0.5px solid var(--border);
-  background: #fff;
-}
-
-.workspace-role-select {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--chalk);
-}
-
-.workspace-role-btn {
-  border: none;
-  background: transparent;
-  border-radius: 5px;
-  color: var(--muted);
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.workspace-role-btn.active {
-  color: var(--ink);
-  background: var(--surface);
-  box-shadow: var(--shadow-xs);
-}
-
-.workspace-crumb {
-  margin-left: auto;
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 .app-nav {
   height: 60px;
   padding: 0 28px;
@@ -602,10 +558,16 @@ a {
 }
 
 .app-nav-link {
+  display: flex;
+  align-items: center;
   padding: 8px 14px;
+  border: none;
   border-radius: var(--radius);
+  background: transparent;
   color: var(--slate);
   cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
 }
 
 .app-nav-link.active,
@@ -624,7 +586,10 @@ a {
 .notif-btn {
   width: 34px;
   height: 34px;
+  border: none;
   border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1620,13 +1585,8 @@ a {
   }
 
   .page-title-row,
-  .workspace-topbar,
   .app-nav {
     flex-wrap: wrap;
-  }
-
-  .workspace-crumb {
-    margin-left: 0;
   }
 }
 

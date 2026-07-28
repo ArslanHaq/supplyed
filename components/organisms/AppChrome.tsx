@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 
-import type { AppPage, AppRole, RouteProps } from "@/types/supplyed";
+import { getDisplayName } from "@/lib/user-display";
+import type { AppPage, RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, Icon, Logo } from "../atoms";
+import { Icon, Logo } from "../atoms";
+import { AppAccountMenu } from "../molecules";
 
 type NavItem = {
   id: AppPage;
@@ -36,58 +38,39 @@ const individualNav: NavItem[] = [
 
 export function AppChrome({
   state,
-  setState,
   children,
   go,
   onLanding,
   onLogout,
-}: Pick<RouteProps, "state" | "setState" | "go"> & { children: ReactNode; onLanding: () => void; onLogout: () => void }) {
+}: Pick<RouteProps, "state" | "go"> & { children: ReactNode; onLanding: () => void; onLogout: () => void }) {
   const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : individualNav;
-  const userName = state.role === "institution" ? "Greenfield Primary" : state.role === "teacher" ? "Sarah Johnson" : "Aisha Khan";
-  const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Supply teacher" : "Talent seeker";
-  const roleCrumb = state.role === "institution" ? "School view" : state.role === "teacher" ? "Teacher view" : "Talent seeker view";
+  const fallbackUserName = state.role === "institution" ? "School workspace" : state.role === "teacher" ? "Instructor" : "Hirer";
+  const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
+  const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Instructor" : "Hirer";
   const searchPlaceholder = state.role === "teacher" ? "Search jobs..." : state.role === "individual" ? "Search tutors..." : "Search teachers...";
-  const roles: Array<{ v: AppRole; label: string; icon: string }> = [
-    { v: "institution", label: "School", icon: "building" },
-    { v: "teacher", label: "Teacher", icon: "user" },
-    { v: "individual", label: "Hirer", icon: "heart" },
-  ];
-  const selectRole = (role: AppRole) => {
-    setState((current) => ({ ...current, role, page: "dashboard", auth: "signed-in" }));
-    go("dashboard");
-  };
 
   return (
     <div className="workspace-shell">
-      <div className="workspace-topbar">
-        <div className="flex items-center gap-2.5"><Logo size={18} onClick={() => go("dashboard")} /><span className="pill">Workspace</span></div>
-        <div className="workspace-role-select">
-          {roles.map((item) => (
-            <button key={item.v} className={`workspace-role-btn ${state.role === item.v ? "active" : ""}`} onClick={() => selectRole(item.v)} type="button">
-              <span className="flex items-center gap-1.5"><Icon name={item.icon} size={12} /> {item.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="workspace-crumb">{roleCrumb}</div>
-        <div className="flex items-center gap-2">
-          <Btn variant="ghost" size="sm" onClick={onLanding}>View Home</Btn>
-          <Btn variant="secondary" size="sm" onClick={onLogout}>Logout</Btn>
-        </div>
-      </div>
       <div className="app-nav">
         <Logo size={17} onClick={() => go("dashboard")} />
-        <div className="app-nav-links">
+        <nav aria-label={`${userSub} workspace navigation`} className="app-nav-links">
           {navItems.map((item) => (
-            <div key={item.id} className={`app-nav-link ${state.page === item.id ? "active" : ""}`} onClick={() => go(item.id)}>
+            <button key={item.id} className={`app-nav-link ${state.page === item.id ? "active" : ""}`} onClick={() => go(item.id)} type="button">
               <span className="flex items-center gap-1.5"><Icon name={item.icon} size={13} /> {item.label}</span>
-            </div>
+            </button>
           ))}
-        </div>
+        </nav>
         <div className="app-nav-right">
           <div className="flex items-center gap-1.5 rounded-lg bg-chalk px-3 py-1.5"><Icon name="search" size={13} /><input placeholder={searchPlaceholder} className="w-[140px] border-0 bg-transparent outline-none" /></div>
-          <div className="notif-btn" onClick={() => go("messaging")}><Icon name="bell" size={16} /><div className="notif-dot" /></div>
-          <div className="notif-btn"><Icon name="help" size={16} /></div>
-          <div className="flex items-center gap-2"><Avatar name={userName} size="sm" /><div><div className="text-sm font-semibold">{userName}</div><div className="text-xs text-muted">{userSub}</div></div></div>
+          <button aria-label="Open messages" className="notif-btn" onClick={() => go("messaging")} type="button"><Icon name="bell" size={16} /><div className="notif-dot" /></button>
+          <button aria-label="Open help" className="notif-btn" type="button"><Icon name="help" size={16} /></button>
+          <AppAccountMenu
+            displayName={userName}
+            onDashboard={() => go("dashboard")}
+            onLanding={onLanding}
+            onLogout={onLogout}
+            roleLabel={userSub}
+          />
         </div>
       </div>
       {children}

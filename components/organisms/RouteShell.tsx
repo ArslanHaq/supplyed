@@ -7,7 +7,7 @@ import { signOut } from "next-auth/react";
 
 import { defaultState } from "@/data/supplyed";
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { buildAppHref } from "@/lib/routes";
+import { buildAppHref, shouldShowApplicationStatusPage } from "@/lib/routes";
 import { loadTweaks, saveTweaks } from "@/lib/supplyed-preferences";
 import { applyBrandTheme } from "@/lib/theme";
 import { useMounted } from "@/lib/use-mounted";
@@ -40,12 +40,14 @@ function readContext(searchParams: URLSearchParams) {
 type SessionRouteState = {
   applicationStatus: ApplicationStatus;
   email: string;
+  name?: string | null;
   role: AppRole;
 };
 
 function createInitialRouteState(page: AppPage, sessionState: SessionRouteState): AppState {
   return {
     ...defaultState,
+    accountName: sessionState.name?.trim() || undefined,
     applicationStatus: sessionState.applicationStatus,
     auth: "signed-in",
     onboardingComplete: true,
@@ -150,12 +152,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     );
   }
 
-  if (
-    routeProps.state.role !== "individual" &&
-    (routeProps.state.applicationStatus === "pending_review" ||
-      routeProps.state.applicationStatus === "rejected" ||
-      routeProps.state.applicationStatus === "suspended")
-  ) {
+  if (shouldShowApplicationStatusPage(routeProps.state.role, routeProps.state.applicationStatus)) {
     return (
       <ApplicationStatusPage
         state={routeProps.state}
@@ -169,7 +166,6 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     <>
       <AppChrome
         state={routeProps.state}
-        setState={setState}
         go={go}
         onLanding={goHome}
         onLogout={logout}

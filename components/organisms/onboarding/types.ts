@@ -51,13 +51,17 @@ export type SignupField =
   | "termsAccepted"
   | "schoolName"
   | "contactRole"
+  | "complianceContact"
+  | "complianceEmail"
+  | "coverTypes"
+  | "localAuthority"
+  | "typicalPupilCount"
   | "institutionAddress"
   | "institutionCity"
   | "institutionCountryCode"
   | "institutionDomain"
   | "institutionRegistrationId"
-  | "localAuthority"
-  | "coverTypes"
+  | "staffingNeeds"
   | "subjects"
   | "keyStages"
   | "skills"
@@ -78,8 +82,6 @@ export type SignupField =
   | "budgetRange"
   | "learnerNotes"
   | "individualConsent"
-  | "complianceContact"
-  | "complianceEmail"
   | "safeguardingConfirmed";
 
 export type SignupErrors = Partial<Record<SignupField, string>>;
@@ -96,10 +98,10 @@ export type UploadedFile = {
 export type SignupForm = {
   bio: string;
   budgetRange: string;
-  complianceContact: string;
-  complianceEmail: string;
   confirmPassword: string;
   contactRole: string;
+  complianceContact: string;
+  complianceEmail: string;
   coverTypes: string[];
   currency: string;
   dailyRate: string;
@@ -131,10 +133,12 @@ export type SignupForm = {
   safeguardingConfirmed: boolean;
   schoolName: string;
   skills: string[];
+  staffingNeeds: string;
   subjects: string[];
   teacherProfileId: string;
   teachingReferenceNumber: string;
   termsAccepted: boolean;
+  typicalPupilCount: string;
   yearsExperience: string;
 };
 

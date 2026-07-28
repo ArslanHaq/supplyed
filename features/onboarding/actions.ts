@@ -76,13 +76,18 @@ type InstructorProfilePayload = {
 type InstitutionProfilePayload = {
   address: string;
   city: string;
+  complianceContact?: string;
+  complianceEmail?: string;
   countryCode?: string;
-  county: string;
+  coverTypes?: string[];
+  county?: string;
   domain: string;
   name: string;
   postalCode?: string;
   registrationId?: string;
+  safeguardingConfirmed?: boolean;
   staffingNeeds?: string;
+  typicalPupilCount?: number;
   userRole?: string;
 };
 
@@ -130,15 +135,20 @@ type BackendInstructorProfile = {
 type BackendInstitutionProfile = {
   address?: string;
   city?: string;
+  complianceContact?: string | null;
+  complianceEmail?: string | null;
   countryCode?: string;
+  coverTypes?: unknown;
   county?: string;
   domain?: string;
   id?: string;
   name?: string;
   postalCode?: string | null;
   registrationId?: string | null;
+  safeguardingConfirmed?: boolean | null;
   status?: unknown;
   staffingNeeds?: string | null;
+  typicalPupilCount?: unknown;
   userRole?: string | null;
   verified?: boolean;
 };
@@ -160,14 +170,6 @@ const backendRefreshTimeoutMs = 12_000;
 
 function readStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())) : [];
-}
-
-function splitStaffingNeeds(value: string | null | undefined) {
-  if (!value) return [];
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function numberString(value: unknown) {
@@ -210,15 +212,20 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
   return {
     address: profile.address || "",
     city: profile.city || "",
+    complianceContact: profile.complianceContact || "",
+    complianceEmail: profile.complianceEmail || "",
     countryCode: profile.countryCode || "GB",
+    coverTypes: readStringArray(profile.coverTypes),
     county: profile.county || "",
     domain: profile.domain || "",
     id: profile.id,
     name: profile.name || "",
     postalCode: profile.postalCode || "",
     registrationId: profile.registrationId || "",
+    safeguardingConfirmed: Boolean(profile.safeguardingConfirmed),
     status: normalizeStatus(profile.status),
-    staffingNeeds: splitStaffingNeeds(profile.staffingNeeds),
+    staffingNeeds: profile.staffingNeeds || "",
+    typicalPupilCount: numberString(profile.typicalPupilCount),
     userRole: profile.userRole || "",
     verified: Boolean(profile.verified),
   };
@@ -314,6 +321,10 @@ function readFormNumber(formData: FormData, key: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
+function readFormBoolean(formData: FormData, key: string) {
+  return readFormString(formData, key) === "true";
+}
+
 function readFormFile(formData: FormData, key: string) {
   const value = formData.get(key);
   if (!(value instanceof File) || value.size <= 0) return null;
@@ -392,18 +403,21 @@ function normalizeDomain(value: string) {
 }
 
 function buildInstitutionProfilePayload(formData: FormData): InstitutionProfilePayload {
-  const coverTypes = readFormStringArray(formData, "coverTypes");
-
   return {
     address: readFormString(formData, "institutionAddress"),
     city: readFormString(formData, "institutionCity"),
     countryCode: readFormString(formData, "institutionCountryCode") || "GB",
-    county: readFormString(formData, "localAuthority"),
+    complianceContact: readFormString(formData, "complianceContact") || undefined,
+    complianceEmail: readFormString(formData, "complianceEmail") || undefined,
+    coverTypes: readFormStringArray(formData, "coverTypes"),
+    county: readFormString(formData, "localAuthority") || undefined,
     domain: normalizeDomain(readFormString(formData, "institutionDomain")),
     name: readFormString(formData, "schoolName"),
     postalCode: readFormString(formData, "postcode") || undefined,
     registrationId: readFormString(formData, "institutionRegistrationId") || undefined,
-    staffingNeeds: coverTypes.length > 0 ? coverTypes.join(", ") : undefined,
+    safeguardingConfirmed: readFormBoolean(formData, "safeguardingConfirmed"),
+    staffingNeeds: readFormString(formData, "staffingNeeds") || undefined,
+    typicalPupilCount: readFormNumber(formData, "typicalPupilCount"),
     userRole: readFormString(formData, "contactRole") || undefined,
   };
 }
@@ -728,13 +742,23 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string, e
   const profile = buildInstitutionProfilePayload(formData);
   const profileId = readFormString(formData, "institutionProfileId") || existingProfileId || "";
 
-  if (!profile.name || !profile.domain || !profile.address || !profile.city || !profile.county) {
+  if (!profile.name || !profile.domain || !profile.address || !profile.city) {
     throw new Error("Complete the required institution profile fields before continuing.");
   }
 
   if (profileId) {
     return normalizeInstitutionSnapshot(
       await api.patch<BackendInstitutionProfile>(`/institutions/${profileId}`, profile, {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
+  }
+
+  const currentInstitution = await getInstitutionSnapshot(accessToken);
+  if (currentInstitution?.id) {
+    return normalizeInstitutionSnapshot(
+      await api.patch<BackendInstitutionProfile>(`/institutions/${currentInstitution.id}`, profile, {
         auth: false,
         headers: buildBearerHeaders(accessToken),
       }),
@@ -749,8 +773,14 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string, e
       }),
     );
   } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      throw new Error(
+        "We found an existing school profile for this account, but could not restore it in this session. Sign out and sign in again, then try once more.",
+      );
+    }
+
     if (error instanceof ApiError && error.status === 409) {
-      return getInstitutionSnapshot();
+      return getInstitutionSnapshot(accessToken);
     }
 
     throw error;
@@ -1056,7 +1086,11 @@ export async function saveOnboardingStepAction(formData: FormData) {
         (await getCurrentInstructorSnapshot(authContext.accessToken));
     }
 
-    if (role === "institution" && step === 2) {
+    if (role === "institution" && step === 1) {
+      snapshot.institution = await getInstitutionSnapshot(authContext.accessToken);
+    }
+
+    if (role === "institution" && (step === 2 || step === 3)) {
       const institution = await saveInstitutionProfile(formData, authContext.accessToken, authContext.institutionProfileId);
       if (!institution) throw new Error("The backend did not return the saved institution profile.");
 
@@ -1073,7 +1107,7 @@ export async function saveOnboardingStepAction(formData: FormData) {
       }
     }
 
-    if (role === "institution" && step !== 2) {
+    if (role === "institution" && step !== 1 && step !== 2 && step !== 3) {
       snapshot.institution = await getInstitutionSnapshot();
     }
 
@@ -1162,7 +1196,7 @@ async function submitInstitutionOnboarding(formData: FormData) {
     return actionOk<OnboardingProgressResult>(
       {
         applicationStatus: "pending_review",
-        savedStep: Number(readFormString(formData, "step")) || 4,
+        savedStep: Number(readFormString(formData, "step")) || 3,
         snapshot: emptySnapshot("institution", readFormString(formData, "email")),
       },
       "Institution onboarding is ready for backend integration.",

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { buildAppHref } from "@/lib/routes";
+import { getAuthenticatedEntryHref } from "@/lib/routes";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 import { AuthFlowLoader } from "../molecules";
@@ -42,14 +42,7 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
       return;
     }
 
-    const hasCompleteSetup = Boolean(sessionUser.role && sessionUser.applicationStatus !== "none");
-
-    if (!hasCompleteSetup) {
-      router.replace("/onboarding");
-      return;
-    }
-
-    router.replace(buildAppHref("dashboard"));
+    router.replace(getAuthenticatedEntryHref(sessionUser));
   }, [router, searchParams, sessionUser]);
 
   return (

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { hasSubmittedApplicationStatus, getAuthenticatedEntryHref, shouldShowApplicationStatusPage } from "@/lib/routes";
 import { AppRouteShellClient } from "./organisms/RouteShell";
 import type { AppPage } from "@/types/supplyed";
 
@@ -16,10 +17,14 @@ export async function AppRouteShell(props: { page: AppPage }) {
     redirect("/post-auth");
   }
 
-  const setupComplete = Boolean(session.user.role && session.user.applicationStatus !== "none");
-
-  if (!setupComplete) {
+  const role = session.user.role;
+  const applicationStatus = session.user.applicationStatus;
+  if (!role || !hasSubmittedApplicationStatus(applicationStatus)) {
     redirect("/onboarding");
+  }
+
+  if (shouldShowApplicationStatusPage(role, applicationStatus) && props.page !== "dashboard") {
+    redirect(getAuthenticatedEntryHref({ applicationStatus, role }));
   }
 
   return (
@@ -29,7 +34,8 @@ export async function AppRouteShell(props: { page: AppPage }) {
         sessionState={{
           applicationStatus: session.user.applicationStatus,
           email: session.user.email ?? "",
-          role: session.user.role ?? "institution",
+          name: session.user.name,
+          role,
         }}
       />
     </Suspense>

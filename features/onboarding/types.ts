@@ -57,15 +57,20 @@ export type OnboardingInstructorSnapshot = {
 export type OnboardingInstitutionSnapshot = {
   address: string;
   city: string;
+  complianceContact: string;
+  complianceEmail: string;
   countryCode: string;
+  coverTypes: string[];
   county: string;
   domain: string;
   id: string;
   name: string;
   postalCode: string;
   registrationId: string;
+  safeguardingConfirmed: boolean;
   status: ApplicationStatus;
-  staffingNeeds: string[];
+  staffingNeeds: string;
+  typicalPupilCount: string;
   userRole: string;
   verified: boolean;
 };

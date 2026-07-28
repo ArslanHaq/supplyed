@@ -1,7 +1,11 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest } from "next/server";
 
-const appRoles = new Set(["institution", "teacher", "individual"]);
+import { getAuthenticatedEntryHref, hasSubmittedApplicationStatus } from "./lib/routes";
+import type { AppRole, ApplicationStatus } from "./types/supplyed";
+
+const appRoles = new Set<AppRole>(["institution", "teacher", "individual"]);
+const appStatuses = new Set<ApplicationStatus>(["none", "pending_review", "approved", "rejected", "suspended"]);
 const guestOnlyRoutes = new Set(["/forgot-password", "/login", "/signup"]);
 
 function getAuthCookieSecret() {
@@ -25,8 +29,12 @@ function redirectTo(request: NextRequest, pathname: string) {
   return NextResponse.redirect(url);
 }
 
-function readAppRole(role: unknown) {
-  return typeof role === "string" && appRoles.has(role) ? role : null;
+function readAppRole(role: unknown): AppRole | null {
+  return typeof role === "string" && appRoles.has(role as AppRole) ? (role as AppRole) : null;
+}
+
+function readApplicationStatus(status: unknown): ApplicationStatus {
+  return typeof status === "string" && appStatuses.has(status as ApplicationStatus) ? (status as ApplicationStatus) : "none";
 }
 
 export async function proxy(request: NextRequest) {
@@ -50,12 +58,12 @@ export async function proxy(request: NextRequest) {
   }
 
   const role = readAppRole(token.role);
-  const applicationStatus = typeof token.applicationStatus === "string" ? token.applicationStatus : "none";
-  const setupComplete = Boolean(role && applicationStatus !== "none");
+  const applicationStatus = readApplicationStatus(token.applicationStatus);
+  const setupComplete = Boolean(role && hasSubmittedApplicationStatus(applicationStatus));
   const isOnboardingRoute = pathname.startsWith("/onboarding");
 
   if (isGuestOnlyRoute) {
-    return redirectTo(request, setupComplete ? "/dashboard" : "/onboarding");
+    return redirectTo(request, getAuthenticatedEntryHref({ applicationStatus, role }));
   }
 
   if (!setupComplete && !isOnboardingRoute) {
@@ -63,7 +71,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (setupComplete && isOnboardingRoute) {
-    return redirectTo(request, "/dashboard");
+    return redirectTo(request, getAuthenticatedEntryHref({ applicationStatus, role }));
   }
 
   return NextResponse.next();

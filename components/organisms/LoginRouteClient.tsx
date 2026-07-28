@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 
 import { loginAction, resendLoginVerification, verifyLoginEmail } from "@/app/(auth)/login/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
+import { readAuthSessionTicketPayload } from "@/lib/auth-session-routing";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { useAuthToasts } from "@/lib/use-auth-toasts";
 import { useMounted } from "@/lib/use-mounted";
@@ -123,8 +124,8 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       return { ok: true as const };
     }
 
-    const ticket = isRecord(loginResult.data) ? readString(loginResult.data.ticket) : undefined;
-    if (!ticket) {
+    const sessionPayload = readAuthSessionTicketPayload(loginResult.data);
+    if (!sessionPayload) {
       const message = "We could not create your session. Try signing in again.";
       showAuthError(message);
       return {
@@ -139,8 +140,8 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       result = await signIn("credentials", {
         flow: "verified-email-session",
         redirect: false,
-        redirectTo: "/post-auth",
-        ticket,
+        redirectTo: sessionPayload.nextHref,
+        ticket: sessionPayload.ticket,
       });
     } catch (error) {
       const message = readUnknownAuthErrorMessage(error, "We could not create your session. Try signing in again.");
@@ -158,7 +159,8 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     startRouteLoading();
-    router.push("/post-auth");
+    router.replace(sessionPayload.nextHref);
+    router.refresh();
     return { ok: true as const };
   }
 
@@ -192,8 +194,8 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       };
     }
 
-    const ticket = isRecord(verificationResult.data) ? readString(verificationResult.data.ticket) : undefined;
-    if (!ticket) {
+    const sessionPayload = readAuthSessionTicketPayload(verificationResult.data);
+    if (!sessionPayload) {
       const message = "Email verified, but we could not create your session. Log in again to continue.";
       showAuthError(message);
       return {
@@ -208,8 +210,8 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       signInResult = await signIn("credentials", {
         flow: "verified-email-session",
         redirect: false,
-        redirectTo: "/post-auth",
-        ticket,
+        redirectTo: sessionPayload.nextHref,
+        ticket: sessionPayload.ticket,
       });
     } catch (error) {
       const message = readUnknownAuthErrorMessage(error, "Email verified, but we could not create your session.");
@@ -227,7 +229,8 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     startRouteLoading();
-    router.push("/post-auth");
+    router.replace(sessionPayload.nextHref);
+    router.refresh();
     return { ok: true as const };
   }
 

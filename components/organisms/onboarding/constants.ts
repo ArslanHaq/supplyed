@@ -6,10 +6,10 @@ export const maxDocumentSizeBytes = 10 * 1024 * 1024;
 export const initialForm: SignupForm = {
   bio: "",
   budgetRange: "",
-  complianceContact: "",
-  complianceEmail: "",
   confirmPassword: "",
   contactRole: "",
+  complianceContact: "",
+  complianceEmail: "",
   coverTypes: [],
   currency: "GBP",
   dailyRate: "",
@@ -41,19 +41,21 @@ export const initialForm: SignupForm = {
   safeguardingConfirmed: false,
   schoolName: "",
   skills: [],
+  staffingNeeds: "",
   subjects: [],
   teacherProfileId: "",
   teachingReferenceNumber: "",
   termsAccepted: false,
+  typicalPupilCount: "",
   yearsExperience: "",
 };
 
 export const subjects = ["Maths", "English", "Science", "Humanities", "SEN", "All Primary"];
 export const keyStages = ["EYFS", "KS1", "KS2", "KS3", "KS4", "KS5"];
 export const teacherSkills = ["Classroom management", "SEN support", "Safeguarding", "Behaviour support", "Phonics", "Exam preparation"];
+export const coverTypes = ["Same-day cover", "Long-term roles", "Intervention groups", "Exam season", "SEN support"];
 export const currencies = ["GBP"];
 export const countryCodes = ["GB"];
-export const coverTypes = ["Same-day cover", "Long-term roles", "Intervention groups", "Exam season", "SEN support"];
 export const supportForOptions = ["Myself", "My child", "Another learner", "A small group"];
 export const learningModes = ["In person", "Online", "Hybrid"];
 export const preferredSchedules = ["Weekday evenings", "Weekends", "After school", "Flexible"];

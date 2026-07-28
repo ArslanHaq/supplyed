@@ -2,9 +2,22 @@
 
 import { actionError, actionOk } from "@/lib/server/action-response";
 import { signIn } from "@/auth";
-import { ApiError } from "@/lib/server/api-client";
+import { getAuthenticatedEntryHref } from "@/lib/routes";
+import { api, ApiError } from "@/lib/server/api-client";
+import { getServerAuthContext } from "@/lib/server/auth-context";
+import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
-import { createEmailAccount, loginWithEmail, requestPasswordReset, resendEmailVerification, resetPassword, verifyEmail } from "./backend";
+import {
+  createEmailAccount,
+  loginWithEmail,
+  normalizeRole,
+  normalizeStatus,
+  refreshBackendAuth,
+  requestPasswordReset,
+  resendEmailVerification,
+  resetPassword,
+  verifyEmail,
+} from "./backend";
 import {
   parseEmailVerificationForm,
   parseForgotPasswordForm,
@@ -18,6 +31,24 @@ import {
 } from "./schemas";
 import { createVerifiedEmailSessionTicket } from "./session-ticket";
 import type { BackendAuthResponse, EmailVerificationResendResponse } from "./types";
+
+function createVerifiedSessionPayload(response: BackendAuthResponse) {
+  const role = normalizeRole(response.user.role);
+  const applicationStatus = normalizeStatus(response.user.applicationStatus);
+  const sessionResponse: BackendAuthResponse = {
+    ...response,
+    user: {
+      ...response.user,
+      applicationStatus,
+      role,
+    },
+  };
+
+  return {
+    nextHref: getAuthenticatedEntryHref({ applicationStatus, role }),
+    ticket: createVerifiedEmailSessionTicket(sessionResponse),
+  };
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -40,6 +71,38 @@ function readApiErrorCode(error: ApiError) {
   if (!isRecord(error.payload)) return undefined;
 
   return readString(error.payload.code) ?? readString(error.payload.error);
+}
+
+function buildBearerHeaders(accessToken: string) {
+  return { Authorization: `Bearer ${accessToken}` };
+}
+
+async function readProfileApplicationStatus(role: AppRole | null, accessToken?: string | null): Promise<ApplicationStatus> {
+  if (!accessToken) return "none";
+
+  if (role === "teacher") {
+    const profile = await api.get<unknown>("/instructors/me", {
+      auth: false,
+      cache: "no-store",
+      headers: buildBearerHeaders(accessToken),
+    });
+
+    return normalizeStatus(isRecord(profile) ? profile.status : undefined);
+  }
+
+  if (role === "institution") {
+    const profile = await api.get<unknown>("/institutions/me", {
+      auth: false,
+      cache: "no-store",
+      headers: buildBearerHeaders(accessToken),
+    });
+
+    return normalizeStatus(isRecord(profile) ? profile.status : undefined);
+  }
+
+  if (role === "individual") return "approved";
+
+  return "none";
 }
 
 function isRegisteredEmailError(error: unknown) {
@@ -140,7 +203,7 @@ export async function loginWithEmailAction(_previousState: unknown, formData: Fo
       );
     }
 
-    return actionOk({ ticket: createVerifiedEmailSessionTicket(response) }, "Credentials accepted.");
+    return actionOk(createVerifiedSessionPayload(response), "Credentials accepted.");
   } catch (error) {
     if (isEmailNotVerifiedError(error)) {
       try {
@@ -307,7 +370,7 @@ export async function verifyEmailSessionAction(_previousState: unknown, formData
 
     return actionOk(
       {
-        ticket: createVerifiedEmailSessionTicket(response),
+        ...createVerifiedSessionPayload(response),
       },
       "Email verified.",
     );
@@ -335,6 +398,46 @@ export async function resendEmailVerificationAction(_previousState: unknown, for
     return actionOk(response, response.message ?? "If this account needs verification, a new code will be sent.");
   } catch (error) {
     return toAuthActionError(error, "We could not resend the verification code.");
+  }
+}
+
+export async function refreshApplicationStatusAction() {
+  const authContext = await getServerAuthContext();
+
+  if (!authContext?.refreshToken) {
+    return actionError("Your session expired. Sign in again to check your application status.");
+  }
+
+  try {
+    const response = await refreshBackendAuth(authContext.refreshToken);
+
+    if (!response?.user.emailVerified) {
+      return actionError("Your session could not be refreshed. Sign in again to continue.");
+    }
+
+    const role = response.user.role ?? normalizeRole(authContext.role);
+    const applicationStatus = await readProfileApplicationStatus(role, response.accessToken ?? authContext.accessToken);
+    const sessionResponse: BackendAuthResponse = {
+      ...response,
+      user: {
+        ...response.user,
+        applicationStatus,
+        role,
+      },
+    };
+
+    return actionOk(
+      {
+        applicationStatus,
+        role,
+        ticket: createVerifiedEmailSessionTicket(sessionResponse),
+      },
+      applicationStatus === "approved"
+        ? "Your account is approved. Opening your workspace."
+        : "Your application status is up to date.",
+    );
+  } catch (error) {
+    return toAuthActionError(error, "We could not refresh your application status.");
   }
 }
 

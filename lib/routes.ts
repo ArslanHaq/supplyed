@@ -1,4 +1,4 @@
-import type { AppPage, RouteContext } from "@/types/supplyed";
+import type { AppPage, AppRole, ApplicationStatus, RouteContext } from "@/types/supplyed";
 
 export const appPathByPage: Record<AppPage, string> = {
   dashboard: "/dashboard",
@@ -21,4 +21,27 @@ export function buildAppHref(page: AppPage, ctx: RouteContext = {}) {
 
   const query = params.toString();
   return `${appPathByPage[page]}${query ? `?${query}` : ""}`;
+}
+
+export function hasSubmittedApplicationStatus(status: ApplicationStatus) {
+  return status !== "none";
+}
+
+export function isApprovedApplicationStatus(status: ApplicationStatus) {
+  return status === "approved";
+}
+
+export function shouldShowApplicationStatusPage(role: AppRole | null | undefined, status: ApplicationStatus) {
+  return role !== "individual" && (status === "pending_review" || status === "rejected" || status === "suspended");
+}
+
+export function getAuthenticatedEntryHref({
+  applicationStatus,
+  role,
+}: {
+  applicationStatus: ApplicationStatus;
+  role: AppRole | null | undefined;
+}) {
+  if (!role || !hasSubmittedApplicationStatus(applicationStatus)) return "/onboarding";
+  return buildAppHref("dashboard");
 }

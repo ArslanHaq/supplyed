@@ -12,7 +12,7 @@ import {
 } from "@/app/(app)/onboarding/actions";
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { buildAppHref } from "@/lib/routes";
+import { getAuthenticatedEntryHref } from "@/lib/routes";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
@@ -57,7 +57,11 @@ function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfi
     return 2;
   }
 
-  if (role === "institution" && snapshot.institution) return 3;
+  if (role === "institution") {
+    if (!snapshot.institution) return 1;
+    if (snapshot.institution.userRole && snapshot.institution.staffingNeeds) return 3;
+    return 2;
+  }
 
   return 1;
 }
@@ -112,8 +116,13 @@ function OnboardingRouteClientInner({
   useEffect(() => {
     if (initialRole && effectiveApplicationStatus !== "none") {
       startRouteLoading();
+      const entryHref = getAuthenticatedEntryHref({
+        applicationStatus: effectiveApplicationStatus,
+        role: initialRole,
+      });
+
       if (!sessionRepairTicket) {
-        router.replace(buildAppHref("dashboard"));
+        router.replace(entryHref);
         return;
       }
 
@@ -123,7 +132,7 @@ function OnboardingRouteClientInner({
           return;
         }
 
-        router.replace(buildAppHref("dashboard"));
+        router.replace(entryHref);
         router.refresh();
       });
     }
@@ -167,7 +176,12 @@ function OnboardingRouteClientInner({
 
     if (result.data.snapshot) setSavedProfileSnapshot(result.data.snapshot);
     startRouteLoading();
-    router.push(buildAppHref("dashboard"));
+    router.push(
+      getAuthenticatedEntryHref({
+        applicationStatus: result.data.applicationStatus,
+        role,
+      }),
+    );
     router.refresh();
 
     return result;

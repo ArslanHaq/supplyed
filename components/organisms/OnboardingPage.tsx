@@ -229,6 +229,17 @@ function OnboardingStepContent({
   if (isLastStep) return <ReviewStep controller={controller} />;
 
   if (currentStep === 1) {
+    if (!roleSelected) {
+      return (
+        <AccountBasicsStep
+          accountEmail={accountEmail}
+          controller={controller}
+          roleSelected={roleSelected}
+          setRole={setRole}
+        />
+      );
+    }
+
     if (activeRole === "teacher") {
       return (
         <TeacherProfileStep

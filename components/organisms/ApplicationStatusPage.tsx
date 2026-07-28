@@ -1,6 +1,17 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+
+import { refreshApplicationStatusAction } from "@/features/auth/actions";
+import { startRouteLoading } from "@/lib/navigation-loading";
+import { getAuthenticatedEntryHref, isApprovedApplicationStatus } from "@/lib/routes";
 import type { AppState } from "@/types/supplyed";
 
 import { Btn, Icon, Logo, Tag } from "../atoms";
+
+const statusPollMs = 30_000;
 
 function statusCopy(status: AppState["applicationStatus"]) {
   if (status === "rejected") {
@@ -30,8 +41,95 @@ function statusCopy(status: AppState["applicationStatus"]) {
 }
 
 export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: AppState; onLanding: () => void; onLogout: () => void }) {
+  const router = useRouter();
+  const checkingRef = useRef(false);
+  const mountedRef = useRef(false);
+  const [checking, setChecking] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string>();
   const copy = statusCopy(state.applicationStatus);
   const roleLabel = state.role === "teacher" ? "Teacher application" : state.role === "institution" ? "School workspace" : "Account";
+  const canRefreshStatus = state.applicationStatus === "pending_review";
+
+  const checkStatus = useCallback(
+    async ({ quiet = false }: { quiet?: boolean } = {}) => {
+      if (checkingRef.current) return;
+
+      checkingRef.current = true;
+      if (!quiet) {
+        setChecking(true);
+        setStatusMessage(undefined);
+      }
+
+      try {
+        const result = await refreshApplicationStatusAction();
+        if (!mountedRef.current) return;
+
+        if (!result.ok) {
+          if (!quiet) setStatusMessage(result.message);
+          return;
+        }
+
+        const sessionResult = await signIn("credentials", {
+          flow: "verified-email-session",
+          redirect: false,
+          redirectTo: "/post-auth",
+          ticket: result.data.ticket,
+        });
+        if (!mountedRef.current) return;
+
+        if (!sessionResult?.ok) {
+          if (!quiet) setStatusMessage("Your status was checked, but the session could not be refreshed. Sign in again to continue.");
+          return;
+        }
+
+        if (isApprovedApplicationStatus(result.data.applicationStatus)) {
+          startRouteLoading();
+          router.replace(
+            getAuthenticatedEntryHref({
+              applicationStatus: result.data.applicationStatus,
+              role: result.data.role,
+            }),
+          );
+          router.refresh();
+          return;
+        }
+
+        if (!quiet) setStatusMessage(result.message || "Your application is still in review.");
+      } catch (error) {
+        if (!quiet && mountedRef.current) {
+          setStatusMessage(error instanceof Error && error.message ? error.message : "We could not check your application status.");
+        }
+      } finally {
+        checkingRef.current = false;
+        if (mountedRef.current) setChecking(false);
+      }
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!canRefreshStatus) return;
+
+    const interval = window.setInterval(() => {
+      void checkStatus({ quiet: true });
+    }, statusPollMs);
+    const handleFocus = () => {
+      void checkStatus({ quiet: true });
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [canRefreshStatus, checkStatus]);
 
   return (
     <div className="min-h-screen bg-chalk">
@@ -71,8 +169,19 @@ export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: A
             </div>
           </div>
 
+          {statusMessage ? (
+            <div className="mt-6 rounded-xl border border-border bg-chalk px-4 py-3 text-sm font-semibold text-muted">
+              {statusMessage}
+            </div>
+          ) : null}
+
           <div className="mt-7 flex flex-wrap gap-3">
-            <Btn icon="message">Contact support</Btn>
+            {canRefreshStatus ? (
+              <Btn icon="clock" loading={checking} loadingLabel="Checking status" onClick={() => void checkStatus()}>
+                Check approval
+              </Btn>
+            ) : null}
+            <Btn icon="message" variant={canRefreshStatus ? "secondary" : "primary"}>Contact support</Btn>
             <Btn variant="secondary" onClick={onLanding}>
               Back to Home
             </Btn>

@@ -62,6 +62,8 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
   return {
     ...current,
     bio: snapshotString(current.bio, next.bio),
+    complianceContact: snapshotString(current.complianceContact, next.complianceContact),
+    complianceEmail: snapshotString(current.complianceEmail, next.complianceEmail),
     contactRole: snapshotString(current.contactRole, next.contactRole),
     coverTypes: snapshotStringArray(current.coverTypes, next.coverTypes),
     currency: next.currency || current.currency || "GBP",
@@ -86,9 +88,12 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     qualificationFile: next.qualificationFile ?? current.qualificationFile,
     rightToWorkFile: next.rightToWorkFile ?? current.rightToWorkFile,
     schoolName: snapshotString(current.schoolName, next.schoolName),
+    safeguardingConfirmed: current.safeguardingConfirmed || next.safeguardingConfirmed,
     skills: snapshotStringArray(current.skills, next.skills),
+    staffingNeeds: snapshotString(current.staffingNeeds, next.staffingNeeds),
     subjects: snapshotStringArray(current.subjects, next.subjects),
     teacherProfileId: snapshotString(current.teacherProfileId, next.teacherProfileId),
+    typicalPupilCount: snapshotString(current.typicalPupilCount, next.typicalPupilCount),
     yearsExperience: snapshotString(current.yearsExperience, next.yearsExperience),
   };
 }
@@ -263,7 +268,7 @@ export function useOnboardingForm({
           { label: "County / region", value: form.localAuthority || "Not provided" },
           { label: "Country", value: form.institutionCountryCode || "GB" },
           { label: "Registration ID", value: form.institutionRegistrationId || "Optional" },
-          { label: "Pupil count", value: form.yearsExperience || "Optional" },
+          { label: "Pupil count", value: form.typicalPupilCount || "Optional" },
           { label: "Needs", value: <ReviewBadgeList items={form.coverTypes} />, wide: true },
         ],
       },

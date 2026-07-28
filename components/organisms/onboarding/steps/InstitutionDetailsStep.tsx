@@ -86,8 +86,8 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
           <input
             id="pupils"
             className="input"
-            value={form.yearsExperience}
-            onChange={(event) => updateField("yearsExperience", event.target.value.replace(/\D/g, ""))}
+            value={form.typicalPupilCount}
+            onChange={(event) => updateField("typicalPupilCount", event.target.value.replace(/\D/g, ""))}
             placeholder="420"
             inputMode="numeric"
           />

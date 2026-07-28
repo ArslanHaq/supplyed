@@ -111,8 +111,10 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
   return {
     ...initialForm,
     bio: instructor?.bio ?? "",
+    complianceContact: institution?.complianceContact ?? "",
+    complianceEmail: institution?.complianceEmail ?? "",
     contactRole: institution?.userRole ?? "",
-    coverTypes: institution?.staffingNeeds ?? [],
+    coverTypes: institution?.coverTypes ?? [],
     currency: instructor?.currency || "GBP",
     dailyRate: instructor?.dailyRate ?? "",
     dbsCertificateFile: dbsDocument
@@ -148,10 +150,13 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     rightToWorkFile: addressDocument
       ? { id: addressDocument.id, name: addressDocument.name, size: addressDocument.size, status: addressDocument.status, type: addressDocument.type }
       : null,
+    safeguardingConfirmed: institution?.safeguardingConfirmed ?? false,
     schoolName: institution?.name ?? "",
     skills: instructor?.skills ?? [],
+    staffingNeeds: institution?.staffingNeeds ?? "",
     subjects: instructor?.subjects ?? [],
     teacherProfileId: instructor?.id ?? "",
+    typicalPupilCount: institution?.typicalPupilCount ?? "",
     yearsExperience: instructor?.yearsExperience ?? "",
   };
 }
@@ -178,7 +183,12 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("institutionDomain", form.institutionDomain.trim());
   data.set("institutionRegistrationId", form.institutionRegistrationId.trim());
   data.set("localAuthority", form.localAuthority.trim());
+  data.set("staffingNeeds", form.staffingNeeds.trim());
   data.set("coverTypes", JSON.stringify(form.coverTypes));
+  data.set("typicalPupilCount", form.typicalPupilCount.trim());
+  data.set("complianceContact", form.complianceContact.trim());
+  data.set("complianceEmail", form.complianceEmail.trim());
+  data.set("safeguardingConfirmed", String(form.safeguardingConfirmed));
   data.set("subjects", JSON.stringify(form.subjects));
   data.set("keyStages", JSON.stringify(form.keyStages));
   data.set("skills", JSON.stringify(form.skills));

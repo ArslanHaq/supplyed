@@ -97,6 +97,7 @@ export type SocialAuthAvailability = {
 };
 
 export type AppState = {
+  accountName?: string;
   role: AppRole;
   page: AppPage;
   auth: AuthState;
