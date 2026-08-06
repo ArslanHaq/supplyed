@@ -1,17 +1,61 @@
-import { seedJobs, seedTeachers } from "@/data/supplyed";
+import { useState } from "react";
+
+import { seedTeachers } from "@/data/supplyed";
+import { useDeleteJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
+import type { Job } from "@/features/jobs/types";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, MatchScore, Stat, Tag } from "../atoms";
 import { PageHead } from "../molecules";
+import { JobManagementList, type JobStatusFilter } from "./JobManagementList";
 
-export function InstitutionDashboard({ go, tweaks }: Pick<RouteProps, "go" | "tweaks">) {
+export function InstitutionDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "toast" | "tweaks">) {
+  const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ALL");
+  const jobsQuery = useMyJobs();
+  const jobs = jobsQuery.data ?? [];
+  const activeJobs = jobs.filter((job) => job.status === "ACTIVE");
+  const draftJobs = jobs.filter((job) => job.status === "DRAFT");
+  const updateJob = useUpdateJob({
+    onSuccess: (result) => {
+      toast({
+        title: result.ok ? "Job updated" : "Could not update job",
+        msg: result.message ?? "The job status was updated.",
+        tone: result.ok ? "success" : "danger",
+      });
+    },
+    onError: () => {
+      toast({ title: "Could not update job", msg: "Please try again.", tone: "danger" });
+    },
+  });
+  const deleteJob = useDeleteJob({
+    onSuccess: (result) => {
+      toast({
+        title: result.ok ? "Job deleted" : "Could not delete job",
+        msg: result.message ?? "The job was deleted.",
+        tone: result.ok ? "success" : "danger",
+      });
+    },
+    onError: () => {
+      toast({ title: "Could not delete job", msg: "Please try again.", tone: "danger" });
+    },
+  });
+
+  function closeJob(job: Job) {
+    updateJob.mutate({ id: job.id, status: "CLOSED" });
+  }
+
+  function removeJob(job: Job) {
+    if (!window.confirm(`Delete "${job.title}"? This cannot be undone.`)) return;
+    deleteJob.mutate(job.id);
+  }
+
   return (
     <>
       {tweaks.urgentBanner ? (
         <div className="urgent-banner">
           <Icon name="zap" size={16} />
-          <strong>2 unfilled roles tomorrow.</strong>
-          <span style={{ opacity: 0.8 }}>Post an urgent cover or invite top matches.</span>
+          <strong>{activeJobs.length || draftJobs.length ? `${activeJobs.length} active roles.` : "Ready to post your first role."}</strong>
+          <span style={{ opacity: 0.8 }}>Approved school accounts can publish roles and review applicants from one workspace.</span>
           <div className="ml-auto flex gap-2">
             <Btn variant="danger" size="sm" onClick={() => go("post-job")}>Post urgent</Btn>
           </div>
@@ -19,34 +63,32 @@ export function InstitutionDashboard({ go, tweaks }: Pick<RouteProps, "go" | "tw
       ) : null}
       <div className="app-page">
         <PageHead
-          title="Good morning, Greenfield"
-          subtitle="Tuesday, 24 March 2026 - 3 active jobs - 2 roles unfilled for tomorrow"
+          title="School hiring workspace"
+          subtitle={`${jobs.length} posted roles - ${activeJobs.length} active - ${draftJobs.length} drafts`}
           actions={<><Btn variant="secondary" icon="download">Export</Btn><Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn></>}
         />
         <div className="grid-4 mb-7">
-          <Stat value="3" label="Active jobs" delta="2 open" />
-          <Stat value="18" label="Applicants this week" delta="+6 today" />
-          <Stat value="12" label="Teachers shortlisted" delta="4 new" />
-          <Stat value="£1,840" label="Month-to-date spend" delta="-8% vs Feb" />
+          <Stat value={activeJobs.length} label="Active jobs" delta={`${draftJobs.length} drafts`} />
+          <Stat value={jobs.length} label="Total posted" delta="Across all statuses" />
+          <Stat value={jobs.filter((job) => job.status === "CLOSED").length} label="Closed roles" delta="Kept for records" />
+          <Stat value="0" label="Applicants today" delta="Live count pending" />
         </div>
         <div className="two-col">
           <div>
-            <div className="mb-3.5 flex items-center justify-between">
-              <div className="section-title mb-0">Active job posts</div>
-              <span className="cursor-pointer text-xs font-semibold text-brand" onClick={() => go("applications")}>View all →</span>
-            </div>
-            <div className="card overflow-hidden">
-              {seedJobs.map((job) => (
-                <div key={job.id} className="flex cursor-pointer items-center gap-4 border-b border-border px-5 py-4" onClick={() => go("applications", { jobId: job.id })}>
-                  <div className="flex-1">
-                    <div className="mb-1 flex items-center gap-2">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag><span className="text-xs text-muted">{job.postedAt}</span></div>
-                    <div className="text-[15px] font-semibold">{job.title}</div>
-                    <div className="text-xs text-muted">{job.school} - {job.date} - £{job.rate}/day</div>
-                  </div>
-                  <div className="text-center"><div className="font-serif text-[22px] text-brand">{job.applicants}</div><div className="text-xs text-muted">Applicants</div></div>
-                </div>
-              ))}
-            </div>
+            <JobManagementList
+              actionPending={updateJob.isPending || deleteJob.isPending}
+              emptyMessage="Create a role to start matching with approved instructors."
+              filter={statusFilter}
+              jobs={jobs}
+              loading={jobsQuery.isLoading}
+              onApplications={(job) => go("applications", { jobId: job.id })}
+              onClose={closeJob}
+              onCreate={() => go("post-job")}
+              onDelete={removeJob}
+              onEdit={(job) => go("post-job", { jobId: job.id })}
+              onFilterChange={setStatusFilter}
+              title="Job posts"
+            />
             <div className="section-title mt-7">Recent activity</div>
             <div className="card card-pad">
               {[

@@ -1,4 +1,9 @@
 export const queryKeys = {
+  applications: {
+    all: ["applications"] as const,
+    byJob: (jobId: string, filters?: Record<string, unknown>) =>
+      [...queryKeys.applications.all, "job", jobId, filters ?? {}] as const,
+  },
   auth: {
     all: ["auth"] as const,
     me: () => [...queryKeys.auth.all, "me"] as const,
@@ -7,6 +12,7 @@ export const queryKeys = {
     all: ["jobs"] as const,
     detail: (id: string) => [...queryKeys.jobs.all, "detail", id] as const,
     list: (filters?: Record<string, unknown>) => [...queryKeys.jobs.all, "list", filters ?? {}] as const,
+    mine: (filters?: Record<string, unknown>) => [...queryKeys.jobs.all, "mine", filters ?? {}] as const,
   },
   onboarding: {
     all: ["onboarding"] as const,

@@ -14,6 +14,7 @@ type NavItem = {
 
 const institutionNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
+  { id: "post-job", label: "Post job", icon: "plus" },
   { id: "find-teachers", label: "Teachers", icon: "search" },
   { id: "applications", label: "Applications", icon: "users" },
   { id: "messaging", label: "Messages", icon: "message" },
@@ -30,7 +31,9 @@ const teacherNav: NavItem[] = [
 
 const individualNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
+  { id: "post-job", label: "Post job", icon: "plus" },
   { id: "find-teachers", label: "Teachers", icon: "search" },
+  { id: "applications", label: "Applications", icon: "users" },
   { id: "messaging", label: "Messages", icon: "message" },
   { id: "calendar", label: "Schedule", icon: "calendar" },
   { id: "billing", label: "Payments", icon: "file" },
@@ -47,7 +50,7 @@ export function AppChrome({
   const fallbackUserName = state.role === "institution" ? "School workspace" : state.role === "teacher" ? "Instructor" : "Hirer";
   const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
   const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Instructor" : "Hirer";
-  const searchPlaceholder = state.role === "teacher" ? "Search jobs..." : state.role === "individual" ? "Search tutors..." : "Search teachers...";
+  const searchPlaceholder = state.role === "teacher" ? "Search jobs..." : state.role === "individual" ? "Search teachers..." : "Search teachers...";
 
   return (
     <div className="workspace-shell">

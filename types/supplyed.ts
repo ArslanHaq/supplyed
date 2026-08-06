@@ -6,6 +6,8 @@ export type MessageAuthor = "me" | "them";
 export type AppRole = "institution" | "teacher" | "individual";
 export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
 export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
+export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED";
+export type JobPayType = "daily" | "fixed" | "hourly";
 
 export type AppPage =
   | "dashboard"
@@ -41,6 +43,19 @@ export type Teacher = {
 export type Job = {
   id: string;
   title: string;
+  postedByUserId?: string;
+  description?: string;
+  location?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  keyStages?: string[];
+  parkingInfo?: string | null;
+  payAmount?: number | null;
+  payType?: JobPayType | string | null;
+  status?: JobStatus;
+  expiresAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   school: string;
   city: string;
   date: string;
@@ -52,7 +67,6 @@ export type Job = {
   postedAt: string;
   applicants: number;
   matchScore: number;
-  description?: string;
 };
 
 export type Application = {

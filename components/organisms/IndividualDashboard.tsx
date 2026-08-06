@@ -1,87 +1,94 @@
+import { useState } from "react";
+
 import { seedTeachers } from "@/data/supplyed";
+import { useDeleteJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
+import type { Job } from "@/features/jobs/types";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, MatchScore, Stat, Tag, VerifyBadge } from "../atoms";
 import { PageHead } from "../molecules";
-
-const learnerRequests = [
-  {
-    id: "lr-1",
-    learner: "Learner 1",
-    subject: "KS2 Maths",
-    format: "In person",
-    schedule: "Weekday evenings",
-    budget: "£25-£40/hr",
-    status: "Matching",
-  },
-  {
-    id: "lr-2",
-    learner: "Learner 2",
-    subject: "KS3 English",
-    format: "Online",
-    schedule: "Weekends",
-    budget: "Flexible",
-    status: "Draft",
-  },
-];
+import { JobManagementList, type JobStatusFilter } from "./JobManagementList";
 
 export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toast">) {
+  const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ALL");
+  const jobsQuery = useMyJobs();
+  const jobs = jobsQuery.data ?? [];
+  const activeJobs = jobs.filter((job) => job.status === "ACTIVE");
+  const draftJobs = jobs.filter((job) => job.status === "DRAFT");
+  const updateJob = useUpdateJob({
+    onSuccess: (result) => {
+      toast({
+        title: result.ok ? "Job updated" : "Could not update job",
+        msg: result.message ?? "The job status was updated.",
+        tone: result.ok ? "success" : "danger",
+      });
+    },
+    onError: () => {
+      toast({ title: "Could not update job", msg: "Please try again.", tone: "danger" });
+    },
+  });
+  const deleteJob = useDeleteJob({
+    onSuccess: (result) => {
+      toast({
+        title: result.ok ? "Job deleted" : "Could not delete job",
+        msg: result.message ?? "The job was deleted.",
+        tone: result.ok ? "success" : "danger",
+      });
+    },
+    onError: () => {
+      toast({ title: "Could not delete job", msg: "Please try again.", tone: "danger" });
+    },
+  });
+
+  function closeJob(job: Job) {
+    updateJob.mutate({ id: job.id, status: "CLOSED" });
+  }
+
+  function removeJob(job: Job) {
+    if (!window.confirm(`Delete "${job.title}"? This cannot be undone.`)) return;
+    deleteJob.mutate(job.id);
+  }
+
   return (
     <div className="app-page">
       <PageHead
-        title="Welcome, Aisha"
-        subtitle="2 learner requests - 4 verified teacher matches - next reply due today"
+        title="Hiring workspace"
+        subtitle={`${jobs.length} posted roles - ${activeJobs.length} active - ${draftJobs.length} drafts`}
         actions={
           <>
             <Btn variant="secondary" icon="message" onClick={() => go("messaging")}>
               Messages
             </Btn>
-            <Btn icon="search" onClick={() => go("find-teachers")}>
-              Find teachers
+            <Btn icon="plus" onClick={() => go("post-job")}>
+              Post a job
             </Btn>
           </>
         }
       />
 
       <div className="grid-4 mb-7">
-        <Stat value="2" label="Learner requests" delta="1 active" />
-        <Stat value="4" label="Verified matches" delta="DBS checked" />
-        <Stat value="3" label="Messages" delta="1 unread" />
+        <Stat value={activeJobs.length} label="Active jobs" delta={`${draftJobs.length} drafts`} />
+        <Stat value={jobs.length} label="Total posted" delta="All statuses" />
+        <Stat value={jobs.filter((job) => job.status === "CLOSED").length} label="Closed roles" delta="History retained" />
         <Stat value="100%" label="Safety setup" delta="Account-led contact" />
       </div>
 
       <div className="two-col">
         <div>
-          <div className="mb-3.5 flex items-center justify-between">
-            <div className="section-title mb-0">Learner requests</div>
-            <button className="cursor-pointer text-xs font-semibold text-brand" type="button">
-              New request
-            </button>
-          </div>
-          <div className="card overflow-hidden">
-            {learnerRequests.map((request, index) => (
-              <div
-                key={request.id}
-                className="flex flex-wrap items-center gap-4 border-b border-border px-5 py-4 last:border-b-0"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
-                  <Icon name="heart" size={18} />
-                </div>
-                <div className="min-w-[220px] flex-1">
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <div className="font-semibold">{request.subject}</div>
-                    <Tag tone={index === 0 ? "green" : "ghost"}>{request.status}</Tag>
-                  </div>
-                  <div className="text-xs text-muted">
-                    {request.learner} - {request.format} - {request.schedule} - {request.budget}
-                  </div>
-                </div>
-                <Btn variant="secondary" size="sm" onClick={() => go("find-teachers")}>
-                  View matches
-                </Btn>
-              </div>
-            ))}
-          </div>
+          <JobManagementList
+            actionPending={updateJob.isPending || deleteJob.isPending}
+            emptyMessage="Post your first hiring need and review verified instructors from this workspace."
+            filter={statusFilter}
+            jobs={jobs}
+            loading={jobsQuery.isLoading}
+            onApplications={(job) => go("applications", { jobId: job.id })}
+            onClose={closeJob}
+            onCreate={() => go("post-job")}
+            onDelete={removeJob}
+            onEdit={(job) => go("post-job", { jobId: job.id })}
+            onFilterChange={setStatusFilter}
+            title="Posted roles"
+          />
 
           <div className="section-title mt-7">Recommended verified teachers</div>
           <div className="flex flex-col gap-3">
@@ -133,8 +140,14 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
 
           <div className="section-title mt-7">Quick actions</div>
           <div className="card card-pad flex flex-col gap-2">
+            <Btn icon="plus" className="justify-start" onClick={() => go("post-job")}>
+              Post a job
+            </Btn>
             <Btn icon="search" className="justify-start" onClick={() => go("find-teachers")}>
               Browse teachers
+            </Btn>
+            <Btn variant="secondary" icon="users" className="justify-start" onClick={() => go("applications")}>
+              Review applications
             </Btn>
             <Btn variant="secondary" icon="message" className="justify-start" onClick={() => go("messaging")}>
               Open messages

@@ -134,8 +134,11 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else content = <TeacherDashboard {...routeProps} />;
   } else if (state.role === "individual") {
     if (activePage === "dashboard") content = <IndividualDashboard {...routeProps} />;
+    else if (activePage === "post-job") content = <PostJobPage {...routeProps} />;
+    else if (activePage === "applications") content = <ApplicationsPage {...routeProps} />;
     else if (activePage === "find-teachers") content = <FindTeachersPage {...routeProps} />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
+    else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
     else if (activePage === "calendar") content = <CalendarPage />;
     else if (activePage === "billing") content = <BillingPage />;

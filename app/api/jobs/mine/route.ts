@@ -1,4 +1,4 @@
-import { listJobs } from "@/features/jobs/queries";
+import { listMyJobs } from "@/features/jobs/queries";
 import type { JobListFilters } from "@/features/jobs/types";
 import { routeError } from "@/lib/server/route-error";
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       urgent: urgent === null ? undefined : urgent === "true",
     };
 
-    return Response.json(await listJobs(filters));
+    return Response.json(await listMyJobs(filters));
   } catch (error) {
     return routeError(error);
   }
