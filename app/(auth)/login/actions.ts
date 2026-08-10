@@ -6,6 +6,7 @@ import {
   signInWithGoogleAction,
   signInWithMicrosoftAction,
   verifyEmailSessionAction,
+  verifyTwoFactorLoginAction,
 } from "@/features/auth/actions";
 
 export async function loginAction(previousState: unknown, formData: FormData) {
@@ -22,6 +23,10 @@ export async function microsoftLoginAction() {
 
 export async function verifyLoginEmail(previousState: unknown, formData: FormData) {
   return verifyEmailSessionAction(previousState, formData);
+}
+
+export async function verifyLoginTwoFactor(previousState: unknown, formData: FormData) {
+  return verifyTwoFactorLoginAction(previousState, formData);
 }
 
 export async function resendLoginVerification(previousState: unknown, formData: FormData) {

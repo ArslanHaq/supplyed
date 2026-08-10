@@ -17,6 +17,20 @@ export type LoginInput = {
   password: string;
 };
 
+export type TwoFactorLoginChallenge = {
+  code: "TWO_FACTOR_REQUIRED";
+  email: string;
+  expiresInMinutes?: number;
+  twoFactorRequired: true;
+  twoFactorToken: string;
+};
+
+export type TwoFactorVerificationInput = {
+  code: string;
+  email?: string;
+  twoFactorToken?: string;
+};
+
 export type SignupInput = {
   email: string;
   password: string;

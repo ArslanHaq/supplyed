@@ -26,6 +26,7 @@ import { InstitutionDashboard } from "./InstitutionDashboard";
 import { JobDetailPage } from "./JobDetailPage";
 import { MessagingPage } from "./MessagingPage";
 import { PostJobPage } from "./PostJobPage";
+import { SecurityPage } from "./SecurityPage";
 import { TeacherDashboard } from "./TeacherDashboard";
 import { TeacherProfilePage } from "./TeacherProfilePage";
 import { TweaksPanel } from "./TweaksPanel";
@@ -121,6 +122,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "find-teachers") content = <FindTeachersPage {...routeProps} />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
+    else if (activePage === "security") content = <SecurityPage {...routeProps} />;
     else if (activePage === "billing") content = <BillingPage />;
     else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
     else content = <InstitutionDashboard {...routeProps} />;
@@ -131,6 +133,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "calendar") content = <CalendarPage />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
+    else if (activePage === "security") content = <SecurityPage {...routeProps} />;
     else content = <TeacherDashboard {...routeProps} />;
   } else if (state.role === "individual") {
     if (activePage === "dashboard") content = <IndividualDashboard {...routeProps} />;
@@ -141,6 +144,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
     else if (activePage === "calendar") content = <CalendarPage />;
+    else if (activePage === "security") content = <SecurityPage {...routeProps} />;
     else if (activePage === "billing") content = <BillingPage />;
     else content = <IndividualDashboard {...routeProps} />;
   }

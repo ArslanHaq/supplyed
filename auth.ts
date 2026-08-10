@@ -233,6 +233,7 @@ export const {
         if (password.length < 8) return null;
 
         const response = await loginWithEmail({ email, password });
+        if ("twoFactorRequired" in response) return null;
         return response.user.emailVerified ? toAuthUser(response) : null;
       },
     }),

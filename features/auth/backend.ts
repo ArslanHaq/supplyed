@@ -18,6 +18,8 @@ import type {
   PasswordResetResponse,
   ResendEmailVerificationInput,
   SignupInput,
+  TwoFactorLoginChallenge,
+  TwoFactorVerificationInput,
 } from "./types";
 
 function backendEnabled() {
@@ -36,6 +38,7 @@ const backendAuthEndpoints = {
   register: "/auth/register",
   resetPassword: "/auth/password/reset",
   resendEmailVerification: "/auth/email/otp/resend",
+  verifyTwoFactor: "/auth/2fa/verify",
   verifyEmail: "/auth/email/otp/verify",
 } as const;
 
@@ -80,6 +83,7 @@ function safeConsolePayload(payload: Record<string, unknown>) {
     providerIdToken: payload.providerIdToken ? "[redacted]" : undefined,
     refreshToken: payload.refreshToken ? "[redacted]" : undefined,
     otpToken: payload.otpToken ? "[redacted]" : undefined,
+    twoFactorToken: payload.twoFactorToken ? "[redacted]" : undefined,
   };
 }
 
@@ -264,6 +268,30 @@ function normalizeAuthResponse(payload: unknown): BackendAuthResponse {
   };
 }
 
+function normalizeTwoFactorChallenge(payload: unknown, fallbackEmail: string): TwoFactorLoginChallenge | null {
+  const response = isRecord(payload) ? payload : {};
+  const twoFactorRequired = readBoolean(response.twoFactorRequired);
+
+  if (twoFactorRequired !== true) return null;
+
+  const twoFactorToken = readString(response.twoFactorToken);
+  if (!twoFactorToken) {
+    throw new Error("Two-factor authentication is required, but the backend did not return a challenge token.");
+  }
+
+  return {
+    code: "TWO_FACTOR_REQUIRED",
+    email: fallbackEmail,
+    expiresInMinutes: readNumber(response.expiresInMinutes),
+    twoFactorRequired: true,
+    twoFactorToken,
+  };
+}
+
+function normalizeLoginResponse(payload: unknown, fallbackEmail: string): BackendAuthResponse | TwoFactorLoginChallenge {
+  return normalizeTwoFactorChallenge(payload, fallbackEmail) ?? normalizeAuthResponse(payload);
+}
+
 function normalizeEmailVerificationChallenge(payload: unknown, fallbackEmail: string): EmailVerificationChallenge {
   const response = isRecord(payload) ? payload : {};
   const user = readOptionalUserPayload(response);
@@ -338,15 +366,15 @@ export async function createEmailAccount(input: SignupInput): Promise<EmailVerif
   };
 }
 
-export async function loginWithEmail(input: LoginInput): Promise<BackendAuthResponse> {
+export async function loginWithEmail(input: LoginInput): Promise<BackendAuthResponse | TwoFactorLoginChallenge> {
   logBackendPayload(`POST ${backendAuthEndpoints.login}`, {
     email: input.email,
     password: input.password,
   });
 
   if (backendEnabled()) {
-    const response = normalizeAuthResponse(await api.post<unknown>(backendAuthEndpoints.login, input, { auth: false }));
-    logLoginUserData(response);
+    const response = normalizeLoginResponse(await api.post<unknown>(backendAuthEndpoints.login, input, { auth: false }), input.email);
+    if (!("twoFactorRequired" in response)) logLoginUserData(response);
     return response;
   }
 
@@ -382,6 +410,36 @@ export async function verifyEmail(input: EmailVerificationInput): Promise<Backen
 
   return {
     user: mockUser(input.email),
+  };
+}
+
+export async function verifyTwoFactorLogin(input: TwoFactorVerificationInput): Promise<BackendAuthResponse> {
+  const payload = {
+    code: input.code,
+  };
+
+  logBackendPayload(`POST ${backendAuthEndpoints.verifyTwoFactor}`, {
+    ...payload,
+    twoFactorToken: input.twoFactorToken,
+  });
+
+  if (backendEnabled()) {
+    if (!input.twoFactorToken) {
+      throw new Error("Sign in again before entering your two-factor code.");
+    }
+
+    const response = normalizeAuthResponse(
+      await api.post<unknown>(backendAuthEndpoints.verifyTwoFactor, payload, {
+        auth: false,
+        headers: { Authorization: `Bearer ${input.twoFactorToken}` },
+      }),
+    );
+    logLoginUserData(response);
+    return response;
+  }
+
+  return {
+    user: mockUser(input.email ?? "local-user@supplyed.local"),
   };
 }
 
@@ -475,9 +533,16 @@ export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<Ba
       throw new Error("Google did not return an ID token for backend sign-in.");
     }
 
-    return normalizeAuthResponse(
+    const response = normalizeLoginResponse(
       await api.post<unknown>(backendAuthEndpoints.oauthGoogle, { credential: input.providerIdToken }, { auth: false }),
+      input.email,
     );
+
+    if ("twoFactorRequired" in response) {
+      throw new Error("This account has two-factor authentication enabled. Sign in with email and password to enter your security code.");
+    }
+
+    return response;
   }
 
   return {

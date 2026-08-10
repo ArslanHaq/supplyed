@@ -19,6 +19,7 @@ export type AppPage =
   | "teacher-profile"
   | "messaging"
   | "calendar"
+  | "security"
   | "billing";
 
 export type Teacher = {

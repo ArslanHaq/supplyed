@@ -17,6 +17,7 @@ import {
   resendEmailVerification,
   resetPassword,
   verifyEmail,
+  verifyTwoFactorLogin,
 } from "./backend";
 import {
   parseEmailVerificationForm,
@@ -25,12 +26,13 @@ import {
   parsePasswordResetForm,
   parseResendEmailVerificationForm,
   parseSignupForm,
+  parseTwoFactorForm,
   passwordRequirementsMessage,
   validateEmail,
   validatePassword,
 } from "./schemas";
 import { createVerifiedEmailSessionTicket } from "./session-ticket";
-import type { BackendAuthResponse, EmailVerificationResendResponse } from "./types";
+import type { BackendAuthResponse, EmailVerificationResendResponse, TwoFactorLoginChallenge } from "./types";
 
 async function createVerifiedSessionPayload(response: BackendAuthResponse) {
   const role = normalizeRole(response.user.role);
@@ -151,6 +153,10 @@ function emailVerificationChallengeFromResponse(
   };
 }
 
+function isTwoFactorChallenge(response: BackendAuthResponse | TwoFactorLoginChallenge): response is TwoFactorLoginChallenge {
+  return "twoFactorRequired" in response && response.twoFactorRequired === true;
+}
+
 async function issueLoginVerificationChallenge(email: string, message: string) {
   const resend = await resendEmailVerification({ email });
 
@@ -193,6 +199,10 @@ export async function loginWithEmailAction(_previousState: unknown, formData: Fo
   try {
     const response = await loginWithEmail(input);
 
+    if (isTwoFactorChallenge(response)) {
+      return actionOk(response, "Enter your authenticator or recovery code to finish signing in.");
+    }
+
     if (!response.user.emailVerified) {
       return actionOk(
         emailVerificationChallengeFromResponse(
@@ -218,6 +228,30 @@ export async function loginWithEmailAction(_previousState: unknown, formData: Fo
     }
 
     return toAuthActionError(error, "We could not sign you in with those details.");
+  }
+}
+
+export async function verifyTwoFactorLoginAction(_previousState: unknown, formData: FormData) {
+  const input = parseTwoFactorForm(formData);
+
+  if (!input.twoFactorToken) {
+    return actionError("Sign in again before entering your two-factor code.", {
+      fieldErrors: { code: "Sign in again before entering your two-factor code." },
+    });
+  }
+
+  if (!/^(?:\d{6}|[A-HJ-NP-Z2-9]{4}(?:-[A-HJ-NP-Z2-9]{4}){3})$/i.test(input.code)) {
+    return actionError("Enter a 6-digit authenticator code or a valid recovery code.", {
+      fieldErrors: { code: "Enter a 6-digit authenticator code or a valid recovery code." },
+    });
+  }
+
+  try {
+    const response = await verifyTwoFactorLogin(input);
+
+    return actionOk(await createVerifiedSessionPayload(response), "Two-factor authentication verified.");
+  } catch (error) {
+    return toAuthActionError(error, "We could not verify that two-factor code.");
   }
 }
 

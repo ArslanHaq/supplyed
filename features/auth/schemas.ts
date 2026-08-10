@@ -5,6 +5,7 @@ import type {
   PasswordResetInput,
   ResendEmailVerificationInput,
   SignupInput,
+  TwoFactorVerificationInput,
 } from "./types";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -50,6 +51,14 @@ export function parseEmailVerificationForm(formData: FormData): EmailVerificatio
     code: String(formData.get("code") ?? "").replace(/\D/g, "").slice(0, 6),
     email: normalizeEmail(formData.get("email")),
     otpToken: String(formData.get("otpToken") ?? "").trim() || undefined,
+  };
+}
+
+export function parseTwoFactorForm(formData: FormData): TwoFactorVerificationInput {
+  return {
+    code: String(formData.get("code") ?? "").trim().toUpperCase(),
+    email: normalizeEmail(formData.get("email")),
+    twoFactorToken: String(formData.get("twoFactorToken") ?? "").trim() || undefined,
   };
 }
 

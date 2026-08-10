@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
-import { loginAction, resendLoginVerification, verifyLoginEmail } from "@/app/(auth)/login/actions";
+import { loginAction, resendLoginVerification, verifyLoginEmail, verifyLoginTwoFactor } from "@/app/(auth)/login/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { readAuthSessionTicketPayload } from "@/lib/auth-session-routing";
 import { startRouteLoading } from "@/lib/navigation-loading";
@@ -15,8 +15,9 @@ import type { SocialAuthAvailability } from "@/types/supplyed";
 import { AuthFlowLoader, PublicThemeControls, ToastStack } from "../molecules";
 import { LoginPage } from "./LoginPage";
 import { SignupVerifyPage } from "./SignupVerifyPage";
+import { TwoFactorChallengePage } from "./TwoFactorChallengePage";
 
-type LoginStage = "login" | "verify";
+type LoginStage = "login" | "two-factor" | "verify";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -41,6 +42,16 @@ function isVerificationChallenge(value: unknown): value is {
   return isRecord(value) && value.emailVerified === false && Boolean(readString(value.email));
 }
 
+function isTwoFactorChallenge(value: unknown): value is {
+  code: "TWO_FACTOR_REQUIRED";
+  email: string;
+  expiresInMinutes?: number;
+  twoFactorRequired: true;
+  twoFactorToken: string;
+} {
+  return isRecord(value) && value.twoFactorRequired === true && Boolean(readString(value.twoFactorToken));
+}
+
 function socialUnavailableMessage(provider: "google" | "microsoft-entra-id") {
   return provider === "google"
     ? "Google sign-in is not configured. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET, then restart the app."
@@ -57,6 +68,10 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationNotice, setVerificationNotice] = useState<string>();
   const [verificationToken, setVerificationToken] = useState<string>();
+  const [twoFactorEmail, setTwoFactorEmail] = useState("");
+  const [twoFactorNotice, setTwoFactorNotice] = useState<string>();
+  const [twoFactorToken, setTwoFactorToken] = useState<string>();
+  const [twoFactorExpiresAt, setTwoFactorExpiresAt] = useState<number>();
   const [resendAvailableAt, setResendAvailableAt] = useState<number>();
   const { authToasts, dismissAuthToast, showAuthError } = useAuthToasts(initialError);
 
@@ -77,6 +92,14 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     setVerificationToken(otpToken);
     setResendAvailableAt(readCooldownUntil(expiresInMinutes));
     setStage("verify");
+  }
+
+  function startTwoFactorChallenge(email: string, token: string, message?: string, expiresInMinutes?: number) {
+    setTwoFactorEmail(email);
+    setTwoFactorNotice(message);
+    setTwoFactorToken(token);
+    setTwoFactorExpiresAt(readCooldownUntil(expiresInMinutes));
+    setStage("two-factor");
   }
 
   function goLanding() {
@@ -118,6 +141,16 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       startEmailVerification(
         loginResult.data.email,
         loginResult.data.otpToken,
+        loginResult.message,
+        loginResult.data.expiresInMinutes,
+      );
+      return { ok: true as const };
+    }
+
+    if (isTwoFactorChallenge(loginResult.data)) {
+      startTwoFactorChallenge(
+        loginResult.data.email,
+        loginResult.data.twoFactorToken,
         loginResult.message,
         loginResult.data.expiresInMinutes,
       );
@@ -169,6 +202,10 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     setVerificationEmail("");
     setVerificationNotice(undefined);
     setVerificationToken(undefined);
+    setTwoFactorEmail("");
+    setTwoFactorNotice(undefined);
+    setTwoFactorToken(undefined);
+    setTwoFactorExpiresAt(undefined);
     setResendAvailableAt(undefined);
   }
 
@@ -234,6 +271,69 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     return { ok: true as const };
   }
 
+  async function finishTwoFactor(code: string) {
+    let verificationResult: Awaited<ReturnType<typeof verifyLoginTwoFactor>>;
+
+    try {
+      verificationResult = await verifyLoginTwoFactor(
+        null,
+        formData({ code, email: twoFactorEmail, twoFactorToken: twoFactorToken ?? "" }),
+      );
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "We could not verify that two-factor code.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
+
+    if (!verificationResult.ok) {
+      showAuthError(verificationResult.message);
+      return {
+        fieldErrors: verificationResult.fieldErrors,
+        message: verificationResult.message,
+        ok: false as const,
+      };
+    }
+
+    const sessionPayload = readAuthSessionTicketPayload(verificationResult.data);
+    if (!sessionPayload) {
+      const message = "Two-factor code verified, but we could not create your session. Log in again to continue.";
+      showAuthError(message);
+      return {
+        message,
+        ok: false as const,
+      };
+    }
+
+    let signInResult: Awaited<ReturnType<typeof signIn>>;
+
+    try {
+      signInResult = await signIn("credentials", {
+        flow: "verified-email-session",
+        redirect: false,
+        redirectTo: sessionPayload.nextHref,
+        ticket: sessionPayload.ticket,
+      });
+    } catch (error) {
+      const message = readUnknownAuthErrorMessage(error, "Two-factor code verified, but we could not create your session.");
+      showAuthError(message);
+      return { message, ok: false as const };
+    }
+
+    if (!signInResult?.ok) {
+      const message = signInResult?.error || "Two-factor code verified, but we could not create your session. Log in again to continue.";
+      showAuthError(message);
+      return {
+        message,
+        ok: false as const,
+      };
+    }
+
+    startRouteLoading();
+    router.replace(sessionPayload.nextHref);
+    router.refresh();
+    return { ok: true as const };
+  }
+
   async function resendVerification() {
     let result: Awaited<ReturnType<typeof resendLoginVerification>>;
 
@@ -286,6 +386,23 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
           onResend={resendVerification}
           onVerified={finishVerification}
           resendAvailableAt={resendAvailableAt}
+        />
+        <PublicThemeControls />
+        <ToastStack autoCloseMs={7000} onDismiss={dismissAuthToast} toasts={authToasts} />
+      </>
+    );
+  }
+
+  if (stage === "two-factor") {
+    return (
+      <>
+        <TwoFactorChallengePage
+          email={twoFactorEmail}
+          expiresAt={twoFactorExpiresAt}
+          notice={twoFactorNotice}
+          onBack={backToLogin}
+          onLanding={goLanding}
+          onVerified={finishTwoFactor}
         />
         <PublicThemeControls />
         <ToastStack autoCloseMs={7000} onDismiss={dismissAuthToast} toasts={authToasts} />

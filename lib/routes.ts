@@ -10,6 +10,7 @@ export const appPathByPage: Record<AppPage, string> = {
   "teacher-profile": "/teacher-profile",
   messaging: "/messaging",
   calendar: "/calendar",
+  security: "/security",
   billing: "/billing",
 };
 

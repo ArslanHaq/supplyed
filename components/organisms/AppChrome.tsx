@@ -72,6 +72,7 @@ export function AppChrome({
             onDashboard={() => go("dashboard")}
             onLanding={onLanding}
             onLogout={onLogout}
+            onSecurity={() => go("security")}
             roleLabel={userSub}
           />
         </div>
