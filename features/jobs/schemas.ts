@@ -74,7 +74,12 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     keyStages,
     location,
     matchScore: deriveMatchScore(job.id),
-    mode: derivePostingMode(startDate, endDate),
+    mode:
+      readPostingMode(job.mode) ??
+      readPostingMode(job.postingMode) ??
+      readPostingMode(job.jobType) ??
+      readPostingModeFromDescription(job.description) ??
+      derivePostingMode(startDate, endDate),
     parkingInfo: job.parkingInfo ?? null,
     payAmount,
     payType: job.payType ?? null,
@@ -174,6 +179,23 @@ function derivePostingMode(startDate: string | null, endDate: string | null): Jo
   if (!startDate || !endDate) return "instant";
   const durationDays = Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / MS_PER_DAY);
   return durationDays > 7 ? "brief" : "instant";
+}
+
+function readPostingMode(value: unknown): Job["mode"] | null {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().toLowerCase().replace(/[\s_-]+/g, " ");
+  if (!normalized) return null;
+  if (normalized.includes("brief")) return "brief";
+  if (normalized.includes("instant")) return "instant";
+
+  return null;
+}
+
+function readPostingModeFromDescription(description: string): Job["mode"] | null {
+  const matches = Array.from(description.matchAll(/(?:^|\n)\s*Posting route:\s*(Instant matching|Open brief)\.\s*(?=\n|$)/gi));
+  const match = matches.at(-1);
+  return readPostingMode(match?.[1]);
 }
 
 function isUrgent(expiresAt: string | null) {

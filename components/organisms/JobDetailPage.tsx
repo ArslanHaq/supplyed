@@ -4,7 +4,7 @@ import { useJob } from "@/features/jobs/use-jobs";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Field, Icon, MatchScore, Tag } from "../atoms";
-import { Modal, SectionLoader } from "../molecules";
+import { FormattedJobDescription, Modal, SectionLoader } from "../molecules";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
   const [open, setOpen] = useState(false);
@@ -51,7 +51,10 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
             <div className="card card-pad text-center"><div className="text-xs text-muted">Duration</div><div className="font-serif text-xl">1 Day</div></div>
             <div className="card card-pad text-center"><div className="text-xs text-muted">Match score</div><div className="mt-1.5 flex justify-center"><MatchScore score={job.matchScore} /></div></div>
           </div>
-          <div className="card card-pad-lg mb-5"><div className="section-title">About this role</div><p className="leading-[1.7]">{job.description || "School-provided role details will appear here once published."}</p></div>
+          <div className="card card-pad-lg mb-5">
+            <div className="section-title">About this role</div>
+            <FormattedJobDescription description={job.description || ""} emptyText="School-provided role details will appear here once published." />
+          </div>
           <div className="card card-pad-lg"><div className="section-title">Requirements</div>{["Enhanced DBS certificate", `Subject: ${job.subject}`, `Key stage: ${job.keyStage}`, job.parkingInfo || "Arrival details will be shared by the hiring account."].map((item) => <div key={item} className="flex items-center gap-2.5 py-2"><Icon name="checkCircle" size={16} />{item}</div>)}</div>
         </div>
         <div className="card card-pad-lg sticky top-[88px] self-start">

@@ -4,7 +4,7 @@ import { ApiError } from "./api-client";
 
 export function routeError(error: unknown) {
   if (error instanceof ApiError) {
-    const payload = error.payload ?? { message: error.message };
+    const payload = error.payload ?? { code: error.code, message: error.message };
     return Response.json(payload, { status: error.status });
   }
 

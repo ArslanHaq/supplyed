@@ -68,6 +68,10 @@ function readNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function normalizeExpiryTimestamp(value: number) {
+  return value < 10_000_000_000 ? value * 1000 : value;
+}
+
 function redacted(value: string | undefined) {
   if (!value) return undefined;
   return `[redacted:${value.length} chars]`;
@@ -137,7 +141,7 @@ function readAccessTokenExpiresAt(record: Record<string, unknown>, accessToken?:
     readNumber(tokens.accessTokenExpiresAt) ??
     readNumber(tokens.expiresAt);
 
-  if (explicitExpiresAt) return explicitExpiresAt;
+  if (explicitExpiresAt) return normalizeExpiryTimestamp(explicitExpiresAt);
 
   const expiresAtIso = readString(record.accessTokenExpiresAt) ?? readString(record.expiresAt) ?? readString(tokens.expiresAt);
   if (expiresAtIso) {

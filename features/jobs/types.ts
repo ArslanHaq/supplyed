@@ -14,6 +14,9 @@ export type BackendJobResponse = {
   postedByUserId: string;
   title: string;
   description: string;
+  jobType?: string | null;
+  mode?: string | null;
+  postingMode?: string | null;
   subject?: string | null;
   location?: string | null;
   startDate?: string | null;

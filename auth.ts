@@ -3,11 +3,12 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
-import { exchangeOAuthAccount, loginWithEmail, normalizeRole, normalizeStatus, refreshBackendAuth, verifyEmail } from "@/features/auth/backend";
+import { exchangeOAuthAccount, loginWithEmail, normalizeRole, normalizeStatus, verifyEmail } from "@/features/auth/backend";
 import { readUnknownSocialAuthErrorMessage } from "@/features/auth/error-messages";
 import { validateEmail } from "@/features/auth/schemas";
 import { readVerifiedEmailSessionTicket } from "@/features/auth/session-ticket";
 import type { BackendAuthResponse } from "@/features/auth/types";
+import { readUnverifiedJwtExpiresAt, readUnverifiedJwtPayload } from "@/lib/server/jwt";
 
 export const authSecret =
   process.env.AUTH_SECRET ||
@@ -21,6 +22,18 @@ function readEnv(key: string) {
 
 function readCredential(credentials: Partial<Record<string, unknown>> | undefined, key: string) {
   return String(credentials?.[key] ?? "");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function readNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function toAuthUser(response: BackendAuthResponse) {
@@ -73,6 +86,52 @@ function assignBackendAuthError(token: Record<string, unknown>, provider: string
   delete token.recruiterProfileId;
 }
 
+function assignRefreshAuthError(token: Record<string, unknown>, message = "Your session expired. Sign in again to continue.") {
+  token.backendAuthError = "RefreshAccessTokenError";
+  token.backendAuthErrorMessage = message;
+  delete token.accessToken;
+  delete token.accessTokenExpiresAt;
+  delete token.refreshToken;
+}
+
+function clearBackendAuthError(token: Record<string, unknown>) {
+  delete token.backendAuthError;
+  delete token.backendAuthErrorMessage;
+  delete token.backendAuthErrorProvider;
+}
+
+function canApplyBackendTokenUpdate(token: Record<string, unknown>, accessToken: string, refreshToken?: string) {
+  const userId = readString(token.userId) ?? readString(token.sub);
+  const accessPayload = readUnverifiedJwtPayload(accessToken);
+  const refreshPayload = refreshToken ? readUnverifiedJwtPayload(refreshToken) : undefined;
+
+  if (!userId || accessPayload?.sub !== userId || accessPayload.tokenType !== "access") return false;
+  if (refreshToken && (refreshPayload?.sub !== userId || refreshPayload.tokenType !== "refresh")) return false;
+
+  return true;
+}
+
+function applyBackendSessionUpdate(token: Record<string, unknown>, session: unknown) {
+  const update = isRecord(session) && isRecord(session.backendAuthUpdate) ? session.backendAuthUpdate : null;
+  const type = readString(update?.type);
+
+  if (type === "expired") {
+    assignRefreshAuthError(token, readString(update?.message));
+    return;
+  }
+
+  if (type !== "refresh") return;
+
+  const accessToken = readString(update?.accessToken);
+  const refreshToken = readString(update?.refreshToken);
+  if (!accessToken || !canApplyBackendTokenUpdate(token, accessToken, refreshToken)) return;
+
+  token.accessToken = accessToken;
+  if (refreshToken) token.refreshToken = refreshToken;
+  token.accessTokenExpiresAt = readNumber(update?.accessTokenExpiresAt) ?? readUnverifiedJwtExpiresAt(accessToken);
+  clearBackendAuthError(token);
+}
+
 const googleClientId = readEnv("AUTH_GOOGLE_ID");
 const googleClientSecret = readEnv("AUTH_GOOGLE_SECRET");
 const microsoftClientId = readEnv("AUTH_MICROSOFT_ENTRA_ID_ID");
@@ -111,9 +170,14 @@ export const {
   handlers: { GET, POST },
   signIn,
   signOut,
+  unstable_update: updateAuthSession,
 } = NextAuth({
   callbacks: {
-    async jwt({ account, token, user }) {
+    async jwt({ account, session, token, trigger, user }) {
+      if (trigger === "update") {
+        applyBackendSessionUpdate(token, session);
+      }
+
       if (user) {
         token.userId = user.id;
         token.role = normalizeRole(user.role);
@@ -150,21 +214,6 @@ export const {
           assignBackendSession(token, response);
         } catch (error) {
           assignBackendAuthError(token, provider, error);
-        }
-      }
-
-      const expiresAt = typeof token.accessTokenExpiresAt === "number" ? token.accessTokenExpiresAt : null;
-      const refreshToken = typeof token.refreshToken === "string" ? token.refreshToken : null;
-
-      if (expiresAt && refreshToken && Date.now() > expiresAt - 60_000) {
-        try {
-          const refreshed = await refreshBackendAuth(refreshToken);
-          if (refreshed) assignBackendSession(token, refreshed);
-        } catch {
-          token.backendAuthError = "RefreshAccessTokenError";
-          delete token.accessToken;
-          delete token.accessTokenExpiresAt;
-          delete token.refreshToken;
         }
       }
 

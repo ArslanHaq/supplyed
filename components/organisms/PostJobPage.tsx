@@ -5,8 +5,8 @@ import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types"
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Tag } from "../atoms";
+import { FormattedJobDescription, PageHead } from "../molecules";
 import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdowns";
-import { PageHead } from "../molecules";
 
 type PostingMode = "instant" | "brief";
 
@@ -172,7 +172,7 @@ function PostJobEditor({
     const draftErrors = validateDraft(form);
     setErrors(draftErrors);
     if (Object.keys(draftErrors).length > 0) {
-      setStep(2);
+      if (!isEditing) setStep(2);
       return;
     }
 
@@ -183,7 +183,7 @@ function PostJobEditor({
     const nextErrors = validateAll(form);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      setStep(firstInvalidStep(nextErrors));
+      if (!isEditing) setStep(firstInvalidStep(nextErrors));
       return;
     }
 
@@ -219,6 +219,227 @@ function PostJobEditor({
     });
   }
 
+  function renderPostingTypeSection() {
+    return (
+      <div>
+        <div className="eyebrow mb-2.5">{isEditing ? "Posting type" : "Step 1 - Posting type"}</div>
+        <h2 className="mb-5 font-serif text-[26px]">How do you want to staff this role?</h2>
+        <div className="grid-2">
+          {[
+            { value: "instant" as const, title: "Instant matching", desc: "Best for urgent or same-day cover.", color: "var(--se)", bg: "var(--se-tint)" },
+            { value: "brief" as const, title: "Open brief", desc: "Best for planned, long-term, or proposal-led cover.", color: "var(--purple)", bg: "var(--purple-tint)" },
+          ].map((option) => (
+            <button
+              key={option.value}
+              className="cursor-pointer rounded-xl border p-5 text-left transition"
+              onClick={() => setMode(option.value)}
+              style={{
+                background: mode === option.value ? option.bg : "#fff",
+                borderColor: mode === option.value ? option.color : "var(--border)",
+                borderWidth: 1.5,
+              }}
+              type="button"
+            >
+              <div className="mb-2 font-serif text-xl">{option.title}</div>
+              <div className="text-muted">{option.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function renderDetailsFields() {
+    return (
+      <div>
+        <div className="grid-2">
+          <Field error={errors.title} label="Job title" required>
+            <input
+              className="input"
+              placeholder="e.g. Y6 Maths cover - 1 day"
+              value={form.title}
+              onChange={(event) => updateForm("title", event.target.value)}
+            />
+          </Field>
+          <Field error={errors.location} label="Location" required>
+            <input
+              className="input"
+              placeholder="e.g. Salford, Greater Manchester"
+              value={form.location}
+              onChange={(event) => updateForm("location", event.target.value)}
+            />
+          </Field>
+          <Field error={errors.subject} label="Subject" required>
+            <SelectDropdown options={subjectOptions} value={form.subject} onChange={(value) => updateForm("subject", value)} />
+          </Field>
+          <Field error={errors.startDate} label="Start date" required>
+            <input className="input" type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
+          </Field>
+          <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[minmax(0,1fr)_220px]">
+            <Field error={errors.payAmount} label="Pay amount (£)" required>
+              <input
+                className="input"
+                min={0}
+                placeholder="180"
+                type="number"
+                value={form.payAmount}
+                onChange={(event) => updateForm("payAmount", event.target.value)}
+              />
+            </Field>
+            <Field label="Pay basis">
+              <SelectDropdown
+                options={payTypeOptions}
+                value={formatPayTypeLabel(form.payType)}
+                onChange={(value) => updateForm("payType", readPayTypeLabel(value))}
+              />
+            </Field>
+          </div>
+          <Field error={errors.endDate} label="End date">
+            <input className="input" type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
+          </Field>
+        </div>
+        <Field error={errors.description} label="Role description" required>
+          <div className="mb-2 flex flex-wrap gap-2">
+            <Btn size="sm" variant="secondary" onClick={() => formatDescription("heading")}>Heading</Btn>
+            <Btn size="sm" variant="secondary" onClick={() => formatDescription("bullet")}>Bullet list</Btn>
+            <Btn size="sm" variant="secondary" onClick={() => formatDescription("bold")}>Bold</Btn>
+          </div>
+          <textarea
+            ref={descriptionRef}
+            className="textarea"
+            placeholder="Describe the class, cover expectations, timetable notes, support needs, and arrival instructions."
+            value={form.description}
+            onChange={(event) => updateForm("description", event.target.value)}
+          />
+        </Field>
+      </div>
+    );
+  }
+
+  function renderRequirementsFields() {
+    return (
+      <div>
+        <div className="grid-2">
+          <Field error={errors.keyStages} label="Key stages" required>
+            <MultiSelectDropdown
+              options={keyStageOptions}
+              placeholder="Select key stages"
+              value={form.keyStages}
+              onChange={(value) => updateForm("keyStages", value)}
+            />
+          </Field>
+          <Field hint="Optional. If set, the job stops appearing publicly after this date." label="Listing expiry">
+            <input className="input" type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
+          </Field>
+        </div>
+        <Field label="Parking / arrival notes">
+          <textarea
+            className="textarea"
+            placeholder="e.g. Parking available on-site. Please sign in at reception."
+            value={form.parkingInfo}
+            onChange={(event) => updateForm("parkingInfo", event.target.value)}
+          />
+        </Field>
+        <div className="grid-2">
+          <Field label="Required checks">
+            <div className="flex flex-col gap-2">
+              <Checkbox checked label="Enhanced DBS certificate" onChange={() => {}} />
+              <Checkbox checked={form.qtsRequired} label="QTS qualified" onChange={(value) => updateForm("qtsRequired", value)} />
+              <Checkbox checked={form.urgent} label="Mark as urgent" onChange={(value) => updateForm("urgent", value)} />
+            </div>
+          </Field>
+        </div>
+      </div>
+    );
+  }
+
+  function renderReviewSummary(eyebrow = "Step 4 - Review") {
+    const previewDescription = readEditableDescription(form.description);
+
+    return (
+      <div>
+        <div className="eyebrow mb-2.5">{eyebrow}</div>
+        <div className="card card-pad bg-chalk">
+          <div className="mb-2.5 flex flex-wrap gap-2">
+            <Tag tone={mode === "instant" ? "" : "purple"}>{mode === "instant" ? "Instant matching" : "Open brief"}</Tag>
+            <Tag tone="green">{isEditing ? "Current preview" : "Ready to publish"}</Tag>
+            {form.urgent ? <Tag tone="red">Urgent</Tag> : null}
+          </div>
+          <div className="font-serif text-[22px]">{form.title || "Untitled teaching role"}</div>
+          <FormattedJobDescription className="mt-2 max-w-[760px]" description={previewDescription} />
+          <div className="mt-3 flex flex-wrap gap-2">
+            {form.keyStages.map((stage) => <span key={stage} className="pill">{stage}</span>)}
+            <span className="pill">{form.subject}</span>
+            <span className="pill">{form.location || "Location TBC"}</span>
+            <span className="pill">{formatPay(form)}</span>
+            <span className="pill">{formatDateRange(form.startDate, form.endDate)}</span>
+            <span className="pill">DBS required</span>
+            {form.qtsRequired ? <span className="pill">QTS required</span> : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isEditing) {
+    return (
+      <div className="app-page">
+        <PageHead
+          title="Edit job post"
+          subtitle="Update the complete role in one place, save it as a draft, or publish the latest version."
+        />
+
+        <div className="card card-pad-lg max-w-[1280px]">
+          <div className="grid gap-10 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
+            <div className="space-y-10">
+              {renderPostingTypeSection()}
+              <section>
+                <div className="eyebrow mb-2.5">Role details</div>
+                {renderDetailsFields()}
+              </section>
+              <section>
+                <div className="eyebrow mb-2.5">Requirements and publishing</div>
+                {renderRequirementsFields()}
+              </section>
+            </div>
+
+            <aside className="xl:sticky xl:top-[92px] xl:self-start">
+              {renderReviewSummary("Live preview")}
+            </aside>
+          </div>
+
+          <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
+            <Btn variant="ghost" onClick={() => go("dashboard")}>
+              Cancel
+            </Btn>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Btn
+                disabled={saving}
+                loading={savingIntent === "draft"}
+                loadingLabel="Saving draft"
+                onClick={saveDraft}
+                size="lg"
+                variant="secondary"
+              >
+                Save draft
+              </Btn>
+              <Btn
+                disabled={saving}
+                iconRight="send"
+                loading={savingIntent === "publish"}
+                loadingLabel="Updating"
+                onClick={publish}
+                size="lg"
+              >
+                Update and publish
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-page">
       <PageHead
@@ -236,157 +457,13 @@ function PostJobEditor({
       </div>
 
       <div className="card card-pad-lg max-w-[1040px]">
-        {step === 1 ? (
-          <div>
-            <div className="eyebrow mb-2.5">Step 1 - Posting type</div>
-            <h2 className="mb-5 font-serif text-[26px]">How do you want to staff this role?</h2>
-            <div className="grid-2">
-              {[
-                { value: "instant" as const, title: "Instant matching", desc: "Best for urgent or same-day cover.", color: "var(--se)", bg: "var(--se-tint)" },
-                { value: "brief" as const, title: "Open brief", desc: "Best for planned, long-term, or proposal-led cover.", color: "var(--purple)", bg: "var(--purple-tint)" },
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  className="cursor-pointer rounded-xl border p-5 text-left transition"
-                  onClick={() => setMode(option.value)}
-                  style={{
-                    background: mode === option.value ? option.bg : "#fff",
-                    borderColor: mode === option.value ? option.color : "var(--border)",
-                    borderWidth: 1.5,
-                  }}
-                  type="button"
-                >
-                  <div className="mb-2 font-serif text-xl">{option.title}</div>
-                  <div className="text-muted">{option.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
+        {step === 1 ? renderPostingTypeSection() : null}
 
-        {step === 2 ? (
-          <div>
-            <div className="grid-2">
-              <Field error={errors.title} label="Job title" required>
-                <input
-                  className="input"
-                  placeholder="e.g. Y6 Maths cover - 1 day"
-                  value={form.title}
-                  onChange={(event) => updateForm("title", event.target.value)}
-                />
-              </Field>
-              <Field error={errors.location} label="Location" required>
-                <input
-                  className="input"
-                  placeholder="e.g. Salford, Greater Manchester"
-                  value={form.location}
-                  onChange={(event) => updateForm("location", event.target.value)}
-                />
-              </Field>
-              <Field error={errors.subject} label="Subject" required>
-                <SelectDropdown options={subjectOptions} value={form.subject} onChange={(value) => updateForm("subject", value)} />
-              </Field>
-              <Field error={errors.startDate} label="Start date" required>
-                <input className="input" type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
-              </Field>
-              <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[minmax(0,1fr)_220px]">
-                <Field error={errors.payAmount} label="Pay amount (£)" required>
-                  <input
-                    className="input"
-                    min={0}
-                    placeholder="180"
-                    type="number"
-                    value={form.payAmount}
-                    onChange={(event) => updateForm("payAmount", event.target.value)}
-                  />
-                </Field>
-                <Field label="Pay basis">
-                  <SelectDropdown
-                    options={payTypeOptions}
-                    value={formatPayTypeLabel(form.payType)}
-                    onChange={(value) => updateForm("payType", readPayTypeLabel(value))}
-                  />
-                </Field>
-              </div>
-              <Field error={errors.endDate} label="End date">
-                <input className="input" type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
-              </Field>
-            </div>
-            <Field error={errors.description} label="Role description" required>
-              <div className="mb-2 flex flex-wrap gap-2">
-                <Btn size="sm" variant="secondary" onClick={() => formatDescription("heading")}>Heading</Btn>
-                <Btn size="sm" variant="secondary" onClick={() => formatDescription("bullet")}>Bullet list</Btn>
-                <Btn size="sm" variant="secondary" onClick={() => formatDescription("bold")}>Bold</Btn>
-              </div>
-              <textarea
-                ref={descriptionRef}
-                className="textarea"
-                placeholder="Describe the class, cover expectations, timetable notes, support needs, and arrival instructions."
-                value={form.description}
-                onChange={(event) => updateForm("description", event.target.value)}
-              />
-            </Field>
-          </div>
-        ) : null}
+        {step === 2 ? renderDetailsFields() : null}
 
-        {step === 3 ? (
-          <div>
-            <div className="grid-2">
-              <Field error={errors.keyStages} label="Key stages" required>
-                <MultiSelectDropdown
-                  options={keyStageOptions}
-                  placeholder="Select key stages"
-                  value={form.keyStages}
-                  onChange={(value) => updateForm("keyStages", value)}
-                />
-              </Field>
-              <Field hint="Optional. If set, the job stops appearing publicly after this date." label="Listing expiry">
-                <input className="input" type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
-              </Field>
-            </div>
-            <Field label="Parking / arrival notes">
-              <textarea
-                className="textarea"
-                placeholder="e.g. Parking available on-site. Please sign in at reception."
-                value={form.parkingInfo}
-                onChange={(event) => updateForm("parkingInfo", event.target.value)}
-              />
-            </Field>
-            <div className="grid-2">
-              <Field label="Required checks">
-                <div className="flex flex-col gap-2">
-                  <Checkbox checked label="Enhanced DBS certificate" onChange={() => {}} />
-                  <Checkbox checked={form.qtsRequired} label="QTS qualified" onChange={(value) => updateForm("qtsRequired", value)} />
-                  <Checkbox checked={form.urgent} label="Mark as urgent" onChange={(value) => updateForm("urgent", value)} />
-                </div>
-              </Field>
-            </div>
-          </div>
-        ) : null}
+        {step === 3 ? renderRequirementsFields() : null}
 
-        {step === 4 ? (
-          <div>
-            <div className="eyebrow mb-2.5">Step 4 - Review</div>
-            <div className="card card-pad bg-chalk">
-              <div className="mb-2.5 flex flex-wrap gap-2">
-                <Tag tone={mode === "instant" ? "" : "purple"}>{mode === "instant" ? "Instant matching" : "Open brief"}</Tag>
-                <Tag tone="green">Ready to publish</Tag>
-                {form.urgent ? <Tag tone="red">Urgent</Tag> : null}
-              </div>
-              <div className="font-serif text-[22px]">{form.title || "Untitled teaching role"}</div>
-              <p className="mt-2 max-w-[760px] whitespace-pre-line text-sm leading-6 text-muted">{form.description || "Role details will appear here."}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {form.keyStages.map((stage) => <span key={stage} className="pill">{stage}</span>)}
-                <span className="pill">{form.subject}</span>
-                <span className="pill">{form.location || "Location TBC"}</span>
-                <span className="pill">{formatPay(form)}</span>
-                <span className="pill">{formatDateRange(form.startDate, form.endDate)}</span>
-                <span className="pill">DBS required</span>
-                {form.qtsRequired ? <span className="pill">QTS required</span> : null}
-              </div>
-            </div>
-          </div>
-        ) : null}
+        {step === 4 ? renderReviewSummary() : null}
 
         <div className="mt-8 flex items-center justify-between">
           <Btn variant="ghost" onClick={() => (step > 1 ? setStep(step - 1) : go("dashboard"))}>
@@ -484,8 +561,9 @@ function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract
 }
 
 function buildDescription(form: JobFormState, mode: PostingMode) {
+  const description = readEditableDescription(form.description);
   const notes = [
-    form.description.trim(),
+    description,
     `Posting route: ${mode === "instant" ? "Instant matching" : "Open brief"}.`,
     form.urgent ? "Marked urgent by the hiring account." : "",
     form.qtsRequired ? "QTS requested." : "",
@@ -524,7 +602,7 @@ function toDateInput(value?: string | null) {
 
 function toFormState(job: Job): JobFormState {
   return {
-    description: readEditableDescription(job.description ?? "", job.mode),
+    description: readEditableDescription(job.description ?? ""),
     endDate: toDateInput(job.endDate),
     expiresAt: toDateInput(job.expiresAt),
     keyStages: job.keyStages?.length ? job.keyStages : job.keyStage ? [job.keyStage] : initialForm.keyStages,
@@ -540,18 +618,17 @@ function toFormState(job: Job): JobFormState {
   };
 }
 
-function readEditableDescription(description: string, mode: PostingMode) {
-  const generatedLines = new Set([
-    `Posting route: ${mode === "instant" ? "Instant matching" : "Open brief"}.`,
-    "Marked urgent by the hiring account.",
-    "QTS requested.",
-  ]);
-
+function readEditableDescription(description: string) {
   return description
-    .split(/\n{2,}/)
-    .map((part) => part.trim())
-    .filter((part) => part && !generatedLines.has(part))
-    .join("\n\n");
+    .split(/\r?\n/)
+    .filter((line) => !isGeneratedDescriptionLine(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function isGeneratedDescriptionLine(line: string) {
+  return /^(Posting route:\s*(Instant matching|Open brief)\.|Marked urgent by the hiring account\.|QTS requested\.)$/i.test(line.trim());
 }
 
 function isPayType(value: Job["payType"]): value is JobFormState["payType"] {

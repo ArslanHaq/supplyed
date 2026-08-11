@@ -1,9 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { signOut } from "next-auth/react";
 
 import { fetchJson } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
+import { startRouteLoading } from "@/lib/navigation-loading";
 
 import { createJobAction, deleteJobAction, updateJobAction } from "./actions";
 import type { Job, JobCreateInput, JobListFilters, JobUpdateInput } from "./types";
@@ -26,6 +28,22 @@ type UseDeleteJobOptions = {
   onError?: () => void;
   onSuccess?: (result: DeleteJobResult) => void | Promise<void>;
 };
+
+function signOutExpiredSession() {
+  startRouteLoading();
+  void signOut({ redirect: false }).finally(() => {
+    window.location.assign("/login");
+  });
+}
+
+function handleSessionExpiredResult(result: CreateJobResult | DeleteJobResult | UpdateJobResult) {
+  if (!result.ok && result.code === "SESSION_EXPIRED") {
+    signOutExpiredSession();
+    return true;
+  }
+
+  return false;
+}
 
 export function useJobs(filters: JobListFilters = {}) {
   return useQuery({
@@ -56,6 +74,8 @@ export function useCreateJob(options: UseCreateJobOptions = {}) {
     mutationFn: (input: JobCreateInput) => createJobAction(input),
     onError: options.onError,
     onSuccess: async (result) => {
+      if (handleSessionExpiredResult(result)) return;
+
       if (result.ok) {
         await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
       }
@@ -72,6 +92,8 @@ export function useUpdateJob(options: UseUpdateJobOptions = {}) {
     mutationFn: (input: JobUpdateInput) => updateJobAction(input),
     onError: options.onError,
     onSuccess: async (result) => {
+      if (handleSessionExpiredResult(result)) return;
+
       if (result.ok) {
         await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
       }
@@ -88,6 +110,8 @@ export function useDeleteJob(options: UseDeleteJobOptions = {}) {
     mutationFn: (id: string) => deleteJobAction(id),
     onError: options.onError,
     onSuccess: async (result) => {
+      if (handleSessionExpiredResult(result)) return;
+
       if (result.ok) {
         await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
       }

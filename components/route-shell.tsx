@@ -13,6 +13,10 @@ export async function AppRouteShell(props: { page: AppPage }) {
     redirect("/login");
   }
 
+  if (session.user.authErrorMessage) {
+    redirect(`/post-auth?authSource=login`);
+  }
+
   if (!session.user.isEmailVerified) {
     redirect("/post-auth");
   }

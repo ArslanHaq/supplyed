@@ -52,7 +52,9 @@ export async function createJobAction(input: JobCreateInput) {
     revalidateTag("jobs", "max");
     return actionOk(job, "Job flow is ready for NestJS integration.");
   } catch (error) {
-    return actionError(readJobActionError(error, "Job could not be saved. Check the details and try again."));
+    return actionError(readJobActionError(error, "Job could not be saved. Check the details and try again."), {
+      code: readJobActionCode(error),
+    });
   }
 }
 
@@ -73,7 +75,9 @@ export async function updateJobAction(input: JobUpdateInput) {
     revalidateTag(`job:${normalizedInput.id}`, "max");
     return actionOk(null, "Job update is ready for NestJS integration.");
   } catch (error) {
-    return actionError(readJobActionError(error, "Job could not be updated. Check the details and try again."));
+    return actionError(readJobActionError(error, "Job could not be updated. Check the details and try again."), {
+      code: readJobActionCode(error),
+    });
   }
 }
 
@@ -90,7 +94,9 @@ export async function deleteJobAction(id: string) {
     revalidateTag(`job:${id}`, "max");
     return actionOk(null, backendEnabled() ? "Job deleted." : "Job deletion is ready for NestJS integration.");
   } catch (error) {
-    return actionError(readJobActionError(error, "Job could not be deleted. Try again."));
+    return actionError(readJobActionError(error, "Job could not be deleted. Try again."), {
+      code: readJobActionCode(error),
+    });
   }
 }
 
@@ -98,4 +104,8 @@ function readJobActionError(error: unknown, fallback: string) {
   if (error instanceof ApiError) return error.message || fallback;
   if (error instanceof Error) return error.message || fallback;
   return fallback;
+}
+
+function readJobActionCode(error: unknown) {
+  return error instanceof ApiError ? error.code : undefined;
 }

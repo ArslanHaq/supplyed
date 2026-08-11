@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getServerAuthContext } from "./auth-context";
-import { getValidAccessToken, refreshBackendAccessToken } from "./token-refresh";
+import { getValidAccessToken, markBackendSessionExpired, refreshBackendAccessToken } from "./token-refresh";
 
 type QueryValue = boolean | number | string | null | undefined;
 
@@ -25,6 +25,7 @@ export class ApiError extends Error {
     message: string,
     readonly status: number,
     readonly payload?: unknown,
+    readonly code?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -59,6 +60,31 @@ function readErrorMessage(payload: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function readErrorCode(payload: unknown): string | undefined {
+  if (isApiEnvelope(payload)) {
+    if (isRecord(payload.data)) {
+      const nestedCode = readErrorCode(payload.data);
+      if (nestedCode) return nestedCode;
+    }
+
+    if (isRecord(payload.message)) {
+      const nestedCode = readErrorCode(payload.message);
+      if (nestedCode) return nestedCode;
+    }
+  }
+
+  if (isRecord(payload) && typeof payload.code === "string" && payload.code.trim()) {
+    return payload.code;
+  }
+
+  return undefined;
+}
+
+function isBackendAuthError(status: number, payload: unknown) {
+  const code = readErrorCode(payload);
+  return status === 401 || code === "ACCESS_TOKEN_EXPIRED" || code === "INVALID_ACCESS_TOKEN" || code === "AUTH_TOKEN_MISSING";
 }
 
 function unwrapApiPayload<Data>(payload: unknown): Data {
@@ -129,6 +155,15 @@ async function request<Data>(
   const accessToken = options.auth === false ? null : await getValidAccessToken(authContext);
   const url = buildUrl(path, options.query);
 
+  if (options.auth !== false && authContext?.accessToken && !accessToken) {
+    throw new ApiError(
+      "Your session expired. Sign in again to continue.",
+      401,
+      { code: "SESSION_EXPIRED", message: "Your session expired. Sign in again to continue." },
+      "SESSION_EXPIRED",
+    );
+  }
+
   function requestInit(token: string | null): RequestInit & { next?: NextFetchOptions } {
     return {
       ...init,
@@ -152,16 +187,34 @@ async function request<Data>(
 
     if (refreshed?.accessToken) {
       response = await fetch(url, requestInit(refreshed.accessToken));
+    } else {
+      throw new ApiError(
+        "Your session expired. Sign in again to continue.",
+        401,
+        { code: "SESSION_EXPIRED", message: "Your session expired. Sign in again to continue." },
+        "SESSION_EXPIRED",
+      );
     }
   }
 
   const payload = await parseResponse(response);
 
   if (!response.ok) {
+    if (options.auth !== false && isBackendAuthError(response.status, payload)) {
+      await markBackendSessionExpired();
+      throw new ApiError(
+        "Your session expired. Sign in again to continue.",
+        401,
+        { code: "SESSION_EXPIRED", message: "Your session expired. Sign in again to continue." },
+        "SESSION_EXPIRED",
+      );
+    }
+
     throw new ApiError(
       typeof payload === "string" && payload ? payload : readErrorMessage(payload, `Request failed with status ${response.status}`),
       response.status,
       payload,
+      readErrorCode(payload),
     );
   }
 

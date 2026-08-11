@@ -1,6 +1,6 @@
 import "server-only";
 
-import { readUnverifiedJwtExpiresAt } from "./jwt";
+import { readUnverifiedJwtExpiresAt, readUnverifiedJwtPayload } from "./jwt";
 import type { ServerAuthContext } from "./auth-context";
 
 type RefreshResult = {
@@ -26,6 +26,46 @@ function readNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function readTokenUserId(accessToken?: string) {
+  const payload = readUnverifiedJwtPayload(accessToken);
+  return readString(payload?.sub);
+}
+
+function normalizeExpiryTimestamp(value: number) {
+  return value < 10_000_000_000 ? value * 1000 : value;
+}
+
+async function updateBackendAuthSession(data: Record<string, unknown>) {
+  try {
+    const { updateAuthSession } = await import("@/auth");
+    await updateAuthSession(data as never);
+  } catch {
+    // Refresh persistence is best-effort; the request retry can still use the refreshed token.
+  }
+}
+
+async function persistBackendTokenRefresh(result: RefreshResult) {
+  if (!result.accessToken || !readTokenUserId(result.accessToken)) return;
+
+  await updateBackendAuthSession({
+    backendAuthUpdate: {
+      type: "refresh",
+      accessToken: result.accessToken,
+      accessTokenExpiresAt: result.accessTokenExpiresAt,
+      refreshToken: result.refreshToken,
+    },
+  });
+}
+
+export async function markBackendSessionExpired(message = "Your session expired. Sign in again to continue.") {
+  await updateBackendAuthSession({
+    backendAuthUpdate: {
+      type: "expired",
+      message,
+    },
+  });
+}
+
 function getApiBaseUrl() {
   const baseUrl = process.env.API_BASE_URL;
   if (!baseUrl) return null;
@@ -48,7 +88,7 @@ function readAccessTokenExpiresAt(record: Record<string, unknown>, accessToken?:
     readNumber(tokens.accessTokenExpiresAt) ??
     readNumber(tokens.expiresAt);
 
-  if (explicitExpiresAt) return explicitExpiresAt;
+  if (explicitExpiresAt) return normalizeExpiryTimestamp(explicitExpiresAt);
 
   const expiresAtIso = readString(record.accessTokenExpiresAt) ?? readString(record.expiresAt) ?? readString(tokens.expiresAt);
   if (expiresAtIso) {
@@ -82,20 +122,35 @@ export async function refreshBackendAccessToken(refreshToken: string): Promise<R
     method: "POST",
   });
 
-  if (!response.ok) return null;
+  if (!response.ok) {
+    await markBackendSessionExpired();
+    return null;
+  }
 
   const payload = unwrapApiPayload(await response.json());
-  if (!isRecord(payload)) return null;
+  if (!isRecord(payload)) {
+    await markBackendSessionExpired();
+    return null;
+  }
 
   const tokens = isRecord(payload.tokens) ? payload.tokens : {};
   const accessToken = readString(payload.accessToken) ?? readString(tokens.accessToken);
   const nextRefreshToken = readString(payload.refreshToken) ?? readString(tokens.refreshToken);
 
-  return {
+  if (!accessToken) {
+    await markBackendSessionExpired();
+    return null;
+  }
+
+  const result = {
     accessToken,
     accessTokenExpiresAt: readAccessTokenExpiresAt(payload, accessToken),
     refreshToken: nextRefreshToken,
   };
+
+  await persistBackendTokenRefresh(result);
+
+  return result;
 }
 
 export async function getValidAccessToken(authContext: ServerAuthContext): Promise<string | null> {
@@ -106,8 +161,11 @@ export async function getValidAccessToken(authContext: ServerAuthContext): Promi
     return authContext.accessToken;
   }
 
-  if (!authContext.refreshToken) return authContext.accessToken;
+  if (!authContext.refreshToken) {
+    await markBackendSessionExpired();
+    return null;
+  }
 
   const refreshed = await refreshBackendAccessToken(authContext.refreshToken);
-  return refreshed?.accessToken ?? authContext.accessToken;
+  return refreshed?.accessToken ?? null;
 }

@@ -10,10 +10,9 @@ import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref, shouldShowApplicationStatusPage } from "@/lib/routes";
 import { loadTweaks, saveTweaks } from "@/lib/supplyed-preferences";
 import { applyBrandTheme } from "@/lib/theme";
-import { useMounted } from "@/lib/use-mounted";
 import type { AppPage, AppRole, ApplicationStatus, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/types/supplyed";
 
-import { PageLoader, ToastStack } from "../molecules";
+import { ToastStack } from "../molecules";
 import { ApplicationStatusPage } from "./ApplicationStatusPage";
 import { AppChrome } from "./AppChrome";
 import { ApplicationsPage } from "./ApplicationsPage";
@@ -64,17 +63,15 @@ function createInitialRouteState(page: AppPage, sessionState: SessionRouteState)
 function RouteShell({ page, sessionState }: { page: AppPage; sessionState: SessionRouteState }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isClient = useMounted();
   const [state, setState] = useState<AppState>(() => createInitialRouteState(page, sessionState));
   const [tweaks, setTweaks] = useState<Tweaks>(loadTweaks);
   const routeCtx = useMemo(() => readContext(searchParams), [searchParams]);
   const activePage = page;
 
   useEffect(() => {
-    if (!isClient) return;
     applyBrandTheme(tweaks.accent);
     saveTweaks(tweaks);
-  }, [tweaks, isClient]);
+  }, [tweaks]);
 
   const dismissToast = useCallback((id: string) => {
     setState((current) => ({ ...current, toasts: current.toasts.filter((item) => item.id !== id) }));
@@ -147,16 +144,6 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "security") content = <SecurityPage {...routeProps} />;
     else if (activePage === "billing") content = <BillingPage />;
     else content = <IndividualDashboard {...routeProps} />;
-  }
-
-  if (!isClient) {
-    return (
-      <PageLoader
-        compact
-        description="Restoring your saved role, workspace, and theme."
-        title="Preparing workspace"
-      />
-    );
   }
 
   if (shouldShowApplicationStatusPage(routeProps.state.role, routeProps.state.applicationStatus)) {
