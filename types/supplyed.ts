@@ -6,8 +6,9 @@ export type MessageAuthor = "me" | "them";
 export type AppRole = "institution" | "teacher" | "individual";
 export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
 export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
-export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED";
+export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED" | "SUSPENDED";
 export type JobPayType = "daily" | "fixed" | "hourly";
+export type JobRequiredDocument = "DBS_CERTIFICATE" | "PHOTO_ID" | "TEACHING_QUALIFICATION" | "PROOF_OF_ADDRESS";
 
 export type AppPage =
   | "dashboard"
@@ -55,6 +56,9 @@ export type Job = {
   payType?: JobPayType | string | null;
   status?: JobStatus;
   expiresAt?: string | null;
+  postingMode?: "brief" | "instant" | string | null;
+  requiredDocuments?: JobRequiredDocument[];
+  otherRequiredDocument?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   school: string;

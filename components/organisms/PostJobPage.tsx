@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 
 import { useCreateJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
-import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
+import type { Job, JobCreateInput, JobRequiredDocument, JobUpdateInput } from "@/features/jobs/types";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Tag } from "../atoms";
@@ -19,7 +19,8 @@ type JobFormState = {
   parkingInfo: string;
   payAmount: string;
   payType: "daily" | "fixed" | "hourly";
-  qtsRequired: boolean;
+  requiredDocuments: JobRequiredDocument[];
+  otherRequiredDocument: string;
   startDate: string;
   subject: string;
   title: string;
@@ -31,6 +32,12 @@ type JobFormErrors = Partial<Record<keyof JobFormState, string>>;
 const keyStageOptions = ["EYFS", "KS1", "KS2", "KS3", "KS4", "KS5"];
 const subjectOptions = ["Maths", "English", "Science", "All Primary", "SEN", "Humanities", "Modern Languages"];
 const payTypeOptions = ["Daily", "Hourly", "Fixed"];
+const requiredDocumentOptions: Array<{ label: string; value: JobRequiredDocument }> = [
+  { value: "DBS_CERTIFICATE", label: "Enhanced DBS certificate" },
+  { value: "PHOTO_ID", label: "Photo ID (Passport / Driving Licence)" },
+  { value: "TEACHING_QUALIFICATION", label: "Teaching Qualifications / QTS" },
+  { value: "PROOF_OF_ADDRESS", label: "Proof of Address" },
+];
 
 const initialForm: JobFormState = {
   description: "",
@@ -41,7 +48,8 @@ const initialForm: JobFormState = {
   parkingInfo: "",
   payAmount: "",
   payType: "daily",
-  qtsRequired: false,
+  requiredDocuments: ["DBS_CERTIFICATE"],
+  otherRequiredDocument: "",
   startDate: "",
   subject: "Maths",
   title: "",
@@ -159,6 +167,15 @@ function PostJobEditor({
   function updateForm<Key extends keyof JobFormState>(key: Key, value: JobFormState[Key]) {
     setForm((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
+  }
+
+  function toggleRequiredDocument(value: JobRequiredDocument, checked: boolean) {
+    updateForm(
+      "requiredDocuments",
+      checked
+        ? Array.from(new Set([...form.requiredDocuments, value]))
+        : form.requiredDocuments.filter((document) => document !== value),
+    );
   }
 
   function nextStep() {
@@ -340,15 +357,33 @@ function PostJobEditor({
             onChange={(event) => updateForm("parkingInfo", event.target.value)}
           />
         </Field>
-        <div className="grid-2">
-          <Field label="Required checks">
-            <div className="flex flex-col gap-2">
-              <Checkbox checked label="Enhanced DBS certificate" onChange={() => {}} />
-              <Checkbox checked={form.qtsRequired} label="QTS qualified" onChange={(value) => updateForm("qtsRequired", value)} />
-              <Checkbox checked={form.urgent} label="Mark as urgent" onChange={(value) => updateForm("urgent", value)} />
-            </div>
-          </Field>
-        </div>
+        <Field label="Required instructor documents">
+          <div className="grid gap-3 md:grid-cols-2">
+            {requiredDocumentOptions.map((document) => (
+              <Checkbox
+                key={document.value}
+                checked={form.requiredDocuments.includes(document.value)}
+                label={document.label}
+                onChange={(checked) => toggleRequiredDocument(document.value, checked)}
+              />
+            ))}
+          </div>
+        </Field>
+        <Field
+          hint="Optional. Use this when the role needs a document outside the standard profile checks."
+          label="Other required document"
+        >
+          <input
+            className="input"
+            maxLength={500}
+            placeholder="e.g. Safeguarding certificate, first-aid certificate"
+            value={form.otherRequiredDocument}
+            onChange={(event) => updateForm("otherRequiredDocument", event.target.value)}
+          />
+        </Field>
+        <Field label="Publishing flags">
+          <Checkbox checked={form.urgent} label="Mark as urgent" onChange={(value) => updateForm("urgent", value)} />
+        </Field>
       </div>
     );
   }
@@ -373,8 +408,10 @@ function PostJobEditor({
             <span className="pill">{form.location || "Location TBC"}</span>
             <span className="pill">{formatPay(form)}</span>
             <span className="pill">{formatDateRange(form.startDate, form.endDate)}</span>
-            <span className="pill">DBS required</span>
-            {form.qtsRequired ? <span className="pill">QTS required</span> : null}
+            {form.requiredDocuments.map((document) => (
+              <span key={document} className="pill">{requiredDocumentLabel(document)}</span>
+            ))}
+            {form.otherRequiredDocument.trim() ? <span className="pill">{form.otherRequiredDocument.trim()}</span> : null}
           </div>
         </div>
       </div>
@@ -545,31 +582,23 @@ function firstInvalidStep(errors: JobFormErrors) {
 
 function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract<JobCreateInput["status"], "ACTIVE" | "DRAFT">): JobCreateInput {
   return {
-    description: buildDescription(form, mode),
+    description: readEditableDescription(form.description),
     endDate: toIsoDate(form.endDate),
     expiresAt: toIsoDate(form.expiresAt),
     keyStages: form.keyStages,
     location: form.location,
+    postingMode: mode,
     parkingInfo: form.parkingInfo,
     payAmount: Number(form.payAmount),
     payType: form.payType,
+    requiredDocuments: form.requiredDocuments,
+    otherRequiredDocument: form.otherRequiredDocument,
     startDate: toIsoDate(form.startDate),
     status,
     subject: form.subject,
     title: form.title,
+    urgent: form.urgent,
   };
-}
-
-function buildDescription(form: JobFormState, mode: PostingMode) {
-  const description = readEditableDescription(form.description);
-  const notes = [
-    description,
-    `Posting route: ${mode === "instant" ? "Instant matching" : "Open brief"}.`,
-    form.urgent ? "Marked urgent by the hiring account." : "",
-    form.qtsRequired ? "QTS requested." : "",
-  ].filter(Boolean);
-
-  return notes.join("\n\n");
 }
 
 function buildFormattedDescription(format: "bold" | "bullet" | "heading", selected: string, needsLeadingBreak: boolean) {
@@ -610,7 +639,8 @@ function toFormState(job: Job): JobFormState {
     parkingInfo: job.parkingInfo ?? "",
     payAmount: job.payAmount != null && job.payAmount > 0 ? String(job.payAmount) : job.rate ? String(job.rate) : "",
     payType: isPayType(job.payType) ? job.payType : "daily",
-    qtsRequired: job.description?.includes("QTS requested.") ?? false,
+    requiredDocuments: readRequiredDocuments(job),
+    otherRequiredDocument: job.otherRequiredDocument ?? "",
     startDate: toDateInput(job.startDate),
     subject: job.subject || initialForm.subject,
     title: job.title,
@@ -629,6 +659,21 @@ function readEditableDescription(description: string) {
 
 function isGeneratedDescriptionLine(line: string) {
   return /^(Posting route:\s*(Instant matching|Open brief)\.|Marked urgent by the hiring account\.|QTS requested\.)$/i.test(line.trim());
+}
+
+function readRequiredDocuments(job: Job): JobRequiredDocument[] {
+  const documents: JobRequiredDocument[] = job.requiredDocuments?.length ? job.requiredDocuments : ["DBS_CERTIFICATE"];
+  const withLegacyQts = job.description?.includes("QTS requested.")
+    ? [...documents, "TEACHING_QUALIFICATION" satisfies JobRequiredDocument]
+    : documents;
+
+  return requiredDocumentOptions
+    .map((document) => document.value)
+    .filter((document) => withLegacyQts.includes(document));
+}
+
+function requiredDocumentLabel(value: JobRequiredDocument) {
+  return requiredDocumentOptions.find((document) => document.value === value)?.label ?? value;
 }
 
 function isPayType(value: Job["payType"]): value is JobFormState["payType"] {

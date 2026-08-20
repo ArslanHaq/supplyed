@@ -1,15 +1,31 @@
 import { useState } from "react";
 
+import { useCreateApplication, useMyApplications } from "@/features/applications/use-applications";
 import { useJob } from "@/features/jobs/use-jobs";
-import type { RouteProps } from "@/types/supplyed";
+import type { JobRequiredDocument, RouteProps } from "@/types/supplyed";
 
 import { Btn, Field, Icon, MatchScore, Tag } from "../atoms";
 import { FormattedJobDescription, Modal, SectionLoader } from "../molecules";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
   const [open, setOpen] = useState(false);
+  const [coverLetter, setCoverLetter] = useState("Hi, I'm available and happy to arrive by 08:15. I have strong cover experience for this role.");
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const jobQuery = useJob(ctx.jobId ?? "");
+  const myApplicationsQuery = useMyApplications({ limit: 100 }, { enabled: role === "teacher" });
   const job = jobQuery.data;
+  const existingApplication = myApplicationsQuery.data?.applications.find((application) => application.jobId === ctx.jobId);
+  const applyMutation = useCreateApplication({
+    onError: (error) => {
+      setSubmitError(error.message);
+      toast({ title: "Could not submit application", msg: error.message, tone: "danger" });
+    },
+    onSuccess: () => {
+      setOpen(false);
+      setSubmitError(null);
+      toast({ title: "Application submitted", msg: "Your cover letter has been sent to the hiring account.", tone: "success" });
+    },
+  });
 
   if (!ctx.jobId) {
     return (
@@ -55,22 +71,97 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
             <div className="section-title">About this role</div>
             <FormattedJobDescription description={job.description || ""} emptyText="School-provided role details will appear here once published." />
           </div>
-          <div className="card card-pad-lg"><div className="section-title">Requirements</div>{["Enhanced DBS certificate", `Subject: ${job.subject}`, `Key stage: ${job.keyStage}`, job.parkingInfo || "Arrival details will be shared by the hiring account."].map((item) => <div key={item} className="flex items-center gap-2.5 py-2"><Icon name="checkCircle" size={16} />{item}</div>)}</div>
+          <div className="card card-pad-lg">
+            <div className="section-title">Requirements</div>
+            {[
+              ...readJobDocumentRequirements(job.requiredDocuments),
+              job.otherRequiredDocument?.trim(),
+              `Subject: ${job.subject}`,
+              `Key stage: ${job.keyStage}`,
+              job.parkingInfo || "Arrival details will be shared by the hiring account.",
+            ]
+              .filter((item): item is string => Boolean(item))
+              .map((item) => <div key={item} className="flex items-center gap-2.5 py-2"><Icon name="checkCircle" size={16} />{item}</div>)}
+          </div>
         </div>
         <div className="card card-pad-lg sticky top-[88px] self-start">
           <div className="mb-3.5 flex items-center justify-between"><div><div className="text-xs text-muted">Day rate</div><div className="font-serif text-[28px]">£{job.rate}</div></div><MatchScore score={job.matchScore} /></div>
           <div className="mb-3.5 flex flex-wrap gap-2"><span className="pill">{job.keyStage}</span><span className="pill">{job.subject}</span><span className="pill">{job.date}</span></div>
-          <Btn className="w-full" size="lg" onClick={() => setOpen(true)}>{role === "teacher" ? (job.mode === "instant" ? "Accept job" : "Apply now") : "Invite candidates"}</Btn>
+          <Btn className="w-full" size="lg" onClick={() => setOpen(true)}>
+            {role === "teacher" ? existingApplication ? "Already applied" : job.mode === "instant" ? "Accept job" : "Apply now" : "Invite candidates"}
+          </Btn>
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging")}>Message school</Btn>
         </div>
       </div>
       <Modal open={open} onClose={() => setOpen(false)}>
         <div className="card-pad-lg">
           <div className="mb-2 font-serif text-[26px]">{role === "teacher" ? "Apply to this role" : "Invite candidates"}</div>
-          <Field label="Message"><textarea className="textarea" defaultValue="Hi, I'm available and happy to arrive by 08:15. I have strong KS2 Maths cover experience." /></Field>
-          <div className="flex items-center justify-between"><Btn variant="ghost" onClick={() => setOpen(false)}>Cancel</Btn><Btn onClick={() => { setOpen(false); toast({ title: "Success", msg: role === "teacher" ? "Application submitted." : "Top candidates invited." }); }}>Confirm</Btn></div>
+          {role === "teacher" ? (
+            <>
+              {existingApplication ? (
+                <div className="mb-4 rounded-xl border border-brand bg-brand-tint px-4 py-3 text-sm font-semibold text-brand">
+                  You already applied to this role. Current status: {formatStatus(existingApplication.status)}.
+                </div>
+              ) : null}
+              <Field
+                error={submitError ?? undefined}
+                label="Cover letter"
+              >
+                <textarea
+                  className="textarea"
+                  maxLength={2000}
+                  onChange={(event) => {
+                    setCoverLetter(event.target.value);
+                    if (submitError) setSubmitError(null);
+                  }}
+                  value={coverLetter}
+                />
+                <div className="mt-1.5 text-right text-xs text-muted">{coverLetter.length}/2000</div>
+              </Field>
+              <div className="flex items-center justify-between">
+                <Btn disabled={applyMutation.isPending} variant="ghost" onClick={() => setOpen(false)}>Cancel</Btn>
+                <Btn
+                  disabled={Boolean(existingApplication)}
+                  loading={applyMutation.isPending}
+                  loadingLabel="Submitting"
+                  onClick={() => {
+                    setSubmitError(null);
+                    applyMutation.mutate({ coverLetter, jobId: job.id });
+                  }}
+                >
+                  Submit application
+                </Btn>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mb-4 text-sm leading-6 text-muted">Candidate invitations are not connected to a backend endpoint yet.</p>
+              <div className="flex items-center justify-between">
+                <Btn variant="ghost" onClick={() => setOpen(false)}>Cancel</Btn>
+                <Btn onClick={() => {
+                  setOpen(false);
+                  toast({ title: "Not available yet", msg: "Backend candidate invitations are not available in the current API.", tone: "danger" });
+                }}>Close</Btn>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>
   );
+}
+
+function readJobDocumentRequirements(documents: JobRequiredDocument[] = []) {
+  const selected = documents.length ? documents : ["DBS_CERTIFICATE" satisfies JobRequiredDocument];
+
+  return selected.map((document) => {
+    if (document === "DBS_CERTIFICATE") return "Enhanced DBS certificate";
+    if (document === "PHOTO_ID") return "Photo ID";
+    if (document === "TEACHING_QUALIFICATION") return "Teaching Qualifications / QTS";
+    return "Proof of Address";
+  });
+}
+
+function formatStatus(status: string) {
+  return status.toLowerCase().replace(/_/g, " ");
 }

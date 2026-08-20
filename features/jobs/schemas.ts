@@ -4,7 +4,11 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export function normalizeJobFilters(filters: JobListFilters = {}): JobListFilters {
   return {
+    duration: filters.duration,
     keyStage: filters.keyStage?.trim() || undefined,
+    location: filters.location?.trim() || undefined,
+    maxPay: normalizePositiveNumber(filters.maxPay),
+    minPay: normalizePositiveNumber(filters.minPay),
     mode: filters.mode,
     search: filters.search?.trim() || undefined,
     status: filters.status,
@@ -23,6 +27,10 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
     location: input.location?.trim() || undefined,
     parkingInfo: input.parkingInfo?.trim() || undefined,
     payAmount: normalizePositiveNumber(input.payAmount),
+    postingMode: input.postingMode,
+    urgent: input.urgent ?? false,
+    requiredDocuments: normalizeStringList(input.requiredDocuments ?? []) as JobCreateInput["requiredDocuments"],
+    otherRequiredDocument: input.otherRequiredDocument?.trim() || undefined,
     startDate: input.startDate?.trim() || undefined,
     subject: input.subject?.trim() || undefined,
     title: input.title.trim(),
@@ -30,7 +38,7 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
 }
 
 export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
-  const normalizedCreate = normalizeJobCreateInput({
+  const normalizedCreate = withoutEmptyJobFields(normalizeJobCreateInput({
     description: input.description ?? "",
     endDate: input.endDate,
     expiresAt: input.expiresAt,
@@ -39,16 +47,34 @@ export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
     parkingInfo: input.parkingInfo,
     payAmount: input.payAmount,
     payType: input.payType,
+    postingMode: input.postingMode,
+    urgent: input.urgent,
+    requiredDocuments: input.requiredDocuments,
+    otherRequiredDocument: input.otherRequiredDocument,
     startDate: input.startDate,
     subject: input.subject,
     title: input.title ?? "",
-  });
+  }));
 
-  return {
-    ...withoutEmptyJobFields(normalizedCreate),
+  const normalized: JobUpdateInput = {
+    ...normalizedCreate,
     id: input.id.trim(),
     status: input.status,
   };
+
+  if (input.urgent === undefined) {
+    delete normalized.urgent;
+  }
+
+  if (input.requiredDocuments !== undefined) {
+    normalized.requiredDocuments = normalizeStringList(input.requiredDocuments) as JobUpdateInput["requiredDocuments"];
+  }
+
+  if (input.otherRequiredDocument !== undefined) {
+    normalized.otherRequiredDocument = input.otherRequiredDocument.trim();
+  }
+
+  return normalized;
 }
 
 export function normalizeBackendJob(job: BackendJobResponse): Job {
@@ -75,8 +101,8 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     location,
     matchScore: deriveMatchScore(job.id),
     mode:
-      readPostingMode(job.mode) ??
       readPostingMode(job.postingMode) ??
+      readPostingMode(job.mode) ??
       readPostingMode(job.jobType) ??
       readPostingModeFromDescription(job.description) ??
       derivePostingMode(startDate, endDate),
@@ -85,14 +111,17 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     payType: job.payType ?? null,
     postedAt: formatRelativeTime(createdAt),
     postedByUserId: job.postedByUserId,
+    postingMode: readPostingMode(job.postingMode),
     rate: payAmount,
+    requiredDocuments: normalizeStringList(job.requiredDocuments ?? []) as Job["requiredDocuments"],
     school: "Hiring account",
     startDate,
     status: job.status,
     subject,
     title: job.title,
     updatedAt: readDateIso(job.updatedAt),
-    urgent: isUrgent(expiresAt),
+    urgent: Boolean(job.urgent) || isUrgent(expiresAt),
+    otherRequiredDocument: job.otherRequiredDocument?.trim() || null,
   };
 }
 
@@ -108,19 +137,36 @@ export function applyJobFilters(jobs: Job[], filters: JobListFilters = {}) {
     const matchesMode = normalized.mode ? job.mode === normalized.mode : true;
     const matchesUrgent = normalized.urgent === undefined ? true : job.urgent === normalized.urgent;
     const matchesStatus = normalized.status ? job.status === normalized.status : true;
+    const matchesLocation = normalized.location
+      ? `${job.location ?? ""} ${job.city ?? ""}`.toLowerCase().includes(normalized.location.toLowerCase())
+      : true;
+    const matchesMinPay = normalized.minPay === undefined ? true : job.rate >= normalized.minPay;
+    const matchesMaxPay = normalized.maxPay === undefined ? true : job.rate <= normalized.maxPay;
+    const matchesDuration = normalized.duration ? matchesDurationFilter(job, normalized.duration) : true;
 
-    return matchesSearch && matchesSubject && matchesKeyStage && matchesMode && matchesUrgent && matchesStatus;
+    return (
+      matchesSearch &&
+      matchesSubject &&
+      matchesKeyStage &&
+      matchesMode &&
+      matchesUrgent &&
+      matchesStatus &&
+      matchesLocation &&
+      matchesMinPay &&
+      matchesMaxPay &&
+      matchesDuration
+    );
   });
 }
 
 export function toCreateJobPayload(input: JobCreateInput) {
   const { status: _status, ...payload } = normalizeJobCreateInput(input);
-  return withoutEmptyJobFields(payload);
+  return withoutEmptyJobFields(payload, ["requiredDocuments"]);
 }
 
 export function toUpdateJobPayload(input: JobUpdateInput) {
   const { id: _id, ...payload } = normalizeJobUpdateInput(input);
-  return withoutEmptyJobFields(payload);
+  return withoutEmptyJobFields(payload, ["requiredDocuments", "otherRequiredDocument"]);
 }
 
 function normalizeStringList(value: string[]) {
@@ -181,6 +227,24 @@ function derivePostingMode(startDate: string | null, endDate: string | null): Jo
   return durationDays > 7 ? "brief" : "instant";
 }
 
+function matchesDurationFilter(job: Job, duration: NonNullable<JobListFilters["duration"]>) {
+  const days = getDurationDays(job.startDate, job.endDate);
+
+  if (duration === "single-day") return days <= 1;
+  if (duration === "multi-day") return days > 1 && days < 14;
+  return days >= 14;
+}
+
+function getDurationDays(startDate?: string | null, endDate?: string | null) {
+  if (!startDate || !endDate) return 1;
+
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 1;
+
+  return Math.max(1, Math.ceil((end - start) / MS_PER_DAY) + 1);
+}
+
 function readPostingMode(value: unknown): Job["mode"] | null {
   if (typeof value !== "string") return null;
 
@@ -210,12 +274,14 @@ function deriveMatchScore(id: string) {
   return 76 + (sum % 20);
 }
 
-function withoutEmptyJobFields<Input extends Record<string, unknown>>(input: Input) {
+function withoutEmptyJobFields<Input extends Record<string, unknown>>(input: Input, keepEmptyKeys: string[] = []) {
+  const keepEmpty = new Set(keepEmptyKeys);
+
   return Object.fromEntries(
-    Object.entries(input).filter(([, value]) => {
+    Object.entries(input).filter(([key, value]) => {
       if (value === undefined || value === null) return false;
-      if (typeof value === "string" && !value.trim()) return false;
-      if (Array.isArray(value) && value.length === 0) return false;
+      if (typeof value === "string" && !value.trim()) return keepEmpty.has(key);
+      if (Array.isArray(value) && value.length === 0) return keepEmpty.has(key);
       return true;
     }),
   ) as Partial<Input>;

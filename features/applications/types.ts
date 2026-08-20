@@ -15,12 +15,26 @@ export type ApplicantSummary = {
   subjects: string[];
 };
 
+export type ApplicationJobSummary = {
+  endDate?: string | null;
+  id: string;
+  location?: string | null;
+  payAmount?: number | string | null;
+  payType?: string | null;
+  postedByUserId: string;
+  startDate?: string | null;
+  status: string;
+  subject?: string | null;
+  title: string;
+};
+
 export type JobApplication = {
   coverLetter?: string | null;
   createdAt?: string | null;
   id: string;
   instructor?: ApplicantSummary;
   instructorId: string;
+  job?: ApplicationJobSummary;
   jobId: string;
   status: JobApplicationStatus;
   updatedAt?: string | null;
@@ -43,4 +57,14 @@ export type JobApplicationsQuery = {
   limit?: number;
   page?: number;
   status?: JobApplicationStatus;
+};
+
+export type CreateApplicationInput = {
+  coverLetter: string;
+  jobId: string;
+};
+
+export type UpdateApplicationStatusInput = {
+  id: string;
+  status: JobApplicationStatus;
 };

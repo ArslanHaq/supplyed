@@ -46,6 +46,13 @@ function normalizeApplication(application: JobApplication): JobApplication {
           subjects: normalizeStringList(application.instructor.subjects),
         }
       : undefined,
+    job: application.job
+      ? {
+          ...application.job,
+          endDate: readDateIso(application.job.endDate),
+          startDate: readDateIso(application.job.startDate),
+        }
+      : undefined,
   };
 }
 

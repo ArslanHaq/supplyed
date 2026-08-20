@@ -5,6 +5,8 @@ import { startRouteLoading } from "@/lib/navigation-loading";
 type QueryValue = boolean | number | string | null | undefined;
 
 type FetchJsonOptions = {
+  body?: unknown;
+  method?: "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
   query?: Record<string, QueryValue>;
 };
 
@@ -22,6 +24,9 @@ function withQuery(path: string, query?: FetchJsonOptions["query"]) {
 
 export async function fetchJson<Data>(path: string, options: FetchJsonOptions = {}): Promise<Data> {
   const response = await fetch(withQuery(path, options.query), {
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    headers: options.body === undefined ? undefined : { "Content-Type": "application/json" },
+    method: options.method ?? "GET",
     credentials: "same-origin",
   });
 
@@ -65,5 +70,9 @@ function readErrorCode(payload: unknown): string | undefined {
 
 function readErrorMessage(payload: unknown, fallback: string) {
   if (isRecord(payload) && typeof payload.message === "string" && payload.message.trim()) return payload.message;
+  if (isRecord(payload) && Array.isArray(payload.message)) {
+    const message = payload.message.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).join(" ");
+    if (message) return message;
+  }
   return fallback;
 }

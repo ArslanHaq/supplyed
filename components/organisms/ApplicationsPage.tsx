@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { useJobApplications } from "@/features/applications/use-applications";
+import { useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
 import type { JobApplication, JobApplicationStatus } from "@/features/applications/types";
 import { useJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job } from "@/features/jobs/types";
@@ -32,6 +32,22 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       toast({ title: "Could not update job", msg: "Please try again.", tone: "danger" });
     },
   });
+  const updateApplicationStatus = useUpdateApplicationStatus({
+    onError: (error) => {
+      toast({ title: "Could not update application", msg: error.message, tone: "danger" });
+    },
+    onSuccess: (application) => {
+      toast({
+        title: "Application updated",
+        msg: `Moved to ${formatStatus(application.status)}.`,
+        tone: "success",
+      });
+    },
+  });
+
+  function moveApplication(application: JobApplication, status: JobApplicationStatus) {
+    updateApplicationStatus.mutate({ id: application.id, status });
+  }
 
   if (!selectedJobId && !myJobsQuery.isLoading) {
     return (
@@ -110,7 +126,13 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
             <div key={stage} className="kanban-col">
               <div className="kanban-head"><div className="label-xs">{formatStatus(stage)}</div><div className="pill">{applications.filter((item) => item.status === stage).length}</div></div>
               {applications.filter((item) => item.status === stage).map((application) => (
-                <ApplicationCard key={application.id} application={application} onOpen={() => go("teacher-profile", { teacherId: application.instructor?.id })} />
+                <ApplicationCard
+                  key={application.id}
+                  application={application}
+                  disabled={updateApplicationStatus.isPending}
+                  onMove={moveApplication}
+                  onOpen={() => go("teacher-profile", { teacherId: application.instructor?.id })}
+                />
               ))}
             </div>
           ))}
@@ -120,7 +142,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       {!loading && applications.length > 0 && view === "list" ? (
         <div className="card overflow-hidden">
           <table className="tbl">
-            <thead><tr><th>Teacher</th><th>Experience</th><th>Rating</th><th>Stage</th><th>Applied</th></tr></thead>
+            <thead><tr><th>Teacher</th><th>Experience</th><th>Rating</th><th>Stage</th><th>Applied</th><th>Actions</th></tr></thead>
             <tbody>
               {applications.map((application) => (
                 <tr key={application.id}>
@@ -129,6 +151,13 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
                   <td><MatchScore score={ratingScore(application)} size={36} /></td>
                   <td><ApplicationStatusTag status={application.status} /></td>
                   <td>{formatRelativeTime(application.createdAt)}</td>
+                  <td>
+                    <ApplicationActions
+                      application={application}
+                      disabled={updateApplicationStatus.isPending}
+                      onMove={moveApplication}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -139,7 +168,17 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
   );
 }
 
-function ApplicationCard({ application, onOpen }: { application: JobApplication; onOpen: () => void }) {
+function ApplicationCard({
+  application,
+  disabled,
+  onMove,
+  onOpen,
+}: {
+  application: JobApplication;
+  disabled?: boolean;
+  onMove: (application: JobApplication, status: JobApplicationStatus) => void;
+  onOpen: () => void;
+}) {
   return (
     <div className="kanban-card" onClick={onOpen}>
       <div className="mb-2 flex items-center gap-2">
@@ -155,6 +194,39 @@ function ApplicationCard({ application, onOpen }: { application: JobApplication;
         <ApplicationStatusTag status={application.status} />
         <span className="text-xs text-muted">{formatRelativeTime(application.createdAt)}</span>
       </div>
+      <ApplicationActions application={application} disabled={disabled} onMove={onMove} />
+    </div>
+  );
+}
+
+function ApplicationActions({
+  application,
+  disabled,
+  onMove,
+}: {
+  application: JobApplication;
+  disabled?: boolean;
+  onMove: (application: JobApplication, status: JobApplicationStatus) => void;
+}) {
+  const actions = nextApplicationActions(application.status);
+  if (actions.length === 0) return <span className="text-xs text-muted">No next action</span>;
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {actions.map((status) => (
+        <Btn
+          key={status}
+          disabled={disabled}
+          size="sm"
+          variant={status === "REJECTED" ? "danger" : "secondary"}
+          onClick={(event) => {
+            event.stopPropagation();
+            onMove(application, status);
+          }}
+        >
+          {formatStatus(status)}
+        </Btn>
+      ))}
     </div>
   );
 }
@@ -185,6 +257,15 @@ function formatPay(job: Job) {
 
 function formatStatus(status: string) {
   return status.toLowerCase().replace(/_/g, " ");
+}
+
+function nextApplicationActions(status: JobApplicationStatus): JobApplicationStatus[] {
+  if (status === "APPLIED") return ["VIEWED", "SHORTLISTED", "REJECTED"];
+  if (status === "VIEWED") return ["SHORTLISTED", "REJECTED"];
+  if (status === "SHORTLISTED") return ["INTERVIEW", "REJECTED"];
+  if (status === "INTERVIEW") return ["HIRED", "REJECTED"];
+  if (status === "HIRED") return ["COMPLETED"];
+  return [];
 }
 
 function ratingScore(application: JobApplication) {
