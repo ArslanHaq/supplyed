@@ -6,15 +6,15 @@ separate containers, ports, domains, backend URLs, and secrets.
 - `deploy/docker-compose.dev.yml` is for the `dev` branch.
 - `deploy/docker-compose.main.yml` is for the `main` branch.
 
-Both files expect the same runtime file on the server:
+Both compose files expect the same runtime file on the server:
 
-- `.env` for port, backend URL, Auth.js values, OAuth credentials, and public
-  site URL.
+- `/home/ubuntu/supplyed/.env` for port, backend URL, Auth.js values, OAuth
+  credentials, and public site URL.
 
 Use separate deployment directories, for example:
 
-- `/opt/supplyed/frontend-dev`
-- `/opt/supplyed/frontend-main`
+- `/home/ubuntu/supplyed/frontend-dev`
+- `/home/ubuntu/supplyed/frontend-main`
 
 If dev and main run on the same server, give them different ports and route each
 port through the reverse proxy.
@@ -38,8 +38,8 @@ configuration is owned by the server-side `.env` file.
 Create this file manually on the dev server:
 
 ```sh
-mkdir -p /opt/supplyed/frontend-dev
-nano /opt/supplyed/frontend-dev/.env
+mkdir -p /home/ubuntu/supplyed/frontend-dev
+nano /home/ubuntu/supplyed/.env
 ```
 
 Example dev `.env`:
@@ -66,11 +66,11 @@ does not need a public URL.
 
 The workflow keeps uploaded source releases under:
 
-- `/opt/supplyed/frontend-dev/releases/<git-sha>`
-- `/opt/supplyed/frontend-dev/current`
+- `/home/ubuntu/supplyed/frontend-dev/releases/<git-sha>`
+- `/home/ubuntu/supplyed/frontend-dev/current`
 
 Do not put secrets inside the source tree. Keep runtime values only in
-`/opt/supplyed/frontend-dev/.env`.
+`/home/ubuntu/supplyed/.env`.
 
 ## Main deployment
 
@@ -81,9 +81,8 @@ secrets/variables with production-specific `PROD_*` values.
 
 Production should use the same directory shape as dev:
 
-- `/opt/supplyed/frontend-main/.env`
-- `/opt/supplyed/frontend-main/releases/<git-sha>`
-- `/opt/supplyed/frontend-main/current`
+- `/home/ubuntu/supplyed/frontend-main/releases/<git-sha>`
+- `/home/ubuntu/supplyed/frontend-main/current`
 
 Example production `.env`:
 
@@ -103,13 +102,15 @@ AUTH_MICROSOFT_ENTRA_ID_ISSUER=
 Run production:
 
 ```sh
-docker compose --env-file .env -f docker-compose.main.yml build --pull frontend
-docker compose --env-file .env -f docker-compose.main.yml up -d --remove-orphans
+cd /home/ubuntu/supplyed
+docker compose --env-file .env -f frontend-main/docker-compose.main.yml build --pull frontend
+docker compose --env-file .env -f frontend-main/docker-compose.main.yml up -d --remove-orphans
 ```
 
 Run dev:
 
 ```sh
-docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend
-docker compose --env-file .env -f docker-compose.dev.yml up -d --remove-orphans
+cd /home/ubuntu/supplyed
+docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml build --pull frontend
+docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml up -d --remove-orphans
 ```

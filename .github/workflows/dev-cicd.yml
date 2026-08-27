@@ -75,7 +75,8 @@ jobs:
           set -euo pipefail
           test -n "$SERVER_HOST" || { echo "Missing DEV_SERVER_HOST secret"; exit 1; }
           test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
-          DEPLOY_PATH="/opt/supplyed/frontend-dev"
+          APP_ROOT="/home/ubuntu/supplyed"
+          DEPLOY_PATH="$APP_ROOT/frontend-dev"
           ssh_target="${SERVER_USER}@${SERVER_HOST}"
           release_path="$DEPLOY_PATH/releases/$GITHUB_SHA"
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
@@ -102,7 +103,8 @@ jobs:
           set -euo pipefail
           test -n "$SERVER_HOST" || { echo "Missing DEV_SERVER_HOST secret"; exit 1; }
           test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
-          DEPLOY_PATH="/opt/supplyed/frontend-dev"
+          APP_ROOT="/home/ubuntu/supplyed"
+          DEPLOY_PATH="$APP_ROOT/frontend-dev"
           ssh_target="${SERVER_USER}@${SERVER_HOST}"
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
-            "cd '$DEPLOY_PATH' && test -L current || { echo \"Missing $DEPLOY_PATH/current release link\"; exit 1; } && test -f .env || { echo \"Missing $DEPLOY_PATH/.env\"; exit 1; } && for key in FRONTEND_PORT API_BASE_URL AUTH_SECRET AUTH_URL NEXT_PUBLIC_SITE_URL; do grep -q \"^\${key}=\" .env || { echo \"Missing \${key} in $DEPLOY_PATH/.env\"; exit 1; }; done && docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend && docker compose --env-file .env -f docker-compose.dev.yml up -d --remove-orphans"
+            "cd '$APP_ROOT' && test -L 'frontend-dev/current' || { echo \"Missing $DEPLOY_PATH/current release link\"; exit 1; } && test -f .env || { echo \"Missing $APP_ROOT/.env\"; exit 1; } && for key in FRONTEND_PORT API_BASE_URL AUTH_SECRET AUTH_URL NEXT_PUBLIC_SITE_URL; do grep -q \"^\${key}=\" .env || { echo \"Missing \${key} in $APP_ROOT/.env\"; exit 1; }; done && docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml build --pull frontend && docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml up -d --remove-orphans"
