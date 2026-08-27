@@ -16,8 +16,19 @@ type ApiRequestOptions = {
   auth?: boolean;
   cache?: RequestCache;
   headers?: HeadersInit;
+  timeoutMs?: number;
   next?: NextFetchOptions;
   query?: ApiQuery;
+};
+
+const DEFAULT_API_TIMEOUT_MS = 15_000;
+
+type ApiResponseEnvelope<Data = unknown> = {
+  data: Data;
+  message?: unknown;
+  meta?: unknown;
+  statusCode?: unknown;
+  success?: unknown;
 };
 
 export class ApiError extends Error {
@@ -55,13 +66,52 @@ function appendQuery(url: URL, query?: ApiQuery) {
   });
 }
 
+function baseUrlWithTrailingSlash(baseUrl: string) {
+  return baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+}
+
+function relativeApiPath(path: string) {
+  return path.replace(/^\/+/, "");
+}
+
 function buildUrl(path: string, query?: ApiQuery) {
   const url = path.startsWith("http")
     ? new URL(path)
-    : new URL(path.startsWith("/") ? path : `/${path}`, getApiBaseUrl());
+    : new URL(relativeApiPath(path), baseUrlWithTrailingSlash(getApiBaseUrl()));
 
   appendQuery(url, query);
   return url.toString();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isApiResponseEnvelope(value: unknown): value is ApiResponseEnvelope {
+  return (
+    isRecord(value) &&
+    "data" in value &&
+    "success" in value &&
+    "statusCode" in value &&
+    "message" in value
+  );
+}
+
+function readErrorMessage(payload: unknown, status: number) {
+  if (typeof payload === "string" && payload) return payload;
+
+  if (isRecord(payload)) {
+    const message = payload.message;
+
+    if (typeof message === "string" && message) return message;
+    if (Array.isArray(message) && message.length > 0) return message.map(String).join(" ");
+  }
+
+  return `Request failed with status ${status}`;
+}
+
+function unwrapPayload<Data>(payload: unknown): Data {
+  return (isApiResponseEnvelope(payload) ? payload.data : payload) as Data;
 }
 
 async function parseResponse(response: Response) {
@@ -90,19 +140,16 @@ async function request<Data>(
       ...init.headers,
     },
     next: options.next,
+    signal: init.signal ?? AbortSignal.timeout(options.timeoutMs ?? DEFAULT_API_TIMEOUT_MS),
   } as RequestInit & { next?: NextFetchOptions });
 
   const payload = await parseResponse(response);
 
   if (!response.ok) {
-    throw new ApiError(
-      typeof payload === "string" && payload ? payload : `Request failed with status ${response.status}`,
-      response.status,
-      payload,
-    );
+    throw new ApiError(readErrorMessage(payload, response.status), response.status, payload);
   }
 
-  return payload as Data;
+  return unwrapPayload<Data>(payload);
 }
 
 function bodyInit(body?: unknown) {

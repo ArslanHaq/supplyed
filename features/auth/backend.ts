@@ -48,8 +48,22 @@ function mockUser(email: string, overrides: Partial<AuthUser> = {}): AuthUser {
 }
 
 function normalizeAuthResponse(response: AuthUser | BackendAuthResponse): BackendAuthResponse {
-  if ("user" in response) return response;
+  if ("user" in response) {
+    return {
+      ...response,
+      accessTokenExpiresAt: normalizeExpiryMs(response.accessTokenExpiresAt),
+    };
+  }
+
   return { user: response };
+}
+
+function normalizeExpiryMs(value: unknown) {
+  if (typeof value === "number") return value;
+  if (typeof value !== "string") return undefined;
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
 export async function createEmailAccount(input: SignupInput): Promise<BackendAuthResponse> {
