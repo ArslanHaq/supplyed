@@ -75,12 +75,7 @@ jobs:
           set -euo pipefail
           test -n "$SERVER_HOST" || { echo "Missing DEV_SERVER_HOST secret"; exit 1; }
           test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
-          APP_ROOT="/home/ubuntu/supplyed"
-          DEPLOY_PATH="$APP_ROOT/frontend-dev"
           ssh_target="${SERVER_USER}@${SERVER_HOST}"
-          release_path="$DEPLOY_PATH/releases/$GITHUB_SHA"
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
-            "mkdir -p '$release_path'"
           tar \
             --exclude='.git' \
             --exclude='.next' \
@@ -88,11 +83,7 @@ jobs:
             --exclude='.env' \
             --exclude='.env.*' \
             -czf - . | ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
-            "tar -xzf - -C '$release_path'"
-          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes deploy/docker-compose.dev.yml \
-            "$ssh_target:$DEPLOY_PATH/"
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
-            "ln -sfn '$release_path' '$DEPLOY_PATH/current'"
+            "set -euo pipefail; app_root=\"\$HOME/supplyed\"; deploy_path=\"\$app_root/frontend-dev\"; release_path=\"\$deploy_path/releases/$GITHUB_SHA\"; mkdir -p \"\$deploy_path\" \"\$release_path\"; tar -xzf - -C \"\$release_path\"; cp \"\$release_path/deploy/docker-compose.dev.yml\" \"\$deploy_path/docker-compose.dev.yml\"; ln -sfn \"\$release_path\" \"\$deploy_path/current\""
 
       - name: Build and restart frontend
         shell: bash
@@ -103,8 +94,6 @@ jobs:
           set -euo pipefail
           test -n "$SERVER_HOST" || { echo "Missing DEV_SERVER_HOST secret"; exit 1; }
           test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
-          APP_ROOT="/home/ubuntu/supplyed"
-          DEPLOY_PATH="$APP_ROOT/frontend-dev"
           ssh_target="${SERVER_USER}@${SERVER_HOST}"
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
-            "cd '$APP_ROOT' && test -L 'frontend-dev/current' || { echo \"Missing $DEPLOY_PATH/current release link\"; exit 1; } && test -f .env || { echo \"Missing $APP_ROOT/.env\"; exit 1; } && for key in FRONTEND_PORT API_BASE_URL AUTH_SECRET AUTH_URL NEXT_PUBLIC_SITE_URL; do grep -q \"^\${key}=\" .env || { echo \"Missing \${key} in $APP_ROOT/.env\"; exit 1; }; done && docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml build --pull frontend && docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml up -d --remove-orphans"
+            "set -euo pipefail; app_root=\"\$HOME/supplyed\"; deploy_path=\"\$app_root/frontend-dev\"; cd \"\$app_root\"; test -L 'frontend-dev/current' || { echo \"Missing \$deploy_path/current release link\"; exit 1; }; test -f .env || { echo \"Missing \$app_root/.env\"; exit 1; }; for key in FRONTEND_PORT API_BASE_URL AUTH_SECRET AUTH_URL NEXT_PUBLIC_SITE_URL; do grep -q \"^\${key}=\" .env || { echo \"Missing \${key} in \$app_root/.env\"; exit 1; }; done; docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml build --pull frontend; docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml up -d --remove-orphans"

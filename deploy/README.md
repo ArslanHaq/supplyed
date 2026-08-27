@@ -8,13 +8,13 @@ separate containers, ports, domains, backend URLs, and secrets.
 
 Both compose files expect the same runtime file on the server:
 
-- `/home/ubuntu/supplyed/.env` for port, backend URL, Auth.js values, OAuth
+- `$HOME/supplyed/.env` for port, backend URL, Auth.js values, OAuth
   credentials, and public site URL.
 
 Use separate deployment directories, for example:
 
-- `/home/ubuntu/supplyed/frontend-dev`
-- `/home/ubuntu/supplyed/frontend-main`
+- `$HOME/supplyed/frontend-dev`
+- `$HOME/supplyed/frontend-main`
 
 If dev and main run on the same server, give them different ports and route each
 port through the reverse proxy.
@@ -38,8 +38,8 @@ configuration is owned by the server-side `.env` file.
 Create this file manually on the dev server:
 
 ```sh
-mkdir -p /home/ubuntu/supplyed/frontend-dev
-nano /home/ubuntu/supplyed/.env
+mkdir -p ~/supplyed/frontend-dev
+nano ~/supplyed/.env
 ```
 
 Example dev `.env`:
@@ -66,11 +66,11 @@ does not need a public URL.
 
 The workflow keeps uploaded source releases under:
 
-- `/home/ubuntu/supplyed/frontend-dev/releases/<git-sha>`
-- `/home/ubuntu/supplyed/frontend-dev/current`
+- `$HOME/supplyed/frontend-dev/releases/<git-sha>`
+- `$HOME/supplyed/frontend-dev/current`
 
 Do not put secrets inside the source tree. Keep runtime values only in
-`/home/ubuntu/supplyed/.env`.
+`$HOME/supplyed/.env`.
 
 ## Main deployment
 
@@ -81,8 +81,8 @@ secrets/variables with production-specific `PROD_*` values.
 
 Production should use the same directory shape as dev:
 
-- `/home/ubuntu/supplyed/frontend-main/releases/<git-sha>`
-- `/home/ubuntu/supplyed/frontend-main/current`
+- `$HOME/supplyed/frontend-main/releases/<git-sha>`
+- `$HOME/supplyed/frontend-main/current`
 
 Example production `.env`:
 
@@ -102,7 +102,7 @@ AUTH_MICROSOFT_ENTRA_ID_ISSUER=
 Run production:
 
 ```sh
-cd /home/ubuntu/supplyed
+cd ~/supplyed
 docker compose --env-file .env -f frontend-main/docker-compose.main.yml build --pull frontend
 docker compose --env-file .env -f frontend-main/docker-compose.main.yml up -d --remove-orphans
 ```
@@ -110,7 +110,7 @@ docker compose --env-file .env -f frontend-main/docker-compose.main.yml up -d --
 Run dev:
 
 ```sh
-cd /home/ubuntu/supplyed
+cd ~/supplyed
 docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml build --pull frontend
 docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml up -d --remove-orphans
 ```
