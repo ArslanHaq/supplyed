@@ -104,6 +104,9 @@ jobs:
           SSH_KEY: ${{ secrets.DEV_SERVER_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.DEV_SERVER_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
+          test -n "$SSH_KEY" || { echo "Missing DEV_SERVER_SSH_KEY secret"; exit 1; }
+          test -n "$SSH_KNOWN_HOSTS" || { echo "Missing DEV_SERVER_KNOWN_HOSTS secret"; exit 1; }
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
@@ -125,6 +128,12 @@ jobs:
           AUTH_MICROSOFT_ENTRA_ID_SECRET: ${{ secrets.DEV_AUTH_MICROSOFT_ENTRA_ID_SECRET }}
           AUTH_MICROSOFT_ENTRA_ID_ISSUER: ${{ secrets.DEV_AUTH_MICROSOFT_ENTRA_ID_ISSUER }}
         run: |
+          set -euo pipefail
+          test -n "$FRONTEND_IMAGE" || { echo "Missing published frontend image reference"; exit 1; }
+          test -n "$API_BASE_URL" || { echo "Missing DEV_API_BASE_URL secret"; exit 1; }
+          test -n "$AUTH_SECRET" || { echo "Missing DEV_AUTH_SECRET secret"; exit 1; }
+          test -n "$AUTH_URL" || { echo "Missing DEV_AUTH_URL variable"; exit 1; }
+          test -n "$NEXT_PUBLIC_SITE_URL" || { echo "Missing DEV_SITE_URL variable"; exit 1; }
           umask 077
           printf 'FRONTEND_IMAGE=%s\nFRONTEND_PORT=%s\nAPI_BASE_URL=%s\nAUTH_SECRET=%s\nAUTH_URL=%s\nNEXT_PUBLIC_SITE_URL=%s\nAUTH_GOOGLE_ID=%s\nAUTH_GOOGLE_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ID=%s\nAUTH_MICROSOFT_ENTRA_ID_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ISSUER=%s\n' \
             "$FRONTEND_IMAGE" "${FRONTEND_PORT:-3000}" \
@@ -140,10 +149,14 @@ jobs:
           SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
           DEPLOY_PATH: ${{ vars.DEV_DEPLOY_PATH }}
         run: |
+          set -euo pipefail
+          test -n "$SERVER_HOST" || { echo "Missing DEV_SERVER_HOST secret"; exit 1; }
+          test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
           DEPLOY_PATH="${DEPLOY_PATH:-/opt/supplyed/frontend-dev}"
-          ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p '$DEPLOY_PATH'"
-          scp deploy/docker-compose.dev.yml deploy/.env \
-            "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
+          ssh_target="${SERVER_USER}@${SERVER_HOST}"
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" "mkdir -p '$DEPLOY_PATH'"
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes deploy/docker-compose.dev.yml deploy/.env \
+            "$ssh_target:$DEPLOY_PATH/"
 
       - name: Pull and restart frontend
         shell: bash
@@ -153,8 +166,13 @@ jobs:
           DEPLOY_PATH: ${{ vars.DEV_DEPLOY_PATH }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+          test -n "$SERVER_HOST" || { echo "Missing DEV_SERVER_HOST secret"; exit 1; }
+          test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
+          test -n "$GHCR_TOKEN" || { echo "Missing GitHub Container Registry token"; exit 1; }
           DEPLOY_PATH="${DEPLOY_PATH:-/opt/supplyed/frontend-dev}"
-          printf '%s' "$GHCR_TOKEN" | ssh "$SERVER_USER@$SERVER_HOST" \
+          ssh_target="${SERVER_USER}@${SERVER_HOST}"
+          printf '%s' "$GHCR_TOKEN" | ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
             "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
-          ssh "$SERVER_USER@$SERVER_HOST" \
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
             "cd '$DEPLOY_PATH' && docker compose --env-file .env -f docker-compose.dev.yml pull && docker compose --env-file .env -f docker-compose.dev.yml up -d --remove-orphans"
