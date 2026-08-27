@@ -11,7 +11,7 @@ services:
     init: true
     restart: unless-stopped
     env_file:
-      - ../.env
+      - .env
     environment:
       NODE_ENV: production
       PORT: ${FRONTEND_PORT:-3000}

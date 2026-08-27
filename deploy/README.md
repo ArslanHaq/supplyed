@@ -6,10 +6,13 @@ separate containers, ports, domains, backend URLs, and secrets.
 - `deploy/docker-compose.dev.yml` is for the `dev` branch.
 - `deploy/docker-compose.main.yml` is for the `main` branch.
 
-Both compose files expect the same runtime file on the server:
+Each compose file expects its own runtime file on the server:
 
-- `$HOME/supplyed/.env` for port, backend URL, Auth.js values, OAuth
-  credentials, and public site URL.
+- `$HOME/supplyed/frontend-dev/.env` for dev.
+- `$HOME/supplyed/frontend-main/.env` for main.
+
+Each `.env` contains that environment's port, backend URL, Auth.js values,
+OAuth credentials, and public site URL.
 
 Use separate deployment directories, for example:
 
@@ -39,7 +42,7 @@ Create this file manually on the dev server:
 
 ```sh
 mkdir -p ~/supplyed/frontend-dev
-nano ~/supplyed/.env
+nano ~/supplyed/frontend-dev/.env
 ```
 
 Example dev `.env`:
@@ -70,7 +73,7 @@ The workflow keeps uploaded source releases under:
 - `$HOME/supplyed/frontend-dev/current`
 
 Do not put secrets inside the source tree. Keep runtime values only in
-`$HOME/supplyed/.env`.
+`$HOME/supplyed/frontend-dev/.env`.
 
 ## Main deployment
 
@@ -81,6 +84,7 @@ secrets/variables with production-specific `PROD_*` values.
 
 Production should use the same directory shape as dev:
 
+- `$HOME/supplyed/frontend-main/.env`
 - `$HOME/supplyed/frontend-main/releases/<git-sha>`
 - `$HOME/supplyed/frontend-main/current`
 
@@ -102,15 +106,15 @@ AUTH_MICROSOFT_ENTRA_ID_ISSUER=
 Run production:
 
 ```sh
-cd ~/supplyed
-docker compose --env-file .env -f frontend-main/docker-compose.main.yml build --pull frontend
-docker compose --env-file .env -f frontend-main/docker-compose.main.yml up -d --remove-orphans
+cd ~/supplyed/frontend-main
+docker compose --env-file .env -f docker-compose.main.yml build --pull frontend
+docker compose --env-file .env -f docker-compose.main.yml up -d --remove-orphans
 ```
 
 Run dev:
 
 ```sh
-cd ~/supplyed
-docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml build --pull frontend
-docker compose --env-file .env -f frontend-dev/docker-compose.dev.yml up -d --remove-orphans
+cd ~/supplyed/frontend-dev
+docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend
+docker compose --env-file .env -f docker-compose.dev.yml up -d --remove-orphans
 ```
