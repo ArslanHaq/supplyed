@@ -126,13 +126,12 @@ jobs:
           AUTH_MICROSOFT_ENTRA_ID_ISSUER: ${{ secrets.DEV_AUTH_MICROSOFT_ENTRA_ID_ISSUER }}
         run: |
           umask 077
-          printf 'FRONTEND_IMAGE=%s\nFRONTEND_PORT=%s\n' \
-            "$FRONTEND_IMAGE" "${FRONTEND_PORT:-3000}" > deploy/.env
-          printf 'API_BASE_URL=%s\nAUTH_SECRET=%s\nAUTH_URL=%s\nNEXT_PUBLIC_SITE_URL=%s\nAUTH_GOOGLE_ID=%s\nAUTH_GOOGLE_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ID=%s\nAUTH_MICROSOFT_ENTRA_ID_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ISSUER=%s\n' \
+          printf 'FRONTEND_IMAGE=%s\nFRONTEND_PORT=%s\nAPI_BASE_URL=%s\nAUTH_SECRET=%s\nAUTH_URL=%s\nNEXT_PUBLIC_SITE_URL=%s\nAUTH_GOOGLE_ID=%s\nAUTH_GOOGLE_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ID=%s\nAUTH_MICROSOFT_ENTRA_ID_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ISSUER=%s\n' \
+            "$FRONTEND_IMAGE" "${FRONTEND_PORT:-3000}" \
             "$API_BASE_URL" "$AUTH_SECRET" "$AUTH_URL" "$NEXT_PUBLIC_SITE_URL" \
             "$AUTH_GOOGLE_ID" "$AUTH_GOOGLE_SECRET" \
             "$AUTH_MICROSOFT_ENTRA_ID_ID" "$AUTH_MICROSOFT_ENTRA_ID_SECRET" \
-            "$AUTH_MICROSOFT_ENTRA_ID_ISSUER" > deploy/.env.runtime
+            "$AUTH_MICROSOFT_ENTRA_ID_ISSUER" > deploy/.env
 
       - name: Copy deployment files
         shell: bash
@@ -143,7 +142,7 @@ jobs:
         run: |
           DEPLOY_PATH="${DEPLOY_PATH:-/opt/supplyed/frontend-dev}"
           ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p '$DEPLOY_PATH'"
-          scp deploy/docker-compose.dev.yml deploy/.env deploy/.env.runtime \
+          scp deploy/docker-compose.dev.yml deploy/.env \
             "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
 
       - name: Pull and restart frontend

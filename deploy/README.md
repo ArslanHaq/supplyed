@@ -6,12 +6,10 @@ separate containers, ports, domains, backend URLs, and secrets.
 - `deploy/docker-compose.dev.yml` is for the `dev` branch.
 - `deploy/docker-compose.main.yml` is for the `main` branch.
 
-Both files expect the same two runtime files on the server:
+Both files expect the same runtime file on the server:
 
-- `.env` for compose interpolation values such as `FRONTEND_IMAGE` and
-  `FRONTEND_PORT`.
-- `.env.runtime` for application runtime values such as `API_BASE_URL`,
-  `AUTH_SECRET`, `AUTH_URL`, OAuth credentials, and `NEXT_PUBLIC_SITE_URL`.
+- `.env` for image, port, backend URL, Auth.js values, OAuth credentials, and
+  public site URL.
 
 Use separate deployment directories, for example:
 
@@ -65,12 +63,6 @@ Example production `.env`:
 ```dotenv
 FRONTEND_IMAGE=ghcr.io/owner/repository:main
 FRONTEND_PORT=3000
-FRONTEND_BIND_ADDRESS=127.0.0.1
-```
-
-Example production `.env.runtime`:
-
-```dotenv
 API_BASE_URL=http://127.0.0.1:3002
 AUTH_SECRET=replace-with-a-long-production-secret
 AUTH_URL=https://app.supplyed.co.uk

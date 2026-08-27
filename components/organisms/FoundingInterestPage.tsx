@@ -5,6 +5,18 @@ import { buttonClassName, Icon, Tag } from "@/components/atoms";
 import { PublicThemeControls } from "@/components/molecules";
 
 import { FoundingInterestForm } from "./FoundingInterestForm";
+import {
+  FoundingSchoolCohortSection,
+  FoundingSchoolFaqSection,
+  FoundingSchoolTiersSection,
+  FoundingSchoolTrustStrip,
+} from "./FoundingSchoolSections";
+import {
+  FoundingTeacherFaqSection,
+  FoundingTeacherRegionsSection,
+  FoundingTeacherRolesSection,
+  FoundingTeacherTrustStrip,
+} from "./FoundingTeacherSections";
 import { PublicHeader } from "./PublicHeader";
 
 type FoundingInterestType = "SCHOOL" | "TEACHER";
@@ -25,6 +37,8 @@ type PageContent = {
   heroCopy: string;
   heroEyebrow: string;
   heroTitle: ReactNode;
+  howItWorksSubtitle: string;
+  howItWorksTitle: string;
   primaryCta: string;
   programmeSubtitle: string;
   programmeTitle: string;
@@ -32,7 +46,7 @@ type PageContent = {
   rightCardRows: Array<{ copy: string; icon: string; title: string }>;
   secondaryCta: string;
   steps: Array<{ copy: string; title: string }>;
-  stats: ReadonlyArray<readonly [string, string]>;
+  stats?: ReadonlyArray<readonly [string, string]>;
 };
 
 const schoolContent: PageContent = {
@@ -73,6 +87,8 @@ const schoolContent: PageContent = {
       <em className="text-brand">Yours can be one.</em>
     </>
   ),
+  howItWorksSubtitle: "Registrations are reviewed in order received before we confirm places.",
+  howItWorksTitle: "Three simple steps before launch.",
   primaryCta: "Register your school's interest",
   programmeSubtitle: "Both tiers are founding places within the cap of 20.",
   programmeTitle: "What founding schools get",
@@ -101,24 +117,24 @@ const teacherContent: PageContent = {
   accent: "var(--se)",
   benefits: [
     {
-      copy: "Founding teachers receive an extra GBP 5 per day on SupplyED bookings for 36 months from launch.",
+      copy: "An extra GBP 5 per day on your bookings through SupplyED, locked in for 36 months from launch.",
       icon: "pound",
       title: "Founding rate uplift",
     },
     {
       copy: "SupplyED covers Enhanced DBS and compliance checks for founding members before marketplace activation.",
       icon: "shield",
-      title: "Checks covered",
+      title: "Your checks, on us",
     },
     {
       copy: "Verified founding profiles are live first, so schools see you as soon as roles start opening.",
       icon: "star",
-      title: "First access to roles",
+      title: "First in line for roles",
     },
   ],
   ctaCopy: "Register interest in the founding teacher programme across Greater Manchester, Lancashire, and the North.",
-  ctaTitle: "Work directly with schools from day one.",
-  formBadge: "Founding teachers programme",
+  ctaTitle: "Be verified before anyone else is looking.",
+  formBadge: "Founding teachers programme - the North first",
   formBullets: [
     { title: "+GBP 5 per day for 36 months", copy: "the founding uplift on your SupplyED bookings." },
     { title: "DBS and checks covered", copy: "verification costs are covered for founding members." },
@@ -135,9 +151,11 @@ const teacherContent: PageContent = {
       <em className="text-brand">Keep what you earn.</em>
     </>
   ),
+  howItWorksSubtitle: "Registering takes two minutes and costs nothing.",
+  howItWorksTitle: "How joining works.",
   primaryCta: "Register teacher interest",
-  programmeSubtitle: "The founding cohort is open across school support roles, not just qualified teachers.",
-  programmeTitle: "Founding benefits",
+  programmeSubtitle: "Founding benefits are for the first cohort only.",
+  programmeTitle: "Why join before launch",
   rightCardCopy:
     "SupplyED keeps your profile, availability, verification, and placement history connected before launch.",
   rightCardRows: [
@@ -148,14 +166,8 @@ const teacherContent: PageContent = {
   secondaryCta: "See founding benefits",
   steps: [
     { title: "Register your interest", copy: "Tell us your role, location, phase, and availability." },
-    { title: "Complete checks", copy: "Before launch, founding members complete the full safer-recruitment check set." },
-    { title: "Go live first", copy: "Your verified profile is live from day one with founding benefits noted." },
-  ],
-  stats: [
-    ["GBP 5", "Daily uplift"],
-    ["36 mo", "Benefit window"],
-    ["Free", "Founding checks"],
-    ["Day one", "Profile live"],
+    { title: "Get verified, on us", copy: "Before launch, founding members complete the full safer-recruitment check set." },
+    { title: "Go live at launch", copy: "Your verified profile is live from day one with founding benefits noted." },
   ],
 };
 
@@ -205,14 +217,16 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
                 {content.secondaryCta}
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 sm:gap-6">
-              {content.stats.map(([value, label]) => (
-                <div key={label}>
-                  <div className="font-serif text-[28px]">{value}</div>
-                  <div className="text-xs uppercase tracking-[1px] text-white/50">{label}</div>
-                </div>
-              ))}
-            </div>
+            {content.stats ? (
+              <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 sm:gap-6">
+                {content.stats.map(([value, label]) => (
+                  <div key={label}>
+                    <div className="font-serif text-[28px]">{value}</div>
+                    <div className="text-xs uppercase tracking-[1px] text-white/50">{label}</div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <aside className="relative overflow-hidden rounded-xl border border-border bg-white p-5 text-ink shadow-[0_40px_80px_rgba(0,0,0,0.4)] sm:p-7">
@@ -259,6 +273,15 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
         </div>
       </section>
 
+      {type === "SCHOOL" ? (
+        <>
+          <FoundingSchoolTrustStrip />
+          <FoundingSchoolCohortSection />
+        </>
+      ) : null}
+
+      {type === "TEACHER" ? <FoundingTeacherTrustStrip /> : null}
+
       <section id="programme" className="bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
         <div className="mx-auto max-w-[1200px]">
           <div className="mb-10 text-center">
@@ -280,11 +303,21 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
         </div>
       </section>
 
+      {type === "SCHOOL" ? <FoundingSchoolTiersSection /> : null}
+
+      {type === "TEACHER" ? (
+        <>
+          <FoundingTeacherRolesSection />
+          <FoundingTeacherRegionsSection />
+        </>
+      ) : null}
+
       <section className="border-y border-border bg-chalk px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
         <div className="mx-auto max-w-[1120px]">
           <div className="mb-10 text-center">
             <div className="eyebrow">How it works</div>
-            <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">Three simple steps before launch.</h2>
+            <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">{content.howItWorksTitle}</h2>
+            <p className="mx-auto mt-2 max-w-[620px] text-muted">{content.howItWorksSubtitle}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {content.steps.map((step, index) => (
@@ -299,6 +332,9 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
           </div>
         </div>
       </section>
+
+      {type === "SCHOOL" ? <FoundingSchoolFaqSection /> : null}
+      {type === "TEACHER" ? <FoundingTeacherFaqSection /> : null}
 
       <section id="register" className="bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
         <div

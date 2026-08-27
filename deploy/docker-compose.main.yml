@@ -7,9 +7,8 @@ services:
     init: true
     restart: unless-stopped
     env_file:
-      - .env.runtime
+      - .env
     environment:
-      HOSTNAME: ${FRONTEND_BIND_ADDRESS:-127.0.0.1}
       NODE_ENV: production
       PORT: ${FRONTEND_PORT:-3000}
     network_mode: host
