@@ -1,9 +1,9 @@
-name: supplyed-frontend-dev
+name: supplyed-frontend-main
 
 services:
   frontend:
     image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE must be set}
-    container_name: supplyed-frontend-dev
+    container_name: supplyed-frontend-main
     init: true
     restart: unless-stopped
     env_file:
