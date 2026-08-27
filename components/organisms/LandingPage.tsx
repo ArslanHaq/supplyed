@@ -61,10 +61,10 @@ export function LandingPage() {
               Staff your classroom in minutes, not days. SupplyED connects UK schools, learners, and hiring accounts with vetted, DBS-checked teachers for cover, tutoring, and learner support.
             </p>
             <div className="mb-12 flex flex-wrap gap-3">
-              <Link className={buttonClassName({ size: "xl" })} href="/signup">I&apos;m a school</Link>
+              <Link className={buttonClassName({ size: "xl" })} href="/founding-schools">I&apos;m a school</Link>
               <Link
                 className={buttonClassName({ variant: "secondary", size: "xl" })}
-                href="/signup"
+                href="/founding-teachers"
                 style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
               >
                 I&apos;m a teacher
@@ -197,7 +197,7 @@ export function LandingPage() {
             Join 2,100+ schools already using SupplyED to cover urgent staffing, long-term briefs, and learner support.
           </p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link className={buttonClassName({ size: "xl", className: "rounded-full px-8 text-white!" })} href="/signup">
+            <Link className={buttonClassName({ size: "xl", className: "rounded-full px-8 text-white!" })} href="/founding-schools">
               Get started free
             </Link>
             <Link className={buttonClassName({ variant: "secondary", size: "xl", className: "rounded-full px-8" })} href="/pricing">
