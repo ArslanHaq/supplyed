@@ -14,10 +14,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
   validate:
     name: Lint and build
@@ -43,57 +39,14 @@ jobs:
         env:
           AUTH_SECRET: ci-only-secret-not-used-at-runtime
 
-  publish:
-    name: Publish development image
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/dev'
-    needs: validate
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image: ${{ steps.image.outputs.value }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set image reference
-        id: image
-        shell: bash
-        run: |
-          echo "value=${REGISTRY}/${IMAGE_NAME,,}:dev-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-          echo "dev=${REGISTRY}/${IMAGE_NAME,,}:dev" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ steps.image.outputs.value }}
-            ${{ steps.image.outputs.dev }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy:
     name: Deploy to development server
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/dev'
-    needs: publish
+    needs: validate
     runs-on: ubuntu-latest
     environment: dev
     permissions:
       contents: read
-      packages: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -113,66 +66,43 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Prepare deployment configuration
-        shell: bash
-        env:
-          FRONTEND_IMAGE: ${{ needs.publish.outputs.image }}
-          FRONTEND_PORT: ${{ vars.DEV_FRONTEND_PORT }}
-          API_BASE_URL: ${{ secrets.DEV_API_BASE_URL }}
-          AUTH_SECRET: ${{ secrets.DEV_AUTH_SECRET }}
-          AUTH_URL: ${{ vars.DEV_AUTH_URL }}
-          NEXT_PUBLIC_SITE_URL: ${{ vars.DEV_SITE_URL }}
-          AUTH_GOOGLE_ID: ${{ secrets.DEV_AUTH_GOOGLE_ID }}
-          AUTH_GOOGLE_SECRET: ${{ secrets.DEV_AUTH_GOOGLE_SECRET }}
-          AUTH_MICROSOFT_ENTRA_ID_ID: ${{ secrets.DEV_AUTH_MICROSOFT_ENTRA_ID_ID }}
-          AUTH_MICROSOFT_ENTRA_ID_SECRET: ${{ secrets.DEV_AUTH_MICROSOFT_ENTRA_ID_SECRET }}
-          AUTH_MICROSOFT_ENTRA_ID_ISSUER: ${{ secrets.DEV_AUTH_MICROSOFT_ENTRA_ID_ISSUER }}
-        run: |
-          set -euo pipefail
-          test -n "$FRONTEND_IMAGE" || { echo "Missing published frontend image reference"; exit 1; }
-          test -n "$API_BASE_URL" || { echo "Missing DEV_API_BASE_URL secret"; exit 1; }
-          test -n "$AUTH_SECRET" || { echo "Missing DEV_AUTH_SECRET secret"; exit 1; }
-          test -n "$AUTH_URL" || { echo "Missing DEV_AUTH_URL variable"; exit 1; }
-          test -n "$NEXT_PUBLIC_SITE_URL" || { echo "Missing DEV_SITE_URL variable"; exit 1; }
-          umask 077
-          printf 'FRONTEND_IMAGE=%s\nFRONTEND_PORT=%s\nAPI_BASE_URL=%s\nAUTH_SECRET=%s\nAUTH_URL=%s\nNEXT_PUBLIC_SITE_URL=%s\nAUTH_GOOGLE_ID=%s\nAUTH_GOOGLE_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ID=%s\nAUTH_MICROSOFT_ENTRA_ID_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ISSUER=%s\n' \
-            "$FRONTEND_IMAGE" "${FRONTEND_PORT:-3000}" \
-            "$API_BASE_URL" "$AUTH_SECRET" "$AUTH_URL" "$NEXT_PUBLIC_SITE_URL" \
-            "$AUTH_GOOGLE_ID" "$AUTH_GOOGLE_SECRET" \
-            "$AUTH_MICROSOFT_ENTRA_ID_ID" "$AUTH_MICROSOFT_ENTRA_ID_SECRET" \
-            "$AUTH_MICROSOFT_ENTRA_ID_ISSUER" > deploy/.env
-
-      - name: Copy deployment files
+      - name: Upload source to server
         shell: bash
         env:
           SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
           SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
-          DEPLOY_PATH: ${{ vars.DEV_DEPLOY_PATH }}
         run: |
           set -euo pipefail
           test -n "$SERVER_HOST" || { echo "Missing DEV_SERVER_HOST secret"; exit 1; }
           test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
-          DEPLOY_PATH="${DEPLOY_PATH:-/opt/supplyed/frontend-dev}"
+          DEPLOY_PATH="/opt/supplyed/frontend-dev"
           ssh_target="${SERVER_USER}@${SERVER_HOST}"
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" "mkdir -p '$DEPLOY_PATH'"
-          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes deploy/docker-compose.dev.yml deploy/.env \
-            "$ssh_target:$DEPLOY_PATH/"
-
-      - name: Pull and restart frontend
-        shell: bash
-        env:
-          SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
-          SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
-          DEPLOY_PATH: ${{ vars.DEV_DEPLOY_PATH }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          test -n "$SERVER_HOST" || { echo "Missing DEV_SERVER_HOST secret"; exit 1; }
-          test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
-          test -n "$GHCR_TOKEN" || { echo "Missing GitHub Container Registry token"; exit 1; }
-          DEPLOY_PATH="${DEPLOY_PATH:-/opt/supplyed/frontend-dev}"
-          ssh_target="${SERVER_USER}@${SERVER_HOST}"
-          printf '%s' "$GHCR_TOKEN" | ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
-            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+          release_path="$DEPLOY_PATH/releases/$GITHUB_SHA"
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
-            "cd '$DEPLOY_PATH' && docker compose --env-file .env -f docker-compose.dev.yml pull && docker compose --env-file .env -f docker-compose.dev.yml up -d --remove-orphans"
+            "mkdir -p '$release_path'"
+          tar \
+            --exclude='.git' \
+            --exclude='.next' \
+            --exclude='node_modules' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            -czf - . | ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
+            "tar -xzf - -C '$release_path'"
+          scp -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes deploy/docker-compose.dev.yml \
+            "$ssh_target:$DEPLOY_PATH/"
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
+            "ln -sfn '$release_path' '$DEPLOY_PATH/current'"
+
+      - name: Build and restart frontend
+        shell: bash
+        env:
+          SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$SERVER_HOST" || { echo "Missing DEV_SERVER_HOST secret"; exit 1; }
+          test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
+          DEPLOY_PATH="/opt/supplyed/frontend-dev"
+          ssh_target="${SERVER_USER}@${SERVER_HOST}"
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
+            "cd '$DEPLOY_PATH' && test -L current || { echo \"Missing $DEPLOY_PATH/current release link\"; exit 1; } && test -f .env || { echo \"Missing $DEPLOY_PATH/.env\"; exit 1; } && for key in FRONTEND_PORT API_BASE_URL AUTH_SECRET AUTH_URL NEXT_PUBLIC_SITE_URL; do grep -q \"^\${key}=\" .env || { echo \"Missing \${key} in $DEPLOY_PATH/.env\"; exit 1; }; done && docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend && docker compose --env-file .env -f docker-compose.dev.yml up -d --remove-orphans"

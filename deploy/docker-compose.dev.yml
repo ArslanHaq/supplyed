@@ -2,7 +2,11 @@ name: supplyed-frontend-dev
 
 services:
   frontend:
-    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE must be set}
+    build:
+      context: ./current
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL must be set}
     container_name: supplyed-frontend-dev
     init: true
     restart: unless-stopped
