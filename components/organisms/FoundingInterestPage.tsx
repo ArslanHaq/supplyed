@@ -116,7 +116,7 @@ const teacherContent: PageContent = {
       title: "First access to roles",
     },
   ],
-  ctaCopy: "Join the founding teachers building SupplyED across Greater Manchester, Lancashire, and the North.",
+  ctaCopy: "Register interest in the founding teacher programme across Greater Manchester, Lancashire, and the North.",
   ctaTitle: "Work directly with schools from day one.",
   formBadge: "Founding teachers programme",
   formBullets: [
@@ -126,7 +126,7 @@ const teacherContent: PageContent = {
     { title: "All cover roles welcome", copy: "teachers, TAs, HLTAs, SEN specialists, and cover supervisors." },
   ],
   heroCopy:
-    "SupplyED is a compliance-first marketplace that introduces you directly to schools. No agency margin sits between you and your day rate. Join as a founding teacher before launch and lock in benefits that later joiners will not get.",
+    "SupplyED is a compliance-first marketplace that introduces you directly to schools. No agency margin sits between you and your day rate. Register interest before launch and we will contact you about founding-teacher access.",
   heroEyebrow: "Founding Teachers Programme - now open",
   heroTitle: (
     <>
@@ -135,7 +135,7 @@ const teacherContent: PageContent = {
       <em className="text-brand">Keep what you earn.</em>
     </>
   ),
-  primaryCta: "Sign up as a founding teacher",
+  primaryCta: "Register teacher interest",
   programmeSubtitle: "The founding cohort is open across school support roles, not just qualified teachers.",
   programmeTitle: "Founding benefits",
   rightCardCopy:

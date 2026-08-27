@@ -94,7 +94,7 @@ export function FoundingInterestForm({ campaign, source, type }: FoundingInteres
 
       <div className="mb-5">
         <h2 className="font-serif text-2xl leading-tight">
-          {isSchool ? "Register your school's interest" : "Sign up as a founding teacher"}
+          {isSchool ? "Register your school's interest" : "Register your teacher interest"}
         </h2>
         <p className="mt-2 text-sm leading-6 text-muted">
           {isSchool
@@ -235,7 +235,7 @@ export function FoundingInterestForm({ campaign, source, type }: FoundingInteres
       </Field>
 
       <Button className="w-full text-white!" loading={pending} loadingLabel="Sending details" size="lg" type="submit">
-        {isSchool ? "Register interest ->" : "Join the founding cohort ->"}
+        {isSchool ? "Register interest ->" : "Send teacher interest ->"}
       </Button>
 
       {state?.message ? (
