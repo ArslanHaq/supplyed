@@ -75,6 +75,11 @@ The workflow keeps uploaded source releases under:
 Do not put secrets inside the source tree. Keep runtime values only in
 `$HOME/supplyed/frontend-dev/.env`.
 
+After changing `$HOME/supplyed/frontend-dev/.env`, rerun the `Dev CI/CD`
+workflow from GitHub Actions. The workflow rebuilds and force-recreates the
+container on the server so updated env values, including `FRONTEND_PORT`, are
+applied.
+
 ## Main deployment
 
 The `main` branch compose file is ready for production, but this repository does
@@ -108,7 +113,7 @@ Run production:
 ```sh
 cd ~/supplyed/frontend-main
 docker compose --env-file .env -f docker-compose.main.yml build --pull frontend
-docker compose --env-file .env -f docker-compose.main.yml up -d --remove-orphans
+docker compose --env-file .env -f docker-compose.main.yml up -d --force-recreate --remove-orphans
 ```
 
 Run dev:
@@ -116,5 +121,5 @@ Run dev:
 ```sh
 cd ~/supplyed/frontend-dev
 docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend
-docker compose --env-file .env -f docker-compose.dev.yml up -d --remove-orphans
+docker compose --env-file .env -f docker-compose.dev.yml up -d --force-recreate --remove-orphans
 ```
