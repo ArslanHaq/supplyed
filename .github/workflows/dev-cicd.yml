@@ -1,0 +1,161 @@
+name: Dev CI/CD
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: dev-${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  validate:
+    name: Lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          AUTH_SECRET: ci-only-secret-not-used-at-runtime
+
+  publish:
+    name: Publish development image
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/dev'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.value }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image reference
+        id: image
+        shell: bash
+        run: |
+          echo "value=${REGISTRY}/${IMAGE_NAME,,}:dev-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "dev=${REGISTRY}/${IMAGE_NAME,,}:dev" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.value }}
+            ${{ steps.image.outputs.dev }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to development server
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/dev'
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEV_SERVER_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Prepare deployment configuration
+        shell: bash
+        env:
+          FRONTEND_IMAGE: ${{ needs.publish.outputs.image }}
+          FRONTEND_PORT: ${{ vars.DEV_FRONTEND_PORT }}
+          API_BASE_URL: ${{ secrets.DEV_API_BASE_URL }}
+          AUTH_SECRET: ${{ secrets.DEV_AUTH_SECRET }}
+          AUTH_URL: ${{ vars.DEV_AUTH_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.DEV_SITE_URL }}
+          AUTH_GOOGLE_ID: ${{ secrets.DEV_AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.DEV_AUTH_GOOGLE_SECRET }}
+          AUTH_MICROSOFT_ENTRA_ID_ID: ${{ secrets.DEV_AUTH_MICROSOFT_ENTRA_ID_ID }}
+          AUTH_MICROSOFT_ENTRA_ID_SECRET: ${{ secrets.DEV_AUTH_MICROSOFT_ENTRA_ID_SECRET }}
+          AUTH_MICROSOFT_ENTRA_ID_ISSUER: ${{ secrets.DEV_AUTH_MICROSOFT_ENTRA_ID_ISSUER }}
+        run: |
+          umask 077
+          printf 'FRONTEND_IMAGE=%s\nFRONTEND_PORT=%s\n' \
+            "$FRONTEND_IMAGE" "${FRONTEND_PORT:-3000}" > deploy/.env
+          printf 'API_BASE_URL=%s\nAUTH_SECRET=%s\nAUTH_URL=%s\nNEXT_PUBLIC_SITE_URL=%s\nAUTH_GOOGLE_ID=%s\nAUTH_GOOGLE_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ID=%s\nAUTH_MICROSOFT_ENTRA_ID_SECRET=%s\nAUTH_MICROSOFT_ENTRA_ID_ISSUER=%s\n' \
+            "$API_BASE_URL" "$AUTH_SECRET" "$AUTH_URL" "$NEXT_PUBLIC_SITE_URL" \
+            "$AUTH_GOOGLE_ID" "$AUTH_GOOGLE_SECRET" \
+            "$AUTH_MICROSOFT_ENTRA_ID_ID" "$AUTH_MICROSOFT_ENTRA_ID_SECRET" \
+            "$AUTH_MICROSOFT_ENTRA_ID_ISSUER" > deploy/.env.runtime
+
+      - name: Copy deployment files
+        shell: bash
+        env:
+          SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEPLOY_PATH: ${{ vars.DEV_DEPLOY_PATH }}
+        run: |
+          DEPLOY_PATH="${DEPLOY_PATH:-/opt/supplyed/frontend-dev}"
+          ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p '$DEPLOY_PATH'"
+          scp deploy/docker-compose.dev.yml deploy/.env deploy/.env.runtime \
+            "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
+
+      - name: Pull and restart frontend
+        shell: bash
+        env:
+          SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEPLOY_PATH: ${{ vars.DEV_DEPLOY_PATH }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DEPLOY_PATH="${DEPLOY_PATH:-/opt/supplyed/frontend-dev}"
+          printf '%s' "$GHCR_TOKEN" | ssh "$SERVER_USER@$SERVER_HOST" \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+          ssh "$SERVER_USER@$SERVER_HOST" \
+            "cd '$DEPLOY_PATH' && docker compose --env-file .env -f docker-compose.dev.yml pull && docker compose --env-file .env -f docker-compose.dev.yml up -d --remove-orphans"

@@ -6,6 +6,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { path: "", priority: 1 },
+    { path: "/founding-schools", priority: 0.9 },
+    { path: "/founding-teachers", priority: 0.9 },
     { path: "/how-it-works", priority: 0.8 },
     { path: "/pricing", priority: 0.8 },
   ].map(({ path, priority }) => ({
