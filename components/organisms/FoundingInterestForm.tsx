@@ -94,12 +94,12 @@ export function FoundingInterestForm({ campaign, source, type }: FoundingInteres
 
       <div className="mb-5">
         <h2 className="font-serif text-2xl leading-tight">
-          {isSchool ? "Register your school's interest" : "Register your teacher interest"}
+          {isSchool ? "Reserve Your School's Place" : "Apply for Founding Status"}
         </h2>
         <p className="mt-2 text-sm leading-6 text-muted">
           {isSchool
-            ? "Two minutes. No commitment. We'll be in touch before launch."
-            : "Tell us where you work best, then we'll contact you about verification and launch access."}
+            ? "Capped at 20 founding schools. Early access to compliance-first staffing ahead of the September 2026 STeER mandate."
+            : "First cohort only — £5/day uplift for 36 months, compliance checks funded."}
         </p>
       </div>
 
