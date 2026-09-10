@@ -19,16 +19,39 @@ export type OnboardingSubmitResult = {
   ticket?: string;
 };
 
-export type OnboardingDocumentKind = "addressProof" | "dbs" | "id" | "qualification";
+/** A profile document requirement from GET /document-requirements/profile, flattened with its document type. */
+export type OnboardingDocumentRequirement = {
+  allowedMimes: string[];
+  code: string;
+  context: string;
+  description: string | null;
+  id: string;
+  isRequired: boolean;
+  maxSizeBytes: number;
+  name: string;
+  requiresReview: boolean;
+};
 
+/** The current file version of one of the user's documents, keyed to the requirement it satisfies. */
 export type OnboardingDocumentSnapshot = {
-  dbsNumber?: string | null;
+  code?: string | null;
   id: string;
   name: string;
+  requirementId: string;
   size: number;
   status?: string | null;
   type: string;
   uploadedAt?: string | null;
+  versionId?: string | null;
+  versionNumber?: number | null;
+};
+
+/** Documents keyed by requirement id. */
+export type OnboardingDocumentMap = Record<string, OnboardingDocumentSnapshot>;
+
+export type OnboardingDocumentState = {
+  documentRequirements: OnboardingDocumentRequirement[];
+  documents: OnboardingDocumentMap;
 };
 
 export type OnboardingUserSnapshot = {
@@ -88,9 +111,8 @@ export type OnboardingRecruiterSnapshot = {
   status: ApplicationStatus;
 };
 
-export type OnboardingProfileSnapshot = {
+export type OnboardingProfileSnapshot = OnboardingDocumentState & {
   applicationStatus: ApplicationStatus;
-  documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>;
   institution?: OnboardingInstitutionSnapshot;
   instructor?: OnboardingInstructorSnapshot;
   recruiter?: OnboardingRecruiterSnapshot;
@@ -105,7 +127,7 @@ export type OnboardingProgressResult = OnboardingSubmitResult & {
 
 export type OnboardingDocumentUploadResult = {
   document: OnboardingDocumentSnapshot;
-  documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>;
+  documents: OnboardingDocumentMap;
 };
 
 export type OnboardingDocumentDownloadResult = {

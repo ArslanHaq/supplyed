@@ -17,6 +17,7 @@ export const queryKeys = {
   onboarding: {
     all: ["onboarding"] as const,
     current: () => [...queryKeys.onboarding.all, "current"] as const,
+    documentRequirements: (role: string) => [...queryKeys.onboarding.all, "document-requirements", role] as const,
   },
   teachers: {
     all: ["teachers"] as const,

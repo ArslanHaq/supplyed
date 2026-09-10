@@ -1,8 +1,5 @@
 import type { SignupForm, SignupRole } from "./types";
 
-export const allowedDocumentContentTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
-export const maxDocumentSizeBytes = 10 * 1024 * 1024;
-
 export const initialForm: SignupForm = {
   bio: "",
   confirmPassword: "",
@@ -12,12 +9,10 @@ export const initialForm: SignupForm = {
   coverTypes: [],
   currency: "GBP",
   dailyRate: "",
-  dbsCertificateFile: null,
-  dbsNumber: "",
+  documents: {},
   email: "",
   fullName: "",
   hourlyRate: "",
-  identityPhoto: null,
   institutionAddress: "",
   institutionCity: "",
   institutionCountryCode: "GB",
@@ -30,9 +25,7 @@ export const initialForm: SignupForm = {
   password: "",
   phone: "",
   postcode: "",
-  qualificationFile: null,
   recruiterProfileId: "",
-  rightToWorkFile: null,
   safeguardingConfirmed: false,
   schoolName: "",
   skills: [],
@@ -63,7 +56,7 @@ export function stepContent(role: SignupRole) {
   if (role === "teacher") {
     return [
       { label: "Teacher profile", description: "Contact details, subjects, rates, travel, and teaching style" },
-      { label: "Required documents", description: "Enhanced DBS, identity, qualification, and proof-of-address evidence" },
+      { label: "Required documents", description: "Upload the verification documents SupplyED requires for instructors" },
       { label: "Review", description: "Confirm your teacher profile" },
     ];
   }
