@@ -16,9 +16,12 @@ type ApiRequestOptions = {
   auth?: boolean;
   cache?: RequestCache;
   headers?: HeadersInit;
+  timeoutMs?: number;
   next?: NextFetchOptions;
   query?: ApiQuery;
 };
+
+const DEFAULT_API_TIMEOUT_MS = 15_000;
 
 export class ApiError extends Error {
   constructor(
@@ -177,6 +180,7 @@ async function request<Data>(
       },
       next: options.next,
       redirect: "manual",
+      signal: init.signal ?? AbortSignal.timeout(options.timeoutMs ?? DEFAULT_API_TIMEOUT_MS),
     } as RequestInit & { next?: NextFetchOptions };
   }
 

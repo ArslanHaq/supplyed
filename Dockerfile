@@ -5,7 +5,9 @@ RUN npm ci
 
 FROM node:24-alpine AS builder
 WORKDIR /app
+ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN AUTH_SECRET=container-build-only-secret npm run build
@@ -16,7 +18,6 @@ WORKDIR /app
 ENV HOSTNAME=0.0.0.0
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
 
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs

@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SupplyED | Founding Schools Programme</title>
+<meta name="description" content="Join the SupplyED Founding Schools Programme. Capped at 20 schools across Greater Manchester and Lancashire. Register your school's interest in two minutes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* SupplyED brand palette (wireframes v2.1, light theme) */
+  --black:      #FFFFFF;
+  --black-2:    #FAFBFC;
+  --black-3:    #F4F6F8;
+  --black-4:    #EEF1F4;
+  --black-5:    #E4E8ED;
+  --black-6:    #D8DDE3;
+  --border:     #E1E6EB;
+  --border-lt:  #EEF1F4;
+
+  --cyan:       #008CC4;
+  --cyan-light: #00AEEF;
+  --cyan-dim:   #006A95;
+  --cyan-glow:  rgba(0,140,196,.10);
+  --cyan-bg:    rgba(0,140,196,.06);
+  --cyan-border:rgba(0,140,196,.18);
+
+  --white:      #111111;
+  --gray-100:   #2A3544;
+  --gray-200:   #4A5568;
+  --gray-300:   #5A6A79;
+  --gray-400:   #7A8A99;
+  --gray-500:   #99A8B4;
+  --gray-600:   #BCC5CE;
+
+  --red:        #E74C3C;
+  --amber:      #F5A623;
+  --green:      #2ECC71;
+  --purple:     #7C3AED;
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.06);
+  --shadow:     0 2px 8px rgba(0,0,0,.08);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,.1);
+  --shadow-cyan:0 0 16px rgba(0,140,196,.10);
+
+  --radius:     8px;
+  --radius-sm:  6px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation: none !important; transition: none !important; }
+}
+
+body {
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  background: #FFFFFF;
+  color: var(--white);
+  min-height: 100vh;
+}
+
+/* ═══ NAV ═══ */
+.topnav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 72px;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800; font-size: 18px;
+  color: var(--white); letter-spacing: -.3px;
+  flex-shrink: 0; text-decoration: none;
+  display: inline-flex; align-items: center;
+}
+.logo span { color: var(--cyan); }
+.logo-img { height: 22px; width: auto; display: block; }
+.nav-badge {
+  display: none;
+  font-size: 11px; font-weight: 600; color: var(--gray-400);
+}
+@media (min-width: 720px) { .nav-badge { display: block; } }
+
+/* ═══ BUTTONS ═══ */
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 20px;
+  background: #00AEEF; color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+  text-decoration: none;
+}
+.btn-primary:hover { background: var(--cyan); }
+.btn-primary.large { padding: 12px 26px; font-size: 14px; border-radius: var(--radius); box-shadow: var(--shadow-cyan); }
+.btn-primary:focus-visible, .btn-outline-white:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--cyan); outline-offset: 2px;
+}
+.btn-outline-white {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 12px 26px;
+  background: transparent; color: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  text-decoration: none; transition: all .15s;
+}
+.btn-outline-white:hover { border-color: var(--gray-400); background: var(--black-3); }
+.btn-ghost {
+  padding: 8px 16px;
+  background: var(--black-5); color: var(--gray-300);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer;
+}
+.btn-ghost:hover { background: var(--black-6); color: var(--white); }
+
+/* ═══ CARDS ═══ */
+.card {
+  background: var(--black);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ═══ FORMS ═══ */
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 11px; font-weight: 600;
+  color: var(--gray-400);
+  margin-bottom: 5px;
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--black);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px; color: var(--white);
+  outline: none;
+  transition: border-color .15s;
+}
+.form-input::placeholder, .form-textarea::placeholder { color: var(--gray-500); }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--cyan); }
+.form-select { color: var(--gray-200); cursor: pointer; }
+.form-select option { background: var(--black); }
+.form-textarea { resize: vertical; min-height: 80px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; gap: 0; } }
+.w-full { width: 100%; }
+
+/* ═══ HERO ═══ */
+.hero {
+  background: linear-gradient(135deg, var(--black) 0%, var(--black-3) 60%, var(--black-4) 100%);
+  padding: 72px 72px 64px;
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; top: -120px; right: -80px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,140,196,.08) 0%, transparent 65%);
+  border-radius: 50%;
+}
+.hero::after {
+  content: '';
+  position: absolute; bottom: -60px; left: 200px;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(0,140,196,.04) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.badge-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--cyan-bg);
+  border: 1px solid var(--cyan-border);
+  border-radius: 20px;
+  padding: 4px 14px; margin-bottom: 20px;
+}
+.badge-pill span { color: var(--cyan-light); font-size: 11px; font-weight: 700; letter-spacing: .3px; }
+h1 {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(34px, 5.5vw, 52px);
+  font-weight: 800; color: var(--white);
+  line-height: 1.08; margin-bottom: 18px;
+}
+h1 .accent { color: var(--cyan); }
+.hero-sub {
+  font-size: 17px; color: var(--gray-300);
+  line-height: 1.65; margin-bottom: 34px; max-width: 580px;
+}
+
+/* Trust strip */
+.trust-row {
+  margin-top: 52px;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 0; position: relative; z-index: 1; max-width: 720px;
+}
+.trust-stat { text-align: left; padding-right: 20px; border-right: 1px solid var(--border); padding-left: 20px; }
+.trust-stat:first-child { padding-left: 0; }
+.trust-stat:last-child { border-right: none; }
+.trust-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 800;
+  color: var(--white); line-height: 1.3;
+}
+.trust-label { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+@media (max-width: 760px) {
+  .trust-row { grid-template-columns: 1fr 1fr; gap: 20px 0; }
+  .trust-stat:nth-child(2) { border-right: none; }
+  .trust-stat:nth-child(3) { padding-left: 0; }
+}
+
+/* ═══ COHORT LEDGER (signature) ═══ */
+.ledger-band {
+  padding: 48px 72px;
+  background: var(--black-2);
+  border-top: 1px solid var(--border);
+}
+.ledger-inner { max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.2fr; gap: 44px; align-items: center; }
+.ledger-grid {
+  display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px;
+}
+.slot {
+  aspect-ratio: 1;
+  border: 1.5px dashed var(--border-lt);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700;
+  color: var(--gray-500);
+  background: var(--black-2);
+}
+.slot.reserved {
+  border-style: solid;
+  border-color: var(--cyan-border);
+  background: var(--cyan-bg);
+  color: var(--cyan-light);
+  box-shadow: var(--shadow-cyan);
+}
+@media (max-width: 860px) {
+  .ledger-inner { grid-template-columns: 1fr; }
+  .ledger-grid { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* ═══ SECTIONS ═══ */
+.section { padding: 56px 72px; border-top: 1px solid var(--border); }
+.section.bg2 { background: var(--black-2); }
+.section.bg3 { background: var(--black-3); }
+.section-head { text-align: center; margin-bottom: 40px; }
+h2 {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(24px, 3.6vw, 30px);
+  font-weight: 800; color: var(--white);
+}
+.section-sub { color: var(--gray-400); margin-top: 6px; font-size: 14px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; max-width: 1080px; margin: 0 auto; }
+@media (max-width: 860px) { .grid-3 { grid-template-columns: 1fr; } }
+
+.benefit-card { text-align: center; padding: 28px 22px; }
+.benefit-icon { font-size: 36px; margin-bottom: 12px; }
+.benefit-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px; font-weight: 700;
+  margin-bottom: 8px; color: var(--white);
+}
+.benefit-text { font-size: 12px; color: var(--gray-400); line-height: 1.6; }
+
+/* Tiers */
+.tiers { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; margin: 0 auto; }
+@media (max-width: 760px) { .tiers { grid-template-columns: 1fr; } }
+.tier { padding: 28px 26px; position: relative; }
+.tier.enhanced { border-color: var(--cyan-border); box-shadow: var(--shadow-cyan), var(--shadow); }
+.tier-flag {
+  position: absolute; top: -11px; left: 24px;
+  background: var(--cyan); color: #fff;
+  font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 800;
+  letter-spacing: .6px; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 20px;
+}
+.tier-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px; font-weight: 800; color: var(--white);
+  margin-bottom: 4px;
+}
+.tier-tag { font-size: 12px; color: var(--gray-400); margin-bottom: 18px; }
+.tier ul { list-style: none; display: flex; flex-direction: column; gap: 11px; }
+.tier li { display: flex; gap: 10px; font-size: 13px; color: var(--gray-300); line-height: 1.5; }
+.tier li .tick { color: var(--cyan); flex-shrink: 0; }
+.tier li strong { color: var(--white); }
+
+/* STeER strip */
+.steer-strip {
+  max-width: 900px; margin: 40px auto 0;
+  padding: 18px 22px;
+  background: rgba(245,166,35,.08);
+  border: 1px solid rgba(245,166,35,.35);
+  border-radius: var(--radius);
+  display: flex; gap: 14px; align-items: flex-start;
+}
+.steer-strip .icon { font-size: 20px; flex-shrink: 0; }
+.steer-strip p { font-size: 12.5px; color: var(--gray-300); line-height: 1.65; }
+.steer-strip strong { color: var(--white); }
+
+/* Steps */
+.steps-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; max-width: 900px; margin: 0 auto; }
+@media (max-width: 700px) { .steps-grid { grid-template-columns: 1fr; } }
+.step-how { text-align: center; padding: 24px 16px; }
+.step-num {
+  width: 42px; height: 42px; background: var(--cyan);
+  color: #fff; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', sans-serif; font-size: 17px; font-weight: 800;
+  margin: 0 auto 12px;
+  box-shadow: var(--shadow-cyan);
+}
+.step-title { font-weight: 600; font-size: 14px; margin-bottom: 5px; color: var(--white); }
+.step-desc { font-size: 12px; color: var(--gray-400); line-height: 1.6; }
+
+/* FAQ */
+.faq-list { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+details.card { padding: 0; overflow: hidden; }
+details.card summary {
+  cursor: pointer; list-style: none;
+  padding: 16px 20px;
+  font-size: 14px; font-weight: 600; color: var(--white);
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+}
+details.card summary::-webkit-details-marker { display: none; }
+details.card summary::after { content: '+'; color: var(--cyan); font-size: 18px; font-weight: 400; }
+details[open].card summary::after { content: '−'; }
+details.card .faq-body { padding: 0 20px 18px; font-size: 13px; color: var(--gray-300); line-height: 1.7; }
+
+/* ═══ FORM SECTION ═══ */
+.loi-section { padding: 64px 72px; background: var(--black-2); border-top: 1px solid var(--border); }
+.loi-inner { display: grid; grid-template-columns: 1.05fr 1fr; gap: 44px; align-items: start; max-width: 1080px; margin: 0 auto; }
+@media (max-width: 900px) { .loi-inner { grid-template-columns: 1fr; } }
+.loi-points { display: flex; flex-direction: column; gap: 11px; }
+.loi-point { display: flex; gap: 10px; font-size: 13px; color: var(--gray-300); line-height: 1.55; }
+.loi-point .tick { color: var(--cyan); flex-shrink: 0; }
+.loi-point strong { color: var(--white); }
+.form-error {
+  display: none;
+  font-size: 13px; font-weight: 600; color: var(--red);
+  background: rgba(231,76,60,.06);
+  border: 1px solid rgba(231,76,60,.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px; margin-bottom: 16px;
+}
+.form-error.visible { display: block; }
+.form-success { text-align: center; padding: 36px 12px; }
+.form-success .big {
+  font-family: 'Inter', sans-serif;
+  font-size: 22px; font-weight: 800; color: var(--cyan-light);
+  margin-bottom: 8px;
+}
+.form-success p { color: var(--gray-300); font-size: 14px; line-height: 1.6; }
+.field-hint { font-size: 10.5px; color: var(--gray-500); margin-top: 4px; }
+
+/* CTA band */
+.cta-band { background: linear-gradient(135deg, var(--cyan-dim) 0%, var(--cyan) 100%); padding: 56px 72px; text-align: center; }
+.cta-band h2 { font-size: clamp(26px, 4vw, 34px); margin-bottom: 10px; color: #fff; }
+.cta-band p { color: rgba(255,255,255,.85); font-size: 14px; margin-bottom: 28px; }
+.cta-band .btn-primary.large { background: #fff; color: var(--cyan-dim); box-shadow: var(--shadow); }
+.cta-band .btn-primary.large:hover { background: var(--black-3); }
+
+/* ═══ FOOTER ═══ */
+footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px 72px 28px; }
+.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; margin-bottom: 30px; }
+@media (max-width: 860px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 540px) { .footer-grid { grid-template-columns: 1fr; } }
+.footer-about { font-size: 12px; color: var(--gray-400); line-height: 1.7; max-width: 260px; }
+.footer-reg { font-size: 11px; color: var(--gray-500); margin-top: 14px; line-height: 1.8; }
+.footer-col-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  color: var(--gray-500); margin-bottom: 12px;
+}
+.footer-link { display: block; font-size: 12px; color: var(--gray-300); margin-bottom: 9px; text-decoration: none; }
+.footer-link:hover { color: var(--white); }
+.footer-bottom {
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px;
+  font-size: 11px; color: var(--gray-500);
+}
+
+/* Cookie */
+#cookieBar {
+  position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+  width: min(920px, calc(100vw - 32px));
+  background: var(--black-4);
+  border: 1px solid var(--border-lt);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  box-shadow: var(--shadow-lg); z-index: 200;
+}
+#cookieBar .msg { flex: 1; font-size: 12px; color: var(--gray-300); min-width: 200px; }
+
+/* Responsive paddings */
+@media (max-width: 760px) {
+  .topnav, .hero, .section, .loi-section, .cta-band, footer, .ledger-band { padding-left: 24px; padding-right: 24px; }
+  .hero { padding-top: 52px; padding-bottom: 48px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topnav">
+  <a class="logo" href="#top"><img src="logo.png" alt="SupplyED" class="logo-img" onerror="this.remove();this.parentNode.innerHTML='Supply<span>ED</span>'"></a>
+  <div class="nav-badge">Founding Schools Programme · Greater Manchester &amp; Lancashire</div>
+  <a href="#register" class="btn-primary">Register interest</a>
+</nav>
+
+<!-- HERO -->
+<header class="hero" id="top">
+  <div style="position:relative;z-index:1;max-width:620px">
+    <div class="badge-pill"><span>🏫 FOUNDING SCHOOLS PROGRAMME · CAPPED AT 20 SCHOOLS</span></div>
+    <h1>Twenty schools will shape<br>how supply cover works.<br><span class="accent">Yours can be one.</span></h1>
+    <p class="hero-sub">
+      SupplyED is a compliance-first marketplace connecting UK schools directly with verified supply teachers. Before launch, we are inviting a founding cohort of 20 schools across Greater Manchester and Lancashire to lock in founding terms and shape the platform with us.
+    </p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="#register" class="btn-primary large">Register your school's interest</a>
+      <a href="#programme" class="btn-outline-white">See what founding schools get</a>
+    </div>
+  </div>
+  <div class="trust-row">
+    <div class="trust-stat">
+      <div style="font-size:22px;margin-bottom:6px">🛡</div>
+      <div class="trust-title">Enhanced DBS<br>on every profile</div>
+      <div class="trust-label">Verified before activation</div>
+    </div>
+    <div class="trust-stat">
+      <div style="font-size:22px;margin-bottom:6px">🎓</div>
+      <div class="trust-title">Built with<br>education leaders</div>
+      <div class="trust-label">MAT trustees &amp; deputy heads advising</div>
+    </div>
+    <div class="trust-stat">
+      <div style="font-size:22px;margin-bottom:6px">🔒</div>
+      <div class="trust-title">One transparent<br>processing fee</div>
+      <div class="trust-label">No agency mark-ups, no finder's fees</div>
+    </div>
+    <div class="trust-stat">
+      <div style="font-size:22px;margin-bottom:6px">📍</div>
+      <div class="trust-title">Launching<br>2026</div>
+      <div class="trust-label">Greater Manchester &amp; Lancashire first</div>
+    </div>
+  </div>
+</header>
+
+<!-- COHORT LEDGER -->
+<section class="ledger-band" aria-label="Founding cohort places">
+  <div class="ledger-inner">
+    <div>
+      <h2 style="margin-bottom:12px">A cohort of 20.<br>Not a waiting list.</h2>
+      <p style="font-size:14px;color:var(--gray-300);line-height:1.7">
+        The founding cohort is deliberately small. Every founding school gets a direct line to the founder, monthly input sessions that shape the roadmap, and founding terms locked in writing. When the 20 places are taken, the programme closes.
+      </p>
+    </div>
+    <div>
+      <div class="ledger-grid" id="ledgerGrid" aria-hidden="true"></div>
+      <div style="font-size:11px;color:var(--gray-500);margin-top:10px;text-align:center">20 founding places · registrations reviewed in order received</div>
+    </div>
+  </div>
+</section>
+
+<!-- PROGRAMME BENEFITS -->
+<section class="section bg3" id="programme">
+  <div class="section-head">
+    <h2>What founding schools get</h2>
+    <p class="section-sub">Terms you keep long after launch</p>
+  </div>
+  <div class="grid-3">
+    <div class="card benefit-card">
+      <div class="benefit-icon">📜</div>
+      <div class="benefit-title">Founding terms, locked for 2 years</div>
+      <div class="benefit-text">Your founding processing fee is fixed in writing for two years. It never rises while you stay with us, whatever we charge schools who join later.</div>
+    </div>
+    <div class="card benefit-card">
+      <div class="benefit-icon">🗣</div>
+      <div class="benefit-title">A direct line to the founder</div>
+      <div class="benefit-text">Monthly input sessions where your cover coordinators and SLT tell us what to build next. Founding schools set the roadmap, not focus groups.</div>
+    </div>
+    <div class="card benefit-card">
+      <div class="benefit-icon">⚡</div>
+      <div class="benefit-title">Priority access at launch</div>
+      <div class="benefit-text">Your roles reach verified teachers first. Founding schools are onboarded, trained and live before general availability opens.</div>
+    </div>
+  </div>
+</section>
+
+<!-- TIERS -->
+<section class="section bg2">
+  <div class="section-head">
+    <h2>Two ways to join</h2>
+    <p class="section-sub">Both tiers are founding places within the cap of 20</p>
+  </div>
+  <div class="tiers">
+    <div class="card tier">
+      <div class="tier-name">Founding School</div>
+      <div class="tier-tag">For individual schools</div>
+      <ul>
+        <li><span class="tick">✓</span><span><strong>Founding processing fee</strong> locked for 2 years from launch</span></li>
+        <li><span class="tick">✓</span><span><strong>Priority onboarding</strong> and dedicated launch support</span></li>
+        <li><span class="tick">✓</span><span><strong>Monthly input sessions</strong> shaping the product roadmap</span></li>
+        <li><span class="tick">✓</span><span><strong>Founding school recognition</strong> on the platform at launch</span></li>
+      </ul>
+    </div>
+    <div class="card tier enhanced">
+      <div class="tier-flag">Enhanced</div>
+      <div class="tier-name">Founding School Enhanced</div>
+      <div class="tier-tag">For schools and trusts wanting deeper involvement</div>
+      <ul>
+        <li><span class="tick">✓</span><span><strong>Everything in Founding School</strong>, plus:</span></li>
+        <li><span class="tick">✓</span><span><strong>Early access to new features</strong> before the wider cohort</span></li>
+        <li><span class="tick">✓</span><span><strong>Named advisory seat</strong> in quarterly roadmap reviews</span></li>
+        <li><span class="tick">✓</span><span><strong>Multi-school and trust-level onboarding</strong> where applicable</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="steer-strip">
+    <div class="icon">📋</div>
+    <p><strong>The rules on agency supply are changing.</strong> The Department for Education's new STeER framework (RM6376) caps agency fees by role and becomes mandatory for academy trusts from September 2026. SupplyED is built for that world: direct school-to-teacher introductions with one transparent processing fee, not agency mark-ups.</p>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section bg3">
+  <div class="section-head">
+    <h2>How joining works</h2>
+    <p class="section-sub">Registering interest takes two minutes and carries no commitment</p>
+  </div>
+  <div class="steps-grid">
+    <div class="step-how">
+      <div class="step-num">1</div>
+      <div class="step-title">Register your interest</div>
+      <div class="step-desc">Tell us about your school below. We review registrations in the order they arrive.</div>
+    </div>
+    <div class="step-how">
+      <div class="step-num">2</div>
+      <div class="step-title">Intro call with the founder</div>
+      <div class="step-desc">A short call to walk through the programme, founding terms and how the platform fits your cover needs.</div>
+    </div>
+    <div class="step-how">
+      <div class="step-num">3</div>
+      <div class="step-title">Confirm your founding place</div>
+      <div class="step-desc">If it's a fit, we confirm your place in writing under the Founding Schools Agreement. You're onboarded before launch.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section bg2">
+  <div class="section-head">
+    <h2>Common questions</h2>
+  </div>
+  <div class="faq-list">
+    <details class="card">
+      <summary>Does registering interest commit my school to anything?</summary>
+      <div class="faq-body">No. Registering tells us you would like a conversation. Nothing is binding until you choose to sign the Founding Schools Agreement after the intro call, and there is no obligation to do so.</div>
+    </details>
+    <details class="card">
+      <summary>How is SupplyED different from a supply agency?</summary>
+      <div class="faq-body">SupplyED is a marketplace, not an agency. We introduce your school directly to verified supply teachers, and each booking is a direct engagement between the school and the teacher. You pay one transparent processing fee for the platform. There are no agency mark-ups on day rates and no finder's fees to release a teacher.</div>
+    </details>
+    <details class="card">
+      <summary>How are teachers vetted?</summary>
+      <div class="faq-body">Every teacher completes the full safer-recruitment check set before their profile is activated, including an Enhanced DBS check reviewed by our compliance team. Verification status is visible on every profile, so your single central record evidence is straightforward.</div>
+    </details>
+    <details class="card">
+      <summary>Which areas are covered?</summary>
+      <div class="faq-body">The founding cohort is drawn from Greater Manchester and Lancashire, where we launch first. Schools elsewhere are welcome to register and we will contact you as coverage expands.</div>
+    </details>
+    <details class="card">
+      <summary>What happens after the 20 places are taken?</summary>
+      <div class="faq-body">The Founding Schools Programme closes. Schools joining afterwards do so on standard terms, without the founding fee lock or advisory involvement.</div>
+    </details>
+  </div>
+</section>
+
+<!-- LOI FORM -->
+<section class="loi-section" id="register">
+  <div class="loi-inner">
+    <div>
+      <div class="badge-pill"><span>FOUNDING SCHOOLS PROGRAMME · GREATER MANCHESTER &amp; LANCASHIRE</span></div>
+      <h2 style="margin-bottom:14px;line-height:1.2">Shape the platform.<br>Lock in founding terms.</h2>
+      <div class="loi-points">
+        <div class="loi-point"><span class="tick">✓</span><span><strong>Founding terms, locked for 2 years.</strong> Your launch rate never rises while you stay with us.</span></div>
+        <div class="loi-point"><span class="tick">✓</span><span><strong>Direct line to the founder.</strong> Monthly input sessions that shape the roadmap.</span></div>
+        <div class="loi-point"><span class="tick">✓</span><span><strong>Priority access at launch.</strong> Your roles reach verified teachers first.</span></div>
+        <div class="loi-point"><span class="tick">✓</span><span><strong>No commitment.</strong> Registering interest starts a conversation, nothing more.</span></div>
+      </div>
+    </div>
+    <div class="card" style="padding:26px">
+      <form id="loiForm" novalidate>
+        <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;color:var(--white);margin-bottom:4px">Register your school's interest</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-bottom:16px">Two minutes. No commitment. We'll be in touch before launch.</div>
+
+        <p id="errorMsg" class="form-error" role="alert"></p>
+
+        <div class="form-group">
+          <label class="form-label" for="loi-school">School / Trust name</label>
+          <input id="loi-school" name="school" class="form-input" placeholder="e.g. Greenfield Primary School" autocomplete="organization" required>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="loi-name">Your name</label>
+            <input id="loi-name" name="name" class="form-input" placeholder="Jane Smith" autocomplete="name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loi-role">Role</label>
+            <select id="loi-role" name="role" class="form-select" required>
+              <option value="" disabled selected>Select your role</option>
+              <option>Head Teacher</option>
+              <option>Deputy / Assistant Head</option>
+              <option>Cover Coordinator</option>
+              <option>School Business Manager</option>
+              <option>MAT / Trust leadership</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="loi-email">Work email</label>
+            <input id="loi-email" name="email" type="email" class="form-input" placeholder="name@school.org.uk" autocomplete="email" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loi-phone">Phone <span style="text-transform:none;font-weight:400">(optional)</span></label>
+            <input id="loi-phone" name="phone" type="tel" inputmode="numeric" class="form-input" placeholder="07700 000000" autocomplete="tel">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="loi-postcode">School postcode</label>
+            <input id="loi-postcode" name="postcode" class="form-input" placeholder="e.g. BB1 1AA" autocomplete="postal-code" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loi-type">School type</label>
+            <select id="loi-type" name="schoolType" class="form-select" required>
+              <option value="" disabled selected>Select type</option>
+              <option>Primary</option>
+              <option>Secondary</option>
+              <option>Special / Alternative provision</option>
+              <option>Multi-academy trust</option>
+              <option>Independent</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loi-tier">Tier of interest</label>
+          <select id="loi-tier" name="tier" class="form-select">
+            <option selected>Not sure yet, tell me more</option>
+            <option>Founding School</option>
+            <option>Founding School Enhanced</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loi-message">Anything you'd like us to know <span style="text-transform:none;font-weight:400">(optional)</span></label>
+          <textarea id="loi-message" name="message" class="form-textarea" placeholder="e.g. roughly how many supply days you cover per term, or your biggest frustration with agencies"></textarea>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn-primary w-full" style="padding:12px;font-size:14px">Register interest →</button>
+        <div style="font-size:10px;color:var(--gray-500);margin-top:9px;text-align:center">🔒 We only use this to contact you about SupplyED. See our <a href="#" style="color:var(--cyan)">Privacy Policy</a>.</div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<section class="cta-band">
+  <h2>Ready to transform your staffing?</h2>
+  <p>Be one of the 20 founding schools shaping SupplyED</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="#register" class="btn-primary large">Become a Founding School</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="logo" style="margin-bottom:10px"><img src="logo.png" alt="SupplyED" class="logo-img" onerror="this.remove();this.parentNode.innerHTML='Supply<span>ED</span>'"></div>
+      <div class="footer-about">The compliance-first marketplace connecting UK schools with verified supply teachers.</div>
+      <div class="footer-reg">SupplyED Ltd, registered in England &amp; Wales<br>Company No. 00000000 · ICO Reg. ZA000000<br>Blackburn, Lancashire, United Kingdom</div>
+    </div>
+    <div>
+      <div class="footer-col-title">Platform</div>
+      <a class="footer-link" href="#programme">For Schools</a>
+      <a class="footer-link" href="#">For Teachers</a>
+      <a class="footer-link" href="#">How It Works</a>
+      <a class="footer-link" href="#">How We Verify Teachers</a>
+    </div>
+    <div>
+      <div class="footer-col-title">Company</div>
+      <a class="footer-link" href="#">About &amp; Founder Story</a>
+      <a class="footer-link" href="#">Advisory Board</a>
+      <a class="footer-link" href="#">Contact Us</a>
+    </div>
+    <div>
+      <div class="footer-col-title">Legal &amp; Trust</div>
+      <a class="footer-link" href="#">Privacy Policy</a>
+      <a class="footer-link" href="#">Terms of Service</a>
+      <a class="footer-link" href="#">Cookie Policy</a>
+      <a class="footer-link" href="#">Safeguarding Statement</a>
+      <a class="footer-link" href="#">Accessibility Statement</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2026 SupplyED Ltd. All rights reserved.</div>
+    <div>🛡 Every teacher completes the full safer-recruitment check set before activation.</div>
+  </div>
+</footer>
+
+<!-- COOKIE BANNER -->
+<div id="cookieBar" role="dialog" aria-label="Cookie consent">
+  <span style="font-size:18px">🍪</span>
+  <div class="msg">We use essential cookies to run SupplyED, and optional analytics cookies to improve it. You choose.</div>
+  <button class="btn-ghost" onclick="document.getElementById('cookieBar').style.display='none'">Essential only</button>
+  <button class="btn-primary" style="font-size:12px;padding:8px 16px" onclick="document.getElementById('cookieBar').style.display='none'">Accept all</button>
+</div>
+
+<script>
+/* ── Configuration ──
+   Replace with your Google Apps Script web app URL (same pattern as the
+   waitlist page). Point it at a NEW sheet/script for founding schools so
+   these richer submissions don't mix with the general waitlist. */
+const SCRIPT_URL = "REPLACE_WITH_YOUR_APPS_SCRIPT_URL";
+
+/* ── Cohort ledger (20 slots) ── */
+(function () {
+  const grid = document.getElementById('ledgerGrid');
+  for (let i = 1; i <= 20; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'slot';
+    cell.textContent = String(i).padStart(2, '0');
+    grid.appendChild(cell);
+  }
+})();
+
+/* ── Form handling ── */
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const postcodeRegex = /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i;
+
+const phoneInput = document.getElementById('loi-phone');
+phoneInput.addEventListener('input', function () {
+  this.value = this.value.replace(/[^0-9+ ]/g, '');
+});
+
+function showError(message) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = message;
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+document.getElementById('loiForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const form = this;
+  const btn = document.getElementById('submitBtn');
+  document.getElementById('errorMsg').classList.remove('visible');
+
+  const data = {
+    school:     document.getElementById('loi-school').value.trim(),
+    name:       document.getElementById('loi-name').value.trim(),
+    role:       document.getElementById('loi-role').value,
+    email:      document.getElementById('loi-email').value.trim(),
+    phone:      document.getElementById('loi-phone').value.trim(),
+    postcode:   document.getElementById('loi-postcode').value.trim().toUpperCase(),
+    schoolType: document.getElementById('loi-type').value,
+    tier:       document.getElementById('loi-tier').value,
+    message:    document.getElementById('loi-message').value.trim(),
+    source:     'founding-schools-landing',
+    submittedAt: new Date().toISOString()
+  };
+
+  if (!data.school || !data.name || !data.role || !data.email || !data.postcode || !data.schoolType) {
+    showError('Please complete all required fields.');
+    return;
+  }
+  if (!emailRegex.test(data.email)) {
+    showError('Please enter a valid work email address.');
+    return;
+  }
+  if (!postcodeRegex.test(data.postcode)) {
+    showError('Please enter a valid UK postcode.');
+    return;
+  }
+
+  btn.textContent = 'Submitting...';
+  btn.disabled = true;
+  btn.style.opacity = '.6';
+  btn.style.cursor = 'not-allowed';
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      mode: 'no-cors'
+    });
+    form.innerHTML = `
+      <div class="form-success">
+        <p class="big">Thank you, we've received your registration 🎉</p>
+        <p>We review founding registrations in the order they arrive.<br>Expect an email from us to arrange your intro call.</p>
+      </div>`;
+  } catch (err) {
+    btn.textContent = 'Register interest →';
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    showError('Something went wrong. Please try again, or email us directly.');
+  }
+});
+</script>
+
+</body>
+</html>
