@@ -9,15 +9,16 @@ import { Icon } from "../atoms";
 type SelectDropdownProps = {
   id?: string;
   value: string;
-  options: string[];
+  options: readonly string[];
   onChange: (value: string) => void;
   placeholder?: string;
   error?: boolean;
 };
 
 type MultiSelectDropdownProps = {
+  id?: string;
   value: string[];
-  options: string[];
+  options: readonly string[];
   onChange: (value: string[]) => void;
   placeholder?: string;
   error?: boolean;
@@ -114,7 +115,7 @@ function useDropdownDismiss(open: boolean, rootRef: React.RefObject<HTMLDivEleme
   }, [open, rootRef, onDismiss]);
 }
 
-export function MultiSelectDropdown({ value, options, onChange, placeholder = "Select options", error }: MultiSelectDropdownProps) {
+export function MultiSelectDropdown({ id, value, options, onChange, placeholder = "Select options", error }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -128,6 +129,8 @@ export function MultiSelectDropdown({ value, options, onChange, placeholder = "S
     <div ref={rootRef} className="relative">
       <button
         aria-expanded={open}
+        aria-haspopup="listbox"
+        id={id}
         className={cn(
           "select flex min-h-[44px] cursor-pointer items-center justify-between gap-3 text-left",
           value.length === 0 ? "text-muted" : "text-ink",
@@ -145,15 +148,17 @@ export function MultiSelectDropdown({ value, options, onChange, placeholder = "S
 
       {open ? (
         <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-lg border border-border bg-white shadow-card">
-          <div className="max-h-64 overflow-auto p-1.5">
+          <div className="max-h-64 overflow-auto p-1.5" role="listbox">
             {options.map((option) => {
               const selected = value.includes(option);
 
               return (
                 <button
                   key={option}
+                  aria-selected={selected}
                   className="flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-slate transition hover:bg-chalk"
                   onClick={() => toggleOption(option)}
+                  role="option"
                   type="button"
                 >
                   <span

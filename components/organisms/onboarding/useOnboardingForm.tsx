@@ -13,6 +13,7 @@ import type {
   OnboardingDocumentDownloadActionResult,
   OnboardingDocumentUploadActionResult,
   OnboardingFinishResult,
+  OnboardingPrefill,
   OnboardingPending,
   ReviewGroup,
   ReviewLine,
@@ -100,6 +101,47 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
   };
 }
 
+function fillEmpty(current: string, next?: string) {
+  return current.trim() ? current : next?.trim() ?? current;
+}
+
+function fillEmptyArray(current: string[], next?: string[]) {
+  return current.length > 0 ? current : next ?? current;
+}
+
+function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill) {
+  if (!prefill) return current;
+
+  return {
+    ...current,
+    bio: fillEmpty(current.bio, prefill.bio),
+    complianceContact: fillEmpty(current.complianceContact, prefill.complianceContact),
+    complianceEmail: fillEmpty(current.complianceEmail, prefill.complianceEmail),
+    contactRole: fillEmpty(current.contactRole, prefill.contactRole),
+    coverTypes: fillEmptyArray(current.coverTypes, prefill.coverTypes),
+    currency: fillEmpty(current.currency, prefill.currency),
+    dailyRate: fillEmpty(current.dailyRate, prefill.dailyRate),
+    email: fillEmpty(current.email, prefill.email),
+    fullName: fillEmpty(current.fullName, prefill.fullName),
+    hourlyRate: fillEmpty(current.hourlyRate, prefill.hourlyRate),
+    institutionAddress: fillEmpty(current.institutionAddress, prefill.institutionAddress),
+    institutionCity: fillEmpty(current.institutionCity, prefill.institutionCity),
+    institutionCountryCode: fillEmpty(current.institutionCountryCode, prefill.institutionCountryCode),
+    institutionDomain: fillEmpty(current.institutionDomain, prefill.institutionDomain),
+    keyStages: fillEmptyArray(current.keyStages, prefill.keyStages),
+    localAuthority: fillEmpty(current.localAuthority, prefill.localAuthority),
+    maxTravelDistance: fillEmpty(current.maxTravelDistance, prefill.maxTravelDistance),
+    phone: fillEmpty(current.phone, prefill.phone),
+    postcode: fillEmpty(current.postcode, prefill.postcode),
+    schoolName: fillEmpty(current.schoolName, prefill.schoolName),
+    skills: fillEmptyArray(current.skills, prefill.skills),
+    staffingNeeds: fillEmpty(current.staffingNeeds, prefill.staffingNeeds),
+    subjects: fillEmptyArray(current.subjects, prefill.subjects),
+    typicalPupilCount: fillEmpty(current.typicalPupilCount, prefill.typicalPupilCount),
+    yearsExperience: fillEmpty(current.yearsExperience, prefill.yearsExperience),
+  };
+}
+
 export function useOnboardingForm({
   accountEmail,
   initialSnapshot,
@@ -107,6 +149,7 @@ export function useOnboardingForm({
   onDocumentView,
   onDocumentUpload,
   onStepSave,
+  prefill,
   role,
   roleSelected,
   setStep,
@@ -118,6 +161,7 @@ export function useOnboardingForm({
   onDocumentView: (payload: FormData) => Promise<OnboardingDocumentDownloadActionResult>;
   onDocumentUpload: (payload: FormData) => Promise<OnboardingDocumentUploadActionResult>;
   onStepSave: (payload: FormData) => Promise<OnboardingFinishResult>;
+  prefill?: OnboardingPrefill;
   role: AppRole;
   roleSelected: boolean;
   setStep: (step: number) => void;
@@ -126,7 +170,7 @@ export function useOnboardingForm({
   const activeRole: SignupRole = role === "teacher" ? "teacher" : role === "individual" ? "individual" : "institution";
   const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
   const currentStep = Math.min(steps.length, Math.max(1, step)) as SignupStep;
-  const [form, setForm] = useState<SignupForm>(() => createInitialForm(accountEmail, initialSnapshot));
+  const [form, setForm] = useState<SignupForm>(() => mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill));
   const [errors, setErrors] = useState<SignupErrors>({});
   const [pending, setPending] = useState<OnboardingPending>(null);
   const [uploadPending, setUploadPending] = useState<DocumentUploadField | null>(null);
@@ -139,6 +183,8 @@ export function useOnboardingForm({
   const previousStepRef = useRef(currentStep);
   const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
   const previousSnapshotFingerprintRef = useRef(initialSnapshotFingerprint);
+  const prefillFingerprint = useMemo(() => JSON.stringify(prefill ?? {}), [prefill]);
+  const previousPrefillFingerprintRef = useRef(prefillFingerprint);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -161,6 +207,13 @@ export function useOnboardingForm({
     previousSnapshotFingerprintRef.current = initialSnapshotFingerprint;
     setForm((current) => mergeSnapshotForm(current, accountEmail, initialSnapshot));
   }, [accountEmail, initialSnapshot, initialSnapshotFingerprint]);
+
+  useEffect(() => {
+    if (previousPrefillFingerprintRef.current === prefillFingerprint) return;
+
+    previousPrefillFingerprintRef.current = prefillFingerprint;
+    setForm((current) => mergePrefillForm(current, prefill));
+  }, [prefill, prefillFingerprint]);
 
   function buildPayload() {
     return buildOnboardingPayload(form, activeRole, currentStep, accountEmail);

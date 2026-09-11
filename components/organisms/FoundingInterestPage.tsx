@@ -117,7 +117,7 @@ const teacherContent: PageContent = {
   accent: "var(--se)",
   benefits: [
     {
-      copy: "An extra GBP 5 per day on your bookings through SupplyED, locked in for 36 months from launch.",
+      copy: "An extra GBP 5 per day on your bookings through SupplyED, locked in for 18 months from launch.",
       icon: "pound",
       title: "Founding rate uplift",
     },
@@ -136,7 +136,7 @@ const teacherContent: PageContent = {
   ctaTitle: "Be verified before anyone else is looking.",
   formBadge: "Founding teachers programme - the North first",
   formBullets: [
-    { title: "+GBP 5 per day for 36 months", copy: "the founding uplift on your SupplyED bookings." },
+    { title: "+GBP 5 per day for 18 months", copy: "the founding uplift on your SupplyED bookings." },
     { title: "DBS and checks covered", copy: "verification costs are covered for founding members." },
     { title: "Live from day one", copy: "schools see your verified profile the moment we launch." },
     { title: "All cover roles welcome", copy: "teachers, TAs, HLTAs, SEN specialists, and cover supervisors." },
