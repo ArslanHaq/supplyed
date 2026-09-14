@@ -1,4 +1,5 @@
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
+import type { FoundingSignupType } from "@/lib/founding-signup-intent";
 import type { AppRole } from "@/types/supplyed";
 
 import { Btn, Icon, Logo, Tag } from "../atoms";
@@ -6,6 +7,7 @@ import type {
   OnboardingDocumentDownloadActionResult,
   OnboardingDocumentUploadActionResult,
   OnboardingFinishResult,
+  OnboardingPrefill,
   SignupRole,
 } from "./onboarding/types";
 import { DocumentPreviewModal } from "./onboarding/DocumentPreviewModal";
@@ -27,6 +29,7 @@ import {
 
 export function OnboardingPage({
   accountEmail,
+  foundingType,
   headerActionLabel = "Log in",
   headerPrompt = "Already registered?",
   roleSelected,
@@ -39,10 +42,12 @@ export function OnboardingPage({
   onDocumentView,
   onDocumentUpload,
   onStepSave,
+  prefill,
   onLanding,
   onLogin,
 }: {
   accountEmail?: string;
+  foundingType?: FoundingSignupType;
   headerActionLabel?: string;
   headerPrompt?: string;
   initialSnapshot?: OnboardingProfileSnapshot;
@@ -55,6 +60,7 @@ export function OnboardingPage({
   onDocumentView: (payload: FormData) => Promise<OnboardingDocumentDownloadActionResult>;
   onDocumentUpload: (payload: FormData) => Promise<OnboardingDocumentUploadActionResult>;
   onStepSave: (payload: FormData) => Promise<OnboardingFinishResult>;
+  prefill?: OnboardingPrefill;
   onLanding: () => void;
   onLogin: () => void;
 }) {
@@ -65,6 +71,7 @@ export function OnboardingPage({
     onDocumentView,
     onDocumentUpload,
     onStepSave,
+    prefill,
     role,
     roleSelected,
     setStep,
@@ -110,6 +117,17 @@ export function OnboardingPage({
                   : "Your email is verified. Now choose whether you are hiring talent, joining as a teacher, or setting up a school workspace."}
               </p>
             </div>
+
+            {foundingType ? (
+              <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="font-semibold text-white">
+                  Founding {foundingType === "teacher" ? "teacher" : "school"} interest received
+                </div>
+                <p className="mt-1 text-sm leading-6 text-white/55">
+                  We have carried across the details you already shared.
+                </p>
+              </div>
+            ) : null}
 
             <div className="mt-8 space-y-4">
               {steps.map((item, index) => {

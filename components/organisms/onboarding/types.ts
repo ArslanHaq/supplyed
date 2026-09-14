@@ -129,6 +129,37 @@ export type SignupForm = {
   yearsExperience: string;
 };
 
+export type OnboardingPrefill = Partial<
+  Pick<
+    SignupForm,
+    | "bio"
+    | "complianceContact"
+    | "complianceEmail"
+    | "contactRole"
+    | "coverTypes"
+    | "currency"
+    | "dailyRate"
+    | "email"
+    | "fullName"
+    | "hourlyRate"
+    | "institutionAddress"
+    | "institutionCity"
+    | "institutionCountryCode"
+    | "institutionDomain"
+    | "keyStages"
+    | "localAuthority"
+    | "maxTravelDistance"
+    | "phone"
+    | "postcode"
+    | "schoolName"
+    | "skills"
+    | "staffingNeeds"
+    | "subjects"
+    | "typicalPupilCount"
+    | "yearsExperience"
+  >
+>;
+
 export type ReviewLine = {
   label: string;
   value: ReactNode;

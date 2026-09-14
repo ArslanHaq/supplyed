@@ -12,6 +12,12 @@ import {
 } from "@/app/(app)/onboarding/actions";
 import { hasRequiredDocuments } from "@/features/onboarding/document-utils";
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
+import {
+  clearFoundingSignupIntent,
+  foundingSignupRole,
+  type FoundingSignupIntent,
+  readFoundingSignupIntent,
+} from "@/lib/founding-signup-intent";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { getAuthenticatedEntryHref } from "@/lib/routes";
 import { useMounted } from "@/lib/use-mounted";
@@ -19,6 +25,7 @@ import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 import { PageLoader, PublicThemeControls } from "../molecules";
 import { OnboardingPage } from "./OnboardingPage";
+import type { OnboardingPrefill } from "./onboarding/types";
 
 type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
 const sessionRefreshTimeoutMs = 12_000;
@@ -68,6 +75,107 @@ function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfi
   return 1;
 }
 
+function keyStagesFromFoundingPhase(phase?: string) {
+  if (!phase) return undefined;
+
+  if (phase === "Primary") return ["KS1", "KS2"];
+  if (phase === "Secondary") return ["KS3", "KS4"];
+  if (phase === "Early years") return ["EYFS"];
+  if (phase === "Any / flexible") return ["EYFS", "KS1", "KS2", "KS3", "KS4"];
+  return undefined;
+}
+
+function prefillFromFoundingIntent(intent: FoundingSignupIntent | null): OnboardingPrefill | undefined {
+  if (!intent) return undefined;
+
+  const common = {
+    email: intent.email,
+    fullName: intent.name,
+    phone: intent.phone,
+    postcode: intent.postcode,
+  };
+
+  if (intent.type === "teacher") {
+    return {
+      ...common,
+      bio: intent.bio,
+      currency: "GBP",
+      dailyRate: intent.dailyRate,
+      hourlyRate: intent.hourlyRate,
+      keyStages: intent.keyStages ?? keyStagesFromFoundingPhase(intent.phase),
+      maxTravelDistance: intent.maxTravelDistance,
+      skills: intent.skills ?? (intent.phase === "SEND / Special" ? ["SEN support"] : undefined),
+      subjects: intent.subjects,
+      yearsExperience: intent.yearsExperience,
+    };
+  }
+
+  return {
+    ...common,
+    complianceContact: intent.name,
+    complianceEmail: intent.email,
+    contactRole: intent.role,
+    coverTypes: intent.coverTypes,
+    institutionAddress: intent.institutionAddress,
+    institutionCity: intent.institutionCity,
+    institutionCountryCode: "GB",
+    institutionDomain: intent.institutionDomain,
+    localAuthority: intent.localAuthority,
+    schoolName: intent.organizationName,
+    staffingNeeds: intent.staffingNeeds ?? intent.coverTypes?.join(", "),
+    typicalPupilCount: intent.typicalPupilCount,
+  };
+}
+
+function hasFoundingAccountBasics(intent: FoundingSignupIntent) {
+  return Boolean(intent.name?.trim() && intent.phone?.trim() && intent.postcode?.trim());
+}
+
+function hasFoundingTeacherProfile(intent: FoundingSignupIntent) {
+  const keyStages = intent.keyStages ?? keyStagesFromFoundingPhase(intent.phase);
+
+  return Boolean(
+    hasFoundingAccountBasics(intent) &&
+      intent.subjects?.length &&
+      keyStages?.length &&
+      intent.yearsExperience?.trim() &&
+      intent.bio?.trim() &&
+      intent.bio.trim().length >= 40,
+  );
+}
+
+function initialStepWithFoundingIntent(
+  initialRole: AppRole | null,
+  snapshot: OnboardingProfileSnapshot,
+  intent: FoundingSignupIntent | null,
+) {
+  const role = initialRole ?? (intent ? foundingSignupRole(intent.type) : null);
+  const step = initialStep(role, snapshot);
+
+  if (!initialRole && intent?.type === "school" && step === 1 && hasFoundingAccountBasics(intent)) {
+    return 2;
+  }
+
+  if (!initialRole && intent?.type === "teacher" && step === 1 && hasFoundingTeacherProfile(intent)) {
+    return 2;
+  }
+
+  return step;
+}
+
+function readMatchingFoundingIntent(initialRole: AppRole | null, accountEmail?: string) {
+  if (initialRole) return null;
+
+  const intent = readFoundingSignupIntent();
+  if (!intent) return null;
+
+  if (accountEmail && intent.email !== accountEmail.trim().toLowerCase()) {
+    return null;
+  }
+
+  return intent;
+}
+
 async function refreshSessionFromTicket(ticket?: string) {
   if (!ticket) return { ok: true as const };
 
@@ -106,10 +214,12 @@ function OnboardingRouteClientInner({
   sessionRepairTicket?: string;
 }) {
   const router = useRouter();
+  const [foundingIntent, setFoundingIntent] = useState(() => readMatchingFoundingIntent(initialRole, accountEmail));
+  const foundingRole = foundingIntent ? foundingSignupRole(foundingIntent.type) : null;
   const [sessionRepairError, setSessionRepairError] = useState<string>();
-  const [role, setRoleState] = useState<SignupRole>(() => normalizeSignupRole(initialRole));
-  const [roleSelected, setRoleSelected] = useState(Boolean(initialRole));
-  const [step, setStep] = useState(() => initialStep(initialRole, initialProfileSnapshot));
+  const [role, setRoleState] = useState<SignupRole>(() => normalizeSignupRole(initialRole ?? foundingRole));
+  const [roleSelected, setRoleSelected] = useState(Boolean(initialRole ?? foundingRole));
+  const [step, setStep] = useState(() => initialStepWithFoundingIntent(initialRole, initialProfileSnapshot, foundingIntent));
   const [savedProfileSnapshot, setSavedProfileSnapshot] = useState<OnboardingProfileSnapshot>();
   const profileSnapshot = savedProfileSnapshot ?? initialProfileSnapshot;
   const effectiveApplicationStatus =
@@ -141,6 +251,11 @@ function OnboardingRouteClientInner({
   }, [effectiveApplicationStatus, initialRole, router, sessionRepairTicket]);
 
   function setRole(role: SignupRole) {
+    if (foundingIntent && role !== foundingSignupRole(foundingIntent.type)) {
+      clearFoundingSignupIntent();
+      setFoundingIntent(null);
+    }
+
     setRoleState(role);
     setRoleSelected(true);
     setStep(1);
@@ -177,6 +292,7 @@ function OnboardingRouteClientInner({
     if (!sessionRefresh.ok) return sessionRefresh;
 
     if (result.data.snapshot) setSavedProfileSnapshot(result.data.snapshot);
+    clearFoundingSignupIntent();
     startRouteLoading();
     router.push(
       getAuthenticatedEntryHref({
@@ -202,6 +318,7 @@ function OnboardingRouteClientInner({
     <>
       <OnboardingPage
         accountEmail={accountEmail}
+        foundingType={foundingIntent?.type}
         headerActionLabel="Logout"
         headerPrompt={accountEmail || "Account"}
         initialSnapshot={profileSnapshot}
@@ -211,6 +328,7 @@ function OnboardingRouteClientInner({
         onLanding={goLanding}
         onLogin={logout}
         onStepSave={saveStep}
+        prefill={prefillFromFoundingIntent(foundingIntent)}
         role={role}
         roleSelected={roleSelected}
         setRole={setRole}

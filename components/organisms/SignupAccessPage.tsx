@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { passwordRequirementsMessage, validatePassword } from "@/features/auth/schemas";
+import type { FoundingSignupType } from "@/lib/founding-signup-intent";
 import type { SocialAuthAvailability } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Logo } from "../atoms";
@@ -23,6 +24,8 @@ function fieldClass(error?: string) {
 }
 
 export function SignupAccessPage({
+  foundingType,
+  initialEmail,
   onLanding,
   onLogin,
   onAccountCreated,
@@ -30,6 +33,8 @@ export function SignupAccessPage({
   onMicrosoftAuth,
   socialAuth,
 }: {
+  foundingType?: FoundingSignupType;
+  initialEmail?: string;
   onLanding: () => void;
   onLogin: () => void;
   onAccountCreated: (email: string, password: string) => Promise<AccessResult>;
@@ -37,19 +42,25 @@ export function SignupAccessPage({
   onMicrosoftAuth: () => void;
   socialAuth: SocialAuthAvailability;
 }) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [errors, setErrors] = useState<AccessErrors>({});
   const [pending, setPending] = useState(false);
+  const isFoundingSignup = Boolean(foundingType);
+  const expectedEmail = initialEmail?.trim().toLowerCase();
 
   function validate() {
     const nextErrors: AccessErrors = {};
     const trimmedEmail = email.trim();
+    const normalizedEmail = trimmedEmail.toLowerCase();
 
     if (!trimmedEmail) nextErrors.email = "Enter your email address.";
     else if (!emailPattern.test(trimmedEmail)) nextErrors.email = "Use a valid email address.";
+    else if (expectedEmail && normalizedEmail !== expectedEmail) {
+      nextErrors.email = "Use the same email address you entered in the interest form.";
+    }
     if (!password) nextErrors.password = "Create a password.";
     else if (!validatePassword(password)) nextErrors.password = passwordRequirementsMessage;
     if (!confirmPassword) nextErrors.confirmPassword = "Confirm your password.";
@@ -93,21 +104,30 @@ export function SignupAccessPage({
         </div>
 
         <div className="relative my-12 max-w-[520px] lg:my-0">
-          <div className="eyebrow mb-5 text-brand">Create account</div>
+          <div className="eyebrow mb-5 text-brand">{isFoundingSignup ? "Founding signup" : "Create account"}</div>
           <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
             Start with secure access,
             <br />
             then complete onboarding.
           </h1>
           <p className="mt-5 text-base leading-7 text-white/65">
-            Create your login first. After email verification, SupplyED signs you in and checks whether your role and application status are complete.
+            {isFoundingSignup
+              ? "Your interest details are saved. Create your login with the same email, then continue the right onboarding path."
+              : "Create your login first. After email verification, SupplyED signs you in and checks whether your role and application status are complete."}
           </p>
 
           <div className="mt-8 grid gap-3">
             {[
               ["Account", "Email and password are created first."],
               ["Verify", "The email must be verified before onboarding."],
-              ["Onboard", "Role is selected only after the user is signed in."],
+              [
+                "Onboard",
+                isFoundingSignup
+                  ? foundingType === "teacher"
+                    ? "Your teacher path opens after verification."
+                    : "Your school path opens after verification."
+                  : "Role is selected only after the user is signed in.",
+              ],
             ].map(([title, copy], index) => (
               <div key={title} className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-brand">
@@ -137,6 +157,12 @@ export function SignupAccessPage({
               </button>
             </p>
           </div>
+
+          {isFoundingSignup ? (
+            <div className="mb-5 rounded-xl border border-brand-tint-2 bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
+              Thanks, we received your {foundingType === "teacher" ? "teacher" : "school"} details. Use the same email to create your account so we can continue your onboarding.
+            </div>
+          ) : null}
 
           <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
             <SocialAuthButtons
