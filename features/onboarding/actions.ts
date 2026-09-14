@@ -10,11 +10,21 @@ import { api, ApiError } from "@/lib/server/api-client";
 import { getServerAuthContext } from "@/lib/server/auth-context";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
+import { contentTypeForFile } from "./document-utils";
+import {
+  assertRequiredDocumentsUploaded,
+  emptyDocumentState,
+  getDocumentSnapshots,
+  getDocumentState,
+  getProfileDocumentRequirements,
+  uploadProfileDocument,
+  validateDocumentFile,
+} from "./documents";
 import { normalizeOnboardingSubmitInput } from "./schemas";
 import type {
   OnboardingDocumentDownloadResult,
-  OnboardingDocumentKind,
   OnboardingDocumentSnapshot,
+  OnboardingDocumentState,
   OnboardingDocumentUploadResult,
   OnboardingInstructorSnapshot,
   OnboardingInstitutionSnapshot,
@@ -98,16 +108,6 @@ type RecruiterProfilePayload = {
   postalCode?: string;
 };
 
-type BackendDocumentType = "ADDRESS_PROOF" | "DBS" | "ID" | "QUALIFICATION";
-
-type UploadDocumentResponse = {
-  document: {
-    id: string;
-  };
-  requiredHeaders?: Record<string, string>;
-  uploadUrl: string;
-};
-
 type DownloadDocumentResponse = {
   downloadUrl?: string;
   expiresAt?: string;
@@ -173,19 +173,6 @@ type BackendRecruiterProfile = {
   status?: unknown;
 };
 
-type BackendDocumentProfile = {
-  contentType?: string;
-  dbsNumber?: string | null;
-  id?: string;
-  name?: string;
-  sizeBytes?: number;
-  status?: unknown;
-  type?: unknown;
-  uploadedAt?: string | Date | null;
-};
-
-const allowedDocumentTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
-const maxDocumentSizeBytes = 10 * 1024 * 1024;
 const backendRefreshTimeoutMs = 12_000;
 
 function readStringArray(value: unknown) {
@@ -274,55 +261,10 @@ function normalizeRecruiterSnapshot(profile: BackendRecruiterProfile): Onboardin
   };
 }
 
-function documentKind(type: unknown): OnboardingDocumentKind | undefined {
-  const value = readString(type)?.toUpperCase();
-  if (value === "DBS") return "dbs";
-  if (value === "ID") return "id";
-  if (value === "ADDRESS_PROOF") return "addressProof";
-  if (value === "QUALIFICATION") return "qualification";
-  return undefined;
-}
-
-function backendDocumentType(kind: string): BackendDocumentType | undefined {
-  if (kind === "dbs") return "DBS";
-  if (kind === "id") return "ID";
-  if (kind === "addressProof") return "ADDRESS_PROOF";
-  if (kind === "qualification") return "QUALIFICATION";
-  return undefined;
-}
-
-function normalizeDocumentSnapshot(document: BackendDocumentProfile): OnboardingDocumentSnapshot | undefined {
-  const kind = documentKind(document.type);
-  const uploadedAt = document.uploadedAt instanceof Date ? document.uploadedAt.toISOString() : readString(document.uploadedAt);
-
-  if (!kind || !document.id || !document.name || !document.contentType || !document.sizeBytes || !uploadedAt) {
-    return undefined;
-  }
-
-  return {
-    dbsNumber: document.dbsNumber,
-    id: document.id,
-    name: document.name,
-    size: document.sizeBytes,
-    status: readString(document.status),
-    type: document.contentType,
-    uploadedAt,
-  };
-}
-
-function hasCompletedInstructorDocuments(documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>) {
-  return Boolean(
-    documents.dbs?.uploadedAt &&
-      documents.id?.uploadedAt &&
-      documents.qualification?.uploadedAt &&
-      documents.addressProof?.uploadedAt,
-  );
-}
-
 function emptySnapshot(role: AppRole | null, email?: string): OnboardingProfileSnapshot {
   return {
+    ...emptyDocumentState(),
     applicationStatus: "none",
-    documents: {},
     role,
     user: {
       email: email || "",
@@ -398,28 +340,6 @@ function buildGenericSubmitInput(formData: FormData): OnboardingSubmitInput {
     step: Number(readFormString(formData, "step")) || 4,
     values,
   };
-}
-
-function contentTypeFromFile(file: File) {
-  const explicitType = file.type.toLowerCase();
-  if (allowedDocumentTypes.has(explicitType)) return explicitType;
-
-  const extension = file.name.split(".").pop()?.toLowerCase();
-  if (extension === "pdf") return "application/pdf";
-  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
-  if (extension === "png") return "image/png";
-
-  return explicitType;
-}
-
-function validateDocumentFile(file: File | null, label: string) {
-  if (!file) return `${label} is required.`;
-  if (file.size > maxDocumentSizeBytes) return `${label} must be 10 MB or smaller.`;
-
-  const contentType = contentTypeFromFile(file);
-  if (!allowedDocumentTypes.has(contentType)) return `${label} must be a PDF, JPG, or PNG file.`;
-
-  return undefined;
 }
 
 function buildInstructorProfilePayload(formData: FormData): InstructorProfilePayload {
@@ -561,30 +481,21 @@ async function getRecruiterSnapshot(accessToken?: string) {
   }
 }
 
-async function getDocumentSnapshots(accessToken?: string) {
-  const documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>> = {};
-
+/**
+ * Document state for the page-load snapshot. A failure here must not wipe the
+ * rest of the profile, so it degrades to an empty state and the documents
+ * step refetches on the client.
+ */
+async function loadDocumentState(role: AppRole): Promise<OnboardingDocumentState> {
   try {
-    const response = await api.get<BackendDocumentProfile[]>(
-      "/documents",
-      accessToken
-        ? {
-            auth: false,
-            headers: buildBearerHeaders(accessToken),
-          }
-        : undefined,
-    );
-
-    response.forEach((document) => {
-      const kind = documentKind(document.type);
-      const snapshot = normalizeDocumentSnapshot(document);
-      if (kind && snapshot) documents[kind] = snapshot;
-    });
+    return await getDocumentState(role);
   } catch (error) {
-    if (!notFoundOrForbidden(error)) throw error;
-  }
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[SupplyED onboarding] document state could not be loaded", error);
+    }
 
-  return documents;
+    return emptyDocumentState();
+  }
 }
 
 export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileSnapshot> {
@@ -598,8 +509,8 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
   try {
     const user = await getCurrentUserSnapshot();
     const snapshot: OnboardingProfileSnapshot = {
+      ...emptyDocumentState(),
       applicationStatus: "none",
-      documents: {},
       role,
       user,
     };
@@ -607,7 +518,7 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
     if (role === "teacher") {
       snapshot.instructor =
         (await getInstructorSnapshotById(authContext.instructorProfileId)) ?? (await getCurrentInstructorSnapshot());
-      snapshot.documents = await getDocumentSnapshots();
+      Object.assign(snapshot, await loadDocumentState("teacher"));
       snapshot.applicationStatus = snapshot.instructor?.status ?? "none";
     }
 
@@ -702,58 +613,6 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   }
 
   return getCurrentUserSnapshot(postcodeFallback);
-}
-
-async function uploadInstructorDocument({
-  accessToken,
-  dbsNumber,
-  file,
-  type,
-}: {
-  accessToken: string;
-  dbsNumber?: string;
-  file: File;
-  type: BackendDocumentType;
-}) {
-  const contentType = contentTypeFromFile(file);
-  const upload = await api.post<UploadDocumentResponse>(
-    "/documents/upload-url",
-    {
-      contentType,
-      dbsNumber: type === "DBS" ? dbsNumber : undefined,
-      name: file.name,
-      sizeBytes: file.size,
-      type,
-    },
-    {
-      auth: false,
-      headers: buildBearerHeaders(accessToken),
-    },
-  );
-
-  const uploadResponse = await fetch(upload.uploadUrl, {
-    body: file,
-    headers: {
-      ...upload.requiredHeaders,
-      "Content-Type": contentType,
-    },
-    method: "PUT",
-  });
-
-  if (!uploadResponse.ok) {
-    throw new Error(`Unable to upload ${file.name}. The signed upload failed with status ${uploadResponse.status}.`);
-  }
-
-  const completedDocument = await api.post<BackendDocumentProfile>(
-    `/documents/${upload.document.id}/complete`,
-    undefined,
-    {
-      auth: false,
-      headers: buildBearerHeaders(accessToken),
-    },
-  );
-
-  return normalizeDocumentSnapshot(completedDocument);
 }
 
 function onboardingError(error: unknown) {
@@ -947,118 +806,46 @@ async function submitInstitutionProfileForReview(accessToken: string, fallback?:
   }
 }
 
-async function uploadInstructorDocuments(formData: FormData, accessToken: string) {
-  const dbsNumber = readFormString(formData, "dbsNumber");
-  const dbsCertificateFile = readFormFile(formData, "dbsCertificateFile");
-  const identityPhoto = readFormFile(formData, "identityPhoto");
-  const rightToWorkFile = readFormFile(formData, "rightToWorkFile");
-  const qualificationFile = readFormFile(formData, "qualificationFile");
-  const existingDbsDocumentId = readFormString(formData, "dbsDocumentId");
-  const existingIdDocumentId = readFormString(formData, "idDocumentId");
-  const existingAddressProofDocumentId = readFormString(formData, "addressProofDocumentId");
-  const existingQualificationDocumentId = readFormString(formData, "qualificationDocumentId");
-  const errors = [
-    existingDbsDocumentId ? undefined : validateDocumentFile(dbsCertificateFile, "Enhanced DBS certificate"),
-    existingIdDocumentId ? undefined : validateDocumentFile(identityPhoto, "Photo ID"),
-    existingQualificationDocumentId ? undefined : validateDocumentFile(qualificationFile, "Teaching qualification"),
-    existingAddressProofDocumentId ? undefined : validateDocumentFile(rightToWorkFile, "Right-to-work or address evidence"),
-  ].filter(Boolean);
-  const documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>> = {};
-
-  if (!dbsNumber) {
-    throw new Error("Enter your enhanced DBS certificate number before continuing.");
-  }
-
-  if (errors.length > 0) {
-    throw new Error(errors[0] ?? "Upload the required instructor documents before continuing.");
-  }
-
-  if (dbsCertificateFile) {
-    const snapshot = await uploadInstructorDocument({
-      accessToken,
-      dbsNumber,
-      file: dbsCertificateFile,
-      type: "DBS",
-    });
-    if (snapshot) documents.dbs = snapshot;
-  }
-
-  if (identityPhoto) {
-    const snapshot = await uploadInstructorDocument({
-      accessToken,
-      file: identityPhoto,
-      type: "ID",
-    });
-    if (snapshot) documents.id = snapshot;
-  }
-
-  if (qualificationFile) {
-    const snapshot = await uploadInstructorDocument({
-      accessToken,
-      file: qualificationFile,
-      type: "QUALIFICATION",
-    });
-    if (snapshot) documents.qualification = snapshot;
-  }
-
-  if (rightToWorkFile) {
-    const snapshot = await uploadInstructorDocument({
-      accessToken,
-      file: rightToWorkFile,
-      type: "ADDRESS_PROOF",
-    });
-    if (snapshot) documents.addressProof = snapshot;
-  }
-
-  const completedDocuments = {
-    ...(await getDocumentSnapshots(accessToken)),
-    ...documents,
-  };
-
-  if (!hasCompletedInstructorDocuments(completedDocuments)) {
-    throw new Error("Upload all required instructor documents before continuing.");
-  }
-
-  return completedDocuments;
-}
-
+/**
+ * One card upload: resolve the requirement, validate against its limits, then
+ * run the backend's create, upload-url, PUT, upload-complete cycle.
+ */
 export async function uploadOnboardingDocumentAction(formData: FormData) {
-  const kind = readFormString(formData, "kind");
-  const type = backendDocumentType(kind);
+  const requirementId = readFormString(formData, "requirementId");
+  const role = normalizeRole(readFormString(formData, "role")) ?? "teacher";
   const file = readFormFile(formData, "file");
-  const dbsNumber = readFormString(formData, "dbsNumber");
 
-  if (!type) {
-    return actionError("Choose a valid document type before uploading.");
+  if (!requirementId) {
+    return actionError("Choose a document type before uploading.");
   }
 
-  const fileError = validateDocumentFile(file, "Document");
-  if (fileError) {
-    return actionError(fileError);
-  }
-
-  if (type === "DBS" && !dbsNumber) {
-    return actionError("Enter your enhanced DBS certificate number before uploading the DBS certificate.", {
-      fieldErrors: { dbsNumber: "Enter your enhanced DBS certificate number before uploading the DBS certificate." },
-    });
+  if (!file) {
+    return actionError("Choose a file to upload.");
   }
 
   if (!backendEnabled()) {
-    return actionOk<OnboardingDocumentUploadResult>(
-      {
-        document: {
-          dbsNumber: type === "DBS" ? dbsNumber : undefined,
-          id: `local-${kind}-${Date.now()}`,
-          name: file!.name,
-          size: file!.size,
-          status: "PENDING",
-          type: contentTypeFromFile(file!),
-          uploadedAt: new Date().toISOString(),
-        },
-        documents: {},
-      },
-      "Document uploaded.",
-    );
+    const requirement = (await getProfileDocumentRequirements(role)).find((item) => item.id === requirementId);
+    if (!requirement) {
+      return actionError("This document type is not available.");
+    }
+
+    const fileError = validateDocumentFile(file, requirement);
+    if (fileError) {
+      return actionError(fileError);
+    }
+
+    const document: OnboardingDocumentSnapshot = {
+      code: requirement.code,
+      id: `local-${requirementId}-${Date.now()}`,
+      name: file.name,
+      requirementId,
+      size: file.size,
+      status: requirement.requiresReview ? "PENDING" : "NOT_REQUIRED",
+      type: contentTypeForFile(file, requirement.allowedMimes),
+      uploadedAt: new Date().toISOString(),
+    };
+
+    return actionOk<OnboardingDocumentUploadResult>({ document, documents: { [requirementId]: document } }, "Document uploaded.");
   }
 
   const authContext = await getServerAuthContext();
@@ -1067,6 +854,8 @@ export async function uploadOnboardingDocumentAction(formData: FormData) {
   }
 
   try {
+    // The session token may still carry the USER role from before the profile
+    // was created; the document routes need the profile role.
     const refreshedAuth = authContext.refreshToken
       ? await withTimeout(
           refreshBackendAuth(authContext.refreshToken),
@@ -1074,23 +863,26 @@ export async function uploadOnboardingDocumentAction(formData: FormData) {
           "The backend token refresh timed out. Try uploading this document again.",
         )
       : null;
-    const accessToken = refreshedAuth?.accessToken ?? authContext.accessToken;
-    const document = await uploadInstructorDocument({
-      accessToken,
-      dbsNumber: type === "DBS" ? dbsNumber : undefined,
-      file: file!,
-      type,
-    });
+    const auth = { accessToken: refreshedAuth?.accessToken ?? authContext.accessToken };
+    const requirement = (await getProfileDocumentRequirements(role, auth)).find((item) => item.id === requirementId);
 
-    if (!document) {
-      throw new Error("The backend did not return the uploaded document.");
+    if (!requirement) {
+      throw new Error("This document type is no longer available. Refresh the page and try again.");
     }
+
+    const fileError = validateDocumentFile(file, requirement);
+    if (fileError) {
+      return actionError(fileError);
+    }
+
+    const document = await uploadProfileDocument({ auth, file, requirement });
+    const documents = await getDocumentSnapshots(auth);
 
     revalidateTag("onboarding", "max");
     return actionOk<OnboardingDocumentUploadResult>(
       {
         document,
-        documents: { ...(await getDocumentSnapshots(accessToken)), [kind]: document },
+        documents: { ...documents, [requirementId]: document },
       },
       "Document uploaded.",
     );
@@ -1159,8 +951,8 @@ export async function saveOnboardingStepAction(formData: FormData) {
   try {
     const user = step === 1 ? await saveUserBasics(formData, postcode) : await getCurrentUserSnapshot(postcode);
     const snapshot: OnboardingProfileSnapshot = {
+      ...emptyDocumentState(),
       applicationStatus: "none",
-      documents: {},
       role,
       user,
     };
@@ -1184,24 +976,10 @@ export async function saveOnboardingStepAction(formData: FormData) {
     }
 
     if (role === "teacher" && step === 2) {
-      const dbsNumber = readFormString(formData, "dbsNumber");
-      const existingDbsDocumentId = readFormString(formData, "dbsDocumentId");
-      const existingIdDocumentId = readFormString(formData, "idDocumentId");
-      const existingQualificationDocumentId = readFormString(formData, "qualificationDocumentId");
-      const existingAddressProofDocumentId = readFormString(formData, "addressProofDocumentId");
-
-      if (!dbsNumber) {
-        throw new Error("Enter your enhanced DBS certificate number before continuing.");
-      }
-
-      if (!existingDbsDocumentId || !existingIdDocumentId || !existingQualificationDocumentId || !existingAddressProofDocumentId) {
-        throw new Error("Upload all required instructor documents before continuing.");
-      }
-
-      snapshot.documents = await getDocumentSnapshots();
-      if (!hasCompletedInstructorDocuments(snapshot.documents)) {
-        throw new Error("Upload all required instructor documents before continuing.");
-      }
+      // The backend is the source of truth for what was uploaded.
+      const documentState = await getDocumentState("teacher");
+      assertRequiredDocumentsUploaded(documentState);
+      Object.assign(snapshot, documentState);
 
       snapshot.instructor =
         (await getInstructorSnapshotById(authContext.instructorProfileId || readFormString(formData, "teacherProfileId"))) ??
@@ -1281,7 +1059,8 @@ async function submitInstructorOnboarding(formData: FormData) {
       return actionError("Your teacher profile was created, but we could not refresh your document upload session. Sign in again and retry the document step.");
     }
 
-    const documents = await uploadInstructorDocuments(formData, refreshedAuth.accessToken);
+    const documentState = await getDocumentState("teacher", { accessToken: refreshedAuth.accessToken });
+    assertRequiredDocumentsUploaded(documentState);
     const submittedInstructor = await submitInstructorProfileForReview(refreshedAuth.accessToken, instructor);
     if (!submittedInstructor || submittedInstructor.status === "none") {
       throw new Error("The backend did not mark your teacher profile as pending review.");
@@ -1293,8 +1072,8 @@ async function submitInstructorOnboarding(formData: FormData) {
         applicationStatus: submittedInstructor.status,
         savedStep: Number(readFormString(formData, "step")) || 3,
         snapshot: {
+          ...documentState,
           applicationStatus: submittedInstructor.status,
-          documents,
           instructor: submittedInstructor,
           role: "teacher",
           user,
@@ -1356,8 +1135,8 @@ async function submitInstitutionOnboarding(formData: FormData) {
         applicationStatus: submittedInstitution.status,
         savedStep: Number(readFormString(formData, "step")) || 4,
         snapshot: {
+          ...emptyDocumentState(),
           applicationStatus: submittedInstitution.status,
-          documents: {},
           institution: submittedInstitution,
           role: "institution",
           user,
@@ -1417,8 +1196,8 @@ async function submitIndividualOnboarding(formData: FormData) {
         applicationStatus,
         savedStep: Number(readFormString(formData, "step")) || 4,
         snapshot: {
+          ...emptyDocumentState(),
           applicationStatus,
-          documents: {},
           recruiter: savedRecruiter,
           role: "individual",
           user,

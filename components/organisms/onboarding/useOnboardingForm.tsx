@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
+import { documentFileValidationError } from "@/features/onboarding/document-utils";
+import type { OnboardingDocumentRequirement, OnboardingProfileSnapshot } from "@/features/onboarding/types";
+import { useOnboardingDocumentRequirements } from "@/features/onboarding/use-onboarding";
 import type { AppRole } from "@/types/supplyed";
 
 import { FileSummary, ReviewBadgeList } from "./ReviewCard";
 import { stepContent, unselectedSteps } from "./constants";
 import type {
-  DocumentUploadField,
+  DocumentErrors,
   DocumentPreview,
   OnboardingDocumentDownloadActionResult,
   OnboardingDocumentUploadActionResult,
@@ -29,6 +31,7 @@ import {
   documentFileError,
   roleLabel,
   toUploadedFileFromDocument,
+  uploadedFilesFromSnapshot,
 } from "./utils";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -70,12 +73,10 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     coverTypes: snapshotStringArray(current.coverTypes, next.coverTypes),
     currency: next.currency || current.currency || "GBP",
     dailyRate: snapshotString(current.dailyRate, next.dailyRate),
-    dbsCertificateFile: next.dbsCertificateFile ?? current.dbsCertificateFile,
-    dbsNumber: snapshotString(current.dbsNumber, next.dbsNumber),
+    documents: { ...current.documents, ...next.documents },
     email: snapshotString(current.email, next.email),
     fullName: snapshotString(current.fullName, next.fullName),
     hourlyRate: snapshotString(current.hourlyRate, next.hourlyRate),
-    identityPhoto: next.identityPhoto ?? current.identityPhoto,
     institutionAddress: snapshotString(current.institutionAddress, next.institutionAddress),
     institutionCity: snapshotString(current.institutionCity, next.institutionCity),
     institutionCountryCode: next.institutionCountryCode || current.institutionCountryCode || "GB",
@@ -87,9 +88,7 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     maxTravelDistance: snapshotString(current.maxTravelDistance, next.maxTravelDistance),
     phone: snapshotString(current.phone, next.phone),
     postcode: snapshotString(current.postcode, next.postcode),
-    qualificationFile: next.qualificationFile ?? current.qualificationFile,
     recruiterProfileId: snapshotString(current.recruiterProfileId, next.recruiterProfileId),
-    rightToWorkFile: next.rightToWorkFile ?? current.rightToWorkFile,
     schoolName: snapshotString(current.schoolName, next.schoolName),
     safeguardingConfirmed: current.safeguardingConfirmed || next.safeguardingConfirmed,
     skills: snapshotStringArray(current.skills, next.skills),
@@ -172,9 +171,10 @@ export function useOnboardingForm({
   const currentStep = Math.min(steps.length, Math.max(1, step)) as SignupStep;
   const [form, setForm] = useState<SignupForm>(() => mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill));
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [documentErrors, setDocumentErrors] = useState<DocumentErrors>({});
   const [pending, setPending] = useState<OnboardingPending>(null);
-  const [uploadPending, setUploadPending] = useState<DocumentUploadField | null>(null);
-  const [viewPending, setViewPending] = useState<DocumentUploadField | null>(null);
+  const [uploadPending, setUploadPending] = useState<string | null>(null);
+  const [viewPending, setViewPending] = useState<string | null>(null);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
   const [submitError, setSubmitError] = useState<string>();
   const progress = Math.round((currentStep / steps.length) * 100);
@@ -185,6 +185,20 @@ export function useOnboardingForm({
   const previousSnapshotFingerprintRef = useRef(initialSnapshotFingerprint);
   const prefillFingerprint = useMemo(() => JSON.stringify(prefill ?? {}), [prefill]);
   const previousPrefillFingerprintRef = useRef(prefillFingerprint);
+
+  // Only teachers have a documents step today. The list is seeded from the
+  // server snapshot and refreshed from GET /document-requirements/profile.
+  const documentRequirementsQuery = useOnboardingDocumentRequirements(activeRole, {
+    enabled: roleSelected && activeRole === "teacher",
+    initialData: initialSnapshot?.documentRequirements,
+  });
+  const documentRequirements = useMemo(() => documentRequirementsQuery.data ?? [], [documentRequirementsQuery.data]);
+  const documentRequirementsLoading = documentRequirementsQuery.isLoading;
+  const documentRequirementsError = documentRequirementsQuery.isError
+    ? documentRequirementsQuery.error instanceof Error && documentRequirementsQuery.error.message
+      ? documentRequirementsQuery.error.message
+      : "Document requirements could not be loaded."
+    : undefined;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -229,6 +243,15 @@ export function useOnboardingForm({
     ];
 
     if (activeRole === "teacher") {
+      const documentLines: ReviewLine[] =
+        documentRequirements.length > 0
+          ? documentRequirements.map((requirement) => ({
+              label: requirement.isRequired ? requirement.name : `${requirement.name} (optional)`,
+              value: <FileSummary file={form.documents[requirement.id] ?? null} />,
+              wide: true,
+            }))
+          : [{ label: "Documents", value: <span className="text-muted">No document requirements loaded</span>, wide: true }];
+
       return [
         {
           title: "Teacher Profile",
@@ -253,13 +276,7 @@ export function useOnboardingForm({
           description: "Documents sent to verification review",
           icon: "shield",
           editStep: 2,
-          lines: [
-            { label: "DBS number", value: form.dbsNumber || "Not provided" },
-            { label: "Enhanced DBS certificate", value: <FileSummary file={form.dbsCertificateFile} />, wide: true },
-            { label: "Photo ID", value: <FileSummary file={form.identityPhoto} />, wide: true },
-            { label: "Teaching qualification / QTS", value: <FileSummary file={form.qualificationFile} />, wide: true },
-            { label: "Proof of address", value: <FileSummary file={form.rightToWorkFile} />, wide: true },
-          ],
+          lines: documentLines,
         },
       ];
     }
@@ -314,123 +331,100 @@ export function useOnboardingForm({
         ],
       },
     ];
-  }, [accountEmail, activeRole, form]);
+  }, [accountEmail, activeRole, documentRequirements, form]);
 
   function updateField<FieldName extends keyof SignupForm>(field: FieldName, value: SignupForm[FieldName]) {
-    setForm((current) => ({
-      ...current,
-      ...(field === "dbsNumber" && value !== current.dbsNumber ? { dbsCertificateFile: null } : {}),
-      [field]: value,
-    }));
+    setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setSubmitError(undefined);
   }
 
-  function documentKindForField(field: DocumentUploadField) {
-    if (field === "dbsCertificateFile") return "dbs";
-    if (field === "identityPhoto") return "id";
-    if (field === "qualificationFile") return "qualification";
-    return "addressProof";
+  function setDocumentError(requirementId: string, message: string | undefined) {
+    setDocumentErrors((current) => ({ ...current, [requirementId]: message }));
   }
 
-  function documentLabelForField(field: DocumentUploadField) {
-    if (field === "dbsCertificateFile") return "Enhanced DBS certificate";
-    if (field === "identityPhoto") return "Photo ID";
-    if (field === "qualificationFile") return "Teaching qualification";
-    return "Proof of address";
+  function clearDocumentError(requirementId: string) {
+    setDocumentError(requirementId, undefined);
+    setErrors((current) => ({ ...current, documents: undefined }));
+    setSubmitError(undefined);
   }
 
-  function documentErrorField(field: DocumentUploadField): keyof SignupErrors {
-    return field;
+  function retryDocumentRequirements() {
+    void documentRequirementsQuery.refetch();
   }
 
-  async function uploadDocument(field: DocumentUploadField, file: UploadedFile) {
+  async function uploadDocument(requirement: OnboardingDocumentRequirement, file: UploadedFile) {
     if (pending === "submit" || uploadPending) return;
 
-    const label = documentLabelForField(field);
     const selectedFile = file.file;
-    const validationError = selectedFile ? documentFileError({ ...file, id: "validation-placeholder" }, label) : `${label} is required.`;
 
-    if (validationError) {
-      setErrors((current) => ({ ...current, [documentErrorField(field)]: validationError }));
+    if (!selectedFile) {
+      setDocumentError(requirement.id, `${requirement.name} is required.`);
       return;
     }
 
-    if (field === "dbsCertificateFile" && !form.dbsNumber.trim()) {
-      setErrors((current) => ({
-        ...current,
-        dbsCertificateFile: "Enter your enhanced DBS certificate number before uploading this file.",
-        dbsNumber: "Enter your enhanced DBS certificate number before uploading this file.",
-      }));
+    const validationError = documentFileValidationError(file, requirement);
+    if (validationError) {
+      setDocumentError(requirement.id, validationError);
       return;
     }
 
     const data = new FormData();
-    data.set("kind", documentKindForField(field));
-    data.set("dbsNumber", form.dbsNumber.trim());
-    data.set("file", selectedFile!, file.name);
+    data.set("requirementId", requirement.id);
+    data.set("role", activeRole);
+    data.set("file", selectedFile, file.name);
 
-    setForm((current) => ({ ...current, [field]: file }));
-    setErrors((current) => ({ ...current, [documentErrorField(field)]: undefined }));
-    setSubmitError(undefined);
-    setUploadPending(field);
+    const previousFile = form.documents[requirement.id] ?? null;
+
+    setForm((current) => ({
+      ...current,
+      documents: { ...current.documents, [requirement.id]: { ...file, requirementId: requirement.id } },
+    }));
+    clearDocumentError(requirement.id);
+    setUploadPending(requirement.id);
 
     try {
       const result = await onDocumentUpload(data);
 
       if (!result.ok || !result.data?.document) {
-        setErrors((current) => ({
-          ...current,
-          [documentErrorField(field)]: result.message || `${label} could not be uploaded. Choose the file again.`,
-        }));
+        setForm((current) => ({ ...current, documents: { ...current.documents, [requirement.id]: previousFile } }));
+        setDocumentError(requirement.id, result.message || `${requirement.name} could not be uploaded. Choose the file again.`);
         return;
       }
 
       const uploadedFile = toUploadedFileFromDocument(result.data.document);
-      const uploadedDocuments = result.data.documents;
+      const uploadedDocuments = uploadedFilesFromSnapshot(result.data.documents);
 
       setForm((current) => ({
         ...current,
-        dbsCertificateFile: uploadedDocuments.dbs ? toUploadedFileFromDocument(uploadedDocuments.dbs) : current.dbsCertificateFile,
-        dbsNumber: uploadedDocuments.dbs?.dbsNumber ?? current.dbsNumber,
-        identityPhoto: uploadedDocuments.id ? toUploadedFileFromDocument(uploadedDocuments.id) : current.identityPhoto,
-        qualificationFile: uploadedDocuments.qualification
-          ? toUploadedFileFromDocument(uploadedDocuments.qualification)
-          : current.qualificationFile,
-        rightToWorkFile: uploadedDocuments.addressProof
-          ? toUploadedFileFromDocument(uploadedDocuments.addressProof)
-          : current.rightToWorkFile,
-        [field]: uploadedFile,
+        documents: { ...current.documents, ...uploadedDocuments, [requirement.id]: uploadedFile },
       }));
-      setErrors((current) => ({ ...current, [documentErrorField(field)]: undefined }));
+      setDocumentError(requirement.id, undefined);
     } catch (error) {
-      setErrors((current) => ({
-        ...current,
-        [documentErrorField(field)]:
-          error instanceof Error && error.message ? error.message : `${label} could not be uploaded. Choose the file again.`,
-      }));
+      setForm((current) => ({ ...current, documents: { ...current.documents, [requirement.id]: previousFile } }));
+      setDocumentError(
+        requirement.id,
+        error instanceof Error && error.message ? error.message : `${requirement.name} could not be uploaded. Choose the file again.`,
+      );
     } finally {
       if (mountedRef.current) setUploadPending(null);
     }
   }
 
-  async function viewDocument(field: DocumentUploadField, file: UploadedFile | null) {
+  async function viewDocument(requirementId: string, file: UploadedFile | null) {
     if (!file?.id || viewPending) return;
 
     const data = new FormData();
     data.set("documentId", file.id);
     data.set("fileName", file.name);
-    setViewPending(field);
+    setViewPending(requirementId);
     setSubmitError(undefined);
 
     try {
       const result = await onDocumentView(data);
 
       if (!result.ok || !result.data?.url) {
-        setErrors((current) => ({
-          ...current,
-          [documentErrorField(field)]: result.message || "This document could not be opened.",
-        }));
+        setDocumentError(requirementId, result.message || "This document could not be opened.");
         return;
       }
 
@@ -440,11 +434,7 @@ export function useOnboardingForm({
         url: result.data.url,
       });
     } catch (error) {
-      setErrors((current) => ({
-        ...current,
-        [documentErrorField(field)]:
-          error instanceof Error && error.message ? error.message : "This document could not be opened.",
-      }));
+      setDocumentError(requirementId, error instanceof Error && error.message ? error.message : "This document could not be opened.");
     } finally {
       if (mountedRef.current) setViewPending(null);
     }
@@ -498,16 +488,24 @@ export function useOnboardingForm({
     }
 
     if (targetStep === 2 && activeRole === "teacher") {
-      const dbsCertificateError = documentFileError(form.dbsCertificateFile, "Enhanced DBS certificate");
-      const identityPhotoError = documentFileError(form.identityPhoto, "Photo ID");
-      const qualificationFileError = documentFileError(form.qualificationFile, "Teaching qualification");
-      const rightToWorkFileError = documentFileError(form.rightToWorkFile, "Proof of address");
+      const nextDocumentErrors: DocumentErrors = {};
 
-      if (!form.dbsNumber.trim()) nextErrors.dbsNumber = "Enter your enhanced DBS certificate number.";
-      if (dbsCertificateError) nextErrors.dbsCertificateFile = dbsCertificateError;
-      if (identityPhotoError) nextErrors.identityPhoto = identityPhotoError;
-      if (qualificationFileError) nextErrors.qualificationFile = qualificationFileError;
-      if (rightToWorkFileError) nextErrors.rightToWorkFile = rightToWorkFileError;
+      if (documentRequirementsQuery.isError) {
+        nextErrors.documents = "Document requirements could not be loaded. Retry, then continue.";
+      } else if (!documentRequirementsQuery.isSuccess && documentRequirements.length === 0) {
+        nextErrors.documents = "Document requirements are still loading. Try again in a moment.";
+      } else {
+        documentRequirements.forEach((requirement) => {
+          const error = documentFileError(form.documents[requirement.id] ?? null, requirement);
+          if (error) nextDocumentErrors[requirement.id] = error;
+        });
+
+        if (Object.keys(nextDocumentErrors).length > 0) {
+          nextErrors.documents = "Upload the required documents before continuing.";
+        }
+      }
+
+      setDocumentErrors(nextDocumentErrors);
     }
 
     if (targetStep === 3 && activeRole === "institution") {
@@ -574,16 +572,22 @@ export function useOnboardingForm({
 
   return {
     activeRole,
+    clearDocumentError,
     clearFieldError,
     continueStep,
     closeDocumentPreview,
     currentStep,
+    documentErrors,
     documentPreview,
+    documentRequirements,
+    documentRequirementsError,
+    documentRequirementsLoading,
     errors,
     form,
     isLastStep,
     pending,
     progress,
+    retryDocumentRequirements,
     reviewGroups,
     setStep,
     steps,

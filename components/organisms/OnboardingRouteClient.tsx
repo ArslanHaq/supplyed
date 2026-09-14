@@ -10,6 +10,7 @@ import {
   saveOnboardingStep,
   uploadOnboardingDocument,
 } from "@/app/(app)/onboarding/actions";
+import { hasRequiredDocuments } from "@/features/onboarding/document-utils";
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import {
   clearFoundingSignupIntent,
@@ -42,13 +43,10 @@ function withClientTimeout<T>(promise: Promise<T>, ms: number, message: string):
   });
 }
 
+// Requirements come from the backend; an empty list at page load means they
+// could not be fetched, so the documents step stays the safe landing point.
 function hasAllInstructorDocuments(snapshot: OnboardingProfileSnapshot) {
-  return Boolean(
-    snapshot.documents.dbs?.uploadedAt &&
-      snapshot.documents.id?.uploadedAt &&
-      snapshot.documents.qualification?.uploadedAt &&
-      snapshot.documents.addressProof?.uploadedAt,
-  );
+  return snapshot.documentRequirements.length > 0 && hasRequiredDocuments(snapshot.documentRequirements, snapshot.documents);
 }
 
 function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
