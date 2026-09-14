@@ -67,6 +67,7 @@ type FoundingFormErrors = Partial<Record<FoundingFormField, string>>;
 
 type FoundingInterestFormProps = {
   campaign?: string;
+  id?: string;
   source?: string;
   type: FoundingInterestType;
 };
@@ -243,7 +244,7 @@ function PanelIntro({ copy, icon, title }: { copy: string; icon: string; title: 
   );
 }
 
-export function FoundingInterestForm({ campaign, source, type }: FoundingInterestFormProps) {
+export function FoundingInterestForm({ campaign, id, source, type }: FoundingInterestFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const submittedIntentRef = useRef<FoundingSignupIntent | undefined>(undefined);
@@ -464,6 +465,7 @@ export function FoundingInterestForm({ campaign, source, type }: FoundingInteres
 
   return (
     <form
+      id={id}
       ref={formRef}
       action={formAction}
       className="rounded-xl border border-border bg-white text-left shadow-(--shadow-sm)"

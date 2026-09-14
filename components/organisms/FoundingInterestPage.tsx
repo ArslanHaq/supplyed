@@ -188,6 +188,8 @@ function themedGlowStyle(color: string): CSSProperties {
 
 export function FoundingInterestPage({ campaign, source, type }: FoundingInterestPageProps) {
   const content = contentFor(type);
+  const registrationAnchorId = type === "SCHOOL" ? "school-registration" : "teacher-registration";
+  const registrationFormId = `${registrationAnchorId}-form`;
 
   return (
     <div className="overflow-x-hidden bg-white">
@@ -206,7 +208,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
               {content.heroCopy}
             </p>
             <div className="mb-12 flex flex-wrap gap-3">
-              <Link className={buttonClassName({ size: "xl" })} href="#register">
+              <Link className={buttonClassName({ size: "xl" })} href={`#${registrationAnchorId}`}>
                 {content.primaryCta}
               </Link>
               <Link
@@ -336,7 +338,8 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
       {type === "SCHOOL" ? <FoundingSchoolFaqSection /> : null}
       {type === "TEACHER" ? <FoundingTeacherFaqSection /> : null}
 
-      <section id="register" className="bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
+      <div id="register" className="h-0 scroll-mt-24" aria-hidden="true" />
+      <section id={registrationAnchorId} className="scroll-mt-24 bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
         <div
           className="mx-auto grid max-w-[1440px] items-center gap-8 lg:grid-cols-[minmax(0,590px)_minmax(460px,1fr)]"
           style={{ columnGap: "clamp(72px, 7vw, 160px)" }}
@@ -357,7 +360,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
             </div>
           </div>
 
-          <FoundingInterestForm campaign={campaign} source={source} type={type} />
+          <FoundingInterestForm campaign={campaign} id={registrationFormId} source={source} type={type} />
         </div>
       </section>
 
