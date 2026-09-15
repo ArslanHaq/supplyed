@@ -63,7 +63,6 @@ export function stepContent(role: SignupRole) {
   if (role === "teacher") {
     return [
       { label: "Teacher profile", description: "Contact details, subjects, rates, travel, and teaching style" },
-      { label: "Required documents", description: "Enhanced DBS, identity, qualification, and proof-of-address evidence" },
       { label: "Review", description: "Confirm your teacher profile" },
     ];
   }

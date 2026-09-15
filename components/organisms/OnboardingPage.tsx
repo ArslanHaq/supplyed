@@ -15,7 +15,6 @@ import { AccountBasicsStep } from "./onboarding/steps/AccountBasicsStep";
 import { InstitutionComplianceStep } from "./onboarding/steps/InstitutionComplianceStep";
 import { InstitutionDetailsStep } from "./onboarding/steps/InstitutionDetailsStep";
 import { ReviewStep } from "./onboarding/steps/ReviewStep";
-import { TeacherDocumentsStep } from "./onboarding/steps/TeacherDocumentsStep";
 import { TeacherProfileStep } from "./onboarding/steps/TeacherProfileStep";
 import {
   roleLabel,
@@ -260,7 +259,6 @@ function OnboardingStepContent({
   }
 
   if (currentStep === 2) {
-    if (activeRole === "teacher") return <TeacherDocumentsStep controller={controller} />;
     return <InstitutionDetailsStep controller={controller} />;
   }
 

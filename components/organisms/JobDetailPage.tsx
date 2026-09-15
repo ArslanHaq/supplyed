@@ -8,7 +8,8 @@ import { FormattedJobDescription, Modal, SectionLoader } from "../molecules";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
   const [open, setOpen] = useState(false);
-  const jobQuery = useJob(ctx.jobId ?? "");
+  const ownerView = role !== "teacher";
+  const jobQuery = useJob(ctx.jobId ?? "", ownerView);
   const job = jobQuery.data;
 
   if (!ctx.jobId) {

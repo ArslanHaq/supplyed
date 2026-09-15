@@ -35,15 +35,6 @@ function withClientTimeout<T>(promise: Promise<T>, ms: number, message: string):
   });
 }
 
-function hasAllInstructorDocuments(snapshot: OnboardingProfileSnapshot) {
-  return Boolean(
-    snapshot.documents.dbs?.uploadedAt &&
-      snapshot.documents.id?.uploadedAt &&
-      snapshot.documents.qualification?.uploadedAt &&
-      snapshot.documents.addressProof?.uploadedAt,
-  );
-}
-
 function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
   if (role === "teacher") return "teacher";
   if (role === "individual") return "individual";
@@ -52,9 +43,7 @@ function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
 
 function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfileSnapshot) {
   if (role === "teacher") {
-    if (!snapshot.instructor) return 1;
-    if (hasAllInstructorDocuments(snapshot)) return 3;
-    return 2;
+    return snapshot.instructor ? 2 : 1;
   }
 
   if (role === "institution") {
@@ -179,6 +168,12 @@ function OnboardingRouteClientInner({
     if (!sessionRefresh.ok) return sessionRefresh;
 
     if (result.data.snapshot) setSavedProfileSnapshot(result.data.snapshot);
+
+    if (result.data.applicationStatus === "none") {
+      router.refresh();
+      return result;
+    }
+
     startRouteLoading();
     router.push(
       getAuthenticatedEntryHref({

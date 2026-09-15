@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
+import { filterProfileDocumentRequirements } from "@/features/onboarding/document-requirements";
+import type { OnboardingDocumentSnapshot, OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import type { AppRole } from "@/types/supplyed";
 
 import { FileSummary, ReviewBadgeList } from "./ReviewCard";
@@ -38,10 +39,12 @@ function snapshotFingerprint(snapshot?: OnboardingProfileSnapshot) {
   if (!snapshot) return "";
 
   return JSON.stringify({
+    documentRequirements: snapshot.documentRequirements,
     documents: snapshot.documents,
     institution: snapshot.institution,
     instructor: snapshot.instructor,
     recruiter: snapshot.recruiter,
+    requirementDocuments: snapshot.requirementDocuments,
     role: snapshot.role,
     user: snapshot.user,
   });
@@ -132,12 +135,17 @@ export function useOnboardingForm({
   const [uploadPending, setUploadPending] = useState<DocumentUploadField | null>(null);
   const [viewPending, setViewPending] = useState<DocumentUploadField | null>(null);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
+  const [requirementDocuments, setRequirementDocuments] = useState<Record<string, OnboardingDocumentSnapshot>>(() => initialSnapshot?.requirementDocuments ?? {});
+  const [requirementDocumentErrors, setRequirementDocumentErrors] = useState<Record<string, string | undefined>>({});
+  const [requirementUploadPending, setRequirementUploadPending] = useState<string | null>(null);
+  const [requirementViewPending, setRequirementViewPending] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string>();
   const progress = Math.round((currentStep / steps.length) * 100);
   const isLastStep = currentStep === steps.length;
   const mountedRef = useRef(true);
   const previousStepRef = useRef(currentStep);
   const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
+  const documentRequirements = filterProfileDocumentRequirements(initialSnapshot?.documentRequirements ?? [], activeRole);
   const previousSnapshotFingerprintRef = useRef(initialSnapshotFingerprint);
 
   useEffect(() => {
@@ -160,6 +168,7 @@ export function useOnboardingForm({
 
     previousSnapshotFingerprintRef.current = initialSnapshotFingerprint;
     setForm((current) => mergeSnapshotForm(current, accountEmail, initialSnapshot));
+    setRequirementDocuments(initialSnapshot?.requirementDocuments ?? {});
   }, [accountEmail, initialSnapshot, initialSnapshotFingerprint]);
 
   function buildPayload() {
@@ -194,20 +203,7 @@ export function useOnboardingForm({
             { label: "TRN", value: form.teachingReferenceNumber || "Optional" },
             { label: "Bio", value: form.bio || "Not provided", wide: true },
           ],
-        },
-        {
-          title: "Required Documents",
-          description: "Documents sent to verification review",
-          icon: "shield",
-          editStep: 2,
-          lines: [
-            { label: "DBS number", value: form.dbsNumber || "Not provided" },
-            { label: "Enhanced DBS certificate", value: <FileSummary file={form.dbsCertificateFile} />, wide: true },
-            { label: "Photo ID", value: <FileSummary file={form.identityPhoto} />, wide: true },
-            { label: "Teaching qualification / QTS", value: <FileSummary file={form.qualificationFile} />, wide: true },
-            { label: "Proof of address", value: <FileSummary file={form.rightToWorkFile} />, wide: true },
-          ],
-        },
+        }
       ];
     }
 
@@ -350,6 +346,7 @@ export function useOnboardingForm({
         [field]: uploadedFile,
       }));
       setErrors((current) => ({ ...current, [documentErrorField(field)]: undefined }));
+      setRequirementDocuments((current) => ({ ...current, ...result.data!.requirementDocuments }));
     } catch (error) {
       setErrors((current) => ({
         ...current,
@@ -397,6 +394,89 @@ export function useOnboardingForm({
     }
   }
 
+  async function uploadRequirementDocument(requirementId: string, file: UploadedFile) {
+    if (pending === "submit" || requirementUploadPending) return;
+
+    const requirement = documentRequirements.find((item) => item.id === requirementId);
+    const label = requirement?.documentType.name || "Document";
+    const selectedFile = file.file;
+    const validationError = selectedFile ? documentFileError({ ...file, id: "validation-placeholder" }, label) : `${label} is required.`;
+
+    if (validationError) {
+      setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: validationError }));
+      return;
+    }
+
+    const data = buildPayload();
+    data.set("requirementId", requirementId);
+    data.set("file", selectedFile!, file.name);
+
+    setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: undefined }));
+    setSubmitError(undefined);
+    setRequirementUploadPending(requirementId);
+
+    try {
+      const result = await onDocumentUpload(data);
+
+      if (!result.ok || !result.data?.document) {
+        setRequirementDocumentErrors((current) => ({
+          ...current,
+          [requirementId]: result.message || `${label} could not be uploaded. Choose the file again.`,
+        }));
+        return;
+      }
+
+      setRequirementDocuments((current) => ({
+        ...current,
+        ...result.data!.requirementDocuments,
+        [requirementId]: result.data!.document,
+      }));
+      setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: undefined }));
+    } catch (error) {
+      setRequirementDocumentErrors((current) => ({
+        ...current,
+        [requirementId]: error instanceof Error && error.message ? error.message : `${label} could not be uploaded. Choose the file again.`,
+      }));
+    } finally {
+      if (mountedRef.current) setRequirementUploadPending(null);
+    }
+  }
+
+  async function viewRequirementDocument(requirementId: string, file: UploadedFile | null) {
+    if (!file?.id || requirementViewPending) return;
+
+    const data = new FormData();
+    data.set("documentId", file.id);
+    data.set("fileName", file.name);
+    setRequirementViewPending(requirementId);
+    setSubmitError(undefined);
+
+    try {
+      const result = await onDocumentView(data);
+
+      if (!result.ok || !result.data?.url) {
+        setRequirementDocumentErrors((current) => ({
+          ...current,
+          [requirementId]: result.message || "This document could not be opened.",
+        }));
+        return;
+      }
+
+      setDocumentPreview({
+        expiresAt: result.data.expiresAt,
+        file,
+        url: result.data.url,
+      });
+    } catch (error) {
+      setRequirementDocumentErrors((current) => ({
+        ...current,
+        [requirementId]: error instanceof Error && error.message ? error.message : "This document could not be opened.",
+      }));
+    } finally {
+      if (mountedRef.current) setRequirementViewPending(null);
+    }
+  }
+
   function closeDocumentPreview() {
     setDocumentPreview(null);
   }
@@ -409,6 +489,7 @@ export function useOnboardingForm({
   function applySnapshot(snapshot?: OnboardingProfileSnapshot) {
     if (!snapshot) return;
     setForm((current) => mergeSnapshotForm(current, accountEmail, snapshot));
+    setRequirementDocuments(snapshot.requirementDocuments ?? {});
   }
 
   function validateStep(targetStep: SignupStep) {
@@ -444,19 +525,6 @@ export function useOnboardingForm({
       if (form.coverTypes.length === 0) nextErrors.coverTypes = "Choose at least one staffing need.";
     }
 
-    if (targetStep === 2 && activeRole === "teacher") {
-      const dbsCertificateError = documentFileError(form.dbsCertificateFile, "Enhanced DBS certificate");
-      const identityPhotoError = documentFileError(form.identityPhoto, "Photo ID");
-      const qualificationFileError = documentFileError(form.qualificationFile, "Teaching qualification");
-      const rightToWorkFileError = documentFileError(form.rightToWorkFile, "Proof of address");
-
-      if (!form.dbsNumber.trim()) nextErrors.dbsNumber = "Enter your enhanced DBS certificate number.";
-      if (dbsCertificateError) nextErrors.dbsCertificateFile = dbsCertificateError;
-      if (identityPhotoError) nextErrors.identityPhoto = identityPhotoError;
-      if (qualificationFileError) nextErrors.qualificationFile = qualificationFileError;
-      if (rightToWorkFileError) nextErrors.rightToWorkFile = rightToWorkFileError;
-    }
-
     if (targetStep === 3 && activeRole === "institution") {
       if (!form.complianceContact.trim()) nextErrors.complianceContact = "Enter the safeguarding or compliance lead.";
       if (!form.complianceEmail.trim()) nextErrors.complianceEmail = "Enter the compliance email.";
@@ -469,7 +537,7 @@ export function useOnboardingForm({
   }
 
   async function continueStep() {
-    if (pending || uploadPending) return;
+    if (pending || uploadPending || requirementUploadPending) return;
     if (!validateStep(currentStep)) return;
 
     setPending("step");
@@ -493,12 +561,24 @@ export function useOnboardingForm({
   }
 
   async function submitSignup() {
-    if (pending || uploadPending) return;
+    if (pending || uploadPending || requirementUploadPending) return;
     for (let targetStep = 1; targetStep < steps.length; targetStep += 1) {
       if (!validateStep(targetStep as SignupStep)) {
         setStep(targetStep);
         return;
       }
+    }
+
+    const missingRequirements = documentRequirements.filter(
+      (requirement) => requirement.isRequired && !requirementDocuments[requirement.id]?.uploadedAt,
+    );
+    if (missingRequirements.length > 0) {
+      setRequirementDocumentErrors((current) => ({
+        ...current,
+        ...Object.fromEntries(missingRequirements.map((requirement) => [requirement.id, `${requirement.documentType.name} is required.`])),
+      }));
+      setSubmitError("Upload all required documents before submitting.");
+      return;
     }
 
     setPending("submit");
@@ -526,11 +606,16 @@ export function useOnboardingForm({
     closeDocumentPreview,
     currentStep,
     documentPreview,
+    documentRequirements,
     errors,
     form,
     isLastStep,
     pending,
     progress,
+    requirementDocumentErrors,
+    requirementDocuments,
+    requirementUploadPending,
+    requirementViewPending,
     reviewGroups,
     setStep,
     steps,
@@ -538,9 +623,11 @@ export function useOnboardingForm({
     submitSignup,
     uploadDocument,
     uploadPending,
+    uploadRequirementDocument,
     updateField,
     viewDocument,
     viewPending,
+    viewRequirementDocument,
   };
 }
 
