@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 
+import { useApplicationDocumentRequirements } from "@/features/document-requirements/use-document-requirements";
 import { useCreateJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
 import type { RouteProps } from "@/types/supplyed";
@@ -12,6 +13,7 @@ type PostingMode = "instant" | "brief";
 
 type JobFormState = {
   description: string;
+  documentRequirementIds: string[];
   endDate: string;
   expiresAt: string;
   keyStages: string[];
@@ -34,6 +36,7 @@ const payTypeOptions = ["Daily", "Hourly", "Fixed"];
 
 const initialForm: JobFormState = {
   description: "",
+  documentRequirementIds: [],
   endDate: "",
   expiresAt: "",
   keyStages: ["KS2"],
@@ -108,6 +111,14 @@ function PostJobEditor({
   const [savingIntent, setSavingIntent] = useState<"draft" | "publish" | null>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const isEditing = Boolean(editingJob);
+  const documentRequirementsQuery = useApplicationDocumentRequirements();
+  const documentRequirements = documentRequirementsQuery.data ?? [];
+  const documentRequirementOptions = documentRequirements.map((requirement) => ({
+    description: requirement.description,
+    label: requirement.name,
+    value: requirement.id,
+  }));
+  const todayDate = getTodayDateInput();
 
   const createJob = useCreateJob({
     onSuccess: async (result) => {
@@ -172,7 +183,7 @@ function PostJobEditor({
     const draftErrors = validateDraft(form);
     setErrors(draftErrors);
     if (Object.keys(draftErrors).length > 0) {
-      if (!isEditing) setStep(2);
+      if (!isEditing) setStep(firstInvalidStep(draftErrors));
       return;
     }
 
@@ -273,7 +284,7 @@ function PostJobEditor({
             <SelectDropdown options={subjectOptions} value={form.subject} onChange={(value) => updateForm("subject", value)} />
           </Field>
           <Field error={errors.startDate} label="Start date" required>
-            <input className="input" type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
+            <input className="input" min={todayDate} type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
           </Field>
           <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[minmax(0,1fr)_220px]">
             <Field error={errors.payAmount} label="Pay amount (£)" required>
@@ -295,7 +306,7 @@ function PostJobEditor({
             </Field>
           </div>
           <Field error={errors.endDate} label="End date">
-            <input className="input" type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
+            <input className="input" min={form.startDate || todayDate} type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
           </Field>
         </div>
         <Field error={errors.description} label="Role description" required>
@@ -320,17 +331,47 @@ function PostJobEditor({
     return (
       <div>
         <div className="grid-2">
-          <Field error={errors.keyStages} label="Key stages" required>
+          <Field error={errors.keyStages} htmlFor="job-key-stages" label="Key stages" required>
             <MultiSelectDropdown
+              id="job-key-stages"
               options={keyStageOptions}
               placeholder="Select key stages"
               value={form.keyStages}
               onChange={(value) => updateForm("keyStages", value)}
             />
           </Field>
-          <Field hint="Optional. If set, the job stops appearing publicly after this date." label="Listing expiry">
-            <input className="input" type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
+          <Field error={errors.expiresAt} hint="Optional. If set, the job stops appearing publicly after this date." label="Listing expiry">
+            <input className="input" min={todayDate} type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
           </Field>
+          <div className="md:col-span-2">
+            <Field htmlFor="job-document-requirements" hint="Optional. Select the documents applicants should provide." label="Application document requirements">
+              <MultiSelectDropdown
+                id="job-document-requirements"
+                disabled={documentRequirementsQuery.isLoading || documentRequirementsQuery.isError || documentRequirementOptions.length === 0}
+                error={documentRequirementsQuery.isError}
+                options={documentRequirementOptions}
+                placeholder={
+                  documentRequirementsQuery.isLoading
+                    ? "Loading document requirements..."
+                    : documentRequirementsQuery.isError
+                      ? "Document requirements unavailable"
+                      : documentRequirementOptions.length === 0
+                        ? "No document requirements available"
+                        : "Select document requirements"
+                }
+                value={form.documentRequirementIds}
+                onChange={(value) => updateForm("documentRequirementIds", value)}
+              />
+              {documentRequirementsQuery.isError ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-danger" role="alert">
+                  <span>Could not load document requirements.</span>
+                  <button className="cursor-pointer font-semibold underline underline-offset-2" onClick={() => void documentRequirementsQuery.refetch()} type="button">
+                    Try again
+                  </button>
+                </div>
+              ) : null}
+            </Field>
+          </div>
         </div>
         <Field label="Parking / arrival notes">
           <textarea
@@ -341,9 +382,8 @@ function PostJobEditor({
           />
         </Field>
         <div className="grid-2">
-          <Field label="Required checks">
+          <Field label="Posting options">
             <div className="flex flex-col gap-2">
-              <Checkbox checked label="Enhanced DBS certificate" onChange={() => {}} />
               <Checkbox checked={form.qtsRequired} label="QTS qualified" onChange={(value) => updateForm("qtsRequired", value)} />
               <Checkbox checked={form.urgent} label="Mark as urgent" onChange={(value) => updateForm("urgent", value)} />
             </div>
@@ -373,8 +413,10 @@ function PostJobEditor({
             <span className="pill">{form.location || "Location TBC"}</span>
             <span className="pill">{formatPay(form)}</span>
             <span className="pill">{formatDateRange(form.startDate, form.endDate)}</span>
-            <span className="pill">DBS required</span>
             {form.qtsRequired ? <span className="pill">QTS required</span> : null}
+            {documentRequirements
+              .filter((requirement) => form.documentRequirementIds.includes(requirement.id))
+              .map((requirement) => <span key={requirement.id} className="pill">{requirement.name}</span>)}
           </div>
         </div>
       </div>
@@ -501,7 +543,7 @@ function validateStep(step: number, form: JobFormState): JobFormErrors {
   if (step === 2) {
     return pickErrors(validateAll(form), ["description", "endDate", "location", "payAmount", "startDate", "subject", "title"]);
   }
-  if (step === 3) return pickErrors(validateAll(form), ["keyStages"]);
+  if (step === 3) return pickErrors(validateAll(form), ["expiresAt", "keyStages"]);
   return {};
 }
 
@@ -513,7 +555,7 @@ function validateAll(form: JobFormState): JobFormErrors {
   if (!form.location.trim()) errors.location = "Enter the role location.";
   if (!form.subject.trim()) errors.subject = "Choose a subject.";
   if (!form.startDate) errors.startDate = "Choose a start date.";
-  if (form.startDate && form.endDate && form.startDate > form.endDate) errors.endDate = "End date cannot be before the start date.";
+  Object.assign(errors, validateJobDates(form));
   if (!Number.isFinite(payAmount) || payAmount <= 0) errors.payAmount = "Enter a valid pay amount.";
   if (!form.description.trim() || form.description.trim().length < 20) errors.description = "Add role details of at least 20 characters.";
   if (form.keyStages.length === 0) errors.keyStages = "Choose at least one key stage.";
@@ -526,6 +568,24 @@ function validateDraft(form: JobFormState): JobFormErrors {
 
   if (!form.title.trim()) errors.title = "Enter a job title before saving a draft.";
   if (!form.description.trim()) errors.description = "Add a short role description before saving a draft.";
+  Object.assign(errors, validateJobDates(form));
+
+  return errors;
+}
+
+function validateJobDates(form: JobFormState): JobFormErrors {
+  const errors: JobFormErrors = {};
+  const todayDate = getTodayDateInput();
+
+  if (form.startDate && form.startDate < todayDate) {
+    errors.startDate = "Start date cannot be before today.";
+  }
+  if (form.startDate && form.endDate && form.endDate < form.startDate) {
+    errors.endDate = "End date cannot be before the start date.";
+  }
+  if (form.expiresAt && form.expiresAt < todayDate) {
+    errors.expiresAt = "Listing expiry cannot be before today.";
+  }
 
   return errors;
 }
@@ -539,7 +599,7 @@ function pickErrors(errors: JobFormErrors, keys: Array<keyof JobFormState>) {
 
 function firstInvalidStep(errors: JobFormErrors) {
   if (errors.title || errors.location || errors.subject || errors.startDate || errors.endDate || errors.payAmount || errors.description) return 2;
-  if (errors.keyStages) return 3;
+  if (errors.expiresAt || errors.keyStages) return 3;
   return 4;
 }
 
@@ -593,6 +653,12 @@ function toIsoDate(value: string) {
   return new Date(`${value}T09:00:00.000Z`).toISOString();
 }
 
+function getTodayDateInput() {
+  const today = new Date();
+  const localTime = today.getTime() - today.getTimezoneOffset() * 60_000;
+  return new Date(localTime).toISOString().slice(0, 10);
+}
+
 function toDateInput(value?: string | null) {
   if (!value) return "";
   const parsed = Date.parse(value);
@@ -603,6 +669,7 @@ function toDateInput(value?: string | null) {
 function toFormState(job: Job): JobFormState {
   return {
     description: readEditableDescription(job.description ?? ""),
+    documentRequirementIds: [],
     endDate: toDateInput(job.endDate),
     expiresAt: toDateInput(job.expiresAt),
     keyStages: job.keyStages?.length ? job.keyStages : job.keyStage ? [job.keyStage] : initialForm.keyStages,

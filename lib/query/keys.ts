@@ -8,6 +8,10 @@ export const queryKeys = {
     all: ["auth"] as const,
     me: () => [...queryKeys.auth.all, "me"] as const,
   },
+  documentRequirements: {
+    all: ["document-requirements"] as const,
+    application: () => [...queryKeys.documentRequirements.all, "application"] as const,
+  },
   jobs: {
     all: ["jobs"] as const,
     detail: (id: string) => [...queryKeys.jobs.all, "detail", id] as const,

@@ -57,7 +57,7 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
                 <div className="mb-3 text-[15px] text-muted">{job.school} - {job.city} - {job.date}</div>
                 <div className="flex flex-wrap gap-4 text-xs text-muted"><div className="flex items-center gap-1"><Icon name="pound" size={12} />£{job.rate}/day</div><div className="flex items-center gap-1"><Icon name="users" size={12} />{job.applicants} applied</div><div className="flex items-center gap-1"><Icon name="pin" size={12} />4.2 mi</div></div>
               </div>
-              <div className="flex flex-col items-end gap-2.5"><MatchScore score={job.matchScore} /><Btn size="sm">{job.mode === "instant" ? "Accept" : "Apply"}</Btn></div>
+              <div className="flex flex-col items-end gap-2.5"><MatchScore score={job.matchScore} /><Btn size="sm">Apply</Btn></div>
             </div>
           ))}
           {!jobsQuery.isLoading && jobs.length === 0 ? (

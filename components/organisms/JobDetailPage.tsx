@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useCreateApplication } from "@/features/applications/use-applications";
 import { useJob } from "@/features/jobs/use-jobs";
 import type { RouteProps } from "@/types/supplyed";
 
@@ -8,8 +9,46 @@ import { FormattedJobDescription, Modal, SectionLoader } from "../molecules";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
   const [open, setOpen] = useState(false);
+  const [coverLetter, setCoverLetter] = useState("");
+  const [coverLetterError, setCoverLetterError] = useState<string>();
+  const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const jobQuery = useJob(ctx.jobId ?? "");
   const job = jobQuery.data;
+  const createApplication = useCreateApplication({
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setCoverLetterError(result.fieldErrors?.coverLetter);
+        toast({ title: "Could not apply", msg: result.message, tone: "danger" });
+        return;
+      }
+
+      setApplicationSubmitted(true);
+      setOpen(false);
+      toast({ title: "Application submitted", msg: "Your application and cover letter were sent successfully.", tone: "success" });
+    },
+    onError: () => {
+      toast({ title: "Could not apply", msg: "Please try again.", tone: "danger" });
+    },
+  });
+
+  function submitApplication() {
+    if (!job || role !== "teacher") return;
+
+    const normalizedCoverLetter = coverLetter.trim();
+    if (!normalizedCoverLetter) {
+      setCoverLetterError("Add a cover letter before applying.");
+      return;
+    }
+
+    setCoverLetterError(undefined);
+    createApplication.mutate({ coverLetter: normalizedCoverLetter, jobId: job.id });
+  }
+
+  function closeModal() {
+    if (createApplication.isPending) return;
+    setOpen(false);
+    setCoverLetterError(undefined);
+  }
 
   if (!ctx.jobId) {
     return (
@@ -60,15 +99,41 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
         <div className="card card-pad-lg sticky top-[88px] self-start">
           <div className="mb-3.5 flex items-center justify-between"><div><div className="text-xs text-muted">Day rate</div><div className="font-serif text-[28px]">£{job.rate}</div></div><MatchScore score={job.matchScore} /></div>
           <div className="mb-3.5 flex flex-wrap gap-2"><span className="pill">{job.keyStage}</span><span className="pill">{job.subject}</span><span className="pill">{job.date}</span></div>
-          <Btn className="w-full" size="lg" onClick={() => setOpen(true)}>{role === "teacher" ? (job.mode === "instant" ? "Accept job" : "Apply now") : "Invite candidates"}</Btn>
+          <Btn className="w-full" disabled={role === "teacher" && applicationSubmitted} size="lg" onClick={() => setOpen(true)}>{role === "teacher" ? (applicationSubmitted ? "Application submitted" : "Apply for job") : "Invite candidates"}</Btn>
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging")}>Message school</Btn>
         </div>
       </div>
-      <Modal open={open} onClose={() => setOpen(false)}>
+      <Modal open={open} onClose={closeModal}>
         <div className="card-pad-lg">
           <div className="mb-2 font-serif text-[26px]">{role === "teacher" ? "Apply to this role" : "Invite candidates"}</div>
-          <Field label="Message"><textarea className="textarea" defaultValue="Hi, I'm available and happy to arrive by 08:15. I have strong KS2 Maths cover experience." /></Field>
-          <div className="flex items-center justify-between"><Btn variant="ghost" onClick={() => setOpen(false)}>Cancel</Btn><Btn onClick={() => { setOpen(false); toast({ title: "Success", msg: role === "teacher" ? "Application submitted." : "Top candidates invited." }); }}>Confirm</Btn></div>
+          {role === "teacher" ? (
+            <>
+              <p className="mb-5 text-sm leading-6 text-muted">Introduce yourself and explain why you are a good fit for this role.</p>
+              <Field error={coverLetterError} htmlFor="job-cover-letter" label="Cover letter" required>
+                <textarea
+                  id="job-cover-letter"
+                  className="textarea"
+                  maxLength={2000}
+                  placeholder="Share your relevant experience, availability, and suitability for this role."
+                  value={coverLetter}
+                  onChange={(event) => {
+                    setCoverLetter(event.target.value);
+                    if (coverLetterError) setCoverLetterError(undefined);
+                  }}
+                />
+              </Field>
+              <div className="-mt-2 mb-5 text-right text-xs text-muted">{coverLetter.length.toLocaleString()} / 2,000</div>
+              <div className="flex items-center justify-between">
+                <Btn disabled={createApplication.isPending} variant="ghost" onClick={closeModal}>Cancel</Btn>
+                <Btn loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
+              </div>
+            </>
+          ) : (
+            <>
+              <Field label="Message"><textarea className="textarea" defaultValue="Please review this role and let us know if you are interested." /></Field>
+              <div className="flex items-center justify-between"><Btn variant="ghost" onClick={closeModal}>Cancel</Btn><Btn onClick={() => { setOpen(false); toast({ title: "Success", msg: "Top candidates invited." }); }}>Confirm</Btn></div>
+            </>
+          )}
         </div>
       </Modal>
     </div>
