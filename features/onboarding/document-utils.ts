@@ -122,7 +122,11 @@ export function isImageRequirement(requirement: Pick<OnboardingDocumentRequireme
 }
 
 export function missingRequiredDocuments(requirements: OnboardingDocumentRequirement[], documents: OnboardingDocumentMap) {
-  return requirements.filter((requirement) => requirement.isRequired && !documents[requirement.id]?.uploadedAt);
+  return requirements.filter((requirement) => requirement.isRequired && !isDocumentReadyForReview(documents[requirement.id]));
+}
+
+export function isDocumentReadyForReview(document?: { uploadedAt?: string | null; status?: string | null }) {
+  return Boolean(document?.uploadedAt && ["PENDING", "APPROVED", "NOT_REQUIRED"].includes(document.status?.toUpperCase() ?? ""));
 }
 
 export function hasRequiredDocuments(requirements: OnboardingDocumentRequirement[], documents: OnboardingDocumentMap) {

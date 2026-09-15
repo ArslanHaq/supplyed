@@ -1,6 +1,7 @@
 import { filterProfileDocumentRequirements } from "@/features/onboarding/document-requirements";
 
-import { Icon } from "../../../atoms";
+import { Btn, Icon } from "../../../atoms";
+import { isDocumentReadyForReview } from "@/features/onboarding/document-utils";
 import type { StepComponentProps } from "../step-types";
 import { UploadCard } from "../UploadCard";
 import { toUploadedFileFromDocument } from "../utils";
@@ -22,6 +23,9 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
   const {
     activeRole,
     documentRequirements,
+    documentRequirementsLoading,
+    documentRequirementsError,
+    retryDocumentRequirements,
     requirementDocumentErrors,
     requirementDocuments,
     requirementUploadPending,
@@ -32,6 +36,14 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
   const requiredDocuments = filterProfileDocumentRequirements(documentRequirements, activeRole).filter(
     (requirement) => requirement.isRequired,
   );
+
+  if (documentRequirementsError) return (
+    <div role="alert" className="space-y-4">
+      <p className="text-danger">Document requirements could not be checked. Please try again.</p>
+      <Btn variant="secondary" onClick={retryDocumentRequirements}>Retry</Btn>
+    </div>
+  );
+  if (documentRequirementsLoading) return <p role="status" className="text-muted">Checking document requirements...</p>;
 
   return (
     <div className="space-y-4">
@@ -64,7 +76,7 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
                 icon="file"
                 accept={acceptForMimes(requirement.documentType.allowedMimes)}
                 file={file}
-                error={requirementDocumentErrors[requirement.id]}
+                error={requirementDocumentErrors[requirement.id] || (document?.uploadedAt && !isDocumentReadyForReview(document) ? "This document needs to be uploaded again before you can resubmit." : undefined)}
                 pending={requirementUploadPending === requirement.id}
                 viewPending={requirementViewPending === requirement.id}
                 actionLabel="Upload document"

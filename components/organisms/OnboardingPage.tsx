@@ -87,6 +87,8 @@ export function OnboardingPage({
     continueStep,
     currentStep,
     documentPreview,
+    documentRequirementsLoading,
+    documentRequirementsError,
     isLastStep,
     lockedDocumentStage,
     pending,
@@ -166,7 +168,7 @@ export function OnboardingPage({
             ) : null}
 
             <div className="mt-8 space-y-4">
-              {steps.map((item, index) => {
+              {(lockedDocumentStage ? [] : steps).map((item, index) => {
                 const itemStep = index + 1;
                 const active = !lockedDocumentStage && itemStep === currentStep;
                 const complete = lockedDocumentStage || itemStep < currentStep;
@@ -274,7 +276,7 @@ export function OnboardingPage({
                 loadingLabel={lockedDocumentStage ? "Sending for review" : isLastStep ? "Creating profile" : "Saving step"}
                 size="lg"
                 iconRight="arrow"
-                disabled={Boolean(uploadPending || requirementUploadPending)}
+                disabled={Boolean(uploadPending || requirementUploadPending || documentRequirementsLoading || documentRequirementsError)}
                 onClick={handlePrimaryAction}
               >
                 {lockedDocumentStage ? "Send for review" : isLastStep ? signupSubmitLabel(activeRole) : "Continue"}

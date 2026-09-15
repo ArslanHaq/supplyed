@@ -23,6 +23,7 @@ export { SignupAccessPage } from "./SignupAccessPage";
 export { SignupRouteClient } from "./SignupRouteClient";
 export { SignupVerifyPage } from "./SignupVerifyPage";
 export { SecurityPage } from "./SecurityPage";
+export { SettingsPage } from "./SettingsPage";
 export { TeacherDashboard } from "./TeacherDashboard";
 export { TeacherProfilePage } from "./TeacherProfilePage";
 export { TwoFactorChallengePage } from "./TwoFactorChallengePage";

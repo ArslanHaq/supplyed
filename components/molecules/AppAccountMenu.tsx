@@ -10,6 +10,7 @@ type AppAccountMenuProps = {
   onLanding: () => void;
   onLogout: () => void | Promise<void>;
   onSecurity: () => void;
+  onSettings: () => void;
   roleLabel: string;
 };
 
@@ -60,6 +61,7 @@ export function AppAccountMenu({
   onLanding,
   onLogout,
   onSecurity,
+  onSettings,
   roleLabel,
 }: AppAccountMenuProps) {
   const [open, setOpen] = useState(false);
@@ -97,6 +99,12 @@ export function AppAccountMenu({
       label: "Workspace home",
       onSelect: () => closeThen(onDashboard),
       sub: "Open your dashboard",
+    },
+    {
+      icon: "settings",
+      label: "Settings",
+      onSelect: () => closeThen(onSettings),
+      sub: "Update account and profile details",
     },
     {
       icon: "shield",

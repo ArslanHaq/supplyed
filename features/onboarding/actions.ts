@@ -11,6 +11,9 @@ import { getServerAuthContext } from "@/lib/server/auth-context";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 import { filterProfileDocumentRequirements } from "./document-requirements";
+import { isDocumentReadyForReview } from "./document-utils";
+import { getDocumentSnapshots, getProfileDocumentRequirements as loadProfileDocumentRequirements } from "./documents";
+import { hasCreatedRoleProfile } from "./profile-progress";
 import { normalizeOnboardingSubmitInput } from "./schemas";
 import type {
   OnboardingDocumentDownloadResult,
@@ -294,9 +297,7 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
 }
 
 function normalizeRecruiterProfileStatus(profile: { id?: string; status?: unknown }) {
-  const status = normalizeStatus(profile.status);
-  if (status === "rejected" || status === "suspended") return status;
-  return profile.id ? "approved" : "none";
+  return normalizeStatus(profile.status);
 }
 
 function normalizeRecruiterSnapshot(profile: BackendRecruiterProfile): OnboardingRecruiterSnapshot | undefined {
@@ -424,7 +425,7 @@ function missingRequiredDocumentNames(
 ) {
   return requirements
     .filter((requirement) => requirement.isRequired)
-    .filter((requirement) => !data.requirementDocuments[requirement.id]?.uploadedAt)
+    .filter((requirement) => !isDocumentReadyForReview(data.requirementDocuments[requirement.id]))
     .map((requirement) => requirement.documentType.name);
 }
 
@@ -672,57 +673,33 @@ async function getRecruiterSnapshot(accessToken?: string) {
 }
 
 async function getDocumentSnapshotData(accessToken?: string): Promise<DocumentSnapshotData> {
-  const data = emptyDocumentSnapshotData();
-
-  try {
-    const response = await api.get<BackendDocumentListResponse>(
-      "/documents",
-      accessToken
-        ? {
-            auth: false,
-            headers: buildBearerHeaders(accessToken),
-          }
-        : undefined,
-    );
-
-    readDocumentList(response).forEach((document) => addDocumentSnapshot(data, document));
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[SupplyED onboarding] document state could not be loaded", error);
-    }
+  const requirementDocuments = await getDocumentSnapshots({ accessToken });
+  const documents: DocumentSnapshotData["documents"] = {};
+  for (const document of Object.values(requirementDocuments)) {
+    const kind = documentKind(document.code);
+    if (kind) documents[kind] = document;
   }
-
-  return data;
+  return { documents, requirementDocuments };
 }
 
 
 async function getProfileDocumentRequirements(role?: AppRole | null, accessToken?: string) {
-  try {
-    const response = await api.get<BackendDocumentRequirementProfile[]>(
-      "/document-requirements/profile",
-      {
-        ...(accessToken
-          ? {
-              auth: false,
-              headers: buildBearerHeaders(accessToken),
-            }
-          : {}),
-        query: { role: roleQueryValue(role) },
-      },
-    );
-
-    const requirements = response
-      .map(normalizeDocumentRequirement)
-      .filter((requirement): requirement is OnboardingDocumentRequirementSnapshot => Boolean(requirement));
-
-    return filterProfileDocumentRequirements(requirements, role);
-  } catch (error) {
-    if (!(notFoundOrForbidden(error) || (error instanceof ApiError && error.status === 400 && !role))) throw error;
-    return [];
-  }
+  const requirements = await loadProfileDocumentRequirements(role, { accessToken });
+  return requirements.map((requirement): OnboardingDocumentRequirementSnapshot => ({
+    context: requirement.context,
+    id: requirement.id,
+    isRequired: requirement.isRequired,
+    documentType: {
+      allowedMimes: requirement.allowedMimes,
+      code: requirement.code,
+      maxSizeBytes: requirement.maxSizeBytes,
+      name: requirement.name,
+    },
+  }));
 }
 
 async function getDocumentState(role?: AppRole | null, accessToken?: string) {
+  if (!role) return { documentRequirements: [], ...emptyDocumentSnapshotData() };
   const [documentRequirements, documentData] = await Promise.all([
     getProfileDocumentRequirements(role, accessToken),
     getDocumentSnapshotData(accessToken),
@@ -733,15 +710,17 @@ async function getDocumentState(role?: AppRole | null, accessToken?: string) {
 
 export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileSnapshot> {
   const authContext = await getServerAuthContext();
-  const role = normalizeRole(authContext?.role);
+  let role = normalizeRole(authContext?.role);
 
   if (!backendEnabled() || !authContext?.userId) {
     return emptySnapshot(role, authContext?.email ?? undefined);
   }
 
-  try {
-    const user = await getCurrentUserSnapshot();
-    const documentState = await getDocumentState(role, authContext.accessToken ?? undefined);
+  {
+    const currentUser = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
+    role = normalizeRole(currentUser.role);
+    const user = normalizeUserSnapshot(currentUser, authContext.email ?? undefined);
+    const documentState = await getDocumentState(role);
     const snapshot: OnboardingProfileSnapshot = {
       applicationStatus: "none",
       documentRequirements: documentState.documentRequirements,
@@ -753,7 +732,7 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
 
     if (role === "teacher") {
       snapshot.instructor =
-        (await getInstructorSnapshotById(authContext.instructorProfileId)) ?? (await getCurrentInstructorSnapshot());
+        await getCurrentInstructorSnapshot();
       snapshot.applicationStatus = snapshot.instructor?.status ?? "none";
     }
 
@@ -767,9 +746,10 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
       snapshot.applicationStatus = snapshot.recruiter?.status ?? "none";
     }
 
+    if (role && !hasCreatedRoleProfile(snapshot)) {
+      throw new Error("Your existing profile could not be loaded. Retry before continuing.");
+    }
     return snapshot;
-  } catch {
-    return emptySnapshot(role, authContext.email ?? undefined);
   }
 }
 
@@ -825,6 +805,10 @@ async function refreshSessionForRole(
 }
 
 async function saveUserBasics(formData: FormData, postcodeFallback = "") {
+  if (backendEnabled()) {
+    const current = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
+    if (normalizeRole(current.role)) return normalizeUserSnapshot(current, current.email, postcodeFallback);
+  }
   if (!backendEnabled()) {
     return normalizeUserSnapshot(
       {
@@ -960,6 +944,8 @@ function onboardingError(error: unknown) {
 }
 
 async function saveInstructorProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+  const existing = await getCurrentInstructorSnapshot(accessToken);
+  if (existing) return existing;
   const profile = buildInstructorProfilePayload(formData);
   const profileId = readFormString(formData, "teacherProfileId") || existingProfileId || "";
 
@@ -1009,6 +995,8 @@ async function saveInstructorProfile(formData: FormData, accessToken: string, ex
 }
 
 async function saveInstitutionProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+  const existing = await getInstitutionSnapshot(accessToken);
+  if (existing) return existing;
   const profile = buildInstitutionProfilePayload(formData);
   const profileId = readFormString(formData, "institutionProfileId") || existingProfileId || "";
 
@@ -1058,6 +1046,8 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string, e
 }
 
 async function saveRecruiterProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+  const existing = await getRecruiterSnapshot(accessToken);
+  if (existing) return existing;
   const profile = buildRecruiterProfilePayload(formData);
   const profileId = readFormString(formData, "recruiterProfileId") || existingProfileId || "";
 
@@ -1112,8 +1102,7 @@ async function submitInstructorProfileForReview(accessToken: string, fallback?: 
     if (!isStatusTransitionRace(error)) throw error;
 
     const currentInstructor = await getCurrentInstructorSnapshot(accessToken);
-    if (currentInstructor && currentInstructor.status !== "none") return currentInstructor;
-    if (fallback && fallback.status !== "none") return fallback;
+    if (currentInstructor && ["pending_review", "approved"].includes(currentInstructor.status)) return currentInstructor;
 
     throw error;
   }
@@ -1131,8 +1120,7 @@ async function submitInstitutionProfileForReview(accessToken: string, fallback?:
     if (!isStatusTransitionRace(error)) throw error;
 
     const currentInstitution = await getInstitutionSnapshot(accessToken);
-    if (currentInstitution && currentInstitution.status !== "none") return currentInstitution;
-    if (fallback && fallback.status !== "none") return fallback;
+    if (currentInstitution && ["pending_review", "approved"].includes(currentInstitution.status)) return currentInstitution;
 
     throw error;
   }
@@ -1341,7 +1329,12 @@ export async function saveOnboardingStepAction(formData: FormData) {
   }
 
   try {
-    const documentState = await getDocumentState(role, authContext.accessToken ?? undefined);
+    const documentState = normalizeRole(authContext.role)
+      ? await getDocumentState(role, authContext.accessToken ?? undefined)
+      : {
+          documentRequirements: await getProfileDocumentRequirements(role, authContext.accessToken ?? undefined),
+          ...emptyDocumentSnapshotData(),
+        };
 
     return actionOk<OnboardingProgressResult>(
       {
@@ -1649,8 +1642,16 @@ async function submitIndividualOnboarding(formData: FormData) {
       );
     }
 
-    const savedRecruiter = (await getRecruiterSnapshot(refreshedAuth.accessToken)) ?? recruiter;
-    const applicationStatus = savedRecruiter.status === "none" ? "approved" : savedRecruiter.status;
+    let savedRecruiter = (await getRecruiterSnapshot(refreshedAuth.accessToken)) ?? recruiter;
+    if (savedRecruiter.status === "none" || savedRecruiter.status === "rejected") {
+      const submitted = normalizeRecruiterSnapshot(await api.patch<BackendRecruiterProfile>("/recruiters/me/status", undefined, {
+        auth: false,
+        headers: buildBearerHeaders(refreshedAuth.accessToken),
+      }));
+      if (!submitted || submitted.status !== "pending_review") throw new Error("Your profile could not be submitted for review.");
+      savedRecruiter = submitted;
+    }
+    const applicationStatus = savedRecruiter.status;
 
     revalidateTag("onboarding", "max");
     return actionOk<OnboardingProgressResult>(

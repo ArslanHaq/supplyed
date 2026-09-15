@@ -10,7 +10,7 @@ import {
   saveOnboardingStep,
   uploadOnboardingDocument,
 } from "@/app/(app)/onboarding/actions";
-import { hasRequiredDocuments } from "@/features/onboarding/document-utils";
+import { hasCreatedRoleProfile, profileEntryStatus } from "@/features/onboarding/profile-progress";
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import {
   clearFoundingSignupIntent,
@@ -47,12 +47,6 @@ function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
   if (role === "teacher") return "teacher";
   if (role === "individual") return "individual";
   return "institution";
-}
-
-function hasMissingRequiredProfileDocuments(snapshot: OnboardingProfileSnapshot) {
-  return snapshot.documentRequirements.some(
-    (requirement) => requirement.isRequired && !snapshot.requirementDocuments[requirement.id]?.uploadedAt,
-  );
 }
 
 function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfileSnapshot) {
@@ -220,12 +214,7 @@ function OnboardingRouteClientInner({
   const [step, setStep] = useState(() => initialStepWithFoundingIntent(initialRole, initialProfileSnapshot, foundingIntent));
   const [savedProfileSnapshot, setSavedProfileSnapshot] = useState<OnboardingProfileSnapshot>();
   const profileSnapshot = savedProfileSnapshot ?? initialProfileSnapshot;
-  const hasMissingRequiredDocuments = hasMissingRequiredProfileDocuments(profileSnapshot);
-  const effectiveApplicationStatus = hasMissingRequiredDocuments
-    ? "none"
-    : initialApplicationStatus !== "none"
-      ? initialApplicationStatus
-      : initialProfileSnapshot.applicationStatus;
+  const effectiveApplicationStatus = profileEntryStatus(profileSnapshot);
   useEffect(() => {
     if (initialRole && effectiveApplicationStatus !== "none") {
       startRouteLoading();
@@ -252,6 +241,7 @@ function OnboardingRouteClientInner({
   }, [effectiveApplicationStatus, initialRole, router, sessionRepairTicket]);
 
   function setRole(role: SignupRole) {
+    if (hasCreatedRoleProfile(profileSnapshot)) return;
     if (foundingIntent && role !== foundingSignupRole(foundingIntent.type)) {
       clearFoundingSignupIntent();
       setFoundingIntent(null);

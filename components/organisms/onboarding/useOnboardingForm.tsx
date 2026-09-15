@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { filterProfileDocumentRequirements } from "@/features/onboarding/document-requirements";
+import { isDocumentReadyForReview } from "@/features/onboarding/document-utils";
+import { useOnboardingDocumentRequirements } from "@/features/onboarding/use-onboarding";
 import type {
   OnboardingDocumentRequirementSnapshot,
   OnboardingDocumentSnapshot,
@@ -75,7 +77,7 @@ function missingRequiredDocumentRequirements(
   requirements: OnboardingDocumentRequirementSnapshot[],
   documents: Record<string, OnboardingDocumentSnapshot>,
 ) {
-  return requirements.filter((requirement) => requirement.isRequired && !documents[requirement.id]?.uploadedAt);
+  return requirements.filter((requirement) => requirement.isRequired && !isDocumentReadyForReview(documents[requirement.id]));
 }
 
 function missingSnapshotDocumentRequirements(snapshot: OnboardingProfileSnapshot | undefined, role: SignupRole) {
@@ -212,7 +214,7 @@ export function useOnboardingForm({
     () => initialSnapshot?.documentRequirements ?? [],
   );
   const [lockedDocumentStage, setLockedDocumentStage] = useState(
-    () => hasCreatedProfile(initialSnapshot, activeRole) && missingSnapshotDocumentRequirements(initialSnapshot, activeRole).length > 0,
+    () => hasCreatedProfile(initialSnapshot, activeRole),
   );
   const [requirementDocuments, setRequirementDocuments] = useState<Record<string, OnboardingDocumentSnapshot>>(() => initialSnapshot?.requirementDocuments ?? {});
   const [requirementDocumentErrors, setRequirementDocumentErrors] = useState<Record<string, string | undefined>>({});
@@ -224,13 +226,26 @@ export function useOnboardingForm({
   const mountedRef = useRef(true);
   const previousStepRef = useRef(currentStep);
   const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
-  const documentRequirements = filterProfileDocumentRequirements(documentRequirementsSnapshot, activeRole);
+  const requirementsQuery = useOnboardingDocumentRequirements(activeRole, { enabled: roleSelected });
+  const documentRequirements = filterProfileDocumentRequirements(
+    requirementsQuery.data?.map((requirement) => ({
+      id: requirement.id,
+      context: requirement.context,
+      isRequired: requirement.isRequired,
+      documentType: {
+        allowedMimes: requirement.allowedMimes,
+        code: requirement.code,
+        maxSizeBytes: requirement.maxSizeBytes,
+        name: requirement.name,
+      },
+    })) ?? documentRequirementsSnapshot, activeRole,
+  );
   const previousSnapshotFingerprintRef = useRef(initialSnapshotFingerprint);
   const prefillFingerprint = useMemo(() => JSON.stringify(prefill ?? {}), [prefill]);
   const previousPrefillFingerprintRef = useRef(prefillFingerprint);
 
-  const documentRequirementsLoading = false;
-  const documentRequirementsError = undefined;
+  const documentRequirementsLoading = requirementsQuery.isPending || requirementsQuery.isFetching;
+  const documentRequirementsError = requirementsQuery.error?.message;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -256,7 +271,7 @@ export function useOnboardingForm({
       setDocumentRequirementsSnapshot(initialSnapshot?.documentRequirements ?? []);
     }
     setRequirementDocuments(initialSnapshot?.requirementDocuments ?? {});
-    if (hasCreatedProfile(initialSnapshot, activeRole) && missingSnapshotDocumentRequirements(initialSnapshot, activeRole).length > 0) {
+    if (hasCreatedProfile(initialSnapshot, activeRole)) {
       setLockedDocumentStage(true);
     }
   }, [accountEmail, activeRole, initialSnapshot, initialSnapshotFingerprint, lockedDocumentStage]);
@@ -375,7 +390,7 @@ export function useOnboardingForm({
   }
 
   function retryDocumentRequirements() {
-    setDocumentRequirementsSnapshot(initialSnapshot?.documentRequirements ?? []);
+    void requirementsQuery.refetch();
   }
 
   async function uploadDocument(requirement: OnboardingDocumentRequirementSnapshot, file: UploadedFile) {
@@ -631,6 +646,10 @@ export function useOnboardingForm({
 
   async function submitDocumentsForReview() {
     if (pending || uploadPending || requirementUploadPending) return;
+    if (documentRequirementsLoading || documentRequirementsError) {
+      setSubmitError("Wait for the document requirements to load, or retry the check before submitting.");
+      return;
+    }
 
     const missingRequirements = missingRequiredDocumentRequirements(documentRequirements, requirementDocuments);
     if (missingRequirements.length > 0) {
@@ -651,6 +670,7 @@ export function useOnboardingForm({
 
       const result = await onFinish(payload);
       if (!result.ok) {
+        void requirementsQuery.refetch();
         setSubmitError(result.message || "Profile could not be sent for review. Try again.");
         return;
       }

@@ -70,9 +70,8 @@ export async function proxy(request: NextRequest) {
     return redirectTo(request, "/onboarding");
   }
 
-  if (setupComplete && isOnboardingRoute) {
-    return redirectTo(request, getAuthenticatedEntryHref({ applicationStatus, role }));
-  }
+  // The onboarding server page checks live profile and document state. A JWT
+  // can still say approved after an admin has marked the profile incomplete.
 
   return NextResponse.next();
 }
@@ -91,6 +90,7 @@ export const config = {
     "/messaging/:path*",
     "/onboarding/:path*",
     "/post-job/:path*",
+    "/settings/:path*",
     "/signup",
     "/teacher-profile/:path*",
   ],
