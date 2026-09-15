@@ -16,6 +16,12 @@ function readOptional(value: string | null | undefined) {
   return value || undefined;
 }
 
+function hasMissingRequiredProfileDocuments(snapshot: OnboardingProfileSnapshot) {
+  return snapshot.documentRequirements.some(
+    (requirement) => requirement.isRequired && !snapshot.requirementDocuments[requirement.id]?.uploadedAt,
+  );
+}
+
 async function createSessionRepairTicket(session: Session, snapshot: OnboardingProfileSnapshot) {
   const authContext = await getServerAuthContext();
   const user = session.user;
@@ -26,7 +32,12 @@ async function createSessionRepairTicket(session: Session, snapshot: OnboardingP
   const instructorProfileId = snapshot.instructor?.id ?? authContext.instructorProfileId ?? user.instructorProfileId;
   const institutionProfileId = snapshot.institution?.id ?? authContext.institutionProfileId ?? user.institutionProfileId;
   const recruiterProfileId = snapshot.recruiter?.id ?? authContext.recruiterProfileId ?? user.recruiterProfileId;
-  const applicationStatus = snapshot.applicationStatus !== "none" ? snapshot.applicationStatus : user.applicationStatus;
+  const hasMissingRequiredDocuments = hasMissingRequiredProfileDocuments(snapshot);
+  const applicationStatus = hasMissingRequiredDocuments
+    ? "none"
+    : snapshot.applicationStatus !== "none"
+      ? snapshot.applicationStatus
+      : user.applicationStatus;
   const role = user.role ?? snapshot.role;
   const needsRepair =
     applicationStatus !== user.applicationStatus ||

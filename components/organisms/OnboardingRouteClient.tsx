@@ -41,6 +41,12 @@ function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
   return "institution";
 }
 
+function hasMissingRequiredProfileDocuments(snapshot: OnboardingProfileSnapshot) {
+  return snapshot.documentRequirements.some(
+    (requirement) => requirement.isRequired && !snapshot.requirementDocuments[requirement.id]?.uploadedAt,
+  );
+}
+
 function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfileSnapshot) {
   if (role === "teacher") {
     return snapshot.instructor ? 2 : 1;
@@ -103,9 +109,12 @@ function OnboardingRouteClientInner({
   const [step, setStep] = useState(() => initialStep(initialRole, initialProfileSnapshot));
   const [savedProfileSnapshot, setSavedProfileSnapshot] = useState<OnboardingProfileSnapshot>();
   const profileSnapshot = savedProfileSnapshot ?? initialProfileSnapshot;
-  const effectiveApplicationStatus =
-    initialApplicationStatus !== "none" ? initialApplicationStatus : initialProfileSnapshot.applicationStatus;
-
+  const hasMissingRequiredDocuments = hasMissingRequiredProfileDocuments(profileSnapshot);
+  const effectiveApplicationStatus = hasMissingRequiredDocuments
+    ? "none"
+    : initialApplicationStatus !== "none"
+      ? initialApplicationStatus
+      : initialProfileSnapshot.applicationStatus;
   useEffect(() => {
     if (initialRole && effectiveApplicationStatus !== "none") {
       startRouteLoading();

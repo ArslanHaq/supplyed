@@ -1406,8 +1406,9 @@ async function submitInstructorOnboarding(formData: FormData) {
       }),
     );
     const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
+    const profileOnly = readFormString(formData, "intent") === "profile";
 
-    if (missingDocuments.length > 0) {
+    if (profileOnly || missingDocuments.length > 0) {
       revalidateTag("onboarding", "max");
       return actionOk<OnboardingProgressResult>(
         {
@@ -1424,7 +1425,9 @@ async function submitInstructorOnboarding(formData: FormData) {
           },
           ticket,
         },
-        `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
+        profileOnly && missingDocuments.length === 0
+          ? "Profile created. Upload required documents before sending for review."
+          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
       );
     }
 
@@ -1510,8 +1513,9 @@ async function submitInstitutionOnboarding(formData: FormData) {
       }),
     );
     const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
+    const profileOnly = readFormString(formData, "intent") === "profile";
 
-    if (missingDocuments.length > 0) {
+    if (profileOnly || missingDocuments.length > 0) {
       revalidateTag("onboarding", "max");
       return actionOk<OnboardingProgressResult>(
         {
@@ -1528,7 +1532,9 @@ async function submitInstitutionOnboarding(formData: FormData) {
           },
           ticket,
         },
-        `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
+        profileOnly && missingDocuments.length === 0
+          ? "Profile created. Upload required documents before sending for review."
+          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
       );
     }
 
@@ -1614,8 +1620,9 @@ async function submitIndividualOnboarding(formData: FormData) {
       }),
     );
     const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
+    const profileOnly = readFormString(formData, "intent") === "profile";
 
-    if (missingDocuments.length > 0) {
+    if (profileOnly || missingDocuments.length > 0) {
       revalidateTag("onboarding", "max");
       return actionOk<OnboardingProgressResult>(
         {
@@ -1632,7 +1639,9 @@ async function submitIndividualOnboarding(formData: FormData) {
           },
           ticket,
         },
-        `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
+        profileOnly && missingDocuments.length === 0
+          ? "Profile created. Upload required documents before sending for review."
+          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
       );
     }
 

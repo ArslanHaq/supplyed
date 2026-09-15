@@ -31,17 +31,15 @@ export function signupHeroCopy(role: string) {
 export function signupStepTitle(role: string, step: number) {
   if (step === 1) return role === "teacher" ? "Complete your teacher profile" : "Complete profile basics";
   if (step === 2) {
-    if (role === "teacher") return "Upload required documents";
-    if (role === "individual") return "Add learner needs";
+    if (role === "teacher" || role === "individual") return "Full review";
     return "Add school details";
   }
-  if (step === 3) return role === "teacher" ? "Review and submit" : role === "individual" ? "Set safeguarding preferences" : "Complete compliance";
-  return "Review and submit";
+  if (step === 3) return role === "institution" ? "Complete compliance" : "Full review";
+  return "Full review";
 }
 
-export function signupSubmitLabel(role: string) {
-  if (role === "individual") return "Create profile";
-  return "Submit for review";
+export function signupSubmitLabel(_role: string) {
+  return "Create profile";
 }
 
 export function fieldClass(error?: string) {
