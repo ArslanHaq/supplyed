@@ -8,6 +8,10 @@ export const queryKeys = {
     all: ["auth"] as const,
     me: () => [...queryKeys.auth.all, "me"] as const,
   },
+  documentRequirements: {
+    all: ["document-requirements"] as const,
+    application: () => [...queryKeys.documentRequirements.all, "application"] as const,
+  },
   jobs: {
     all: ["jobs"] as const,
     detail: (id: string) => [...queryKeys.jobs.all, "detail", id] as const,
@@ -17,6 +21,7 @@ export const queryKeys = {
   onboarding: {
     all: ["onboarding"] as const,
     current: () => [...queryKeys.onboarding.all, "current"] as const,
+    documentRequirements: (role: string) => [...queryKeys.onboarding.all, "document-requirements", role] as const,
   },
   teachers: {
     all: ["teachers"] as const,

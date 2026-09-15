@@ -1,8 +1,20 @@
 import { cn } from "@/lib/cn";
+import {
+  acceptAttribute,
+  describeAllowedMimes,
+  documentFileValidationError,
+  formatByteLimit,
+  isImageRequirement,
+} from "@/features/onboarding/document-utils";
+import type {
+  OnboardingDocumentMap,
+  OnboardingDocumentRequirement,
+  OnboardingDocumentSnapshot,
+  OnboardingProfileSnapshot,
+} from "@/features/onboarding/types";
 
-import { allowedDocumentContentTypes, initialForm, maxDocumentSizeBytes } from "./constants";
+import { initialForm } from "./constants";
 import type { SignupForm, UploadedFile } from "./types";
-import type { OnboardingDocumentSnapshot, OnboardingProfileSnapshot } from "@/features/onboarding/types";
 
 export function roleLabel(role: string) {
   if (role === "teacher") return "Supply teacher";
@@ -55,25 +67,51 @@ export function formatFileSize(size: number) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function contentTypeFromFile(file: UploadedFile) {
-  const explicitType = file.type.toLowerCase();
-  if (allowedDocumentContentTypes.has(explicitType)) return explicitType;
+export type DocumentStatusTone = "" | "amber" | "ghost" | "green" | "red";
 
-  const extension = file.name.split(".").pop()?.toLowerCase();
-  if (extension === "pdf") return "application/pdf";
-  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
-  if (extension === "png") return "image/png";
-
-  return explicitType;
+/** Maps the backend DocumentVerificationStatus onto a card badge. */
+export function documentStatusTag(status?: string | null): { label: string; tone: DocumentStatusTone } | null {
+  switch ((status ?? "").toUpperCase()) {
+    case "APPROVED":
+      return { label: "Approved", tone: "green" };
+    case "PENDING":
+      return { label: "Pending review", tone: "amber" };
+    case "REJECTED":
+      return { label: "Rejected", tone: "red" };
+    case "REQUIRES_INFO":
+      return { label: "Info needed", tone: "red" };
+    case "NOT_REQUIRED":
+      return { label: "Uploaded", tone: "ghost" };
+    default:
+      return null;
+  }
 }
 
-export function documentFileError(file: UploadedFile | null, label: string) {
-  if (!file) return `${label} is required.`;
+export function requirementAccept(requirement: OnboardingDocumentRequirement) {
+  return acceptAttribute(requirement.allowedMimes);
+}
+
+export function requirementIcon(requirement: OnboardingDocumentRequirement) {
+  return isImageRequirement(requirement) ? "image" : "file";
+}
+
+export function requirementDescription(requirement: OnboardingDocumentRequirement) {
+  return requirement.description || `Upload your ${requirement.name.toLowerCase()} as a ${describeAllowedMimes(requirement.allowedMimes)} file.`;
+}
+
+export function requirementLimits(requirement: OnboardingDocumentRequirement) {
+  return `${describeAllowedMimes(requirement.allowedMimes)} · up to ${formatByteLimit(requirement.maxSizeBytes)}`;
+}
+
+export function documentFileError(file: UploadedFile | null, requirement: OnboardingDocumentRequirement) {
+  if (!file) return requirement.isRequired ? `${requirement.name} is required.` : undefined;
   if (!file.file && file.id) return undefined;
-  if (!file.file) return `${label} must be uploaded again before continuing.`;
-  if (file.size > maxDocumentSizeBytes) return `${label} must be 10 MB or smaller.`;
-  if (!allowedDocumentContentTypes.has(contentTypeFromFile(file))) return `${label} must be a PDF, JPG, or PNG file.`;
-  if (!file.id) return `${label} must finish uploading before continuing.`;
+  if (!file.file) return `${requirement.name} must be uploaded again before continuing.`;
+
+  const validationError = documentFileValidationError(file, requirement);
+  if (validationError) return validationError;
+  if (!file.id) return `${requirement.name} must finish uploading before continuing.`;
+
   return undefined;
 }
 
@@ -90,10 +128,22 @@ export function toUploadedFileFromDocument(document: OnboardingDocumentSnapshot)
   return {
     id: document.id,
     name: document.name,
+    requirementId: document.requirementId ?? undefined,
     size: document.size,
     status: document.status,
     type: document.type,
+    uploadedAt: document.uploadedAt,
   };
+}
+
+export function uploadedFilesFromSnapshot(documents: Partial<Record<string, OnboardingDocumentSnapshot>> = {}) {
+  const files: Record<string, UploadedFile | null> = {};
+
+  Object.values(documents).forEach((document) => {
+    if (document?.uploadedAt && document.requirementId) files[document.requirementId] = toUploadedFileFromDocument(document);
+  });
+
+  return files;
 }
 
 export function createInitialForm(accountEmail?: string, snapshot?: OnboardingProfileSnapshot): SignupForm {
@@ -101,11 +151,6 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
   const instructor = snapshot?.instructor;
   const institution = snapshot?.institution;
   const recruiter = snapshot?.recruiter;
-  const documents = snapshot?.documents ?? {};
-  const dbsDocument = documents.dbs;
-  const idDocument = documents.id;
-  const addressDocument = documents.addressProof;
-  const qualificationDocument = documents.qualification;
 
   return {
     ...initialForm,
@@ -116,16 +161,10 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     coverTypes: institution?.coverTypes ?? [],
     currency: instructor?.currency || "GBP",
     dailyRate: instructor?.dailyRate ?? "",
-    dbsCertificateFile: dbsDocument
-      ? { id: dbsDocument.id, name: dbsDocument.name, size: dbsDocument.size, status: dbsDocument.status, type: dbsDocument.type }
-      : null,
-    dbsNumber: dbsDocument?.dbsNumber ?? "",
+    documents: uploadedFilesFromSnapshot(snapshot?.documents),
     email: user?.email || accountEmail || "",
     fullName: instructor?.fullName || recruiter?.displayName || user?.fullName || "",
     hourlyRate: instructor?.hourlyRate ?? "",
-    identityPhoto: idDocument
-      ? { id: idDocument.id, name: idDocument.name, size: idDocument.size, status: idDocument.status, type: idDocument.type }
-      : null,
     institutionAddress: institution?.address ?? "",
     institutionCity: institution?.city ?? "",
     institutionCountryCode: institution?.countryCode || "GB",
@@ -137,19 +176,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     maxTravelDistance: instructor?.maxTravelDistance ?? "",
     phone: user?.phone ?? "",
     postcode: instructor?.postalCode || institution?.postalCode || recruiter?.postalCode || user?.postcode || "",
-    qualificationFile: qualificationDocument
-      ? {
-          id: qualificationDocument.id,
-          name: qualificationDocument.name,
-          size: qualificationDocument.size,
-          status: qualificationDocument.status,
-          type: qualificationDocument.type,
-        }
-      : null,
     recruiterProfileId: recruiter?.id ?? "",
-    rightToWorkFile: addressDocument
-      ? { id: addressDocument.id, name: addressDocument.name, size: addressDocument.size, status: addressDocument.status, type: addressDocument.type }
-      : null,
     safeguardingConfirmed: institution?.safeguardingConfirmed ?? false,
     schoolName: institution?.name ?? "",
     skills: instructor?.skills ?? [],
@@ -159,10 +186,6 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     typicalPupilCount: institution?.typicalPupilCount ?? "",
     yearsExperience: instructor?.yearsExperience ?? "",
   };
-}
-
-export function appendFile(data: FormData, key: string, file: UploadedFile | null) {
-  if (file?.file) data.set(key, file.file, file.name);
 }
 
 export function buildOnboardingPayload(form: SignupForm, role: string, step: number, accountEmail?: string) {
@@ -199,15 +222,6 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("maxTravelDistance", form.maxTravelDistance.trim());
   data.set("currency", form.currency || "GBP");
   data.set("bio", form.bio.trim());
-  data.set("dbsNumber", form.dbsNumber.trim());
-  data.set("dbsDocumentId", form.dbsCertificateFile?.id ?? "");
-  data.set("idDocumentId", form.identityPhoto?.id ?? "");
-  data.set("addressProofDocumentId", form.rightToWorkFile?.id ?? "");
-  data.set("qualificationDocumentId", form.qualificationFile?.id ?? "");
   data.set("teachingReferenceNumber", form.teachingReferenceNumber.trim());
-  appendFile(data, "dbsCertificateFile", form.dbsCertificateFile);
-  appendFile(data, "identityPhoto", form.identityPhoto);
-  appendFile(data, "rightToWorkFile", form.rightToWorkFile);
-  appendFile(data, "qualificationFile", form.qualificationFile);
   return data;
 }

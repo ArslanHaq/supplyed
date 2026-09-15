@@ -485,6 +485,27 @@ function readFormFile(formData: FormData, key: string) {
   return value;
 }
 
+function contentTypeFromFile(file: File) {
+  const explicitType = file.type.toLowerCase();
+  if (allowedDocumentTypes.has(explicitType)) return explicitType;
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension === "pdf") return "application/pdf";
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png") return "image/png";
+
+  return explicitType;
+}
+
+function validateDocumentFile(file: File | null, label: string) {
+  if (!file) return `${label} is required.`;
+  if (file.size > maxDocumentSizeBytes) return `${label} must be 10 MB or smaller.`;
+
+  const contentType = contentTypeFromFile(file);
+  if (!allowedDocumentTypes.has(contentType)) return `${label} must be a PDF, JPG, or PNG file.`;
+
+  return undefined;
+}
 function readFormValue(value: FormDataEntryValue) {
   if (value instanceof File) return undefined;
   if (!value.trim()) return "";
@@ -509,28 +530,6 @@ function buildGenericSubmitInput(formData: FormData): OnboardingSubmitInput {
     step: Number(readFormString(formData, "step")) || 4,
     values,
   };
-}
-
-function contentTypeFromFile(file: File) {
-  const explicitType = file.type.toLowerCase();
-  if (allowedDocumentTypes.has(explicitType)) return explicitType;
-
-  const extension = file.name.split(".").pop()?.toLowerCase();
-  if (extension === "pdf") return "application/pdf";
-  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
-  if (extension === "png") return "image/png";
-
-  return explicitType;
-}
-
-function validateDocumentFile(file: File | null, label: string) {
-  if (!file) return `${label} is required.`;
-  if (file.size > maxDocumentSizeBytes) return `${label} must be 10 MB or smaller.`;
-
-  const contentType = contentTypeFromFile(file);
-  if (!allowedDocumentTypes.has(contentType)) return `${label} must be a PDF, JPG, or PNG file.`;
-
-  return undefined;
 }
 
 function buildInstructorProfilePayload(formData: FormData): InstructorProfilePayload {
@@ -688,7 +687,9 @@ async function getDocumentSnapshotData(accessToken?: string): Promise<DocumentSn
 
     readDocumentList(response).forEach((document) => addDocumentSnapshot(data, document));
   } catch (error) {
-    if (!notFoundOrForbidden(error)) throw error;
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[SupplyED onboarding] document state could not be loaded", error);
+    }
   }
 
   return data;
@@ -1187,6 +1188,8 @@ export async function uploadOnboardingDocumentAction(formData: FormData) {
   }
 
   try {
+    // The session token may still carry the USER role from before the profile
+    // was created; the document routes need the profile role.
     const refreshedAuth = authContext.refreshToken
       ? await withTimeout(
           refreshBackendAuth(authContext.refreshToken),
@@ -1442,6 +1445,7 @@ async function submitInstructorOnboarding(formData: FormData) {
         applicationStatus: submittedInstructor.status,
         savedStep: Number(readFormString(formData, "step")) || 2,
         snapshot: {
+          ...documentState,
           applicationStatus: submittedInstructor.status,
           documentRequirements: documentState.documentRequirements,
           documents: documentState.documents,

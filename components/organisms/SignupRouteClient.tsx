@@ -7,6 +7,12 @@ import { signIn } from "next-auth/react";
 import { resendSignupVerification, signupAction, verifySignupEmail } from "@/app/(auth)/signup/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { readAuthSessionTicketPayload } from "@/lib/auth-session-routing";
+import {
+  clearFoundingSignupIntent,
+  type FoundingSignupType,
+  readFoundingSignupIntent,
+  saveFoundingSignupIntent,
+} from "@/lib/founding-signup-intent";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { useAuthToasts } from "@/lib/use-auth-toasts";
 import { useMounted } from "@/lib/use-mounted";
@@ -34,8 +40,32 @@ function isSocialProviderAvailable(provider: "google" | "microsoft-entra-id", so
   return provider === "google" ? socialAuth.google : socialAuth.microsoft;
 }
 
-function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
+function SignupRouteClientInner({
+  foundingSignupEmail,
+  foundingSignupType,
+  initialError,
+  socialAuth,
+}: {
+  foundingSignupEmail?: string;
+  foundingSignupType?: FoundingSignupType;
+  initialError?: string;
+  socialAuth: SocialAuthAvailability;
+}) {
   const router = useRouter();
+  const [foundingIntent] = useState(() => {
+    const storedIntent = readFoundingSignupIntent(foundingSignupType);
+    if (storedIntent) return storedIntent;
+
+    if (foundingSignupType && foundingSignupEmail) {
+      return saveFoundingSignupIntent({
+        email: foundingSignupEmail,
+        type: foundingSignupType,
+      });
+    }
+
+    return null;
+  });
+  const foundingEmail = foundingIntent?.email ?? foundingSignupEmail;
   const [stage, setStage] = useState<SignupStage>("account");
   const [signupEmail, setSignupEmail] = useState("");
   const [verificationNotice, setVerificationNotice] = useState<string>();
@@ -144,6 +174,9 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
     }
 
     startRouteLoading();
+    if (sessionPayload.nextHref !== "/onboarding") {
+      clearFoundingSignupIntent();
+    }
     router.replace(sessionPayload.nextHref);
     router.refresh();
     return { ok: true as const };
@@ -203,6 +236,8 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
     return (
       <>
         <SignupAccessPage
+          foundingType={foundingIntent?.type ?? foundingSignupType}
+          initialEmail={foundingEmail}
           onAccountCreated={startVerification}
           onGoogleAuth={() => startSocialAuth("google")}
           onLanding={goLanding}
@@ -238,7 +273,17 @@ function SignupRouteClientInner({ initialError, socialAuth }: { initialError?: s
   return null;
 }
 
-export function SignupRouteClient({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
+export function SignupRouteClient({
+  foundingSignupEmail,
+  foundingSignupType,
+  initialError,
+  socialAuth,
+}: {
+  foundingSignupEmail?: string;
+  foundingSignupType?: FoundingSignupType;
+  initialError?: string;
+  socialAuth: SocialAuthAvailability;
+}) {
   const isClient = useMounted();
 
   if (!isClient) {
@@ -250,5 +295,12 @@ export function SignupRouteClient({ initialError, socialAuth }: { initialError?:
     );
   }
 
-  return <SignupRouteClientInner initialError={initialError} socialAuth={socialAuth} />;
+  return (
+    <SignupRouteClientInner
+      foundingSignupEmail={foundingSignupEmail}
+      foundingSignupType={foundingSignupType}
+      initialError={initialError}
+      socialAuth={socialAuth}
+    />
+  );
 }

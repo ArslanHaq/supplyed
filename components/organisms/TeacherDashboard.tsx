@@ -1,16 +1,25 @@
-import { seedJobs, seedMessages } from "@/data/supplyed";
+import { seedMessages } from "@/data/supplyed";
+import { useJobs } from "@/features/jobs/use-jobs";
 import { getFirstName } from "@/lib/user-display";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, Icon, MatchScore, Stat, Tag } from "../atoms";
-import { PageHead } from "../molecules";
+import { Avatar, Btn, Icon, Stat, Tag } from "../atoms";
+import { PageHead, SectionLoader } from "../molecules";
 
 export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">) {
   const firstName = getFirstName(state.accountName, state.signupEmail);
+  const jobsQuery = useJobs({ status: "ACTIVE" });
+  const jobs = jobsQuery.data ?? [];
+  const recommendedJobs = jobs.slice(0, 4);
+  const jobCountLabel = jobsQuery.isLoading
+    ? "Loading available roles"
+    : jobsQuery.isError
+      ? "Available roles"
+      : `${jobs.length} open ${jobs.length === 1 ? "role" : "roles"} available`;
 
   return (
     <div className="app-page">
-      <PageHead title={`Morning, ${firstName}`} subtitle="Tuesday, 24 March 2026 - 3 new job matches - 1 booking confirmed" actions={<><Btn variant="secondary" icon="calendar" onClick={() => go("calendar")}>My calendar</Btn><Btn icon="search" onClick={() => go("find-jobs")}>Find jobs</Btn></>} />
+      <PageHead title={`Morning, ${firstName}`} subtitle={jobCountLabel} actions={<><Btn variant="secondary" icon="calendar" onClick={() => go("calendar")}>My calendar</Btn><Btn icon="search" onClick={() => go("find-jobs")}>Find jobs</Btn></>} />
       <div className="grid-4 mb-7">
         <Stat value="£3,240" label="Earned this month" delta="+£185 yesterday" />
         <Stat value="12" label="Days booked" delta="3 this week" />
@@ -20,22 +29,33 @@ export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">
       <div className="two-col">
         <div>
           <div className="section-title">Up next</div>
-          <div className="card card-pad-lg mb-7 bg-gradient-to-br from-[#008CC4] to-[#006E9A] text-white">
-            <div className="mb-3.5 flex items-center justify-between"><Tag className="bg-white/20 text-white">Confirmed</Tag><span className="text-xs opacity-80">Tomorrow - 08:20 arrival</span></div>
-            <div className="mb-2 font-serif text-[26px]">Y6 Maths Cover - Full day</div>
-            <div className="mb-4 text-[15px] opacity-90">Greenfield Primary - Salford - M5 4AZ</div>
-            <div className="flex flex-wrap gap-4"><div><div className="text-xs opacity-70">Earnings</div><div className="font-serif text-[22px]">£180</div></div><div><div className="text-xs opacity-70">Hours</div><div className="font-serif text-[22px]">6.5h</div></div><div><div className="text-xs opacity-70">Key stage</div><div className="font-serif text-[22px]">KS2</div></div></div>
+          <div className="card card-pad-lg mb-7 text-center">
+            <div className="font-serif text-xl">No upcoming bookings</div>
+            <p className="mt-1.5 text-sm text-muted">Confirmed work will appear here.</p>
           </div>
           <div className="section-title">Recommended for you</div>
           <div className="flex flex-col gap-3">
-            {seedJobs.map((job) => (
+            {jobsQuery.isLoading ? <SectionLoader rows={4} /> : null}
+            {jobsQuery.isError ? (
+              <div className="card card-pad text-center" role="alert">
+                <div className="font-semibold">Jobs could not be loaded</div>
+                <p className="mt-1 text-sm text-muted">Check your connection and try again.</p>
+                <Btn className="mt-3" size="sm" variant="secondary" onClick={() => void jobsQuery.refetch()}>Try again</Btn>
+              </div>
+            ) : null}
+            {recommendedJobs.map((job) => (
               <div key={job.id} className="card card-pad flex cursor-pointer flex-wrap items-center gap-4" onClick={() => go("job-detail", { jobId: job.id })}>
                 <div className="flex-1"><div className="mb-0.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div><div className="text-[15px] font-semibold">{job.title}</div><div className="text-xs text-muted">{job.school} - {job.city} - {job.date}</div></div>
                 <div className="text-right"><div className="font-serif text-lg">£{job.rate}</div><div className="text-xs text-muted">per day</div></div>
-                <MatchScore score={job.matchScore} />
                 <Btn size="sm">View</Btn>
               </div>
             ))}
+            {!jobsQuery.isLoading && !jobsQuery.isError && recommendedJobs.length === 0 ? (
+              <div className="card card-pad text-center">
+                <div className="font-semibold">No open jobs yet</div>
+                <p className="mt-1 text-sm text-muted">New roles will appear here as soon as they are published.</p>
+              </div>
+            ) : null}
           </div>
         </div>
         <div>

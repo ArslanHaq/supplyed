@@ -1,9 +1,9 @@
 import { cn } from "@/lib/cn";
 
-import { Icon } from "../../atoms";
+import { Icon, Tag } from "../../atoms";
 import { FileSummary } from "./ReviewCard";
 import type { UploadedFile } from "./types";
-import { toUploadedFile } from "./utils";
+import { documentStatusTag, toUploadedFile } from "./utils";
 
 export function UploadCard({
   accept,
@@ -14,9 +14,12 @@ export function UploadCard({
   file,
   icon,
   id,
+  meta,
   onFile,
   onView,
   pending = false,
+  required,
+  status,
   title,
   viewPending = false,
 }: {
@@ -28,12 +31,17 @@ export function UploadCard({
   file: UploadedFile | null;
   icon: string;
   id: string;
+  meta?: string;
   onFile: (file: UploadedFile) => void;
   onView?: () => void;
   pending?: boolean;
+  required?: boolean;
+  status?: string | null;
   title: string;
   viewPending?: boolean;
 }) {
+  const statusTag = documentStatusTag(status);
+
   return (
     <div
       className={cn(
@@ -46,9 +54,14 @@ export function UploadCard({
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
             <Icon name={icon} size={20} />
           </div>
-          <div className="min-w-0">
-            <div className="font-semibold">{title}</div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="font-semibold">{title}</div>
+              {required === undefined ? null : <Tag tone={required ? "" : "ghost"}>{required ? "Required" : "Optional"}</Tag>}
+              {statusTag ? <Tag tone={statusTag.tone}>{statusTag.label}</Tag> : null}
+            </div>
             <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
+            {meta ? <p className="mt-1 text-xs font-medium text-muted">{meta}</p> : null}
           </div>
         </div>
 

@@ -26,6 +26,11 @@ export type JobApplication = {
   updatedAt?: string | null;
 };
 
+export type ApplicationCreateInput = {
+  coverLetter: string;
+  jobId: string;
+};
+
 export type ApplicationsPagination = {
   hasNextPage: boolean;
   limit: number;

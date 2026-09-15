@@ -9,24 +9,37 @@ import { Icon } from "../atoms";
 type SelectDropdownProps = {
   id?: string;
   value: string;
-  options: string[];
+  options: readonly string[];
   onChange: (value: string) => void;
   placeholder?: string;
   error?: boolean;
 };
 
 type MultiSelectDropdownProps = {
+  id?: string;
   value: string[];
-  options: string[];
+  options: Array<string | MultiSelectOption>;
   onChange: (value: string[]) => void;
   placeholder?: string;
   error?: boolean;
+  disabled?: boolean;
 };
 
-function optionSummary(value: string[], placeholder: string) {
+type MultiSelectOption = {
+  description?: string | null;
+  label: string;
+  value: string;
+};
+
+function normalizeMultiSelectOption(option: string | MultiSelectOption): MultiSelectOption {
+  return typeof option === "string" ? { label: option, value: option } : option;
+}
+
+function optionSummary(value: string[], options: MultiSelectOption[], placeholder: string) {
   if (value.length === 0) return placeholder;
-  if (value.length <= 2) return value.join(", ");
-  return `${value.slice(0, 2).join(", ")} +${value.length - 2} more`;
+  const labels = value.map((selectedValue) => options.find((option) => option.value === selectedValue)?.label ?? selectedValue);
+  if (labels.length <= 2) return labels.join(", ");
+  return `${labels.slice(0, 2).join(", ")} +${labels.length - 2} more`;
 }
 
 export function SelectDropdown({ id, value, options, onChange, placeholder = "Select an option", error }: SelectDropdownProps) {
@@ -114,9 +127,10 @@ function useDropdownDismiss(open: boolean, rootRef: React.RefObject<HTMLDivEleme
   }, [open, rootRef, onDismiss]);
 }
 
-export function MultiSelectDropdown({ value, options, onChange, placeholder = "Select options", error }: MultiSelectDropdownProps) {
+export function MultiSelectDropdown({ id, value, options, onChange, placeholder = "Select options", error, disabled = false }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const normalizedOptions = options.map(normalizeMultiSelectOption);
 
   useDropdownDismiss(open, rootRef, () => setOpen(false));
 
@@ -128,15 +142,19 @@ export function MultiSelectDropdown({ value, options, onChange, placeholder = "S
     <div ref={rootRef} className="relative">
       <button
         aria-expanded={open}
+        aria-haspopup="listbox"
+        id={id}
         className={cn(
           "select flex min-h-[44px] cursor-pointer items-center justify-between gap-3 text-left",
           value.length === 0 ? "text-muted" : "text-ink",
           error ? "border-danger bg-danger-tint" : null,
+          disabled ? "cursor-not-allowed opacity-60" : null,
         )}
+        disabled={disabled}
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
-        <span className="min-w-0 flex-1 truncate">{optionSummary(value, placeholder)}</span>
+        <span className="min-w-0 flex-1 truncate">{optionSummary(value, normalizedOptions, placeholder)}</span>
         <span className="flex shrink-0 items-center gap-2 text-xs font-semibold text-muted">
           {value.length > 0 ? `${value.length} selected` : null}
           <Icon name="chevronDown" size={17} className={cn("transition", open ? "rotate-180" : null)} />
@@ -145,15 +163,17 @@ export function MultiSelectDropdown({ value, options, onChange, placeholder = "S
 
       {open ? (
         <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-lg border border-border bg-white shadow-card">
-          <div className="max-h-64 overflow-auto p-1.5">
-            {options.map((option) => {
-              const selected = value.includes(option);
+          <div className="max-h-64 overflow-auto p-1.5" role="listbox" aria-multiselectable="true">
+            {normalizedOptions.map((option) => {
+              const selected = value.includes(option.value);
 
               return (
                 <button
-                  key={option}
+                  key={option.value}
+                  aria-selected={selected}
                   className="flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-slate transition hover:bg-chalk"
-                  onClick={() => toggleOption(option)}
+                  onClick={() => toggleOption(option.value)}
+                  role="option"
                   type="button"
                 >
                   <span
@@ -162,7 +182,10 @@ export function MultiSelectDropdown({ value, options, onChange, placeholder = "S
                   >
                     {selected ? <Icon name="check" size={11} /> : null}
                   </span>
-                  <span className="flex-1">{option}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block">{option.label}</span>
+                    {option.description ? <span className="mt-0.5 block text-xs leading-5 text-muted">{option.description}</span> : null}
+                  </span>
                 </button>
               );
             })}

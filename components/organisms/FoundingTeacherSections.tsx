@@ -10,7 +10,7 @@ const trustSignals: Array<{ copy: string; icon: string; title: ReactNode }> = [
       <>
         GBP 5 per day,
         <br />
-        for 36 months
+        for 18 months
       </>
     ),
   },
@@ -99,7 +99,7 @@ const faqs = [
   },
   {
     answer:
-      "Founding members receive an extra GBP 5 per day on bookings made through SupplyED, for 36 months from launch. It is applied on top of the rate you agree with the school.",
+      "Founding members receive an extra GBP 5 per day on bookings made through SupplyED, for 18 months from launch. It is applied on top of the rate you agree with the school.",
     question: "What does the founding rate uplift mean in practice?",
   },
   {

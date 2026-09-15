@@ -33,6 +33,27 @@ export const foundingSchoolTiers = [
   "Founding School Enhanced",
 ] as const;
 
+export const foundingSchoolCoverTypes = [
+  "Same-day cover",
+  "Long-term roles",
+  "Intervention groups",
+  "Exam season",
+  "SEN support",
+] as const;
+
 export const teacherPhases = ["Primary", "Secondary", "SEND / Special", "Early years", "Any / flexible"] as const;
 
 export const teacherAvailabilityOptions = ["Day-to-day supply", "Long-term cover", "Both", "Not sure yet"] as const;
+
+export const foundingTeacherSubjects = ["Maths", "English", "Science", "Humanities", "SEN", "All Primary"] as const;
+
+export const foundingTeacherKeyStages = ["EYFS", "KS1", "KS2", "KS3", "KS4", "KS5"] as const;
+
+export const foundingTeacherSkills = [
+  "Classroom management",
+  "SEN support",
+  "Safeguarding",
+  "Behaviour support",
+  "Phonics",
+  "Exam preparation",
+] as const;

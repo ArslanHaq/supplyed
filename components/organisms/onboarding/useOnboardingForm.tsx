@@ -13,11 +13,12 @@ import type { AppRole } from "@/types/supplyed";
 import { FileSummary, ReviewBadgeList } from "./ReviewCard";
 import { stepContent, unselectedSteps } from "./constants";
 import type {
-  DocumentUploadField,
+  DocumentErrors,
   DocumentPreview,
   OnboardingDocumentDownloadActionResult,
   OnboardingDocumentUploadActionResult,
   OnboardingFinishResult,
+  OnboardingPrefill,
   OnboardingPending,
   ReviewGroup,
   ReviewLine,
@@ -33,6 +34,7 @@ import {
   documentFileError,
   roleLabel,
   toUploadedFileFromDocument,
+  uploadedFilesFromSnapshot,
 } from "./utils";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -103,12 +105,10 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     coverTypes: snapshotStringArray(current.coverTypes, next.coverTypes),
     currency: next.currency || current.currency || "GBP",
     dailyRate: snapshotString(current.dailyRate, next.dailyRate),
-    dbsCertificateFile: next.dbsCertificateFile ?? current.dbsCertificateFile,
-    dbsNumber: snapshotString(current.dbsNumber, next.dbsNumber),
+    documents: { ...current.documents, ...next.documents },
     email: snapshotString(current.email, next.email),
     fullName: snapshotString(current.fullName, next.fullName),
     hourlyRate: snapshotString(current.hourlyRate, next.hourlyRate),
-    identityPhoto: next.identityPhoto ?? current.identityPhoto,
     institutionAddress: snapshotString(current.institutionAddress, next.institutionAddress),
     institutionCity: snapshotString(current.institutionCity, next.institutionCity),
     institutionCountryCode: next.institutionCountryCode || current.institutionCountryCode || "GB",
@@ -120,9 +120,7 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     maxTravelDistance: snapshotString(current.maxTravelDistance, next.maxTravelDistance),
     phone: snapshotString(current.phone, next.phone),
     postcode: snapshotString(current.postcode, next.postcode),
-    qualificationFile: next.qualificationFile ?? current.qualificationFile,
     recruiterProfileId: snapshotString(current.recruiterProfileId, next.recruiterProfileId),
-    rightToWorkFile: next.rightToWorkFile ?? current.rightToWorkFile,
     schoolName: snapshotString(current.schoolName, next.schoolName),
     safeguardingConfirmed: current.safeguardingConfirmed || next.safeguardingConfirmed,
     skills: snapshotStringArray(current.skills, next.skills),
@@ -134,6 +132,47 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
   };
 }
 
+function fillEmpty(current: string, next?: string) {
+  return current.trim() ? current : next?.trim() ?? current;
+}
+
+function fillEmptyArray(current: string[], next?: string[]) {
+  return current.length > 0 ? current : next ?? current;
+}
+
+function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill) {
+  if (!prefill) return current;
+
+  return {
+    ...current,
+    bio: fillEmpty(current.bio, prefill.bio),
+    complianceContact: fillEmpty(current.complianceContact, prefill.complianceContact),
+    complianceEmail: fillEmpty(current.complianceEmail, prefill.complianceEmail),
+    contactRole: fillEmpty(current.contactRole, prefill.contactRole),
+    coverTypes: fillEmptyArray(current.coverTypes, prefill.coverTypes),
+    currency: fillEmpty(current.currency, prefill.currency),
+    dailyRate: fillEmpty(current.dailyRate, prefill.dailyRate),
+    email: fillEmpty(current.email, prefill.email),
+    fullName: fillEmpty(current.fullName, prefill.fullName),
+    hourlyRate: fillEmpty(current.hourlyRate, prefill.hourlyRate),
+    institutionAddress: fillEmpty(current.institutionAddress, prefill.institutionAddress),
+    institutionCity: fillEmpty(current.institutionCity, prefill.institutionCity),
+    institutionCountryCode: fillEmpty(current.institutionCountryCode, prefill.institutionCountryCode),
+    institutionDomain: fillEmpty(current.institutionDomain, prefill.institutionDomain),
+    keyStages: fillEmptyArray(current.keyStages, prefill.keyStages),
+    localAuthority: fillEmpty(current.localAuthority, prefill.localAuthority),
+    maxTravelDistance: fillEmpty(current.maxTravelDistance, prefill.maxTravelDistance),
+    phone: fillEmpty(current.phone, prefill.phone),
+    postcode: fillEmpty(current.postcode, prefill.postcode),
+    schoolName: fillEmpty(current.schoolName, prefill.schoolName),
+    skills: fillEmptyArray(current.skills, prefill.skills),
+    staffingNeeds: fillEmpty(current.staffingNeeds, prefill.staffingNeeds),
+    subjects: fillEmptyArray(current.subjects, prefill.subjects),
+    typicalPupilCount: fillEmpty(current.typicalPupilCount, prefill.typicalPupilCount),
+    yearsExperience: fillEmpty(current.yearsExperience, prefill.yearsExperience),
+  };
+}
+
 export function useOnboardingForm({
   accountEmail,
   initialSnapshot,
@@ -141,6 +180,7 @@ export function useOnboardingForm({
   onDocumentView,
   onDocumentUpload,
   onStepSave,
+  prefill,
   role,
   roleSelected,
   setStep,
@@ -152,6 +192,7 @@ export function useOnboardingForm({
   onDocumentView: (payload: FormData) => Promise<OnboardingDocumentDownloadActionResult>;
   onDocumentUpload: (payload: FormData) => Promise<OnboardingDocumentUploadActionResult>;
   onStepSave: (payload: FormData) => Promise<OnboardingFinishResult>;
+  prefill?: OnboardingPrefill;
   role: AppRole;
   roleSelected: boolean;
   setStep: (step: number) => void;
@@ -160,11 +201,12 @@ export function useOnboardingForm({
   const activeRole: SignupRole = role === "teacher" ? "teacher" : role === "individual" ? "individual" : "institution";
   const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
   const currentStep = Math.min(steps.length, Math.max(1, step)) as SignupStep;
-  const [form, setForm] = useState<SignupForm>(() => createInitialForm(accountEmail, initialSnapshot));
+  const [form, setForm] = useState<SignupForm>(() => mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill));
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [documentErrors, setDocumentErrors] = useState<DocumentErrors>({});
   const [pending, setPending] = useState<OnboardingPending>(null);
-  const [uploadPending, setUploadPending] = useState<DocumentUploadField | null>(null);
-  const [viewPending, setViewPending] = useState<DocumentUploadField | null>(null);
+  const [uploadPending, setUploadPending] = useState<string | null>(null);
+  const [viewPending, setViewPending] = useState<string | null>(null);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
   const [documentRequirementsSnapshot, setDocumentRequirementsSnapshot] = useState<OnboardingDocumentRequirementSnapshot[]>(
     () => initialSnapshot?.documentRequirements ?? [],
@@ -184,6 +226,11 @@ export function useOnboardingForm({
   const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
   const documentRequirements = filterProfileDocumentRequirements(documentRequirementsSnapshot, activeRole);
   const previousSnapshotFingerprintRef = useRef(initialSnapshotFingerprint);
+  const prefillFingerprint = useMemo(() => JSON.stringify(prefill ?? {}), [prefill]);
+  const previousPrefillFingerprintRef = useRef(prefillFingerprint);
+
+  const documentRequirementsLoading = false;
+  const documentRequirementsError = undefined;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -228,6 +275,15 @@ export function useOnboardingForm({
     ];
 
     if (activeRole === "teacher") {
+      const documentLines: ReviewLine[] =
+        documentRequirements.length > 0
+          ? documentRequirements.map((requirement) => ({
+              label: requirement.isRequired ? requirement.documentType.name : `${requirement.documentType.name} (optional)`,
+              value: <FileSummary file={form.documents[requirement.id] ?? null} />,
+              wide: true,
+            }))
+          : [{ label: "Documents", value: <span className="text-muted">No document requirements loaded</span>, wide: true }];
+
       return [
         {
           title: "Teacher Profile",
@@ -300,141 +356,34 @@ export function useOnboardingForm({
         ],
       },
     ];
-  }, [accountEmail, activeRole, form]);
+  }, [accountEmail, activeRole, documentRequirements, form]);
 
   function updateField<FieldName extends keyof SignupForm>(field: FieldName, value: SignupForm[FieldName]) {
-    setForm((current) => ({
-      ...current,
-      ...(field === "dbsNumber" && value !== current.dbsNumber ? { dbsCertificateFile: null } : {}),
-      [field]: value,
-    }));
+    setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setSubmitError(undefined);
   }
 
-  function documentKindForField(field: DocumentUploadField) {
-    if (field === "dbsCertificateFile") return "dbs";
-    if (field === "identityPhoto") return "id";
-    if (field === "qualificationFile") return "qualification";
-    return "addressProof";
+  function setDocumentError(requirementId: string, message: string | undefined) {
+    setDocumentErrors((current) => ({ ...current, [requirementId]: message }));
   }
 
-  function documentLabelForField(field: DocumentUploadField) {
-    if (field === "dbsCertificateFile") return "Enhanced DBS certificate";
-    if (field === "identityPhoto") return "Photo ID";
-    if (field === "qualificationFile") return "Teaching qualification";
-    return "Proof of address";
-  }
-
-  function documentErrorField(field: DocumentUploadField): keyof SignupErrors {
-    return field;
-  }
-
-  async function uploadDocument(field: DocumentUploadField, file: UploadedFile) {
-    if (pending === "submit" || uploadPending) return;
-
-    const label = documentLabelForField(field);
-    const selectedFile = file.file;
-    const validationError = selectedFile ? documentFileError({ ...file, id: "validation-placeholder" }, label) : `${label} is required.`;
-
-    if (validationError) {
-      setErrors((current) => ({ ...current, [documentErrorField(field)]: validationError }));
-      return;
-    }
-
-    if (field === "dbsCertificateFile" && !form.dbsNumber.trim()) {
-      setErrors((current) => ({
-        ...current,
-        dbsCertificateFile: "Enter your enhanced DBS certificate number before uploading this file.",
-        dbsNumber: "Enter your enhanced DBS certificate number before uploading this file.",
-      }));
-      return;
-    }
-
-    const data = new FormData();
-    data.set("kind", documentKindForField(field));
-    data.set("dbsNumber", form.dbsNumber.trim());
-    data.set("file", selectedFile!, file.name);
-
-    setForm((current) => ({ ...current, [field]: file }));
-    setErrors((current) => ({ ...current, [documentErrorField(field)]: undefined }));
+  function clearDocumentError(requirementId: string) {
+    setDocumentError(requirementId, undefined);
+    setErrors((current) => ({ ...current, documents: undefined }));
     setSubmitError(undefined);
-    setUploadPending(field);
-
-    try {
-      const result = await onDocumentUpload(data);
-
-      if (!result.ok || !result.data?.document) {
-        setErrors((current) => ({
-          ...current,
-          [documentErrorField(field)]: result.message || `${label} could not be uploaded. Choose the file again.`,
-        }));
-        return;
-      }
-
-      const uploadedFile = toUploadedFileFromDocument(result.data.document);
-      const uploadedDocuments = result.data.documents;
-
-      setForm((current) => ({
-        ...current,
-        dbsCertificateFile: uploadedDocuments.dbs ? toUploadedFileFromDocument(uploadedDocuments.dbs) : current.dbsCertificateFile,
-        dbsNumber: uploadedDocuments.dbs?.dbsNumber ?? current.dbsNumber,
-        identityPhoto: uploadedDocuments.id ? toUploadedFileFromDocument(uploadedDocuments.id) : current.identityPhoto,
-        qualificationFile: uploadedDocuments.qualification
-          ? toUploadedFileFromDocument(uploadedDocuments.qualification)
-          : current.qualificationFile,
-        rightToWorkFile: uploadedDocuments.addressProof
-          ? toUploadedFileFromDocument(uploadedDocuments.addressProof)
-          : current.rightToWorkFile,
-        [field]: uploadedFile,
-      }));
-      setErrors((current) => ({ ...current, [documentErrorField(field)]: undefined }));
-      setRequirementDocuments((current) => ({ ...current, ...result.data!.requirementDocuments }));
-    } catch (error) {
-      setErrors((current) => ({
-        ...current,
-        [documentErrorField(field)]:
-          error instanceof Error && error.message ? error.message : `${label} could not be uploaded. Choose the file again.`,
-      }));
-    } finally {
-      if (mountedRef.current) setUploadPending(null);
-    }
   }
 
-  async function viewDocument(field: DocumentUploadField, file: UploadedFile | null) {
-    if (!file?.id || viewPending) return;
+  function retryDocumentRequirements() {
+    setDocumentRequirementsSnapshot(initialSnapshot?.documentRequirements ?? []);
+  }
 
-    const data = new FormData();
-    data.set("documentId", file.id);
-    data.set("fileName", file.name);
-    setViewPending(field);
-    setSubmitError(undefined);
+  async function uploadDocument(requirement: OnboardingDocumentRequirementSnapshot, file: UploadedFile) {
+    await uploadRequirementDocument(requirement.id, file);
+  }
 
-    try {
-      const result = await onDocumentView(data);
-
-      if (!result.ok || !result.data?.url) {
-        setErrors((current) => ({
-          ...current,
-          [documentErrorField(field)]: result.message || "This document could not be opened.",
-        }));
-        return;
-      }
-
-      setDocumentPreview({
-        expiresAt: result.data.expiresAt,
-        file,
-        url: result.data.url,
-      });
-    } catch (error) {
-      setErrors((current) => ({
-        ...current,
-        [documentErrorField(field)]:
-          error instanceof Error && error.message ? error.message : "This document could not be opened.",
-      }));
-    } finally {
-      if (mountedRef.current) setViewPending(null);
-    }
+  async function viewDocument(requirementId: string, file: UploadedFile | null) {
+    await viewRequirementDocument(requirementId, file);
   }
 
   async function uploadRequirementDocument(requirementId: string, file: UploadedFile) {
@@ -443,7 +392,24 @@ export function useOnboardingForm({
     const requirement = documentRequirements.find((item) => item.id === requirementId);
     const label = requirement?.documentType.name || "Document";
     const selectedFile = file.file;
-    const validationError = selectedFile ? documentFileError({ ...file, id: "validation-placeholder" }, label) : `${label} is required.`;
+    const validationError = selectedFile
+      ? requirement
+        ? documentFileError(
+            { ...file, id: "validation-placeholder" },
+            {
+              allowedMimes: requirement.documentType.allowedMimes,
+              code: requirement.documentType.code,
+              context: requirement.context,
+              description: null,
+              id: requirement.id,
+              isRequired: requirement.isRequired,
+              maxSizeBytes: requirement.documentType.maxSizeBytes,
+              name: label,
+              requiresReview: true,
+            },
+          )
+        : undefined
+      : `${label} is required.`;
 
     if (validationError) {
       setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: validationError }));
@@ -710,12 +676,16 @@ export function useOnboardingForm({
 
   return {
     activeRole,
+    clearDocumentError,
     clearFieldError,
     continueStep,
     closeDocumentPreview,
     currentStep,
+    documentErrors,
     documentPreview,
     documentRequirements,
+    documentRequirementsError,
+    documentRequirementsLoading,
     errors,
     form,
     isLastStep,
@@ -727,6 +697,7 @@ export function useOnboardingForm({
     requirementUploadPending,
     requirementViewPending,
     reviewGroups,
+    retryDocumentRequirements,
     setStep,
     steps,
     submitDocumentsForReview,

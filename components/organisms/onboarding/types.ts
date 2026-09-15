@@ -10,7 +10,9 @@ import type { AppRole } from "@/types/supplyed";
 export type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
 export type SignupStep = 1 | 2 | 3 | 4;
 export type OnboardingPending = "step" | "submit" | null;
-export type DocumentUploadField = "dbsCertificateFile" | "identityPhoto" | "qualificationFile" | "rightToWorkFile";
+
+/** Per-card upload errors keyed by document requirement id. */
+export type DocumentErrors = Record<string, string | undefined>;
 
 export type DocumentPreview = {
   expiresAt?: string;
@@ -72,11 +74,7 @@ export type SignupField =
   | "maxTravelDistance"
   | "currency"
   | "bio"
-  | "dbsNumber"
-  | "dbsCertificateFile"
-  | "rightToWorkFile"
-  | "identityPhoto"
-  | "qualificationFile"
+  | "documents"
   | "safeguardingConfirmed";
 
 export type SignupErrors = Partial<Record<SignupField, string>>;
@@ -85,9 +83,11 @@ export type UploadedFile = {
   file?: File;
   id?: string;
   name: string;
+  requirementId?: string;
   status?: string | null;
   size: number;
   type: string;
+  uploadedAt?: string | null;
 };
 
 export type SignupForm = {
@@ -99,12 +99,11 @@ export type SignupForm = {
   coverTypes: string[];
   currency: string;
   dailyRate: string;
-  dbsCertificateFile: UploadedFile | null;
-  dbsNumber: string;
+  /** Uploaded or in-flight files keyed by document requirement id. */
+  documents: Record<string, UploadedFile | null>;
   email: string;
   fullName: string;
   hourlyRate: string;
-  identityPhoto: UploadedFile | null;
   institutionAddress: string;
   institutionCity: string;
   institutionCountryCode: string;
@@ -117,9 +116,7 @@ export type SignupForm = {
   password: string;
   phone: string;
   postcode: string;
-  qualificationFile: UploadedFile | null;
   recruiterProfileId: string;
-  rightToWorkFile: UploadedFile | null;
   safeguardingConfirmed: boolean;
   schoolName: string;
   skills: string[];
@@ -131,6 +128,37 @@ export type SignupForm = {
   typicalPupilCount: string;
   yearsExperience: string;
 };
+
+export type OnboardingPrefill = Partial<
+  Pick<
+    SignupForm,
+    | "bio"
+    | "complianceContact"
+    | "complianceEmail"
+    | "contactRole"
+    | "coverTypes"
+    | "currency"
+    | "dailyRate"
+    | "email"
+    | "fullName"
+    | "hourlyRate"
+    | "institutionAddress"
+    | "institutionCity"
+    | "institutionCountryCode"
+    | "institutionDomain"
+    | "keyStages"
+    | "localAuthority"
+    | "maxTravelDistance"
+    | "phone"
+    | "postcode"
+    | "schoolName"
+    | "skills"
+    | "staffingNeeds"
+    | "subjects"
+    | "typicalPupilCount"
+    | "yearsExperience"
+  >
+>;
 
 export type ReviewLine = {
   label: string;

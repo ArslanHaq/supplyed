@@ -27,6 +27,7 @@ export type OnboardingDocumentContext =
   | "RECRUITER_PROFILE";
 
 export type OnboardingDocumentSnapshot = {
+  code?: string | null;
   dbsNumber?: string | null;
   id: string;
   name: string;
@@ -35,6 +36,8 @@ export type OnboardingDocumentSnapshot = {
   status?: string | null;
   type: string;
   uploadedAt?: string | null;
+  versionId?: string | null;
+  versionNumber?: number | null;
 };
 
 export type OnboardingDocumentRequirementSnapshot = {
@@ -49,6 +52,25 @@ export type OnboardingDocumentRequirementSnapshot = {
   documentTypeId?: string;
   id: string;
   isRequired: boolean;
+};
+
+export type OnboardingDocumentRequirement = {
+  allowedMimes: string[];
+  code: string;
+  context: OnboardingDocumentContext | string;
+  description?: string | null;
+  id: string;
+  isRequired: boolean;
+  maxSizeBytes: number;
+  name: string;
+  requiresReview: boolean;
+};
+
+export type OnboardingDocumentMap = Record<string, OnboardingDocumentSnapshot>;
+
+export type OnboardingDocumentState = {
+  documentRequirements: OnboardingDocumentRequirement[];
+  documents: OnboardingDocumentMap;
 };
 
 export type OnboardingUserSnapshot = {
