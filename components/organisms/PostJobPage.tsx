@@ -6,24 +6,30 @@ import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types"
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Tag } from "../atoms";
-import { FormattedJobDescription, PageHead } from "../molecules";
+import { FormattedJobDescription, PageHead, TagInput } from "../molecules";
 import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdowns";
 
 type PostingMode = "instant" | "brief";
 
 type JobFormState = {
+  address: string;
+  city: string;
+  countryCode: string;
+  county: string;
   description: string;
   documentRequirementIds: string[];
   endDate: string;
   expiresAt: string;
   keyStages: string[];
-  location: string;
+  minExperienceYears: string;
   parkingInfo: string;
   payAmount: string;
   payType: "daily" | "fixed" | "hourly";
+  postalCode: string;
   qtsRequired: boolean;
   startDate: string;
   subject: string;
+  requiredSkills: string[];
   title: string;
   urgent: boolean;
 };
@@ -35,18 +41,24 @@ const subjectOptions = ["Maths", "English", "Science", "All Primary", "SEN", "Hu
 const payTypeOptions = ["Daily", "Hourly", "Fixed"];
 
 const initialForm: JobFormState = {
+  address: "",
+  city: "",
+  countryCode: "GB",
+  county: "",
   description: "",
   documentRequirementIds: [],
   endDate: "",
   expiresAt: "",
-  keyStages: ["KS2"],
-  location: "",
+  keyStages: [],
+  minExperienceYears: "",
   parkingInfo: "",
   payAmount: "",
   payType: "daily",
+  postalCode: "",
   qtsRequired: false,
   startDate: "",
-  subject: "Maths",
+  subject: "",
+  requiredSkills: [],
   title: "",
   urgent: false,
 };
@@ -206,7 +218,8 @@ function PostJobEditor({
     setSavingIntent(status === "ACTIVE" ? "publish" : "draft");
 
     if (editingJob) {
-      updateJob.mutate({ ...payload, id: editingJob.id } satisfies JobUpdateInput);
+      const { documentRequirementIds: _createOnlyDocumentRequirements, ...updatePayload } = payload;
+      updateJob.mutate({ ...updatePayload, id: editingJob.id } satisfies JobUpdateInput);
       return;
     }
 
@@ -272,22 +285,43 @@ function PostJobEditor({
               onChange={(event) => updateForm("title", event.target.value)}
             />
           </Field>
-          <Field error={errors.location} label="Location" required>
-            <input
-              className="input"
-              placeholder="e.g. Salford, Greater Manchester"
-              value={form.location}
-              onChange={(event) => updateForm("location", event.target.value)}
-            />
+          <Field error={errors.subject} label="Subject">
+            <SelectDropdown options={subjectOptions} placeholder="Select a subject" value={form.subject} onChange={(value) => updateForm("subject", value)} />
           </Field>
-          <Field error={errors.subject} label="Subject" required>
-            <SelectDropdown options={subjectOptions} value={form.subject} onChange={(value) => updateForm("subject", value)} />
-          </Field>
-          <Field error={errors.startDate} label="Start date" required>
+          <div className="md:col-span-2 rounded-xl border border-border bg-chalk/40 p-4">
+            <div className="mb-3 text-sm font-semibold">Role location</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field error={errors.postalCode} label="Postcode" hint="Use a valid UK postcode, for example M5 4WT.">
+                <input
+                  className="input"
+                  maxLength={20}
+                  placeholder="M5 4WT"
+                  value={form.postalCode}
+                  onChange={(event) => updateForm("postalCode", event.target.value.toUpperCase())}
+                />
+              </Field>
+              <Field error={errors.address} label="Address">
+                <input className="input" maxLength={250} placeholder="School or street address" value={form.address} onChange={(event) => updateForm("address", event.target.value)} />
+              </Field>
+              <Field error={errors.city} label="City">
+                <input className="input" maxLength={100} placeholder="Salford" value={form.city} onChange={(event) => updateForm("city", event.target.value)} />
+              </Field>
+              <Field error={errors.county} label="County">
+                <input className="input" maxLength={100} placeholder="Greater Manchester" value={form.county} onChange={(event) => updateForm("county", event.target.value)} />
+              </Field>
+              <Field error={errors.countryCode} hint="Two-letter ISO country code." label="Country code">
+                <input className="input" maxLength={2} value={form.countryCode} onChange={(event) => updateForm("countryCode", event.target.value.toUpperCase())} />
+              </Field>
+            </div>
+          </div>
+          <Field error={errors.startDate} label="Start date">
             <input className="input" min={todayDate} type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
           </Field>
+          <Field error={errors.endDate} label="End date">
+            <input className="input" min={form.startDate || todayDate} type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
+          </Field>
           <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[minmax(0,1fr)_220px]">
-            <Field error={errors.payAmount} label="Pay amount (£)" required>
+            <Field error={errors.payAmount} label="Pay amount (£)">
               <input
                 className="input"
                 min={0}
@@ -305,9 +339,22 @@ function PostJobEditor({
               />
             </Field>
           </div>
-          <Field error={errors.endDate} label="End date">
-            <input className="input" min={form.startDate || todayDate} type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
+          <Field error={errors.minExperienceYears} label="Minimum experience (years)">
+            <input
+              className="input"
+              min={0}
+              placeholder="e.g. 2"
+              step={1}
+              type="number"
+              value={form.minExperienceYears}
+              onChange={(event) => updateForm("minExperienceYears", event.target.value)}
+            />
           </Field>
+          <div className="md:col-span-2">
+            <Field error={errors.requiredSkills} htmlFor="job-required-skills" hint="Optional. Press Enter or comma after each skill." label="Required skills">
+              <TagInput id="job-required-skills" value={form.requiredSkills} onChange={(value) => updateForm("requiredSkills", value)} />
+            </Field>
+          </div>
         </div>
         <Field error={errors.description} label="Role description" required>
           <div className="mb-2 flex flex-wrap gap-2">
@@ -331,7 +378,7 @@ function PostJobEditor({
     return (
       <div>
         <div className="grid-2">
-          <Field error={errors.keyStages} htmlFor="job-key-stages" label="Key stages" required>
+          <Field error={errors.keyStages} htmlFor="job-key-stages" label="Key stages">
             <MultiSelectDropdown
               id="job-key-stages"
               options={keyStageOptions}
@@ -343,7 +390,7 @@ function PostJobEditor({
           <Field error={errors.expiresAt} hint="Optional. If set, the job stops appearing publicly after this date." label="Listing expiry">
             <input className="input" min={todayDate} type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
           </Field>
-          <div className="md:col-span-2">
+          {!isEditing ? <div className="md:col-span-2">
             <Field htmlFor="job-document-requirements" hint="Optional. Select the documents applicants should provide." label="Application document requirements">
               <MultiSelectDropdown
                 id="job-document-requirements"
@@ -371,7 +418,7 @@ function PostJobEditor({
                 </div>
               ) : null}
             </Field>
-          </div>
+          </div> : null}
         </div>
         <Field label="Parking / arrival notes">
           <textarea
@@ -409,10 +456,12 @@ function PostJobEditor({
           <FormattedJobDescription className="mt-2 max-w-[760px]" description={previewDescription} />
           <div className="mt-3 flex flex-wrap gap-2">
             {form.keyStages.map((stage) => <span key={stage} className="pill">{stage}</span>)}
-            <span className="pill">{form.subject}</span>
-            <span className="pill">{form.location || "Location TBC"}</span>
+            {form.subject ? <span className="pill">{form.subject}</span> : null}
+            <span className="pill">{formatFormLocation(form)}</span>
             <span className="pill">{formatPay(form)}</span>
             <span className="pill">{formatDateRange(form.startDate, form.endDate)}</span>
+            {form.minExperienceYears ? <span className="pill">{form.minExperienceYears}+ years experience</span> : null}
+            {form.requiredSkills.map((skill) => <span key={skill} className="pill">{skill}</span>)}
             {form.qtsRequired ? <span className="pill">QTS required</span> : null}
             {documentRequirements
               .filter((requirement) => form.documentRequirementIds.includes(requirement.id))
@@ -541,24 +590,19 @@ function PostJobEditor({
 
 function validateStep(step: number, form: JobFormState): JobFormErrors {
   if (step === 2) {
-    return pickErrors(validateAll(form), ["description", "endDate", "location", "payAmount", "startDate", "subject", "title"]);
+    return pickErrors(validateAll(form), ["address", "city", "countryCode", "county", "description", "endDate", "minExperienceYears", "payAmount", "postalCode", "startDate", "subject", "title"]);
   }
-  if (step === 3) return pickErrors(validateAll(form), ["expiresAt", "keyStages"]);
+  if (step === 3) return pickErrors(validateAll(form), ["expiresAt"]);
   return {};
 }
 
 function validateAll(form: JobFormState): JobFormErrors {
   const errors: JobFormErrors = {};
-  const payAmount = Number(form.payAmount);
 
   if (!form.title.trim()) errors.title = "Enter a job title.";
-  if (!form.location.trim()) errors.location = "Enter the role location.";
-  if (!form.subject.trim()) errors.subject = "Choose a subject.";
-  if (!form.startDate) errors.startDate = "Choose a start date.";
   Object.assign(errors, validateJobDates(form));
-  if (!Number.isFinite(payAmount) || payAmount <= 0) errors.payAmount = "Enter a valid pay amount.";
+  Object.assign(errors, validateOptionalJobFields(form));
   if (!form.description.trim() || form.description.trim().length < 20) errors.description = "Add role details of at least 20 characters.";
-  if (form.keyStages.length === 0) errors.keyStages = "Choose at least one key stage.";
 
   return errors;
 }
@@ -569,8 +613,29 @@ function validateDraft(form: JobFormState): JobFormErrors {
   if (!form.title.trim()) errors.title = "Enter a job title before saving a draft.";
   if (!form.description.trim()) errors.description = "Add a short role description before saving a draft.";
   Object.assign(errors, validateJobDates(form));
+  Object.assign(errors, validateOptionalJobFields(form));
 
   return errors;
+}
+
+function validateOptionalJobFields(form: JobFormState): JobFormErrors {
+  const errors: JobFormErrors = {};
+  if (form.postalCode.trim() && !isValidUkPostcode(form.postalCode)) errors.postalCode = "Enter a valid UK postcode.";
+  if (form.countryCode.trim() && !/^[A-Z]{2}$/i.test(form.countryCode.trim())) errors.countryCode = "Use a two-letter country code.";
+
+  if (form.payAmount.trim()) {
+    const payAmount = Number(form.payAmount);
+    if (!Number.isFinite(payAmount) || payAmount < 0) errors.payAmount = "Enter a valid pay amount.";
+  }
+  if (form.minExperienceYears.trim()) {
+    const years = Number(form.minExperienceYears);
+    if (!Number.isInteger(years) || years < 0) errors.minExperienceYears = "Enter a whole number of 0 or more.";
+  }
+  return errors;
+}
+
+function isValidUkPostcode(value: string) {
+  return /^(GIR\s?0AA|(?:(?:[A-PR-UWYZ][0-9][0-9A-HJKSTUW]?|[A-PR-UWYZ][A-HK-Y][0-9][0-9ABEHMNPRV-Y]?|[A-PR-UWYZ][0-9][A-HJKSTUW]|[A-PR-UWYZ][A-HK-Y][0-9][ABEHMNPRV-Y])\s?[0-9][ABD-HJLNP-UW-Z]{2}))$/i.test(value.trim());
 }
 
 function validateJobDates(form: JobFormState): JobFormErrors {
@@ -598,21 +663,28 @@ function pickErrors(errors: JobFormErrors, keys: Array<keyof JobFormState>) {
 }
 
 function firstInvalidStep(errors: JobFormErrors) {
-  if (errors.title || errors.location || errors.subject || errors.startDate || errors.endDate || errors.payAmount || errors.description) return 2;
-  if (errors.expiresAt || errors.keyStages) return 3;
+  if (errors.title || errors.address || errors.city || errors.countryCode || errors.county || errors.subject || errors.startDate || errors.endDate || errors.payAmount || errors.minExperienceYears || errors.postalCode || errors.description) return 2;
+  if (errors.expiresAt) return 3;
   return 4;
 }
 
 function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract<JobCreateInput["status"], "ACTIVE" | "DRAFT">): JobCreateInput {
   return {
+    address: form.address || undefined,
+    city: form.city || undefined,
+    countryCode: form.countryCode || undefined,
+    county: form.county || undefined,
     description: buildDescription(form, mode),
+    documentRequirementIds: form.documentRequirementIds,
     endDate: toIsoDate(form.endDate),
     expiresAt: toIsoDate(form.expiresAt),
     keyStages: form.keyStages,
-    location: form.location,
+    minExperienceYears: form.minExperienceYears ? Number(form.minExperienceYears) : undefined,
     parkingInfo: form.parkingInfo,
-    payAmount: Number(form.payAmount),
+    payAmount: form.payAmount ? Number(form.payAmount) : undefined,
     payType: form.payType,
+    postalCode: form.postalCode || undefined,
+    requiredSkills: form.requiredSkills,
     startDate: toIsoDate(form.startDate),
     status,
     subject: form.subject,
@@ -668,18 +740,24 @@ function toDateInput(value?: string | null) {
 
 function toFormState(job: Job): JobFormState {
   return {
+    address: job.address ?? "",
+    city: job.city === "Location TBC" ? "" : job.city,
+    countryCode: job.countryCode ?? "GB",
+    county: job.county ?? "",
     description: readEditableDescription(job.description ?? ""),
     documentRequirementIds: [],
     endDate: toDateInput(job.endDate),
     expiresAt: toDateInput(job.expiresAt),
-    keyStages: job.keyStages?.length ? job.keyStages : job.keyStage ? [job.keyStage] : initialForm.keyStages,
-    location: job.location ?? job.city ?? "",
+    keyStages: job.keyStages?.length ? job.keyStages : [],
+    minExperienceYears: job.minExperienceYears != null ? String(job.minExperienceYears) : "",
     parkingInfo: job.parkingInfo ?? "",
     payAmount: job.payAmount != null && job.payAmount > 0 ? String(job.payAmount) : job.rate ? String(job.rate) : "",
     payType: isPayType(job.payType) ? job.payType : "daily",
+    postalCode: job.postalCode ?? "",
     qtsRequired: job.description?.includes("QTS requested.") ?? false,
     startDate: toDateInput(job.startDate),
-    subject: job.subject || initialForm.subject,
+    subject: job.subject === "General cover" ? "" : job.subject,
+    requiredSkills: job.requiredSkills,
     title: job.title,
     urgent: job.description?.includes("Marked urgent by the hiring account.") || job.urgent,
   };
@@ -726,4 +804,8 @@ function formatDateRange(startDate: string, endDate: string) {
   if (!startDate) return "Date TBC";
   if (!endDate || startDate === endDate) return startDate;
   return `${startDate} - ${endDate}`;
+}
+
+function formatFormLocation(form: JobFormState) {
+  return [form.city, form.county, form.postalCode].map((part) => part.trim()).filter(Boolean).join(", ") || "Location TBC";
 }

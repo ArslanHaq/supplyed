@@ -179,6 +179,8 @@ type BackendRecruiterProfile = {
 
 type BackendDocumentProfile = {
   contentType?: string;
+  fileKey?: string | null;
+  originalName?: string | null;
   currentVersion?: {
     contentType?: string;
     createdAt?: string | Date | null;
@@ -348,7 +350,7 @@ function dateString(value: string | Date | null | undefined) {
 
 function normalizeDocumentSnapshot(document: BackendDocumentProfile): OnboardingDocumentSnapshot | undefined {
   const version = document.currentVersion ?? null;
-  const name = readString(document.name) ?? readString(version?.originalName);
+  const name = readString(document.originalName) ?? readString(document.name) ?? readString(version?.originalName);
   const contentType = readString(document.contentType) ?? readString(version?.contentType);
   const sizeBytes = readNumber(document.sizeBytes) ?? readNumber(version?.sizeBytes);
   const uploadedAt = dateString(document.uploadedAt) ?? dateString(version?.createdAt) ?? dateString(document.updatedAt);
@@ -854,16 +856,17 @@ async function uploadInstructorDocument({
   };
 
   if (requirementId) {
-    const createdDocument = await api.post<BackendDocumentProfile>(
+    const existingDocument = (await getDocumentSnapshots({ accessToken }))[requirementId];
+    const documentId = existingDocument?.id ?? (await api.post<BackendDocumentProfile>(
       "/documents",
       { applicationId: null, requirementId },
       authOptions,
-    );
+    )).id;
 
-    if (!createdDocument.id) throw new Error("The backend did not create the document record.");
+    if (!documentId) throw new Error("The backend did not create the document record.");
 
     const upload = await api.post<UploadDocumentResponse>(
-      `/documents/${createdDocument.id}/upload-url`,
+      `/documents/${documentId}/upload-url`,
       { contentType, sizeBytes: file.size },
       authOptions,
     );
@@ -884,7 +887,7 @@ async function uploadInstructorDocument({
     }
 
     const completedDocument = await api.post<BackendDocumentProfile>(
-      `/documents/${createdDocument.id}/upload-complete`,
+      `/documents/${documentId}/upload-complete`,
       { fileKey: upload.fileKey, originalName: file.name },
       authOptions,
     );

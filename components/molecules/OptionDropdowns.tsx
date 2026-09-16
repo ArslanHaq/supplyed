@@ -18,7 +18,7 @@ type SelectDropdownProps = {
 type MultiSelectDropdownProps = {
   id?: string;
   value: string[];
-  options: Array<string | MultiSelectOption>;
+  options: readonly (string | MultiSelectOption)[];
   onChange: (value: string[]) => void;
   placeholder?: string;
   error?: boolean;

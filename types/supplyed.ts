@@ -47,7 +47,14 @@ export type Job = {
   title: string;
   postedByUserId?: string;
   description?: string;
-  location?: string | null;
+  address?: string | null;
+  county?: string | null;
+  postalCode?: string | null;
+  countryCode?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  requiredSkills: string[];
+  minExperienceYears?: number | null;
   startDate?: string | null;
   endDate?: string | null;
   keyStages?: string[];
@@ -67,8 +74,7 @@ export type Job = {
   subject: string;
   mode: "instant" | "brief";
   postedAt: string;
-  applicants: number;
-  matchScore: number;
+  matchScore?: number;
 };
 
 export type Application = {
