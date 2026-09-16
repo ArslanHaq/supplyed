@@ -23,10 +23,10 @@ import type {
  *
  *   GET  /document-requirements/profile      what the profile must upload
  *   POST /documents                          create an empty document for a requirement
- *   POST /documents/:id/upload-url           presigned PUT for the next file version
+ *   POST /documents/:id/upload-url           presigned PUT for a replacement file
  *   PUT  <signed url>                        the bytes go straight to S3
- *   POST /documents/:id/upload-complete      record the version and make it current
- *   GET  /documents                          paginated list with the current version
+ *   POST /documents/:id/upload-complete      make the uploaded file current
+ *   GET  /documents                          paginated list with current file details
  */
 
 export type DocumentRequestAuth = {
@@ -60,25 +60,19 @@ type BackendDocumentRequirement = {
   requiresReview?: boolean;
 };
 
-type BackendDocumentVersion = {
-  contentType?: string;
-  createdAt?: Date | string;
-  id?: string;
-  originalName?: string | null;
-  sizeBytes?: unknown;
-  versionNumber?: unknown;
-};
-
 type BackendDocument = {
   applicationId?: string | null;
+  contentType?: string | null;
   createdAt?: Date | string;
-  currentVersion?: BackendDocumentVersion | null;
-  currentVersionId?: string | null;
   deletedAt?: Date | string | null;
+  fileKey?: string | null;
   id?: string;
+  originalName?: string | null;
   requirement?: BackendDocumentRequirement | null;
   requirementId?: string;
+  sizeBytes?: unknown;
   status?: string;
+  uploadedAt?: Date | string | null;
 };
 
 type BackendUploadUrl = {
@@ -205,20 +199,15 @@ function normalizeRequirement(requirement: BackendDocumentRequirement): Onboardi
 function normalizeDocument(document: BackendDocument): OnboardingDocumentSnapshot | undefined {
   if (!document.id || !document.requirementId) return undefined;
 
-  const version = document.currentVersion ?? undefined;
-  const versionNumber = readNumber(version?.versionNumber);
-
   return {
     code: readString(document.requirement?.documentType?.code) ?? null,
     id: document.id,
-    name: readString(version?.originalName) ?? (versionNumber ? `document-v${versionNumber}` : ""),
+    name: readString(document.originalName) ?? "",
     requirementId: document.requirementId,
-    size: readNumber(version?.sizeBytes) ?? 0,
+    size: readNumber(document.sizeBytes) ?? 0,
     status: readString(document.status) ?? null,
-    type: readString(version?.contentType) ?? "",
-    uploadedAt: version ? (readIsoDate(version.createdAt) ?? readIsoDate(document.createdAt) ?? null) : null,
-    versionId: readString(document.currentVersionId) ?? readString(version?.id) ?? null,
-    versionNumber: versionNumber ?? null,
+    type: readString(document.contentType) ?? "",
+    uploadedAt: readString(document.fileKey) ? (readIsoDate(document.uploadedAt) ?? null) : null,
   };
 }
 
@@ -337,13 +326,13 @@ function safeOriginalName(name: string) {
 }
 
 /**
- * Reuse the document row for a requirement so a replacement lands as the next
- * file version rather than a second document. A row created by an earlier
+ * Reuse the document row for a requirement so a replacement updates its current
+ * file rather than creating a second document. A row created by an earlier
  * attempt that never completed its upload is picked up here too.
  */
 async function findExistingDocument(requirementId: string, auth: DocumentRequestAuth) {
   const candidates = (await listProfileDocuments(auth)).filter((document) => document.requirementId === requirementId);
-  const withFile = candidates.filter((document) => Boolean(document.currentVersionId));
+  const withFile = candidates.filter((document) => Boolean(document.fileKey));
   const pool = withFile.length > 0 ? withFile : candidates;
 
   return pool.sort((left, right) => (readIsoDate(right.createdAt) ?? "").localeCompare(readIsoDate(left.createdAt) ?? ""))[0];
