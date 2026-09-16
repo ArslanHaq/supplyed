@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { City, Country, type ICity } from "country-state-city";
 
 import { useSettingsProfile, useUpdateSettings } from "@/features/settings/use-settings";
 import type {
@@ -29,6 +30,8 @@ type SettingsFormCache = {
   form: SettingsForm;
   snapshotKey: string;
 };
+
+const countryOptions = Country.getAllCountries().sort((first, second) => first.name.localeCompare(second.name));
 
 const emptyInstructor: SettingsInstructorUpdateInput = {
   address: "",
@@ -88,6 +91,19 @@ function arrayToText(values: string[]) {
 
 function textToArray(value: string) {
   return Array.from(new Set(value.split(",").map((item) => item.trim()).filter(Boolean)));
+}
+
+function uniqueCities(cities: ICity[]) {
+  const seen = new Set<string>();
+
+  return cities
+    .filter((city) => {
+      const key = city.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((first, second) => first.name.localeCompare(second.name));
 }
 
 function roleLabel(role: AppRole | null | undefined) {
@@ -247,6 +263,55 @@ function ArrayField({
   );
 }
 
+function CountryCityFields({
+  city,
+  cityError,
+  cityRequired,
+  countryCode,
+  countryError,
+  countryRequired,
+  onCityChange,
+  onCountryChange,
+}: {
+  city: string;
+  cityError?: string;
+  cityRequired?: boolean;
+  countryCode: string;
+  countryError?: string;
+  countryRequired?: boolean;
+  onCityChange: (value: string) => void;
+  onCountryChange: (value: string) => void;
+}) {
+  const cityOptions = useMemo(() => uniqueCities(City.getCitiesOfCountry(countryCode) ?? []), [countryCode]);
+  const currentCityInOptions = cityOptions.some((option) => option.name === city);
+
+  return (
+    <>
+      <Field error={countryError} label="Country" required={countryRequired}>
+        <select className="select" onChange={(event) => onCountryChange(event.target.value)} value={countryCode}>
+          <option value="">Select country</option>
+          {countryOptions.map((country) => (
+            <option key={country.isoCode} value={country.isoCode}>
+              {country.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field error={cityError} label="City" required={cityRequired}>
+        <select className="select" disabled={!countryCode} onChange={(event) => onCityChange(event.target.value)} value={city}>
+          <option value="">{countryCode ? "Select city" : "Select country first"}</option>
+          {city && !currentCityInOptions ? <option value={city}>{city}</option> : null}
+          {cityOptions.map((cityOption) => (
+            <option key={cityOption.name} value={cityOption.name}>
+              {cityOption.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+    </>
+  );
+}
+
 export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "state" | "toast">) {
   const profileQuery = useSettingsProfile();
   const profile = profileQuery.data;
@@ -302,6 +367,12 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
     setSubmitError(undefined);
   }
 
+  function updateInstructorCountry(countryCode: string) {
+    setForm((current) => ({ ...current, instructor: { ...current.instructor, city: "", countryCode } }));
+    setErrors((current) => ({ ...current, city: undefined, countryCode: undefined }));
+    setSubmitError(undefined);
+  }
+
   function updateInstitution<Field extends keyof SettingsInstitutionUpdateInput>(
     field: Field,
     value: SettingsInstitutionUpdateInput[Field],
@@ -311,12 +382,24 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
     setSubmitError(undefined);
   }
 
+  function updateInstitutionCountry(countryCode: string) {
+    setForm((current) => ({ ...current, institution: { ...current.institution, city: "", countryCode } }));
+    setErrors((current) => ({ ...current, city: undefined, countryCode: undefined }));
+    setSubmitError(undefined);
+  }
+
   function updateRecruiter<Field extends keyof SettingsRecruiterUpdateInput>(
     field: Field,
     value: SettingsRecruiterUpdateInput[Field],
   ) {
     setForm((current) => ({ ...current, recruiter: { ...current.recruiter, [field]: value } }));
     setErrors((current) => ({ ...current, [field]: undefined }));
+    setSubmitError(undefined);
+  }
+
+  function updateRecruiterCountry(countryCode: string) {
+    setForm((current) => ({ ...current, recruiter: { ...current.recruiter, city: "", countryCode } }));
+    setErrors((current) => ({ ...current, city: undefined, countryCode: undefined }));
     setSubmitError(undefined);
   }
 
@@ -436,18 +519,19 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
                 <Field label="Address">
                   <input className="input" value={form.instructor.address} onChange={(event) => updateInstructor("address", event.target.value)} />
                 </Field>
-                <Field label="City">
-                  <input className="input" value={form.instructor.city} onChange={(event) => updateInstructor("city", event.target.value)} />
-                </Field>
-                <Field label="County">
-                  <input className="input" value={form.instructor.county} onChange={(event) => updateInstructor("county", event.target.value)} />
-                </Field>
+                <CountryCityFields
+                  city={form.instructor.city}
+                  cityError={errors.city}
+                  countryCode={form.instructor.countryCode}
+                  countryError={errors.countryCode}
+                  onCityChange={(value) => updateInstructor("city", value)}
+                  onCountryChange={updateInstructorCountry}
+                />
+
                 <Field label="Postal code">
                   <input className="input" value={form.instructor.postalCode} onChange={(event) => updateInstructor("postalCode", event.target.value)} />
                 </Field>
-                <Field label="Country code">
-                  <input className="input" value={form.instructor.countryCode} onChange={(event) => updateInstructor("countryCode", event.target.value)} />
-                </Field>
+
                 <Field label="Currency">
                   <input className="input" value={form.instructor.currency} onChange={(event) => updateInstructor("currency", event.target.value)} />
                 </Field>
@@ -504,18 +588,21 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
                 <Field error={errors.address} label="Address" required>
                   <input className="input" value={form.institution.address} onChange={(event) => updateInstitution("address", event.target.value)} />
                 </Field>
-                <Field error={errors.city} label="City" required>
-                  <input className="input" value={form.institution.city} onChange={(event) => updateInstitution("city", event.target.value)} />
-                </Field>
-                <Field label="County">
-                  <input className="input" value={form.institution.county} onChange={(event) => updateInstitution("county", event.target.value)} />
-                </Field>
+                <CountryCityFields
+                  city={form.institution.city}
+                  cityError={errors.city}
+                  cityRequired
+                  countryCode={form.institution.countryCode}
+                  countryError={errors.countryCode}
+                  countryRequired
+                  onCityChange={(value) => updateInstitution("city", value)}
+                  onCountryChange={updateInstitutionCountry}
+                />
+
                 <Field label="Postal code">
                   <input className="input" value={form.institution.postalCode} onChange={(event) => updateInstitution("postalCode", event.target.value)} />
                 </Field>
-                <Field label="Country code">
-                  <input className="input" value={form.institution.countryCode} onChange={(event) => updateInstitution("countryCode", event.target.value)} />
-                </Field>
+
                 <Field label="Your role">
                   <input className="input" value={form.institution.userRole} onChange={(event) => updateInstitution("userRole", event.target.value)} />
                 </Field>
@@ -564,18 +651,19 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
                 <Field label="Address">
                   <input className="input" value={form.recruiter.address} onChange={(event) => updateRecruiter("address", event.target.value)} />
                 </Field>
-                <Field label="City">
-                  <input className="input" value={form.recruiter.city} onChange={(event) => updateRecruiter("city", event.target.value)} />
-                </Field>
-                <Field label="County">
-                  <input className="input" value={form.recruiter.county} onChange={(event) => updateRecruiter("county", event.target.value)} />
-                </Field>
+                <CountryCityFields
+                  city={form.recruiter.city}
+                  cityError={errors.city}
+                  countryCode={form.recruiter.countryCode}
+                  countryError={errors.countryCode}
+                  onCityChange={(value) => updateRecruiter("city", value)}
+                  onCountryChange={updateRecruiterCountry}
+                />
+
                 <Field label="Postal code">
                   <input className="input" value={form.recruiter.postalCode} onChange={(event) => updateRecruiter("postalCode", event.target.value)} />
                 </Field>
-                <Field label="Country code">
-                  <input className="input" value={form.recruiter.countryCode} onChange={(event) => updateRecruiter("countryCode", event.target.value)} />
-                </Field>
+
               </div>
 
               <Field label="Bio">
