@@ -74,7 +74,6 @@ export type Job = {
   subject: string;
   mode: "instant" | "brief";
   postedAt: string;
-  applicants: number;
   matchScore?: number;
 };
 

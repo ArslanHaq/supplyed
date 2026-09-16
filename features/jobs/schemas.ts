@@ -72,7 +72,6 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
 
   return {
     id: job.id,
-    applicants: 0,
     address: job.address?.trim() || null,
     city,
     countryCode: job.countryCode?.trim() || "GB",

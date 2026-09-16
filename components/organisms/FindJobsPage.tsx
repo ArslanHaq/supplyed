@@ -71,7 +71,7 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
                 <div className="mb-1 font-serif text-xl">{job.title}</div>
                 <div className="mb-3 text-[15px] text-muted">{job.school} - {[job.city, job.county, job.postalCode].filter(Boolean).join(", ")} - {job.date}</div>
                 <div className="mb-3 flex flex-wrap gap-1">{job.requiredSkills.map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div>
-                <div className="flex flex-wrap gap-4 text-xs text-muted"><div className="flex items-center gap-1"><Icon name="pound" size={12} />£{job.rate}/day</div><div className="flex items-center gap-1"><Icon name="users" size={12} />{job.applicants} applied</div></div>
+                <div className="flex flex-wrap gap-4 text-xs text-muted"><div className="flex items-center gap-1"><Icon name="pound" size={12} />£{job.rate}/day</div></div>
               </div>
               <Btn size="sm">View</Btn>
             </div>

@@ -238,6 +238,7 @@ export async function getProfileDocumentRequirements(
   if (response.some((item) => !isRecord(item) || !item.id || !isRecord(item.documentType) || !item.documentType.id)) {
     throw new Error("Document requirements are incomplete. Try again.");
   }
+  console.log("getProfileDocumentRequirements", { role, profileRole, response });
   if (response.some((item) => item.context !== profileDocumentContext(role))) {
     throw new Error("Document requirements do not match your profile. Retry the check.");
   }

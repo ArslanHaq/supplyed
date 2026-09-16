@@ -1,3 +1,4 @@
+import { useJobApplications } from "@/features/applications/use-applications";
 import type { Job, JobStatus } from "@/features/jobs/types";
 import type { Tone } from "@/types/supplyed";
 
@@ -111,6 +112,8 @@ function JobManagementRow({
   onEdit: (job: Job) => void;
 }) {
   const canClose = job.status === "ACTIVE" || job.status === "DRAFT";
+  const applicationsQuery = useJobApplications(job.id, { limit: 1 });
+  const applicantCount = applicationsQuery.data?.pagination.total;
 
   return (
     <div className="flex cursor-pointer flex-wrap items-center gap-4 border-b border-border px-5 py-4 last:border-b-0" onClick={() => onApplications(job)}>
@@ -129,7 +132,9 @@ function JobManagementRow({
         {job.requiredSkills.length || job.minExperienceYears != null ? <div className="mt-1 flex flex-wrap gap-1">{job.requiredSkills.slice(0, 4).map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div> : null}
       </div>
       <div className="text-center">
-        <div className="font-serif text-[22px] text-brand">{job.applicants}</div>
+        <div aria-label={applicantCount !== undefined ? `${applicantCount} applicants` : applicationsQuery.isError ? "Applicant count unavailable" : "Loading applicant count"} aria-live="polite" className="font-serif text-[22px] text-brand">
+          {applicantCount ?? (applicationsQuery.isError ? "—" : "…")}
+        </div>
         <div className="text-xs text-muted">Applicants</div>
       </div>
       <div className="flex flex-wrap gap-1.5">
