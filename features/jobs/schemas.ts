@@ -16,13 +16,20 @@ export function normalizeJobFilters(filters: JobListFilters = {}): JobListFilter
 export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
   return {
     ...input,
+    address: input.address?.trim() || undefined,
+    city: input.city?.trim() || undefined,
+    countryCode: input.countryCode?.trim().toUpperCase() || "GB",
+    county: input.county?.trim() || undefined,
     description: input.description.trim(),
+    documentRequirementIds: normalizeStringList(input.documentRequirementIds ?? []),
     endDate: input.endDate?.trim() || undefined,
     expiresAt: input.expiresAt?.trim() || undefined,
     keyStages: normalizeStringList(input.keyStages),
-    location: input.location?.trim() || undefined,
+    minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
     payAmount: normalizePositiveNumber(input.payAmount),
+    postalCode: input.postalCode?.trim().toUpperCase() || undefined,
+    requiredSkills: normalizeStringList(input.requiredSkills ?? []),
     startDate: input.startDate?.trim() || undefined,
     subject: input.subject?.trim() || undefined,
     title: input.title.trim(),
@@ -30,25 +37,26 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
 }
 
 export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
-  const normalizedCreate = normalizeJobCreateInput({
-    description: input.description ?? "",
-    endDate: input.endDate,
-    expiresAt: input.expiresAt,
-    keyStages: input.keyStages ?? [],
-    location: input.location,
-    parkingInfo: input.parkingInfo,
-    payAmount: input.payAmount,
-    payType: input.payType,
-    startDate: input.startDate,
-    subject: input.subject,
-    title: input.title ?? "",
-  });
-
-  return {
-    ...withoutEmptyJobFields(normalizedCreate),
+  return withoutEmptyJobFields({
+    ...input,
+    address: input.address?.trim() || undefined,
+    city: input.city?.trim() || undefined,
+    countryCode: input.countryCode?.trim().toUpperCase() || undefined,
+    county: input.county?.trim() || undefined,
+    description: input.description?.trim() || undefined,
+    endDate: input.endDate?.trim() || undefined,
+    expiresAt: input.expiresAt?.trim() || undefined,
     id: input.id.trim(),
-    status: input.status,
-  };
+    keyStages: input.keyStages ? normalizeStringList(input.keyStages) : undefined,
+    minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
+    parkingInfo: input.parkingInfo?.trim() || undefined,
+    payAmount: normalizePositiveNumber(input.payAmount),
+    postalCode: input.postalCode?.trim().toUpperCase() || undefined,
+    requiredSkills: input.requiredSkills ? normalizeStringList(input.requiredSkills) : undefined,
+    startDate: input.startDate?.trim() || undefined,
+    subject: input.subject?.trim() || undefined,
+    title: input.title?.trim() || undefined,
+  }) as JobUpdateInput;
 }
 
 export function normalizeBackendJob(job: BackendJobResponse): Job {
@@ -58,13 +66,17 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
   const endDate = readDateIso(job.endDate);
   const expiresAt = readDateIso(job.expiresAt);
   const keyStages = normalizeStringList(job.keyStages ?? []);
+  const requiredSkills = normalizeStringList(job.requiredSkills ?? []);
   const subject = job.subject?.trim() || "General cover";
-  const location = job.location?.trim() || "Location TBC";
+  const city = job.city?.trim() || job.county?.trim() || job.postalCode?.trim() || "Location TBC";
 
   return {
     id: job.id,
     applicants: 0,
-    city: location,
+    address: job.address?.trim() || null,
+    city,
+    countryCode: job.countryCode?.trim() || "GB",
+    county: job.county?.trim() || null,
     createdAt,
     date: formatDateRange(startDate, endDate),
     description: job.description,
@@ -72,8 +84,9 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     expiresAt,
     keyStage: keyStages[0] ?? "All stages",
     keyStages,
-    location,
-    matchScore: deriveMatchScore(job.id),
+    latitude: readNumber(job.latitude) ?? null,
+    longitude: readNumber(job.longitude) ?? null,
+    minExperienceYears: normalizeNonNegativeInteger(job.minExperienceYears) ?? null,
     mode:
       readPostingMode(job.mode) ??
       readPostingMode(job.postingMode) ??
@@ -85,7 +98,9 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     payType: job.payType ?? null,
     postedAt: formatRelativeTime(createdAt),
     postedByUserId: job.postedByUserId,
+    postalCode: job.postalCode?.trim() || null,
     rate: payAmount,
+    requiredSkills,
     school: "Hiring account",
     startDate,
     status: job.status,
@@ -101,7 +116,7 @@ export function applyJobFilters(jobs: Job[], filters: JobListFilters = {}) {
 
   return jobs.filter((job) => {
     const matchesSearch = normalized.search
-      ? `${job.title} ${job.school} ${job.location ?? ""} ${job.subject}`.toLowerCase().includes(normalized.search.toLowerCase())
+      ? `${job.title} ${job.school} ${job.city} ${job.county ?? ""} ${job.postalCode ?? ""} ${job.subject} ${job.requiredSkills.join(" ")}`.toLowerCase().includes(normalized.search.toLowerCase())
       : true;
     const matchesSubject = normalized.subject ? job.subject === normalized.subject : true;
     const matchesKeyStage = normalized.keyStage ? job.keyStages?.includes(normalized.keyStage) || job.keyStage === normalized.keyStage : true;
@@ -130,6 +145,11 @@ function normalizeStringList(value: string[]) {
 function normalizePositiveNumber(value: unknown) {
   const number = readNumber(value);
   return number === undefined || number < 0 ? undefined : number;
+}
+
+function normalizeNonNegativeInteger(value: unknown) {
+  const number = readNumber(value);
+  return number === undefined || number < 0 || !Number.isInteger(number) ? undefined : number;
 }
 
 function readNumber(value: unknown) {
@@ -202,12 +222,6 @@ function isUrgent(expiresAt: string | null) {
   if (!expiresAt) return false;
   const msUntilExpiry = new Date(expiresAt).getTime() - Date.now();
   return msUntilExpiry > 0 && msUntilExpiry <= 2 * MS_PER_DAY;
-}
-
-function deriveMatchScore(id: string) {
-  let sum = 0;
-  for (const char of id) sum += char.charCodeAt(0);
-  return 76 + (sum % 20);
 }
 
 function withoutEmptyJobFields<Input extends Record<string, unknown>>(input: Input) {

@@ -1,21 +1,21 @@
 import { seedMessages } from "@/data/supplyed";
-import { useJobs } from "@/features/jobs/use-jobs";
+import { useRecommendedJobs } from "@/features/matching/use-matching";
 import { getFirstName } from "@/lib/user-display";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Stat, Tag } from "../atoms";
-import { PageHead, SectionLoader } from "../molecules";
+import { MatchScorePanel, PageHead, SectionLoader } from "../molecules";
 
 export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">) {
   const firstName = getFirstName(state.accountName, state.signupEmail);
-  const jobsQuery = useJobs({ status: "ACTIVE" });
-  const jobs = jobsQuery.data ?? [];
-  const recommendedJobs = jobs.slice(0, 4);
+  const jobsQuery = useRecommendedJobs({ limit: 4 });
+  const recommendedJobs = jobsQuery.data?.jobs ?? [];
+  const jobCount = jobsQuery.data?.pagination.total ?? recommendedJobs.length;
   const jobCountLabel = jobsQuery.isLoading
     ? "Loading available roles"
     : jobsQuery.isError
       ? "Available roles"
-      : `${jobs.length} open ${jobs.length === 1 ? "role" : "roles"} available`;
+      : `${jobCount} matched ${jobCount === 1 ? "role" : "roles"} available`;
 
   return (
     <div className="app-page">
@@ -43,11 +43,11 @@ export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">
                 <Btn className="mt-3" size="sm" variant="secondary" onClick={() => void jobsQuery.refetch()}>Try again</Btn>
               </div>
             ) : null}
-            {recommendedJobs.map((job) => (
+            {recommendedJobs.map(({ job, match }) => (
               <div key={job.id} className="card card-pad flex cursor-pointer flex-wrap items-center gap-4" onClick={() => go("job-detail", { jobId: job.id })}>
-                <div className="flex-1"><div className="mb-0.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div><div className="text-[15px] font-semibold">{job.title}</div><div className="text-xs text-muted">{job.school} - {job.city} - {job.date}</div></div>
+                <div className="min-w-[240px] flex-1"><div className="mb-0.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag>{job.requiredSkills.slice(0, 2).map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div><div className="text-[15px] font-semibold">{job.title}</div><div className="text-xs text-muted">{job.school} - {[job.city, job.county].filter(Boolean).join(", ")} - {job.date}{job.minExperienceYears != null ? ` - ${job.minExperienceYears}+ years` : ""}</div></div>
                 <div className="text-right"><div className="font-serif text-lg">£{job.rate}</div><div className="text-xs text-muted">per day</div></div>
-                <Btn size="sm">View</Btn>
+                <div className="w-full" onClick={(event) => event.stopPropagation()}><MatchScorePanel match={match} /></div>
               </div>
             ))}
             {!jobsQuery.isLoading && !jobsQuery.isError && recommendedJobs.length === 0 ? (

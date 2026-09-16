@@ -125,7 +125,8 @@ function JobManagementRow({
           <span className="text-xs text-muted">{job.postedAt}</span>
         </div>
         <div className="text-[15px] font-semibold">{job.title}</div>
-        <div className="text-xs text-muted">{job.location ?? job.city} - {job.date} - {formatPay(job)}</div>
+        <div className="text-xs text-muted">{[job.city === "Location TBC" ? "" : job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} - {job.date} - {formatPay(job)}</div>
+        {job.requiredSkills.length || job.minExperienceYears != null ? <div className="mt-1 flex flex-wrap gap-1">{job.requiredSkills.slice(0, 4).map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div> : null}
       </div>
       <div className="text-center">
         <div className="font-serif text-[22px] text-brand">{job.applicants}</div>

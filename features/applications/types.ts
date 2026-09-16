@@ -31,6 +31,8 @@ export type ApplicationCreateInput = {
   jobId: string;
 };
 
+export type ApplicationStatusUpdateInput = { id: string; status: JobApplicationStatus };
+
 export type ApplicationsPagination = {
   hasNextPage: boolean;
   limit: number;

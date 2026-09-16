@@ -18,6 +18,13 @@ export const queryKeys = {
     list: (filters?: Record<string, unknown>) => [...queryKeys.jobs.all, "list", filters ?? {}] as const,
     mine: (filters?: Record<string, unknown>) => [...queryKeys.jobs.all, "mine", filters ?? {}] as const,
   },
+  matching: {
+    all: ["matching"] as const,
+    applications: (jobId: string, query?: Record<string, unknown>) => [...queryKeys.matching.all, "applications", jobId, query ?? {}] as const,
+    instructors: (jobId: string, query?: Record<string, unknown>) => [...queryKeys.matching.all, "instructors", jobId, query ?? {}] as const,
+    recommendedJobs: (query?: Record<string, unknown>) => [...queryKeys.matching.all, "recommended-jobs", query ?? {}] as const,
+    score: (jobId: string) => [...queryKeys.matching.all, "score", jobId] as const,
+  },
   onboarding: {
     all: ["onboarding"] as const,
     current: () => [...queryKeys.onboarding.all, "current"] as const,

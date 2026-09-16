@@ -6,7 +6,7 @@ import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 
 import { normalizeApplication, normalizeApplicationCreateInput } from "./schemas";
-import type { ApplicationCreateInput, JobApplication } from "./types";
+import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplication } from "./types";
 
 const MAX_COVER_LETTER_LENGTH = 2_000;
 
@@ -39,6 +39,18 @@ export async function createApplicationAction(input: ApplicationCreateInput) {
     return actionError(readApplicationError(error), {
       code: error instanceof ApiError ? error.code : undefined,
     });
+  }
+}
+
+export async function updateApplicationStatusAction(input: ApplicationStatusUpdateInput) {
+  if (!input.id.trim()) return actionError("Choose a valid application.", { code: "APPLICATION_ID_REQUIRED" });
+  try {
+    const application = await api.patch<JobApplication>(`/applications/${input.id}/status`, { status: input.status });
+    revalidateTag("applications", "max");
+    revalidateTag(`applications:job:${application.jobId}`, "max");
+    return actionOk(normalizeApplication(application), "Application status updated.");
+  } catch (error) {
+    return actionError(readApplicationError(error), { code: error instanceof ApiError ? error.code : undefined });
   }
 }
 
