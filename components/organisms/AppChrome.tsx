@@ -45,7 +45,8 @@ export function AppChrome({
   go,
   onLanding,
   onLogout,
-}: Pick<RouteProps, "state" | "go"> & { children: ReactNode; onLanding: () => void; onLogout: () => void }) {
+  onSettings,
+}: Pick<RouteProps, "state" | "go"> & { children: ReactNode; onLanding: () => void; onLogout: () => void; onSettings: () => void }) {
   const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : individualNav;
   const fallbackUserName = state.role === "institution" ? "School workspace" : state.role === "teacher" ? "Instructor" : "Hirer";
   const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
@@ -73,6 +74,7 @@ export function AppChrome({
             onLanding={onLanding}
             onLogout={onLogout}
             onSecurity={() => go("security")}
+            onSettings={onSettings}
             roleLabel={userSub}
           />
         </div>

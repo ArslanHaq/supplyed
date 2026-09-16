@@ -1,8 +1,11 @@
+import { useState } from "react";
+
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import type { FoundingSignupType } from "@/lib/founding-signup-intent";
 import type { AppRole } from "@/types/supplyed";
 
 import { Btn, Icon, Logo, Tag } from "../atoms";
+import { Modal } from "../molecules";
 import type {
   OnboardingDocumentDownloadActionResult,
   OnboardingDocumentUploadActionResult,
@@ -16,8 +19,8 @@ import { useOnboardingForm } from "./onboarding/useOnboardingForm";
 import { AccountBasicsStep } from "./onboarding/steps/AccountBasicsStep";
 import { InstitutionComplianceStep } from "./onboarding/steps/InstitutionComplianceStep";
 import { InstitutionDetailsStep } from "./onboarding/steps/InstitutionDetailsStep";
+import { DocumentUploadStep } from "./onboarding/steps/DocumentUploadStep";
 import { ReviewStep } from "./onboarding/steps/ReviewStep";
-import { TeacherDocumentsStep } from "./onboarding/steps/TeacherDocumentsStep";
 import { TeacherProfileStep } from "./onboarding/steps/TeacherProfileStep";
 import {
   roleLabel,
@@ -64,6 +67,7 @@ export function OnboardingPage({
   onLanding: () => void;
   onLogin: () => void;
 }) {
+  const [confirmCreateOpen, setConfirmCreateOpen] = useState(false);
   const controller = useOnboardingForm({
     accountEmail,
     initialSnapshot,
@@ -83,14 +87,48 @@ export function OnboardingPage({
     continueStep,
     currentStep,
     documentPreview,
+    documentRequirementsLoading,
+    documentRequirementsError,
     isLastStep,
+    lockedDocumentStage,
     pending,
     progress,
+    requirementUploadPending,
     steps,
+    submitDocumentsForReview,
     submitError,
     submitSignup,
     uploadPending,
   } = controller;
+  const displayProgress = lockedDocumentStage ? 100 : progress;
+  const pageTitle = lockedDocumentStage ? "Upload required documents" : roleSelected ? signupStepTitle(activeRole, currentStep) : "Choose account type";
+  const pageDescription = lockedDocumentStage
+    ? "Your profile has been created. Upload the admin-required documents before sending it for review."
+    : steps[currentStep - 1].description;
+
+  function closeConfirmCreate() {
+    if (pending) return;
+    setConfirmCreateOpen(false);
+  }
+
+  function handlePrimaryAction() {
+    if (lockedDocumentStage) {
+      void submitDocumentsForReview();
+      return;
+    }
+
+    if (isLastStep) {
+      setConfirmCreateOpen(true);
+      return;
+    }
+
+    void continueStep();
+  }
+
+  function confirmCreateProfile() {
+    setConfirmCreateOpen(false);
+    void submitSignup();
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-chalk">
@@ -130,17 +168,17 @@ export function OnboardingPage({
             ) : null}
 
             <div className="mt-8 space-y-4">
-              {steps.map((item, index) => {
+              {(lockedDocumentStage ? [] : steps).map((item, index) => {
                 const itemStep = index + 1;
-                const active = itemStep === currentStep;
-                const complete = itemStep < currentStep;
+                const active = !lockedDocumentStage && itemStep === currentStep;
+                const complete = lockedDocumentStage || itemStep < currentStep;
 
                 return (
                   <button
                     key={item.label}
                     className="flex w-full gap-3 text-left"
                     onClick={() => {
-                      if (itemStep < currentStep) setStep(itemStep);
+                      if (!lockedDocumentStage && itemStep < currentStep) setStep(itemStep);
                     }}
                     type="button"
                   >
@@ -161,12 +199,25 @@ export function OnboardingPage({
                   </button>
                 );
               })}
+              {lockedDocumentStage ? (
+                <div className="flex w-full gap-3 text-left">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand bg-white text-xs font-bold text-ink">
+                    <Icon name="file" size={14} />
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-white">Required documents</span>
+                    <span className="block text-xs text-white/45">Upload documents and send for review</span>
+                  </span>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-auto hidden rounded-lg border border-white/10 bg-white/5 p-4 lg:block">
               <div className="text-xs uppercase tracking-[1px] text-white/45">Current path</div>
-              <div className="mt-1 font-serif text-2xl">{roleSelected ? roleLabel(activeRole) : "Role selection"}</div>
-              <p className="mt-1 text-sm text-white/55">You can change this in the account step before submitting.</p>
+              <div className="mt-1 font-serif text-2xl">{lockedDocumentStage ? "Document review" : roleSelected ? roleLabel(activeRole) : "Role selection"}</div>
+              <p className="mt-1 text-sm text-white/55">
+                {lockedDocumentStage ? "Profile details are locked. Upload the required documents to continue." : "You can change this in the account step before submitting."}
+              </p>
             </div>
           </div>
         </aside>
@@ -174,30 +225,34 @@ export function OnboardingPage({
         <section className="flex min-h-[720px] flex-col rounded-b-xl border border-t-0 border-border bg-white p-5 shadow-(--shadow-xs) sm:p-8 lg:rounded-l-none lg:rounded-r-xl lg:border-l-0 lg:border-t xl:p-10 2xl:p-12">
           <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <Tag>Step {currentStep} of {steps.length}</Tag>
+              <Tag>{lockedDocumentStage ? "Required documents" : `Step ${currentStep} of ${steps.length}`}</Tag>
               <h2 className="mt-3 font-serif text-3xl leading-tight sm:text-[36px]">
-                {roleSelected ? signupStepTitle(activeRole, currentStep) : "Choose account type"}
+                {pageTitle}
               </h2>
-              <p className="mt-2 max-w-[760px] text-muted">{steps[currentStep - 1].description}</p>
+              <p className="mt-2 max-w-[760px] text-muted">{pageDescription}</p>
             </div>
             <div className="w-full sm:w-[210px]">
               <div className="mb-2 flex justify-between text-xs font-semibold uppercase tracking-[1px] text-muted">
                 <span>Progress</span>
-                <span>{progress}%</span>
+                <span>{displayProgress}%</span>
               </div>
               <div className="progress">
-                <div className="progress-fill" style={{ width: `${progress}%` }} />
+                <div className="progress-fill" style={{ width: `${displayProgress}%` }} />
               </div>
             </div>
           </div>
 
           <div className="flex-1">
-            <OnboardingStepContent
-              accountEmail={accountEmail}
-              controller={controller}
-              roleSelected={roleSelected}
-              setRole={setRole}
-            />
+            {lockedDocumentStage ? (
+              <DocumentUploadStep controller={controller} />
+            ) : (
+              <OnboardingStepContent
+                accountEmail={accountEmail}
+                controller={controller}
+                roleSelected={roleSelected}
+                setRole={setRole}
+              />
+            )}
           </div>
 
           {submitError ? (
@@ -207,23 +262,48 @@ export function OnboardingPage({
           ) : null}
 
           <div className="mt-8 flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending)} onClick={() => setStep(Math.max(1, currentStep - 1))}>Back</Btn>
+            {lockedDocumentStage ? (
+              <span className="text-sm font-semibold text-muted">Profile created. Previous onboarding steps are locked.</span>
+            ) : (
+              <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending)} onClick={() => setStep(Math.max(1, currentStep - 1))}>Back</Btn>
+            )}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <span className="self-center text-xs font-semibold uppercase tracking-[1px] text-muted">Saved on continue</span>
+              <span className="self-center text-xs font-semibold uppercase tracking-[1px] text-muted">
+                {lockedDocumentStage ? "Documents required before review" : "Saved on continue"}
+              </span>
               <Btn
                 loading={pending === "step" || pending === "submit"}
-                loadingLabel={isLastStep ? "Submitting" : "Saving step"}
+                loadingLabel={lockedDocumentStage ? "Sending for review" : isLastStep ? "Creating profile" : "Saving step"}
                 size="lg"
                 iconRight="arrow"
-                disabled={Boolean(uploadPending)}
-                onClick={() => (isLastStep ? submitSignup() : continueStep())}
+                disabled={Boolean(uploadPending || requirementUploadPending || documentRequirementsLoading || documentRequirementsError)}
+                onClick={handlePrimaryAction}
               >
-                {isLastStep ? signupSubmitLabel(activeRole) : "Continue"}
+                {lockedDocumentStage ? "Send for review" : isLastStep ? signupSubmitLabel(activeRole) : "Continue"}
               </Btn>
             </div>
           </div>
         </section>
       </main>
+      <Modal open={confirmCreateOpen} onClose={closeConfirmCreate}>
+        <div className="p-6 sm:p-7">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
+              <Icon name="checkCircle" size={20} />
+            </div>
+            <div>
+              <div className="font-serif text-2xl leading-tight">Create this profile?</div>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Once you continue, this profile will be created and you will not be able to return to earlier onboarding steps. If documents are required by admin, you will upload them on the next screen before the profile is sent for review.
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Btn variant="ghost" disabled={Boolean(pending)} onClick={closeConfirmCreate}>Review again</Btn>
+            <Btn loading={pending === "submit"} loadingLabel="Creating profile" onClick={confirmCreateProfile}>Create profile</Btn>
+          </div>
+        </div>
+      </Modal>
       <DocumentPreviewModal preview={documentPreview} onClose={closeDocumentPreview} />
     </div>
   );
@@ -278,7 +358,6 @@ function OnboardingStepContent({
   }
 
   if (currentStep === 2) {
-    if (activeRole === "teacher") return <TeacherDocumentsStep controller={controller} />;
     return <InstitutionDetailsStep controller={controller} />;
   }
 

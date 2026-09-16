@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { getOnboardingProfileSnapshot } from "@/features/onboarding/actions";
+import { profileEntryStatus } from "@/features/onboarding/profile-progress";
 import { PostAuthRedirectClient } from "@/components/organisms/PostAuthRedirectClient";
 import { noIndexMetadata } from "@/lib/seo";
 
@@ -13,15 +15,19 @@ export default async function PostAuthPage() {
     redirect("/login");
   }
 
+  const snapshot = process.env.API_BASE_URL && session.user.isEmailVerified && !session.user.authErrorMessage
+    ? await getOnboardingProfileSnapshot()
+    : null;
+
   return (
     <PostAuthRedirectClient
       sessionUser={{
-        applicationStatus: session.user.applicationStatus,
+        applicationStatus: snapshot ? profileEntryStatus(snapshot) : session.user.applicationStatus,
         authErrorMessage: session.user.authErrorMessage,
         authErrorProvider: session.user.authErrorProvider,
         email: session.user.email ?? "",
         emailVerified: session.user.isEmailVerified,
-        role: session.user.role,
+        role: snapshot ? snapshot.role : session.user.role,
       }}
     />
   );

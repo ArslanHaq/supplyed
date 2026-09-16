@@ -10,21 +10,16 @@ import { api, ApiError } from "@/lib/server/api-client";
 import { getServerAuthContext } from "@/lib/server/auth-context";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
-import { contentTypeForFile } from "./document-utils";
-import {
-  assertRequiredDocumentsUploaded,
-  emptyDocumentState,
-  getDocumentSnapshots,
-  getDocumentState,
-  getProfileDocumentRequirements,
-  uploadProfileDocument,
-  validateDocumentFile,
-} from "./documents";
+import { filterProfileDocumentRequirements } from "./document-requirements";
+import { isDocumentReadyForReview } from "./document-utils";
+import { getDocumentSnapshots, getProfileDocumentRequirements as loadProfileDocumentRequirements } from "./documents";
+import { hasCreatedRoleProfile } from "./profile-progress";
 import { normalizeOnboardingSubmitInput } from "./schemas";
 import type {
   OnboardingDocumentDownloadResult,
+  OnboardingDocumentKind,
+  OnboardingDocumentRequirementSnapshot,
   OnboardingDocumentSnapshot,
-  OnboardingDocumentState,
   OnboardingDocumentUploadResult,
   OnboardingInstructorSnapshot,
   OnboardingInstitutionSnapshot,
@@ -108,6 +103,15 @@ type RecruiterProfilePayload = {
   postalCode?: string;
 };
 
+type BackendDocumentType = "ADDRESS_PROOF" | "DBS" | "ID" | "QUALIFICATION";
+
+type UploadDocumentResponse = {
+  fileKey?: string;
+  requiredHeaders?: Record<string, string>;
+  uploadUrl?: string;
+  url?: string;
+};
+
 type DownloadDocumentResponse = {
   downloadUrl?: string;
   expiresAt?: string;
@@ -173,6 +177,60 @@ type BackendRecruiterProfile = {
   status?: unknown;
 };
 
+type BackendDocumentProfile = {
+  contentType?: string;
+  currentVersion?: {
+    contentType?: string;
+    createdAt?: string | Date | null;
+    documentExpiryDate?: string | Date | null;
+    id?: string;
+    originalName?: string;
+    sizeBytes?: number;
+  } | null;
+  dbsNumber?: string | null;
+  documentType?: {
+    code?: string;
+    name?: string;
+  } | null;
+  id?: string;
+  name?: string;
+  requirement?: {
+    documentType?: {
+      code?: string;
+      name?: string;
+    } | null;
+  } | null;
+  requirementId?: string | null;
+  sizeBytes?: number;
+  status?: unknown;
+  type?: unknown;
+  uploadedAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+};
+
+type BackendDocumentListResponse = BackendDocumentProfile[] | { documents?: BackendDocumentProfile[] };
+
+type BackendDocumentRequirementProfile = {
+  context?: string;
+  documentTypeId?: string;
+  documentType?: {
+    allowedMimes?: unknown;
+    code?: string;
+    id?: string;
+    maxSizeBytes?: number;
+    name?: string;
+  } | null;
+  id?: string;
+  isRequired?: boolean;
+};
+
+type DocumentSnapshotData = {
+  documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>;
+  requirementDocuments: Record<string, OnboardingDocumentSnapshot>;
+};
+
+const allowedDocumentTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
+const maxDocumentSizeBytes = 10 * 1024 * 1024;
 const backendRefreshTimeoutMs = 12_000;
 
 function readStringArray(value: unknown) {
@@ -239,9 +297,7 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
 }
 
 function normalizeRecruiterProfileStatus(profile: { id?: string; status?: unknown }) {
-  const status = normalizeStatus(profile.status);
-  if (status === "rejected" || status === "suspended") return status;
-  return profile.id ? "approved" : "none";
+  return normalizeStatus(profile.status);
 }
 
 function normalizeRecruiterSnapshot(profile: BackendRecruiterProfile): OnboardingRecruiterSnapshot | undefined {
@@ -261,10 +317,124 @@ function normalizeRecruiterSnapshot(profile: BackendRecruiterProfile): Onboardin
   };
 }
 
+function documentKind(type: unknown): OnboardingDocumentKind | undefined {
+  const value = readString(type)?.toUpperCase();
+  if (value === "DBS") return "dbs";
+  if (value === "ID") return "id";
+  if (value === "ADDRESS_PROOF") return "addressProof";
+  if (value === "QUALIFICATION") return "qualification";
+  return undefined;
+}
+
+function backendDocumentType(kind: string): BackendDocumentType | undefined {
+  if (kind === "dbs") return "DBS";
+  if (kind === "id") return "ID";
+  if (kind === "addressProof") return "ADDRESS_PROOF";
+  if (kind === "qualification") return "QUALIFICATION";
+  return undefined;
+}
+
+function documentCodeFromDocument(document: BackendDocumentProfile) {
+  return (
+    readString(document.type) ??
+    readString(document.documentType?.code) ??
+    readString(document.requirement?.documentType?.code)
+  );
+}
+
+function dateString(value: string | Date | null | undefined) {
+  return value instanceof Date ? value.toISOString() : readString(value);
+}
+
+function normalizeDocumentSnapshot(document: BackendDocumentProfile): OnboardingDocumentSnapshot | undefined {
+  const version = document.currentVersion ?? null;
+  const name = readString(document.name) ?? readString(version?.originalName);
+  const contentType = readString(document.contentType) ?? readString(version?.contentType);
+  const sizeBytes = readNumber(document.sizeBytes) ?? readNumber(version?.sizeBytes);
+  const uploadedAt = dateString(document.uploadedAt) ?? dateString(version?.createdAt) ?? dateString(document.updatedAt);
+
+  if (!document.id || !name || !contentType || !sizeBytes || !uploadedAt) {
+    return undefined;
+  }
+
+  return {
+    dbsNumber: document.dbsNumber,
+    id: document.id,
+    name,
+    requirementId: readString(document.requirementId) ?? null,
+    size: sizeBytes,
+    status: readString(document.status),
+    type: contentType,
+    uploadedAt,
+  };
+}
+
+function normalizeDocumentRequirement(requirement: BackendDocumentRequirementProfile): OnboardingDocumentRequirementSnapshot | undefined {
+  const context = readString(requirement.context);
+  if (!requirement.id || !context || !requirement.documentType?.code || !requirement.documentType.name) return undefined;
+
+  return {
+    context,
+    documentType: {
+      allowedMimes: readStringArray(requirement.documentType.allowedMimes),
+      code: requirement.documentType.code,
+      id: readString(requirement.documentType.id),
+      maxSizeBytes: requirement.documentType.maxSizeBytes || maxDocumentSizeBytes,
+      name: requirement.documentType.name,
+    },
+    documentTypeId: readString(requirement.documentTypeId),
+    id: requirement.id,
+    isRequired: Boolean(requirement.isRequired),
+  };
+}
+
+function roleQueryValue(role: AppRole | null | undefined) {
+  if (role === "teacher") return "INSTRUCTOR";
+  if (role === "institution") return "INSTITUTION";
+  if (role === "individual") return "RECRUITER";
+  return undefined;
+}
+
+function requirementForKind(requirements: OnboardingDocumentRequirementSnapshot[], kind: OnboardingDocumentKind) {
+  const type = backendDocumentType(kind);
+  return requirements.find((requirement) => requirement.documentType.code.toUpperCase() === type);
+}
+
+function emptyDocumentSnapshotData(): DocumentSnapshotData {
+  return { documents: {}, requirementDocuments: {} };
+}
+
+function readDocumentList(response: BackendDocumentListResponse) {
+  if (Array.isArray(response)) return response;
+  if (isRecord(response) && Array.isArray(response.documents)) return response.documents;
+  return [];
+}
+
+function addDocumentSnapshot(data: DocumentSnapshotData, document: BackendDocumentProfile) {
+  const snapshot = normalizeDocumentSnapshot(document);
+  if (!snapshot) return;
+
+  const kind = documentKind(documentCodeFromDocument(document));
+  if (kind) data.documents[kind] = snapshot;
+  if (snapshot.requirementId) data.requirementDocuments[snapshot.requirementId] = snapshot;
+}
+
+function missingRequiredDocumentNames(
+  requirements: OnboardingDocumentRequirementSnapshot[],
+  data: DocumentSnapshotData,
+) {
+  return requirements
+    .filter((requirement) => requirement.isRequired)
+    .filter((requirement) => !isDocumentReadyForReview(data.requirementDocuments[requirement.id]))
+    .map((requirement) => requirement.documentType.name);
+}
+
 function emptySnapshot(role: AppRole | null, email?: string): OnboardingProfileSnapshot {
   return {
-    ...emptyDocumentState(),
     applicationStatus: "none",
+    documentRequirements: [],
+    documents: {},
+    requirementDocuments: {},
     role,
     user: {
       email: email || "",
@@ -316,6 +486,27 @@ function readFormFile(formData: FormData, key: string) {
   return value;
 }
 
+function contentTypeFromFile(file: File) {
+  const explicitType = file.type.toLowerCase();
+  if (allowedDocumentTypes.has(explicitType)) return explicitType;
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension === "pdf") return "application/pdf";
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png") return "image/png";
+
+  return explicitType;
+}
+
+function validateDocumentFile(file: File | null, label: string) {
+  if (!file) return `${label} is required.`;
+  if (file.size > maxDocumentSizeBytes) return `${label} must be 10 MB or smaller.`;
+
+  const contentType = contentTypeFromFile(file);
+  if (!allowedDocumentTypes.has(contentType)) return `${label} must be a PDF, JPG, or PNG file.`;
+
+  return undefined;
+}
 function readFormValue(value: FormDataEntryValue) {
   if (value instanceof File) return undefined;
   if (!value.trim()) return "";
@@ -481,44 +672,67 @@ async function getRecruiterSnapshot(accessToken?: string) {
   }
 }
 
-/**
- * Document state for the page-load snapshot. A failure here must not wipe the
- * rest of the profile, so it degrades to an empty state and the documents
- * step refetches on the client.
- */
-async function loadDocumentState(role: AppRole): Promise<OnboardingDocumentState> {
-  try {
-    return await getDocumentState(role);
-  } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[SupplyED onboarding] document state could not be loaded", error);
-    }
-
-    return emptyDocumentState();
+async function getDocumentSnapshotData(accessToken?: string): Promise<DocumentSnapshotData> {
+  const requirementDocuments = await getDocumentSnapshots({ accessToken });
+  const documents: DocumentSnapshotData["documents"] = {};
+  for (const document of Object.values(requirementDocuments)) {
+    const kind = documentKind(document.code);
+    if (kind) documents[kind] = document;
   }
+  return { documents, requirementDocuments };
+}
+
+
+async function getProfileDocumentRequirements(role?: AppRole | null, accessToken?: string) {
+  const requirements = await loadProfileDocumentRequirements(role, { accessToken });
+  return requirements.map((requirement): OnboardingDocumentRequirementSnapshot => ({
+    context: requirement.context,
+    id: requirement.id,
+    isRequired: requirement.isRequired,
+    documentType: {
+      allowedMimes: requirement.allowedMimes,
+      code: requirement.code,
+      maxSizeBytes: requirement.maxSizeBytes,
+      name: requirement.name,
+    },
+  }));
+}
+
+async function getDocumentState(role?: AppRole | null, accessToken?: string) {
+  if (!role) return { documentRequirements: [], ...emptyDocumentSnapshotData() };
+  const [documentRequirements, documentData] = await Promise.all([
+    getProfileDocumentRequirements(role, accessToken),
+    getDocumentSnapshotData(accessToken),
+  ]);
+
+  return { documentRequirements, ...documentData };
 }
 
 export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileSnapshot> {
   const authContext = await getServerAuthContext();
-  const role = normalizeRole(authContext?.role);
+  let role = normalizeRole(authContext?.role);
 
   if (!backendEnabled() || !authContext?.userId) {
     return emptySnapshot(role, authContext?.email ?? undefined);
   }
 
-  try {
-    const user = await getCurrentUserSnapshot();
+  {
+    const currentUser = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
+    role = normalizeRole(currentUser.role);
+    const user = normalizeUserSnapshot(currentUser, authContext.email ?? undefined);
+    const documentState = await getDocumentState(role);
     const snapshot: OnboardingProfileSnapshot = {
-      ...emptyDocumentState(),
       applicationStatus: "none",
+      documentRequirements: documentState.documentRequirements,
+      documents: documentState.documents,
+      requirementDocuments: documentState.requirementDocuments,
       role,
       user,
     };
 
     if (role === "teacher") {
       snapshot.instructor =
-        (await getInstructorSnapshotById(authContext.instructorProfileId)) ?? (await getCurrentInstructorSnapshot());
-      Object.assign(snapshot, await loadDocumentState("teacher"));
+        await getCurrentInstructorSnapshot();
       snapshot.applicationStatus = snapshot.instructor?.status ?? "none";
     }
 
@@ -532,9 +746,10 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
       snapshot.applicationStatus = snapshot.recruiter?.status ?? "none";
     }
 
+    if (role && !hasCreatedRoleProfile(snapshot)) {
+      throw new Error("Your existing profile could not be loaded. Retry before continuing.");
+    }
     return snapshot;
-  } catch {
-    return emptySnapshot(role, authContext.email ?? undefined);
   }
 }
 
@@ -590,6 +805,10 @@ async function refreshSessionForRole(
 }
 
 async function saveUserBasics(formData: FormData, postcodeFallback = "") {
+  if (backendEnabled()) {
+    const current = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
+    if (normalizeRole(current.role)) return normalizeUserSnapshot(current, current.email, postcodeFallback);
+  }
   if (!backendEnabled()) {
     return normalizeUserSnapshot(
       {
@@ -615,6 +834,103 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   return getCurrentUserSnapshot(postcodeFallback);
 }
 
+async function uploadInstructorDocument({
+  accessToken,
+  dbsNumber,
+  file,
+  requirementId,
+  type,
+}: {
+  accessToken: string;
+  dbsNumber?: string;
+  file: File;
+  requirementId?: string;
+  type?: BackendDocumentType;
+}) {
+  const contentType = contentTypeFromFile(file);
+  const authOptions = {
+    auth: false,
+    headers: buildBearerHeaders(accessToken),
+  };
+
+  if (requirementId) {
+    const createdDocument = await api.post<BackendDocumentProfile>(
+      "/documents",
+      { applicationId: null, requirementId },
+      authOptions,
+    );
+
+    if (!createdDocument.id) throw new Error("The backend did not create the document record.");
+
+    const upload = await api.post<UploadDocumentResponse>(
+      `/documents/${createdDocument.id}/upload-url`,
+      { contentType, sizeBytes: file.size },
+      authOptions,
+    );
+    const uploadUrl = upload.uploadUrl ?? upload.url;
+    if (!uploadUrl || !upload.fileKey) throw new Error("The backend did not return a document upload URL.");
+
+    const uploadResponse = await fetch(uploadUrl, {
+      body: file,
+      headers: {
+        ...upload.requiredHeaders,
+        "Content-Type": contentType,
+      },
+      method: "PUT",
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Unable to upload ${file.name}. The signed upload failed with status ${uploadResponse.status}.`);
+    }
+
+    const completedDocument = await api.post<BackendDocumentProfile>(
+      `/documents/${createdDocument.id}/upload-complete`,
+      { fileKey: upload.fileKey, originalName: file.name },
+      authOptions,
+    );
+
+    return normalizeDocumentSnapshot({ ...completedDocument, requirementId });
+  }
+
+  if (!type) throw new Error("Choose a valid document type before uploading.");
+
+  const upload = await api.post<UploadDocumentResponse & { document?: { id?: string } }>(
+    "/documents/upload-url",
+    {
+      contentType,
+      dbsNumber: type === "DBS" ? dbsNumber : undefined,
+      name: file.name,
+      sizeBytes: file.size,
+      type,
+    },
+    authOptions,
+  );
+  const uploadUrl = upload.uploadUrl ?? upload.url;
+  const documentId = upload.document?.id;
+  if (!uploadUrl || !documentId) throw new Error("The backend did not return a document upload URL.");
+
+  const uploadResponse = await fetch(uploadUrl, {
+    body: file,
+    headers: {
+      ...upload.requiredHeaders,
+      "Content-Type": contentType,
+    },
+    method: "PUT",
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error(`Unable to upload ${file.name}. The signed upload failed with status ${uploadResponse.status}.`);
+  }
+
+  const completedDocument = await api.post<BackendDocumentProfile>(
+    `/documents/${documentId}/complete`,
+    undefined,
+    authOptions,
+  );
+
+  return normalizeDocumentSnapshot(completedDocument);
+}
+
 function onboardingError(error: unknown) {
   if (error instanceof ApiError) {
     return actionError(error.message || "Onboarding could not be submitted.");
@@ -628,6 +944,8 @@ function onboardingError(error: unknown) {
 }
 
 async function saveInstructorProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+  const existing = await getCurrentInstructorSnapshot(accessToken);
+  if (existing) return existing;
   const profile = buildInstructorProfilePayload(formData);
   const profileId = readFormString(formData, "teacherProfileId") || existingProfileId || "";
 
@@ -677,6 +995,8 @@ async function saveInstructorProfile(formData: FormData, accessToken: string, ex
 }
 
 async function saveInstitutionProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+  const existing = await getInstitutionSnapshot(accessToken);
+  if (existing) return existing;
   const profile = buildInstitutionProfilePayload(formData);
   const profileId = readFormString(formData, "institutionProfileId") || existingProfileId || "";
 
@@ -726,6 +1046,8 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string, e
 }
 
 async function saveRecruiterProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+  const existing = await getRecruiterSnapshot(accessToken);
+  if (existing) return existing;
   const profile = buildRecruiterProfilePayload(formData);
   const profileId = readFormString(formData, "recruiterProfileId") || existingProfileId || "";
 
@@ -780,8 +1102,7 @@ async function submitInstructorProfileForReview(accessToken: string, fallback?: 
     if (!isStatusTransitionRace(error)) throw error;
 
     const currentInstructor = await getCurrentInstructorSnapshot(accessToken);
-    if (currentInstructor && currentInstructor.status !== "none") return currentInstructor;
-    if (fallback && fallback.status !== "none") return fallback;
+    if (currentInstructor && ["pending_review", "approved"].includes(currentInstructor.status)) return currentInstructor;
 
     throw error;
   }
@@ -799,53 +1120,54 @@ async function submitInstitutionProfileForReview(accessToken: string, fallback?:
     if (!isStatusTransitionRace(error)) throw error;
 
     const currentInstitution = await getInstitutionSnapshot(accessToken);
-    if (currentInstitution && currentInstitution.status !== "none") return currentInstitution;
-    if (fallback && fallback.status !== "none") return fallback;
+    if (currentInstitution && ["pending_review", "approved"].includes(currentInstitution.status)) return currentInstitution;
 
     throw error;
   }
 }
 
-/**
- * One card upload: resolve the requirement, validate against its limits, then
- * run the backend's create, upload-url, PUT, upload-complete cycle.
- */
 export async function uploadOnboardingDocumentAction(formData: FormData) {
+  const kind = readFormString(formData, "kind");
   const requirementId = readFormString(formData, "requirementId");
-  const role = normalizeRole(readFormString(formData, "role")) ?? "teacher";
+  const type = backendDocumentType(kind);
   const file = readFormFile(formData, "file");
+  const dbsNumber = readFormString(formData, "dbsNumber");
 
-  if (!requirementId) {
-    return actionError("Choose a document type before uploading.");
+  if (!type && !requirementId) {
+    return actionError("Choose a valid document type before uploading.");
   }
 
-  if (!file) {
-    return actionError("Choose a file to upload.");
+  const fileError = validateDocumentFile(file, "Document");
+  if (fileError) {
+    return actionError(fileError);
+  }
+
+  if (type === "DBS" && !dbsNumber) {
+    return actionError("Enter your enhanced DBS certificate number before uploading the DBS certificate.", {
+      fieldErrors: { dbsNumber: "Enter your enhanced DBS certificate number before uploading the DBS certificate." },
+    });
   }
 
   if (!backendEnabled()) {
-    const requirement = (await getProfileDocumentRequirements(role)).find((item) => item.id === requirementId);
-    if (!requirement) {
-      return actionError("This document type is not available.");
-    }
-
-    const fileError = validateDocumentFile(file, requirement);
-    if (fileError) {
-      return actionError(fileError);
-    }
-
     const document: OnboardingDocumentSnapshot = {
-      code: requirement.code,
-      id: `local-${requirementId}-${Date.now()}`,
-      name: file.name,
-      requirementId,
-      size: file.size,
-      status: requirement.requiresReview ? "PENDING" : "NOT_REQUIRED",
-      type: contentTypeForFile(file, requirement.allowedMimes),
+      dbsNumber: type === "DBS" ? dbsNumber : undefined,
+      id: `local-${requirementId || kind}-${Date.now()}`,
+      name: file!.name,
+      requirementId: requirementId || null,
+      size: file!.size,
+      status: "PENDING",
+      type: contentTypeFromFile(file!),
       uploadedAt: new Date().toISOString(),
     };
 
-    return actionOk<OnboardingDocumentUploadResult>({ document, documents: { [requirementId]: document } }, "Document uploaded.");
+    return actionOk<OnboardingDocumentUploadResult>(
+      {
+        document,
+        documents: kind ? { [kind]: document } : {},
+        requirementDocuments: requirementId ? { [requirementId]: document } : {},
+      },
+      "Document uploaded.",
+    );
   }
 
   const authContext = await getServerAuthContext();
@@ -863,26 +1185,75 @@ export async function uploadOnboardingDocumentAction(formData: FormData) {
           "The backend token refresh timed out. Try uploading this document again.",
         )
       : null;
-    const auth = { accessToken: refreshedAuth?.accessToken ?? authContext.accessToken };
-    const requirement = (await getProfileDocumentRequirements(role, auth)).find((item) => item.id === requirementId);
+    const uploadRole = (readFormString(formData, "role") as AppRole) || normalizeRole(refreshedAuth?.user.role ?? authContext.role) || "teacher";
+    let accessToken = refreshedAuth?.accessToken ?? authContext.accessToken;
 
-    if (!requirement) {
-      throw new Error("This document type is no longer available. Refresh the page and try again.");
+    if (requirementId) {
+      const requirements = await getProfileDocumentRequirements(uploadRole, accessToken);
+
+      if (!requirements.some((requirement) => requirement.id === requirementId)) {
+        return actionError("This document is not required for the selected profile.");
+      }
+
+      if (uploadRole === "teacher") {
+        await saveInstructorProfile(
+          formData,
+          accessToken,
+          authContext.instructorProfileId ?? refreshedAuth?.user.instructorProfileId,
+        );
+      }
+
+      if (uploadRole === "institution") {
+        await saveInstitutionProfile(
+          formData,
+          accessToken,
+          authContext.institutionProfileId ?? refreshedAuth?.user.institutionProfileId,
+        );
+      }
+
+      if (uploadRole === "individual") {
+        await saveRecruiterProfile(
+          formData,
+          accessToken,
+          authContext.recruiterProfileId ?? refreshedAuth?.user.recruiterProfileId,
+        );
+      }
+
+      if (authContext.refreshToken) {
+        const profileAuth = await refreshBackendAuth(authContext.refreshToken);
+        accessToken = profileAuth?.accessToken ?? accessToken;
+      }
     }
 
-    const fileError = validateDocumentFile(file, requirement);
-    if (fileError) {
-      return actionError(fileError);
+    let uploadRequirementId = requirementId;
+
+    if (!uploadRequirementId && type) {
+      const requirements = await getProfileDocumentRequirements(uploadRole, accessToken);
+      uploadRequirementId = requirementForKind(requirements, kind as OnboardingDocumentKind)?.id ?? "";
     }
 
-    const document = await uploadProfileDocument({ auth, file, requirement });
-    const documents = await getDocumentSnapshots(auth);
+    const document = await uploadInstructorDocument({
+      accessToken,
+      dbsNumber: type === "DBS" ? dbsNumber : undefined,
+      file: file!,
+      requirementId: uploadRequirementId || undefined,
+      type,
+    });
+
+    if (!document) {
+      throw new Error("The backend did not return the uploaded document.");
+    }
+
+    const documentData = await getDocumentSnapshotData(accessToken);
+    if (kind) documentData.documents[kind as OnboardingDocumentKind] = document;
+    if (document.requirementId) documentData.requirementDocuments[document.requirementId] = document;
 
     revalidateTag("onboarding", "max");
     return actionOk<OnboardingDocumentUploadResult>(
       {
         document,
-        documents: { ...documents, [requirementId]: document },
+        documents: documentData.documents,
+        requirementDocuments: documentData.requirementDocuments,
       },
       "Document uploaded.",
     );
@@ -931,97 +1302,52 @@ export async function saveOnboardingStepAction(formData: FormData) {
   const role = readFormString(formData, "role") as AppRole;
   const step = Number(readFormString(formData, "step")) || 1;
   const postcode = readFormString(formData, "postcode");
+  const user = normalizeUserSnapshot(
+    {
+      email: readFormString(formData, "email"),
+      name: readFormString(formData, "fullName"),
+      phone: readFormString(formData, "phone"),
+    },
+    readFormString(formData, "email"),
+    postcode,
+  );
 
   if (!backendEnabled()) {
     return actionOk<OnboardingProgressResult>(
       {
         applicationStatus: "none",
         savedStep: step,
-        snapshot: emptySnapshot(role, readFormString(formData, "email")),
+        snapshot: { ...emptySnapshot(role, readFormString(formData, "email")), user },
       },
       "Step saved locally for backend-disabled development.",
     );
   }
 
   const authContext = await getServerAuthContext();
-  if (!authContext?.accessToken || !authContext.refreshToken) {
+  if (!authContext?.accessToken) {
     return actionError("Your session expired. Sign in again before continuing.");
   }
 
   try {
-    const user = step === 1 ? await saveUserBasics(formData, postcode) : await getCurrentUserSnapshot(postcode);
-    const snapshot: OnboardingProfileSnapshot = {
-      ...emptyDocumentState(),
-      applicationStatus: "none",
-      role,
-      user,
-    };
-    let ticket: string | undefined;
+    const documentState = normalizeRole(authContext.role)
+      ? await getDocumentState(role, authContext.accessToken ?? undefined)
+      : {
+          documentRequirements: await getProfileDocumentRequirements(role, authContext.accessToken ?? undefined),
+          ...emptyDocumentSnapshotData(),
+        };
 
-    if (role === "teacher" && step === 1) {
-      const instructor = await saveInstructorProfile(formData, authContext.accessToken, authContext.instructorProfileId);
-      if (!instructor) throw new Error("The backend did not return the saved teacher profile.");
-
-      snapshot.instructor = instructor;
-      ticket = await refreshSessionForRole(authContext.refreshToken, {
-        applicationStatus: "none",
-        instructorProfileId: instructor.id,
-        name: instructor.fullName,
-        role: "teacher",
-      });
-
-      if (!ticket) {
-        return actionError("Your teacher profile was saved, but we could not refresh your session. Sign in again before uploading documents.");
-      }
-    }
-
-    if (role === "teacher" && step === 2) {
-      // The backend is the source of truth for what was uploaded.
-      const documentState = await getDocumentState("teacher");
-      assertRequiredDocumentsUploaded(documentState);
-      Object.assign(snapshot, documentState);
-
-      snapshot.instructor =
-        (await getInstructorSnapshotById(authContext.instructorProfileId || readFormString(formData, "teacherProfileId"))) ??
-        (await getCurrentInstructorSnapshot(authContext.accessToken));
-    }
-
-    if (role === "institution" && step === 1) {
-      snapshot.institution = await getInstitutionSnapshot(authContext.accessToken);
-    }
-
-    if (role === "institution" && (step === 2 || step === 3)) {
-      const institution = await saveInstitutionProfile(formData, authContext.accessToken, authContext.institutionProfileId);
-      if (!institution) throw new Error("The backend did not return the saved institution profile.");
-
-      snapshot.institution = institution;
-      ticket = await refreshSessionForRole(authContext.refreshToken, {
-        applicationStatus: "none",
-        institutionProfileId: institution.id,
-        name: institution.name,
-        role: "institution",
-      });
-
-      if (!ticket) {
-        return actionError("Your school profile was saved, but we could not refresh your session. Sign in again to continue.");
-      }
-    }
-
-    if (role === "institution" && step !== 1 && step !== 2 && step !== 3) {
-      snapshot.institution = await getInstitutionSnapshot();
-    }
-
-    if (role === "individual") {
-      snapshot.recruiter = await getRecruiterSnapshot(authContext.accessToken);
-    }
-
-    revalidateTag("onboarding", "max");
     return actionOk<OnboardingProgressResult>(
       {
         applicationStatus: "none",
         savedStep: step,
-        snapshot,
-        ticket,
+        snapshot: {
+          applicationStatus: "none",
+          documentRequirements: documentState.documentRequirements,
+          documents: documentState.documents,
+          requirementDocuments: documentState.requirementDocuments,
+          role,
+          user,
+        },
       },
       "Step saved.",
     );
@@ -1036,7 +1362,7 @@ async function submitInstructorOnboarding(formData: FormData) {
     return actionOk<OnboardingProgressResult>(
       {
         applicationStatus: "pending_review",
-        savedStep: Number(readFormString(formData, "step")) || 3,
+        savedStep: Number(readFormString(formData, "step")) || 2,
         snapshot: emptySnapshot("teacher", readFormString(formData, "email")),
       },
       "Instructor onboarding is ready for backend integration.",
@@ -1051,16 +1377,56 @@ async function submitInstructorOnboarding(formData: FormData) {
   try {
     const postcode = readFormString(formData, "postcode");
     const user = await saveUserBasics(formData, postcode);
-    const instructor = await saveInstructorProfile(formData, authContext.accessToken, authContext.instructorProfileId);
+    const profileAuth = await refreshBackendAuth(authContext.refreshToken);
+    const profileAccessToken = profileAuth?.accessToken ?? authContext.accessToken;
+    const instructor = await saveInstructorProfile(
+      formData,
+      profileAccessToken,
+      authContext.instructorProfileId ?? profileAuth?.user.instructorProfileId,
+    );
     if (!instructor) throw new Error("The backend did not return the saved teacher profile.");
 
     const refreshedAuth = await refreshBackendAuth(authContext.refreshToken);
     if (!refreshedAuth?.accessToken) {
-      return actionError("Your teacher profile was created, but we could not refresh your document upload session. Sign in again and retry the document step.");
+      return actionError("Your teacher profile was created, but we could not refresh your session. Sign in again to continue.");
     }
 
-    const documentState = await getDocumentState("teacher", { accessToken: refreshedAuth.accessToken });
-    assertRequiredDocumentsUploaded(documentState);
+    const documentState = await getDocumentState("teacher", refreshedAuth.accessToken);
+    const ticket = createVerifiedEmailSessionTicket(
+      createSessionResponse({
+        applicationStatus: "none",
+        auth: refreshedAuth,
+        instructorProfileId: instructor.id,
+        name: instructor.fullName || readFormString(formData, "fullName"),
+        role: "teacher",
+      }),
+    );
+    const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
+    const profileOnly = readFormString(formData, "intent") === "profile";
+
+    if (profileOnly || missingDocuments.length > 0) {
+      revalidateTag("onboarding", "max");
+      return actionOk<OnboardingProgressResult>(
+        {
+          applicationStatus: "none",
+          savedStep: Number(readFormString(formData, "step")) || 2,
+          snapshot: {
+            applicationStatus: "none",
+            documentRequirements: documentState.documentRequirements,
+            documents: documentState.documents,
+            instructor,
+            requirementDocuments: documentState.requirementDocuments,
+            role: "teacher",
+            user,
+          },
+          ticket,
+        },
+        profileOnly && missingDocuments.length === 0
+          ? "Profile created. Upload required documents before sending for review."
+          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
+      );
+    }
+
     const submittedInstructor = await submitInstructorProfileForReview(refreshedAuth.accessToken, instructor);
     if (!submittedInstructor || submittedInstructor.status === "none") {
       throw new Error("The backend did not mark your teacher profile as pending review.");
@@ -1070,11 +1436,14 @@ async function submitInstructorOnboarding(formData: FormData) {
     return actionOk<OnboardingProgressResult>(
       {
         applicationStatus: submittedInstructor.status,
-        savedStep: Number(readFormString(formData, "step")) || 3,
+        savedStep: Number(readFormString(formData, "step")) || 2,
         snapshot: {
           ...documentState,
           applicationStatus: submittedInstructor.status,
+          documentRequirements: documentState.documentRequirements,
+          documents: documentState.documents,
           instructor: submittedInstructor,
+          requirementDocuments: documentState.requirementDocuments,
           role: "teacher",
           user,
         },
@@ -1088,7 +1457,7 @@ async function submitInstructorOnboarding(formData: FormData) {
           }),
         ),
       },
-      "Your teacher profile and documents were submitted for review.",
+      "Your teacher profile was submitted for review.",
     );
   } catch (error) {
     return onboardingError(error);
@@ -1116,12 +1485,54 @@ async function submitInstitutionOnboarding(formData: FormData) {
   try {
     const postcode = readFormString(formData, "postcode");
     const user = await saveUserBasics(formData, postcode);
-    const institution = await saveInstitutionProfile(formData, authContext.accessToken, authContext.institutionProfileId);
+    const profileAuth = await refreshBackendAuth(authContext.refreshToken);
+    const profileAccessToken = profileAuth?.accessToken ?? authContext.accessToken;
+    const institution = await saveInstitutionProfile(
+      formData,
+      profileAccessToken,
+      authContext.institutionProfileId ?? profileAuth?.user.institutionProfileId,
+    );
     if (!institution) throw new Error("The backend did not return the saved institution profile.");
 
     const refreshedAuth = await refreshBackendAuth(authContext.refreshToken);
     if (!refreshedAuth?.accessToken) {
       return actionError("Your school profile was created, but we could not refresh your session. Sign in again to continue.");
+    }
+
+    const documentState = await getDocumentState("institution", refreshedAuth.accessToken);
+    const ticket = createVerifiedEmailSessionTicket(
+      createSessionResponse({
+        applicationStatus: "none",
+        auth: refreshedAuth,
+        institutionProfileId: institution.id,
+        name: institution.name,
+        role: "institution",
+      }),
+    );
+    const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
+    const profileOnly = readFormString(formData, "intent") === "profile";
+
+    if (profileOnly || missingDocuments.length > 0) {
+      revalidateTag("onboarding", "max");
+      return actionOk<OnboardingProgressResult>(
+        {
+          applicationStatus: "none",
+          savedStep: Number(readFormString(formData, "step")) || 4,
+          snapshot: {
+            applicationStatus: "none",
+            documentRequirements: documentState.documentRequirements,
+            documents: documentState.documents,
+            institution,
+            requirementDocuments: documentState.requirementDocuments,
+            role: "institution",
+            user,
+          },
+          ticket,
+        },
+        profileOnly && missingDocuments.length === 0
+          ? "Profile created. Upload required documents before sending for review."
+          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
+      );
     }
 
     const submittedInstitution = await submitInstitutionProfileForReview(refreshedAuth.accessToken, institution);
@@ -1135,9 +1546,11 @@ async function submitInstitutionOnboarding(formData: FormData) {
         applicationStatus: submittedInstitution.status,
         savedStep: Number(readFormString(formData, "step")) || 4,
         snapshot: {
-          ...emptyDocumentState(),
           applicationStatus: submittedInstitution.status,
+          documentRequirements: documentState.documentRequirements,
+          documents: documentState.documents,
           institution: submittedInstitution,
+          requirementDocuments: documentState.requirementDocuments,
           role: "institution",
           user,
         },
@@ -1179,7 +1592,13 @@ async function submitIndividualOnboarding(formData: FormData) {
   try {
     const postcode = readFormString(formData, "postcode");
     const user = await saveUserBasics(formData, postcode);
-    const recruiter = await saveRecruiterProfile(formData, authContext.accessToken, authContext.recruiterProfileId);
+    const profileAuth = await refreshBackendAuth(authContext.refreshToken);
+    const profileAccessToken = profileAuth?.accessToken ?? authContext.accessToken;
+    const recruiter = await saveRecruiterProfile(
+      formData,
+      profileAccessToken,
+      authContext.recruiterProfileId ?? profileAuth?.user.recruiterProfileId,
+    );
     if (!recruiter) throw new Error("The backend did not return the saved individual profile.");
 
     const refreshedAuth = await refreshBackendAuth(authContext.refreshToken);
@@ -1187,8 +1606,52 @@ async function submitIndividualOnboarding(formData: FormData) {
       return actionError("Your individual profile was created, but we could not refresh your session. Sign in again to continue.");
     }
 
-    const savedRecruiter = (await getRecruiterSnapshot(refreshedAuth.accessToken)) ?? recruiter;
-    const applicationStatus = savedRecruiter.status === "none" ? "approved" : savedRecruiter.status;
+    const documentState = await getDocumentState("individual", refreshedAuth.accessToken);
+    const ticket = createVerifiedEmailSessionTicket(
+      createSessionResponse({
+        applicationStatus: "none",
+        auth: refreshedAuth,
+        name: recruiter.displayName || readFormString(formData, "fullName"),
+        recruiterProfileId: recruiter.id,
+        role: "individual",
+      }),
+    );
+    const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
+    const profileOnly = readFormString(formData, "intent") === "profile";
+
+    if (profileOnly || missingDocuments.length > 0) {
+      revalidateTag("onboarding", "max");
+      return actionOk<OnboardingProgressResult>(
+        {
+          applicationStatus: "none",
+          savedStep: Number(readFormString(formData, "step")) || 2,
+          snapshot: {
+            applicationStatus: "none",
+            documentRequirements: documentState.documentRequirements,
+            documents: documentState.documents,
+            recruiter,
+            requirementDocuments: documentState.requirementDocuments,
+            role: "individual",
+            user,
+          },
+          ticket,
+        },
+        profileOnly && missingDocuments.length === 0
+          ? "Profile created. Upload required documents before sending for review."
+          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
+      );
+    }
+
+    let savedRecruiter = (await getRecruiterSnapshot(refreshedAuth.accessToken)) ?? recruiter;
+    if (savedRecruiter.status === "none" || savedRecruiter.status === "rejected") {
+      const submitted = normalizeRecruiterSnapshot(await api.patch<BackendRecruiterProfile>("/recruiters/me/status", undefined, {
+        auth: false,
+        headers: buildBearerHeaders(refreshedAuth.accessToken),
+      }));
+      if (!submitted || submitted.status !== "pending_review") throw new Error("Your profile could not be submitted for review.");
+      savedRecruiter = submitted;
+    }
+    const applicationStatus = savedRecruiter.status;
 
     revalidateTag("onboarding", "max");
     return actionOk<OnboardingProgressResult>(
@@ -1196,9 +1659,11 @@ async function submitIndividualOnboarding(formData: FormData) {
         applicationStatus,
         savedStep: Number(readFormString(formData, "step")) || 4,
         snapshot: {
-          ...emptyDocumentState(),
           applicationStatus,
+          documentRequirements: documentState.documentRequirements,
+          documents: documentState.documents,
           recruiter: savedRecruiter,
+          requirementDocuments: documentState.requirementDocuments,
           role: "individual",
           user,
         },

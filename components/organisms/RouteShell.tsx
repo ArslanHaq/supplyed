@@ -26,6 +26,7 @@ import { JobDetailPage } from "./JobDetailPage";
 import { MessagingPage } from "./MessagingPage";
 import { PostJobPage } from "./PostJobPage";
 import { SecurityPage } from "./SecurityPage";
+import { SettingsPage } from "./SettingsPage";
 import { TeacherDashboard } from "./TeacherDashboard";
 import { TeacherProfilePage } from "./TeacherProfilePage";
 import { TweaksPanel } from "./TweaksPanel";
@@ -112,7 +113,9 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
   };
 
   let content: ReactNode = null;
-  if (state.role === "institution") {
+  if (activePage === "settings") {
+    content = <SettingsPage {...routeProps} />;
+  } else if (state.role === "institution") {
     if (activePage === "dashboard") content = <InstitutionDashboard {...routeProps} />;
     else if (activePage === "post-job") content = <PostJobPage {...routeProps} />;
     else if (activePage === "applications") content = <ApplicationsPage {...routeProps} />;
@@ -163,6 +166,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
         go={go}
         onLanding={goHome}
         onLogout={logout}
+        onSettings={() => go("settings")}
       >
         {content}
       </AppChrome>

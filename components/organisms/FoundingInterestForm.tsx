@@ -139,7 +139,7 @@ function SelectField({
         error={Boolean(error)}
         id={id}
         onChange={handleChange}
-        options={options}
+        options={[...options]}
         placeholder={placeholder ?? `Select ${label.toLowerCase()}`}
         value={value}
       />
@@ -182,7 +182,7 @@ function MultiDropdownField({
         error={Boolean(error)}
         id={id}
         onChange={handleChange}
-        options={options}
+        options={[...options]}
         placeholder={placeholder ?? `Select ${label.toLowerCase()}`}
         value={value}
       />

@@ -9,6 +9,7 @@ import type { BackendAuthResponse } from "@/features/auth/types";
 import { getServerAuthContext } from "@/lib/server/auth-context";
 import { noIndexMetadata } from "@/lib/seo";
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
+import { profileEntryStatus } from "@/features/onboarding/profile-progress";
 
 export const metadata = noIndexMetadata("Onboarding", "Complete your SupplyED account setup.");
 
@@ -26,10 +27,10 @@ async function createSessionRepairTicket(session: Session, snapshot: OnboardingP
   const instructorProfileId = snapshot.instructor?.id ?? authContext.instructorProfileId ?? user.instructorProfileId;
   const institutionProfileId = snapshot.institution?.id ?? authContext.institutionProfileId ?? user.institutionProfileId;
   const recruiterProfileId = snapshot.recruiter?.id ?? authContext.recruiterProfileId ?? user.recruiterProfileId;
-  const applicationStatus = snapshot.applicationStatus !== "none" ? snapshot.applicationStatus : user.applicationStatus;
-  const role = user.role ?? snapshot.role;
+  const applicationStatus = profileEntryStatus(snapshot);
+  const role = snapshot.role;
   const needsRepair =
-    applicationStatus !== user.applicationStatus ||
+    applicationStatus !== user.applicationStatus || role !== user.role ||
     instructorProfileId !== user.instructorProfileId ||
     institutionProfileId !== user.institutionProfileId ||
     recruiterProfileId !== user.recruiterProfileId;
@@ -62,6 +63,7 @@ export default async function OnboardingPage() {
   if (!session?.user) {
     redirect("/login");
   }
+  if (!session.user.isEmailVerified) redirect("/post-auth");
 
   const snapshot = await getOnboardingProfileSnapshot();
   const sessionRepairTicket = await createSessionRepairTicket(session, snapshot);
@@ -69,9 +71,9 @@ export default async function OnboardingPage() {
   return (
     <OnboardingRouteClient
       accountEmail={session.user.email ?? ""}
-      initialApplicationStatus={session.user.applicationStatus}
+      initialApplicationStatus={profileEntryStatus(snapshot)}
       initialProfileSnapshot={snapshot}
-      initialRole={session.user.role}
+      initialRole={snapshot.role}
       sessionRepairTicket={sessionRepairTicket}
     />
   );

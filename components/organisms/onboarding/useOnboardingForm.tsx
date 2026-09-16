@@ -2,9 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { documentFileValidationError } from "@/features/onboarding/document-utils";
-import type { OnboardingDocumentRequirement, OnboardingProfileSnapshot } from "@/features/onboarding/types";
+import { filterProfileDocumentRequirements } from "@/features/onboarding/document-requirements";
+import { isDocumentReadyForReview } from "@/features/onboarding/document-utils";
 import { useOnboardingDocumentRequirements } from "@/features/onboarding/use-onboarding";
+import type {
+  OnboardingDocumentRequirementSnapshot,
+  OnboardingDocumentSnapshot,
+  OnboardingProfileSnapshot,
+} from "@/features/onboarding/types";
 import type { AppRole } from "@/types/supplyed";
 
 import { FileSummary, ReviewBadgeList } from "./ReviewCard";
@@ -42,10 +47,12 @@ function snapshotFingerprint(snapshot?: OnboardingProfileSnapshot) {
   if (!snapshot) return "";
 
   return JSON.stringify({
+    documentRequirements: snapshot.documentRequirements,
     documents: snapshot.documents,
     institution: snapshot.institution,
     instructor: snapshot.instructor,
     recruiter: snapshot.recruiter,
+    requirementDocuments: snapshot.requirementDocuments,
     role: snapshot.role,
     user: snapshot.user,
   });
@@ -57,6 +64,33 @@ function snapshotString(current: string, next: string) {
 
 function snapshotStringArray(current: string[], next: string[]) {
   return next.length > 0 ? next : current;
+}
+
+function hasCreatedProfile(snapshot: OnboardingProfileSnapshot | undefined, role: SignupRole) {
+  if (!snapshot) return false;
+  if (role === "teacher") return Boolean(snapshot.instructor?.id);
+  if (role === "institution") return Boolean(snapshot.institution?.id);
+  return Boolean(snapshot.recruiter?.id);
+}
+
+function missingRequiredDocumentRequirements(
+  requirements: OnboardingDocumentRequirementSnapshot[],
+  documents: Record<string, OnboardingDocumentSnapshot>,
+) {
+  return requirements.filter((requirement) => requirement.isRequired && !isDocumentReadyForReview(documents[requirement.id]));
+}
+
+function missingSnapshotDocumentRequirements(snapshot: OnboardingProfileSnapshot | undefined, role: SignupRole) {
+  if (!snapshot) return [];
+
+  return missingRequiredDocumentRequirements(
+    filterProfileDocumentRequirements(snapshot.documentRequirements ?? [], role),
+    snapshot.requirementDocuments ?? {},
+  );
+}
+
+function requirementErrorEntries(requirements: OnboardingDocumentRequirementSnapshot[]) {
+  return Object.fromEntries(requirements.map((requirement) => [requirement.id, `${requirement.documentType.name} is required.`]));
 }
 
 function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined, snapshot?: OnboardingProfileSnapshot) {
@@ -176,29 +210,42 @@ export function useOnboardingForm({
   const [uploadPending, setUploadPending] = useState<string | null>(null);
   const [viewPending, setViewPending] = useState<string | null>(null);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
+  const [documentRequirementsSnapshot, setDocumentRequirementsSnapshot] = useState<OnboardingDocumentRequirementSnapshot[]>(
+    () => initialSnapshot?.documentRequirements ?? [],
+  );
+  const [lockedDocumentStage, setLockedDocumentStage] = useState(
+    () => hasCreatedProfile(initialSnapshot, activeRole),
+  );
+  const [requirementDocuments, setRequirementDocuments] = useState<Record<string, OnboardingDocumentSnapshot>>(() => initialSnapshot?.requirementDocuments ?? {});
+  const [requirementDocumentErrors, setRequirementDocumentErrors] = useState<Record<string, string | undefined>>({});
+  const [requirementUploadPending, setRequirementUploadPending] = useState<string | null>(null);
+  const [requirementViewPending, setRequirementViewPending] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string>();
   const progress = Math.round((currentStep / steps.length) * 100);
   const isLastStep = currentStep === steps.length;
   const mountedRef = useRef(true);
   const previousStepRef = useRef(currentStep);
   const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
+  const requirementsQuery = useOnboardingDocumentRequirements(activeRole, { enabled: roleSelected });
+  const documentRequirements = filterProfileDocumentRequirements(
+    requirementsQuery.data?.map((requirement) => ({
+      id: requirement.id,
+      context: requirement.context,
+      isRequired: requirement.isRequired,
+      documentType: {
+        allowedMimes: requirement.allowedMimes,
+        code: requirement.code,
+        maxSizeBytes: requirement.maxSizeBytes,
+        name: requirement.name,
+      },
+    })) ?? documentRequirementsSnapshot, activeRole,
+  );
   const previousSnapshotFingerprintRef = useRef(initialSnapshotFingerprint);
   const prefillFingerprint = useMemo(() => JSON.stringify(prefill ?? {}), [prefill]);
   const previousPrefillFingerprintRef = useRef(prefillFingerprint);
 
-  // Only teachers have a documents step today. The list is seeded from the
-  // server snapshot and refreshed from GET /document-requirements/profile.
-  const documentRequirementsQuery = useOnboardingDocumentRequirements(activeRole, {
-    enabled: roleSelected && activeRole === "teacher",
-    initialData: initialSnapshot?.documentRequirements,
-  });
-  const documentRequirements = useMemo(() => documentRequirementsQuery.data ?? [], [documentRequirementsQuery.data]);
-  const documentRequirementsLoading = documentRequirementsQuery.isLoading;
-  const documentRequirementsError = documentRequirementsQuery.isError
-    ? documentRequirementsQuery.error instanceof Error && documentRequirementsQuery.error.message
-      ? documentRequirementsQuery.error.message
-      : "Document requirements could not be loaded."
-    : undefined;
+  const documentRequirementsLoading = requirementsQuery.isPending || requirementsQuery.isFetching;
+  const documentRequirementsError = requirementsQuery.error?.message;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -220,14 +267,14 @@ export function useOnboardingForm({
 
     previousSnapshotFingerprintRef.current = initialSnapshotFingerprint;
     setForm((current) => mergeSnapshotForm(current, accountEmail, initialSnapshot));
-  }, [accountEmail, initialSnapshot, initialSnapshotFingerprint]);
-
-  useEffect(() => {
-    if (previousPrefillFingerprintRef.current === prefillFingerprint) return;
-
-    previousPrefillFingerprintRef.current = prefillFingerprint;
-    setForm((current) => mergePrefillForm(current, prefill));
-  }, [prefill, prefillFingerprint]);
+    if (initialSnapshot?.documentRequirements.length || !lockedDocumentStage) {
+      setDocumentRequirementsSnapshot(initialSnapshot?.documentRequirements ?? []);
+    }
+    setRequirementDocuments(initialSnapshot?.requirementDocuments ?? {});
+    if (hasCreatedProfile(initialSnapshot, activeRole)) {
+      setLockedDocumentStage(true);
+    }
+  }, [accountEmail, activeRole, initialSnapshot, initialSnapshotFingerprint, lockedDocumentStage]);
 
   function buildPayload() {
     return buildOnboardingPayload(form, activeRole, currentStep, accountEmail);
@@ -246,7 +293,7 @@ export function useOnboardingForm({
       const documentLines: ReviewLine[] =
         documentRequirements.length > 0
           ? documentRequirements.map((requirement) => ({
-              label: requirement.isRequired ? requirement.name : `${requirement.name} (optional)`,
+              label: requirement.isRequired ? requirement.documentType.name : `${requirement.documentType.name} (optional)`,
               value: <FileSummary file={form.documents[requirement.id] ?? null} />,
               wide: true,
             }))
@@ -270,14 +317,7 @@ export function useOnboardingForm({
             { label: "TRN", value: form.teachingReferenceNumber || "Optional" },
             { label: "Bio", value: form.bio || "Not provided", wide: true },
           ],
-        },
-        {
-          title: "Required Documents",
-          description: "Documents sent to verification review",
-          icon: "shield",
-          editStep: 2,
-          lines: documentLines,
-        },
+        }
       ];
     }
 
@@ -350,81 +390,99 @@ export function useOnboardingForm({
   }
 
   function retryDocumentRequirements() {
-    void documentRequirementsQuery.refetch();
+    void requirementsQuery.refetch();
   }
 
-  async function uploadDocument(requirement: OnboardingDocumentRequirement, file: UploadedFile) {
-    if (pending === "submit" || uploadPending) return;
+  async function uploadDocument(requirement: OnboardingDocumentRequirementSnapshot, file: UploadedFile) {
+    await uploadRequirementDocument(requirement.id, file);
+  }
 
+  async function viewDocument(requirementId: string, file: UploadedFile | null) {
+    await viewRequirementDocument(requirementId, file);
+  }
+
+  async function uploadRequirementDocument(requirementId: string, file: UploadedFile) {
+    if (pending === "submit" || requirementUploadPending) return;
+
+    const requirement = documentRequirements.find((item) => item.id === requirementId);
+    const label = requirement?.documentType.name || "Document";
     const selectedFile = file.file;
+    const validationError = selectedFile
+      ? requirement
+        ? documentFileError(
+            { ...file, id: "validation-placeholder" },
+            {
+              allowedMimes: requirement.documentType.allowedMimes,
+              code: requirement.documentType.code,
+              context: requirement.context,
+              description: null,
+              id: requirement.id,
+              isRequired: requirement.isRequired,
+              maxSizeBytes: requirement.documentType.maxSizeBytes,
+              name: label,
+              requiresReview: true,
+            },
+          )
+        : undefined
+      : `${label} is required.`;
 
-    if (!selectedFile) {
-      setDocumentError(requirement.id, `${requirement.name} is required.`);
-      return;
-    }
-
-    const validationError = documentFileValidationError(file, requirement);
     if (validationError) {
-      setDocumentError(requirement.id, validationError);
+      setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: validationError }));
       return;
     }
 
-    const data = new FormData();
-    data.set("requirementId", requirement.id);
-    data.set("role", activeRole);
-    data.set("file", selectedFile, file.name);
+    const data = buildPayload();
+    data.set("requirementId", requirementId);
+    data.set("file", selectedFile!, file.name);
 
-    const previousFile = form.documents[requirement.id] ?? null;
-
-    setForm((current) => ({
-      ...current,
-      documents: { ...current.documents, [requirement.id]: { ...file, requirementId: requirement.id } },
-    }));
-    clearDocumentError(requirement.id);
-    setUploadPending(requirement.id);
+    setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: undefined }));
+    setSubmitError(undefined);
+    setRequirementUploadPending(requirementId);
 
     try {
       const result = await onDocumentUpload(data);
 
       if (!result.ok || !result.data?.document) {
-        setForm((current) => ({ ...current, documents: { ...current.documents, [requirement.id]: previousFile } }));
-        setDocumentError(requirement.id, result.message || `${requirement.name} could not be uploaded. Choose the file again.`);
+        setRequirementDocumentErrors((current) => ({
+          ...current,
+          [requirementId]: result.message || `${label} could not be uploaded. Choose the file again.`,
+        }));
         return;
       }
 
-      const uploadedFile = toUploadedFileFromDocument(result.data.document);
-      const uploadedDocuments = uploadedFilesFromSnapshot(result.data.documents);
-
-      setForm((current) => ({
+      setRequirementDocuments((current) => ({
         ...current,
-        documents: { ...current.documents, ...uploadedDocuments, [requirement.id]: uploadedFile },
+        ...result.data!.requirementDocuments,
+        [requirementId]: result.data!.document,
       }));
-      setDocumentError(requirement.id, undefined);
+      setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: undefined }));
     } catch (error) {
-      setForm((current) => ({ ...current, documents: { ...current.documents, [requirement.id]: previousFile } }));
-      setDocumentError(
-        requirement.id,
-        error instanceof Error && error.message ? error.message : `${requirement.name} could not be uploaded. Choose the file again.`,
-      );
+      setRequirementDocumentErrors((current) => ({
+        ...current,
+        [requirementId]: error instanceof Error && error.message ? error.message : `${label} could not be uploaded. Choose the file again.`,
+      }));
     } finally {
-      if (mountedRef.current) setUploadPending(null);
+      if (mountedRef.current) setRequirementUploadPending(null);
     }
   }
 
-  async function viewDocument(requirementId: string, file: UploadedFile | null) {
-    if (!file?.id || viewPending) return;
+  async function viewRequirementDocument(requirementId: string, file: UploadedFile | null) {
+    if (!file?.id || requirementViewPending) return;
 
     const data = new FormData();
     data.set("documentId", file.id);
     data.set("fileName", file.name);
-    setViewPending(requirementId);
+    setRequirementViewPending(requirementId);
     setSubmitError(undefined);
 
     try {
       const result = await onDocumentView(data);
 
       if (!result.ok || !result.data?.url) {
-        setDocumentError(requirementId, result.message || "This document could not be opened.");
+        setRequirementDocumentErrors((current) => ({
+          ...current,
+          [requirementId]: result.message || "This document could not be opened.",
+        }));
         return;
       }
 
@@ -434,9 +492,12 @@ export function useOnboardingForm({
         url: result.data.url,
       });
     } catch (error) {
-      setDocumentError(requirementId, error instanceof Error && error.message ? error.message : "This document could not be opened.");
+      setRequirementDocumentErrors((current) => ({
+        ...current,
+        [requirementId]: error instanceof Error && error.message ? error.message : "This document could not be opened.",
+      }));
     } finally {
-      if (mountedRef.current) setViewPending(null);
+      if (mountedRef.current) setRequirementViewPending(null);
     }
   }
 
@@ -449,9 +510,13 @@ export function useOnboardingForm({
     setSubmitError(undefined);
   }
 
-  function applySnapshot(snapshot?: OnboardingProfileSnapshot) {
+  function applySnapshot(snapshot?: OnboardingProfileSnapshot, options?: { preserveDocumentRequirements?: boolean }) {
     if (!snapshot) return;
     setForm((current) => mergeSnapshotForm(current, accountEmail, snapshot));
+    if (snapshot.documentRequirements.length || !options?.preserveDocumentRequirements) {
+      setDocumentRequirementsSnapshot(snapshot.documentRequirements);
+    }
+    setRequirementDocuments(snapshot.requirementDocuments ?? {});
   }
 
   function validateStep(targetStep: SignupStep) {
@@ -487,27 +552,6 @@ export function useOnboardingForm({
       if (form.coverTypes.length === 0) nextErrors.coverTypes = "Choose at least one staffing need.";
     }
 
-    if (targetStep === 2 && activeRole === "teacher") {
-      const nextDocumentErrors: DocumentErrors = {};
-
-      if (documentRequirementsQuery.isError) {
-        nextErrors.documents = "Document requirements could not be loaded. Retry, then continue.";
-      } else if (!documentRequirementsQuery.isSuccess && documentRequirements.length === 0) {
-        nextErrors.documents = "Document requirements are still loading. Try again in a moment.";
-      } else {
-        documentRequirements.forEach((requirement) => {
-          const error = documentFileError(form.documents[requirement.id] ?? null, requirement);
-          if (error) nextDocumentErrors[requirement.id] = error;
-        });
-
-        if (Object.keys(nextDocumentErrors).length > 0) {
-          nextErrors.documents = "Upload the required documents before continuing.";
-        }
-      }
-
-      setDocumentErrors(nextDocumentErrors);
-    }
-
     if (targetStep === 3 && activeRole === "institution") {
       if (!form.complianceContact.trim()) nextErrors.complianceContact = "Enter the safeguarding or compliance lead.";
       if (!form.complianceEmail.trim()) nextErrors.complianceEmail = "Enter the compliance email.";
@@ -520,7 +564,7 @@ export function useOnboardingForm({
   }
 
   async function continueStep() {
-    if (pending || uploadPending) return;
+    if (lockedDocumentStage || pending || uploadPending || requirementUploadPending) return;
     if (!validateStep(currentStep)) return;
 
     setPending("step");
@@ -544,7 +588,7 @@ export function useOnboardingForm({
   }
 
   async function submitSignup() {
-    if (pending || uploadPending) return;
+    if (pending || uploadPending || requirementUploadPending) return;
     for (let targetStep = 1; targetStep < steps.length; targetStep += 1) {
       if (!validateStep(targetStep as SignupStep)) {
         setStep(targetStep);
@@ -556,15 +600,95 @@ export function useOnboardingForm({
     setSubmitError(undefined);
 
     try {
-      const result = await onFinish(buildPayload());
+      const currentMissingRequirements = missingRequiredDocumentRequirements(documentRequirements, requirementDocuments);
+      const adminConfigResult = await onStepSave(buildPayload());
+      if (!adminConfigResult.ok) {
+        setSubmitError(adminConfigResult.message || "Document requirements could not be checked. Try again.");
+        return;
+      }
+
+      const latestSnapshot = adminConfigResult.data?.snapshot;
+      const latestRequirements = filterProfileDocumentRequirements(latestSnapshot?.documentRequirements ?? [], activeRole);
+      const latestRequirementDocuments = latestSnapshot?.requirementDocuments ?? {};
+      const latestMissingRequirements = missingRequiredDocumentRequirements(latestRequirements, latestRequirementDocuments);
+      const missingRequirementsBeforeProfile = latestMissingRequirements.length > 0 ? latestMissingRequirements : currentMissingRequirements;
+
+      applySnapshot(latestSnapshot);
+
+      const payload = buildPayload();
+      if (missingRequirementsBeforeProfile.length > 0) {
+        payload.set("intent", "profile");
+      }
+
+      const result = await onFinish(payload);
       if (!result.ok) {
         setSubmitError(result.message || "Onboarding could not be submitted. Try again.");
         return;
       }
 
-      applySnapshot(result.data?.snapshot);
+      const snapshot = result.data?.snapshot;
+      applySnapshot(snapshot, { preserveDocumentRequirements: missingRequirementsBeforeProfile.length > 0 });
+
+      if (
+        result.data?.applicationStatus === "none" &&
+        (missingRequirementsBeforeProfile.length > 0 || missingSnapshotDocumentRequirements(snapshot, activeRole).length > 0)
+      ) {
+        setLockedDocumentStage(true);
+        setRequirementDocumentErrors({});
+        setSubmitError(undefined);
+      }
     } catch (error) {
       setSubmitError(error instanceof Error && error.message ? error.message : "Onboarding could not be submitted. Try again.");
+    } finally {
+      if (mountedRef.current) setPending(null);
+    }
+  }
+
+  async function submitDocumentsForReview() {
+    if (pending || uploadPending || requirementUploadPending) return;
+    if (documentRequirementsLoading || documentRequirementsError) {
+      setSubmitError("Wait for the document requirements to load, or retry the check before submitting.");
+      return;
+    }
+
+    const missingRequirements = missingRequiredDocumentRequirements(documentRequirements, requirementDocuments);
+    if (missingRequirements.length > 0) {
+      setRequirementDocumentErrors((current) => ({
+        ...current,
+        ...requirementErrorEntries(missingRequirements),
+      }));
+      setSubmitError("Upload all required documents before sending the profile for review.");
+      return;
+    }
+
+    setPending("submit");
+    setSubmitError(undefined);
+
+    try {
+      const payload = buildPayload();
+      payload.set("intent", "review");
+
+      const result = await onFinish(payload);
+      if (!result.ok) {
+        void requirementsQuery.refetch();
+        setSubmitError(result.message || "Profile could not be sent for review. Try again.");
+        return;
+      }
+
+      const snapshot = result.data?.snapshot;
+      applySnapshot(snapshot);
+      const remainingRequirements = missingSnapshotDocumentRequirements(snapshot, activeRole);
+
+      if (result.data?.applicationStatus === "none" && remainingRequirements.length > 0) {
+        setLockedDocumentStage(true);
+        setRequirementDocumentErrors((current) => ({
+          ...current,
+          ...requirementErrorEntries(remainingRequirements),
+        }));
+        setSubmitError(result.message || "Upload all required documents before sending the profile for review.");
+      }
+    } catch (error) {
+      setSubmitError(error instanceof Error && error.message ? error.message : "Profile could not be sent for review. Try again.");
     } finally {
       if (mountedRef.current) setPending(null);
     }
@@ -585,19 +709,27 @@ export function useOnboardingForm({
     errors,
     form,
     isLastStep,
+    lockedDocumentStage,
     pending,
     progress,
-    retryDocumentRequirements,
+    requirementDocumentErrors,
+    requirementDocuments,
+    requirementUploadPending,
+    requirementViewPending,
     reviewGroups,
+    retryDocumentRequirements,
     setStep,
     steps,
+    submitDocumentsForReview,
     submitError,
     submitSignup,
     uploadDocument,
     uploadPending,
+    uploadRequirementDocument,
     updateField,
     viewDocument,
     viewPending,
+    viewRequirementDocument,
   };
 }
 

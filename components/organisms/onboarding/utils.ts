@@ -43,17 +43,15 @@ export function signupHeroCopy(role: string) {
 export function signupStepTitle(role: string, step: number) {
   if (step === 1) return role === "teacher" ? "Complete your teacher profile" : "Complete profile basics";
   if (step === 2) {
-    if (role === "teacher") return "Upload required documents";
-    if (role === "individual") return "Add learner needs";
+    if (role === "teacher" || role === "individual") return "Full review";
     return "Add school details";
   }
-  if (step === 3) return role === "teacher" ? "Review and submit" : role === "individual" ? "Set safeguarding preferences" : "Complete compliance";
-  return "Review and submit";
+  if (step === 3) return role === "institution" ? "Complete compliance" : "Full review";
+  return "Full review";
 }
 
-export function signupSubmitLabel(role: string) {
-  if (role === "individual") return "Create profile";
-  return "Submit for review";
+export function signupSubmitLabel(_role: string) {
+  return "Create profile";
 }
 
 export function fieldClass(error?: string) {
@@ -130,7 +128,7 @@ export function toUploadedFileFromDocument(document: OnboardingDocumentSnapshot)
   return {
     id: document.id,
     name: document.name,
-    requirementId: document.requirementId,
+    requirementId: document.requirementId ?? undefined,
     size: document.size,
     status: document.status,
     type: document.type,
@@ -138,11 +136,11 @@ export function toUploadedFileFromDocument(document: OnboardingDocumentSnapshot)
   };
 }
 
-export function uploadedFilesFromSnapshot(documents: OnboardingDocumentMap = {}) {
+export function uploadedFilesFromSnapshot(documents: Partial<Record<string, OnboardingDocumentSnapshot>> = {}) {
   const files: Record<string, UploadedFile | null> = {};
 
   Object.values(documents).forEach((document) => {
-    if (document?.uploadedAt) files[document.requirementId] = toUploadedFileFromDocument(document);
+    if (document?.uploadedAt && document.requirementId) files[document.requirementId] = toUploadedFileFromDocument(document);
   });
 
   return files;

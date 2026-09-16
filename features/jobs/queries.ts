@@ -35,3 +35,8 @@ export async function getJob(id: string): Promise<Job | null> {
     throw error;
   }
 }
+
+export async function getMyJob(id: string): Promise<Job | null> {
+  const jobs = await listMyJobs();
+  return jobs.find((job) => job.id === id) ?? null;
+}

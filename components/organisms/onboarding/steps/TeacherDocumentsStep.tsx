@@ -1,9 +1,24 @@
 import { CardGridLoader } from "@/components/molecules/Loaders";
+import type { OnboardingDocumentRequirementSnapshot } from "@/features/onboarding/types";
 
 import { Btn, Icon } from "../../../atoms";
 import { UploadCard } from "../UploadCard";
 import type { StepComponentProps } from "../step-types";
 import { requirementAccept, requirementDescription, requirementIcon, requirementLimits } from "../utils";
+
+function toDocumentRequirement(requirement: OnboardingDocumentRequirementSnapshot) {
+  return {
+    allowedMimes: requirement.documentType.allowedMimes,
+    code: requirement.documentType.code,
+    context: requirement.context,
+    description: null,
+    id: requirement.id,
+    isRequired: requirement.isRequired,
+    maxSizeBytes: requirement.documentType.maxSizeBytes,
+    name: requirement.documentType.name,
+    requiresReview: true,
+  };
+}
 
 export function TeacherDocumentsStep({ controller }: StepComponentProps) {
   const {
@@ -63,24 +78,25 @@ export function TeacherDocumentsStep({ controller }: StepComponentProps) {
         <div className="grid gap-4 xl:grid-cols-2">
           {documentRequirements.map((requirement) => {
             const file = form.documents[requirement.id] ?? null;
+            const documentRequirement = toDocumentRequirement(requirement);
 
             return (
               <UploadCard
                 key={requirement.id}
-                accept={requirementAccept(requirement)}
+                accept={requirementAccept(documentRequirement)}
                 actionLabel="Upload file"
-                description={requirementDescription(requirement)}
+                description={requirementDescription(documentRequirement)}
                 error={documentErrors[requirement.id]}
                 file={file}
-                icon={requirementIcon(requirement)}
+                icon={requirementIcon(documentRequirement)}
                 id={`document-${requirement.id}`}
-                meta={requirementLimits(requirement)}
+                meta={requirementLimits(documentRequirement)}
                 onFile={(selected) => uploadDocument(requirement, selected)}
                 onView={() => viewDocument(requirement.id, file)}
                 pending={uploadPending === requirement.id}
                 required={requirement.isRequired}
                 status={file?.status}
-                title={requirement.name}
+                title={documentRequirement.name}
                 viewPending={viewPending === requirement.id}
               />
             );

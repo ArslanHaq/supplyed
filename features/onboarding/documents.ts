@@ -2,6 +2,7 @@ import "server-only";
 
 import { api, ApiError } from "@/lib/server/api-client";
 import type { AppRole } from "@/types/supplyed";
+import { profileDocumentContext } from "./document-requirements";
 
 import {
   backendProfileRole,
@@ -33,6 +34,7 @@ export type DocumentRequestAuth = {
 };
 
 type RequestOptions = {
+  cache?: RequestCache;
   auth?: boolean;
   headers?: HeadersInit;
   query?: Record<string, number | string | undefined>;
@@ -230,15 +232,21 @@ export async function getProfileDocumentRequirements(
 
   const response = await api.get<unknown>(
     "/document-requirements/profile",
-    requestOptions(auth, { query: { role: profileRole } }),
+    requestOptions(auth, { cache: "no-store", query: { role: profileRole } }),
   );
-  if (!Array.isArray(response)) return [];
+  if (!Array.isArray(response)) throw new Error("Document requirements could not be verified. Try again.");
+  if (response.some((item) => !isRecord(item) || !item.id || !isRecord(item.documentType) || !item.documentType.id)) {
+    throw new Error("Document requirements are incomplete. Try again.");
+  }
+  if (response.some((item) => item.context !== profileDocumentContext(role))) {
+    throw new Error("Document requirements do not match your profile. Retry the check.");
+  }
 
   return response
     .filter(isRecord)
     .map((item) => normalizeRequirement(item as BackendDocumentRequirement))
     .filter(
-      (item): item is OnboardingDocumentRequirement => Boolean(item) && isProfileRequirementContext(item?.context),
+      (item): item is OnboardingDocumentRequirement => Boolean(item) && item?.context === profileDocumentContext(role),
     );
 }
 
@@ -252,21 +260,24 @@ async function listProfileDocuments(auth: DocumentRequestAuth): Promise<BackendD
     for (let page = 1; page <= documentsMaxPages; page += 1) {
       const response = await api.get<unknown>(
         "/documents",
-        requestOptions(auth, { query: { limit: documentsPageSize, page } }),
+        requestOptions(auth, { cache: "no-store", query: { limit: documentsPageSize, page } }),
       );
       const batch = Array.isArray(response)
         ? response
         : isRecord(response) && Array.isArray(response.documents)
           ? response.documents
           : [];
+      if (!Array.isArray(response) && !(isRecord(response) && Array.isArray(response.documents))) {
+        throw new Error("Your uploaded documents could not be verified. Try again.");
+      }
 
       documents.push(...(batch.filter(isRecord) as BackendDocument[]));
 
       const hasNextPage = isRecord(response) && isRecord(response.pagination) && response.pagination.hasNextPage === true;
       if (!hasNextPage) break;
+      if (page === documentsMaxPages) throw new Error("Your complete document list could not be verified.");
     }
   } catch (error) {
-    if (notFoundOrForbidden(error)) return [];
     throw error;
   }
 
@@ -281,7 +292,7 @@ export async function getDocumentSnapshots(auth: DocumentRequestAuth = {}): Prom
 
   (await listProfileDocuments(auth)).forEach((document) => {
     const snapshot = normalizeDocument(document);
-    if (!snapshot?.uploadedAt) return;
+    if (!snapshot?.uploadedAt || !snapshot.requirementId) return;
 
     const current = documents[snapshot.requirementId];
     if (!current || snapshot.uploadedAt > (current.uploadedAt ?? "")) {

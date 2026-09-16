@@ -10,7 +10,7 @@ import {
   saveOnboardingStep,
   uploadOnboardingDocument,
 } from "@/app/(app)/onboarding/actions";
-import { hasRequiredDocuments } from "@/features/onboarding/document-utils";
+import { hasCreatedRoleProfile, profileEntryStatus } from "@/features/onboarding/profile-progress";
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import {
   clearFoundingSignupIntent,
@@ -43,12 +43,6 @@ function withClientTimeout<T>(promise: Promise<T>, ms: number, message: string):
   });
 }
 
-// Requirements come from the backend; an empty list at page load means they
-// could not be fetched, so the documents step stays the safe landing point.
-function hasAllInstructorDocuments(snapshot: OnboardingProfileSnapshot) {
-  return snapshot.documentRequirements.length > 0 && hasRequiredDocuments(snapshot.documentRequirements, snapshot.documents);
-}
-
 function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
   if (role === "teacher") return "teacher";
   if (role === "individual") return "individual";
@@ -57,9 +51,7 @@ function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
 
 function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfileSnapshot) {
   if (role === "teacher") {
-    if (!snapshot.instructor) return 1;
-    if (hasAllInstructorDocuments(snapshot)) return 3;
-    return 2;
+    return snapshot.instructor ? 2 : 1;
   }
 
   if (role === "institution") {
@@ -222,9 +214,7 @@ function OnboardingRouteClientInner({
   const [step, setStep] = useState(() => initialStepWithFoundingIntent(initialRole, initialProfileSnapshot, foundingIntent));
   const [savedProfileSnapshot, setSavedProfileSnapshot] = useState<OnboardingProfileSnapshot>();
   const profileSnapshot = savedProfileSnapshot ?? initialProfileSnapshot;
-  const effectiveApplicationStatus =
-    initialApplicationStatus !== "none" ? initialApplicationStatus : initialProfileSnapshot.applicationStatus;
-
+  const effectiveApplicationStatus = profileEntryStatus(profileSnapshot);
   useEffect(() => {
     if (initialRole && effectiveApplicationStatus !== "none") {
       startRouteLoading();
@@ -251,6 +241,7 @@ function OnboardingRouteClientInner({
   }, [effectiveApplicationStatus, initialRole, router, sessionRepairTicket]);
 
   function setRole(role: SignupRole) {
+    if (hasCreatedRoleProfile(profileSnapshot)) return;
     if (foundingIntent && role !== foundingSignupRole(foundingIntent.type)) {
       clearFoundingSignupIntent();
       setFoundingIntent(null);
@@ -292,7 +283,12 @@ function OnboardingRouteClientInner({
     if (!sessionRefresh.ok) return sessionRefresh;
 
     if (result.data.snapshot) setSavedProfileSnapshot(result.data.snapshot);
-    clearFoundingSignupIntent();
+
+    if (result.data.applicationStatus === "none") {
+      router.refresh();
+      return result;
+    }
+
     startRouteLoading();
     router.push(
       getAuthenticatedEntryHref({
