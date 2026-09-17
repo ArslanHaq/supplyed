@@ -24,6 +24,8 @@ export const initialForm: SignupForm = {
   maxTravelDistance: "",
   password: "",
   phone: "",
+  profileCity: "",
+  profileCountryCode: "GB",
   postcode: "",
   recruiterProfileId: "",
   safeguardingConfirmed: false,

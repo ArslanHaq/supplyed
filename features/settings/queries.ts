@@ -188,6 +188,44 @@ function normalizeRecruiter(payload: unknown): SettingsRecruiterProfile | undefi
   };
 }
 
+type BackendProfileImageResponse = {
+  expiresAt?: string | Date | null;
+  imageUrl?: string | null;
+};
+
+async function getSignedProfileImageUrl(role: AppRole | null) {
+  if (!role) return undefined;
+
+  const response = await optionalApiGet<BackendProfileImageResponse>("/users/me/profile-image", { cache: "no-store" });
+  if (response === undefined) return undefined;
+
+  return readString(response.imageUrl);
+}
+
+function applySignedProfileImageUrl(
+  role: AppRole | null,
+  profile: {
+    institution?: SettingsInstitutionProfile;
+    instructor?: SettingsInstructorProfile;
+    recruiter?: SettingsRecruiterProfile;
+  },
+  imageUrl: string | undefined,
+) {
+  if (imageUrl === undefined) return;
+
+  if (role === "teacher" && profile.instructor) {
+    profile.instructor = { ...profile.instructor, imageUrl };
+  }
+
+  if (role === "institution" && profile.institution) {
+    profile.institution = { ...profile.institution, imageUrl };
+  }
+
+  if (role === "individual" && profile.recruiter) {
+    profile.recruiter = { ...profile.recruiter, imageUrl };
+  }
+}
+
 async function optionalApiGet<Data>(path: string, options: Parameters<typeof api.get<Data>>[1] = {}) {
   try {
     return await api.get<Data>(path, options);
@@ -238,9 +276,7 @@ export async function getSettingsProfileSnapshot(): Promise<SettingsProfileSnaps
   }
 
   const user = normalizeUser(
-    await api.get<unknown>("/auth/me", {
-      next: { tags: ["settings", "auth", "auth:me"] },
-    }),
+    await api.get<unknown>("/auth/me", { cache: "no-store" }),
     fallbackRole,
     authContext.userId,
     authContext.email ?? undefined,
@@ -280,6 +316,8 @@ export async function getSettingsProfileSnapshot(): Promise<SettingsProfileSnaps
       }),
     );
   }
+
+  applySignedProfileImageUrl(role, profile, await getSignedProfileImageUrl(role));
 
   return {
     applicationStatus: applicationStatusForRole(role, profile),

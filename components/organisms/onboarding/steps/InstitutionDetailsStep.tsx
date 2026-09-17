@@ -1,6 +1,7 @@
 import { Field } from "../../../atoms";
-import { MultiSelectDropdown, SelectDropdown } from "../../../molecules/OptionDropdowns";
-import { countryCodes, coverTypes } from "../constants";
+import { CountryCityFields } from "../CountryCityFields";
+import { MultiSelectDropdown } from "../../../molecules/OptionDropdowns";
+import { coverTypes } from "../constants";
 import type { StepComponentProps } from "../step-types";
 import { fieldClass } from "../utils";
 
@@ -55,33 +56,20 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
             placeholder="1 School Lane"
           />
         </Field>
-        <Field label="City" htmlFor="institution-city" error={errors.institutionCity} required>
-          <input
-            id="institution-city"
-            className={fieldClass(errors.institutionCity)}
-            value={form.institutionCity}
-            onChange={(event) => updateField("institutionCity", event.target.value)}
-            placeholder="Manchester"
-          />
-        </Field>
-        <Field label="County / region" htmlFor="authority" error={errors.localAuthority} required>
-          <input
-            id="authority"
-            className={fieldClass(errors.localAuthority)}
-            value={form.localAuthority}
-            onChange={(event) => updateField("localAuthority", event.target.value)}
-            placeholder="Greater Manchester"
-          />
-        </Field>
-        <Field label="Country" error={errors.institutionCountryCode}>
-          <SelectDropdown
-            error={Boolean(errors.institutionCountryCode)}
-            options={countryCodes}
-            placeholder="Select country"
-            value={form.institutionCountryCode}
-            onChange={(value) => updateField("institutionCountryCode", value)}
-          />
-        </Field>
+        <CountryCityFields
+          city={form.institutionCity}
+          cityError={errors.institutionCity}
+          cityId="institution-city"
+          cityRequired
+          countryCode={form.institutionCountryCode}
+          countryError={errors.institutionCountryCode}
+          countryRequired
+          onCityChange={(value) => updateField("institutionCity", value)}
+          onCountryChange={(value) => {
+            updateField("institutionCountryCode", value);
+            updateField("institutionCity", "");
+          }}
+        />
         <Field label="Typical pupil count" htmlFor="pupils" hint="Optional, helps estimate staffing needs.">
           <input
             id="pupils"

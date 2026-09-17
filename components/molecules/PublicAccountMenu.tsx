@@ -7,9 +7,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 
-import { Avatar, Icon } from "../atoms";
+import { Avatar, Icon, Tag } from "../atoms";
 
 type PublicAccountMenuProps = {
+  verified: boolean;
   email?: string | null;
   name?: string | null;
   role?: string | null;
@@ -27,7 +28,7 @@ function getRoleLabel(role?: string | null) {
   if (role === "institution") return "School workspace";
   if (role === "teacher") return "Teacher account";
   if (role === "individual") return "Hiring account";
-  return "Verified account";
+  return "SupplyED account";
 }
 
 function getAccountLinks(role?: string | null) {
@@ -63,7 +64,7 @@ function getAccountLinks(role?: string | null) {
   ];
 }
 
-export function PublicAccountMenu({ email, name, role }: PublicAccountMenuProps) {
+export function PublicAccountMenu({ email, name, role, verified }: PublicAccountMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -110,7 +111,7 @@ export function PublicAccountMenu({ email, name, role }: PublicAccountMenuProps)
         <Avatar name={displayName} size="sm" />
         <span className="hidden min-w-0 max-w-[150px] sm:block">
           <span className="block truncate text-sm font-semibold leading-4 text-ink">{displayName}</span>
-          <span className="block truncate text-[11px] leading-4 text-muted">{email || roleLabel}</span>
+          <span className="flex items-center gap-1 text-[11px] leading-4 text-muted"><span className="truncate">{email || roleLabel}</span>{verified ? <Tag tone="green">Verified</Tag> : null}</span>
         </span>
         <Icon className="text-muted" name="chevronDown" size={15} />
       </button>
@@ -125,10 +126,11 @@ export function PublicAccountMenu({ email, name, role }: PublicAccountMenuProps)
               <Avatar name={displayName} />
               <div className="min-w-0">
                 <div className="truncate font-semibold text-ink">{displayName}</div>
-                <div className="truncate text-sm text-muted">{email || "Verified account"}</div>
+                <div className="truncate text-sm text-muted">{email || "SupplyED account"}</div>
                 <div className="mt-2 inline-flex rounded-full bg-brand-tint px-2.5 py-1 text-[11px] font-semibold text-brand">
                   {roleLabel}
                 </div>
+                {verified ? <Tag className="ml-2" tone="green">Verified</Tag> : null}
               </div>
             </div>
           </div>

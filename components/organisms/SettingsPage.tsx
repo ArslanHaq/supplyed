@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { City, Country, type ICity } from "country-state-city";
 
-import { useSettingsProfile, useUpdateSettings } from "@/features/settings/use-settings";
+import { useSettingsProfile, useUpdateSettings, useUploadSettingsProfileImage } from "@/features/settings/use-settings";
 import type {
   SettingsInstitutionUpdateInput,
   SettingsInstructorUpdateInput,
@@ -31,6 +31,34 @@ type SettingsFormCache = {
   snapshotKey: string;
 };
 
+const profileImageAccept = "image/jpeg,image/png,image/webp";
+const profileImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const maxProfileImageBytes = 5 * 1024 * 1024;
+
+function profileImageContentType(file: File) {
+  const explicitType = file.type.toLowerCase();
+  if (profileImageTypes.has(explicitType)) return explicitType;
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png") return "image/png";
+  if (extension === "webp") return "image/webp";
+
+  return explicitType;
+}
+
+function profileImageValidationError(file: File) {
+  if (file.size > maxProfileImageBytes) return "Profile image must be 5 MB or smaller.";
+  if (!profileImageTypes.has(profileImageContentType(file))) return "Profile image must be a JPG, PNG, or WebP file.";
+  return undefined;
+}
+
+function profileImageUrlForRole(form: SettingsForm, role: AppRole | null | undefined) {
+  if (role === "teacher") return form.instructor.imageUrl;
+  if (role === "institution") return form.institution.imageUrl;
+  if (role === "individual") return form.recruiter.imageUrl;
+  return "";
+}
 const countryOptions = Country.getAllCountries().sort((first, second) => first.name.localeCompare(second.name));
 
 const emptyInstructor: SettingsInstructorUpdateInput = {
@@ -263,6 +291,52 @@ function ArrayField({
   );
 }
 
+function ProfileImageField({
+  disabled,
+  error,
+  imageUrl,
+  name,
+  onFile,
+  pending,
+}: {
+  disabled?: boolean;
+  error?: string;
+  imageUrl: string;
+  name: string;
+  onFile: (file: File) => void;
+  pending?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-chalk p-4 sm:col-span-2">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={name} size="lg" src={imageUrl} />
+          <div className="min-w-0">
+            <div className="font-semibold text-ink">Profile image</div>
+            <p className="mt-1 text-sm leading-6 text-muted">JPG, PNG, or WebP up to 5 MB.</p>
+            {error ? <p className="mt-1 text-xs font-semibold text-danger">{error}</p> : null}
+          </div>
+        </div>
+        <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border-strong bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand hover:bg-brand-tint focus-within:outline-none focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2">
+          <Icon className={pending ? "animate-spin" : undefined} name={pending ? "loader" : "upload"} size={15} />
+          {pending ? "Uploading" : imageUrl ? "Replace image" : "Upload image"}
+          <input
+            accept={profileImageAccept}
+            className="sr-only"
+            disabled={disabled || pending}
+            onChange={(event) => {
+              const selectedFile = event.target.files?.[0];
+              if (!selectedFile) return;
+              onFile(selectedFile);
+              event.target.value = "";
+            }}
+            type="file"
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
 function CountryCityFields({
   city,
   cityError,
@@ -312,7 +386,7 @@ function CountryCityFields({
   );
 }
 
-export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "state" | "toast">) {
+export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "go" | "state" | "toast"> & { verified: boolean }) {
   const profileQuery = useSettingsProfile();
   const profile = profileQuery.data;
   const snapshotKey = JSON.stringify(profile ?? null);
@@ -325,7 +399,26 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
   const form = formCache.snapshotKey === snapshotKey ? formCache.form : createForm(profile);
   const role = profile?.role ?? state.role;
   const canSave = Boolean(profile && role && profileExists(profile, role));
+  const [profileImageError, setProfileImageError] = useState<string>();
+  const profileImageUrl = profileImageUrlForRole(form, role);
 
+  const uploadProfileImage = useUploadSettingsProfileImage({
+    onError: () => {
+      setProfileImageError("Profile image could not be uploaded. Choose another image and try again.");
+      toast({ title: "Could not upload image", msg: "Choose another image and try again.", tone: "danger" });
+    },
+    onSuccess: async (result) => {
+      if (!result.ok) {
+        setProfileImageError(result.message);
+        toast({ title: "Could not upload image", msg: result.message, tone: "danger" });
+        return;
+      }
+
+      setProfileImageUrl(result.data.imageUrl);
+      setProfileImageError(undefined);
+      toast({ title: "Profile image updated", msg: "Your profile image was uploaded.", tone: "success" });
+    },
+  });
   function setForm(updater: (current: SettingsForm) => SettingsForm) {
     setFormCache((current) => ({
       form: updater(current.snapshotKey === snapshotKey ? current.form : createForm(profile)),
@@ -403,6 +496,29 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
     setSubmitError(undefined);
   }
 
+  function setProfileImageUrl(imageUrl: string | null) {
+    const value = imageUrl ?? "";
+
+    setForm((current) => {
+      if (role === "teacher") return { ...current, instructor: { ...current.instructor, imageUrl: value } };
+      if (role === "institution") return { ...current, institution: { ...current.institution, imageUrl: value } };
+      if (role === "individual") return { ...current, recruiter: { ...current.recruiter, imageUrl: value } };
+      return current;
+    });
+  }
+
+  function uploadProfileImageFile(file: File) {
+    const validationError = profileImageValidationError(file);
+
+    if (validationError) {
+      setProfileImageError(validationError);
+      toast({ title: "Could not upload image", msg: validationError, tone: "danger" });
+      return;
+    }
+
+    setProfileImageError(undefined);
+    uploadProfileImage.mutate(file);
+  }
   function saveSettings(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -456,6 +572,7 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
           <>
             <Tag tone="ghost">{roleLabel(role)}</Tag>
             <Tag tone={statusTone(profile.applicationStatus)}>{statusLabel(profile.applicationStatus)}</Tag>
+            {verified ? <Tag tone="green">Verified</Tag> : null}
           </>
         }
       />
@@ -513,10 +630,14 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
                 <Field error={errors.fullName} label="Full name" required>
                   <input className="input" value={form.instructor.fullName} onChange={(event) => updateInstructor("fullName", event.target.value)} />
                 </Field>
-                <Field label="Profile image URL">
-                  <input className="input" value={form.instructor.imageUrl} onChange={(event) => updateInstructor("imageUrl", event.target.value)} />
-                </Field>
-                <Field label="Address">
+                <ProfileImageField
+                  disabled={!canSave}
+                  error={profileImageError}
+                  imageUrl={form.instructor.imageUrl}
+                  name={form.instructor.fullName || displayName(profile)}
+                  onFile={uploadProfileImageFile}
+                  pending={uploadProfileImage.isPending}
+                />                <Field label="Address">
                   <input className="input" value={form.instructor.address} onChange={(event) => updateInstructor("address", event.target.value)} />
                 </Field>
                 <CountryCityFields
@@ -576,10 +697,14 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
                 <Field error={errors.schoolName} label="School or organisation" required>
                   <input className="input" value={form.institution.name} onChange={(event) => updateInstitution("name", event.target.value)} />
                 </Field>
-                <Field label="Profile image URL">
-                  <input className="input" value={form.institution.imageUrl} onChange={(event) => updateInstitution("imageUrl", event.target.value)} />
-                </Field>
-                <Field label="Registration ID">
+                <ProfileImageField
+                  disabled={!canSave}
+                  error={profileImageError}
+                  imageUrl={form.institution.imageUrl}
+                  name={form.institution.name || displayName(profile)}
+                  onFile={uploadProfileImageFile}
+                  pending={uploadProfileImage.isPending}
+                />                <Field label="Registration ID">
                   <input className="input" value={form.institution.registrationId} onChange={(event) => updateInstitution("registrationId", event.target.value)} />
                 </Field>
                 <Field error={errors.domain} label="Domain" required>
@@ -645,10 +770,14 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
                 <Field error={errors.displayName} label="Display name" required>
                   <input className="input" value={form.recruiter.displayName} onChange={(event) => updateRecruiter("displayName", event.target.value)} />
                 </Field>
-                <Field label="Profile image URL">
-                  <input className="input" value={form.recruiter.imageUrl} onChange={(event) => updateRecruiter("imageUrl", event.target.value)} />
-                </Field>
-                <Field label="Address">
+                <ProfileImageField
+                  disabled={!canSave}
+                  error={profileImageError}
+                  imageUrl={form.recruiter.imageUrl}
+                  name={form.recruiter.displayName || displayName(profile)}
+                  onFile={uploadProfileImageFile}
+                  pending={uploadProfileImage.isPending}
+                />                <Field label="Address">
                   <input className="input" value={form.recruiter.address} onChange={(event) => updateRecruiter("address", event.target.value)} />
                 </Field>
                 <CountryCityFields
@@ -691,12 +820,13 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
         <aside className="flex flex-col gap-5">
           <section className="card card-pad-lg">
             <div className="flex items-start gap-3">
-              <Avatar name={displayName(profile)} />
+              <Avatar name={displayName(profile)} src={profileImageUrl} />
               <div className="min-w-0">
                 <div className="truncate font-serif text-2xl leading-tight">{displayName(profile)}</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Tag tone="ghost">{roleLabel(role)}</Tag>
                   <Tag tone={statusTone(profile.applicationStatus)}>{statusLabel(profile.applicationStatus)}</Tag>
+                  {verified ? <Tag tone="green">Verified</Tag> : null}
                 </div>
               </div>
             </div>
@@ -710,7 +840,7 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
             </div>
 
             <Btn className="mt-5 w-full" icon="shield" onClick={() => go("security")} variant="secondary">
-              Security
+              Manage two-factor
             </Btn>
           </section>
 
@@ -719,7 +849,6 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
             <div className="grid gap-3">
               {role === "teacher" ? (
                 <>
-                  <ReadOnlyLine label="Profile ID" value={profile.instructor?.id ?? "Not created"} />
                   <ReadOnlyLine label="DBS verified" value={profile.instructor?.dbsVerified ? "Yes" : "No"} />
                   <ReadOnlyLine label="Rating" value={profile.instructor?.ratingAverage ? `${profile.instructor.ratingAverage} from ${profile.instructor.ratingCount} reviews` : "No rating"} />
                 </>
@@ -727,7 +856,6 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
 
               {role === "institution" ? (
                 <>
-                  <ReadOnlyLine label="Profile ID" value={profile.institution?.id ?? "Not created"} />
                   <ReadOnlyLine label="Verified" value={profile.institution?.verified ? "Yes" : "No"} />
                   <ReadOnlyLine label="Created" value={formatDate(profile.institution?.createdAt ?? null)} />
                 </>
@@ -735,7 +863,6 @@ export function SettingsPage({ go, state, toast }: Pick<RouteProps, "go" | "stat
 
               {role === "individual" ? (
                 <>
-                  <ReadOnlyLine label="Profile ID" value={profile.recruiter?.id ?? "Not created"} />
                   <ReadOnlyLine label="Created" value={formatDate(profile.recruiter?.createdAt ?? null)} />
                   <ReadOnlyLine label="Updated" value={formatDate(profile.recruiter?.updatedAt ?? null)} />
                 </>

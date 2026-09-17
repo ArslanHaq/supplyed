@@ -48,6 +48,8 @@ export type SignupField =
   | "email"
   | "recruiterProfileId"
   | "phone"
+  | "profileCity"
+  | "profileCountryCode"
   | "postcode"
   | "password"
   | "confirmPassword"
@@ -83,6 +85,7 @@ export type UploadedFile = {
   file?: File;
   id?: string;
   name: string;
+  rejectionComment?: string | null;
   requirementId?: string;
   status?: string | null;
   size: number;
@@ -115,6 +118,8 @@ export type SignupForm = {
   maxTravelDistance: string;
   password: string;
   phone: string;
+  profileCity: string;
+  profileCountryCode: string;
   postcode: string;
   recruiterProfileId: string;
   safeguardingConfirmed: boolean;
@@ -150,6 +155,8 @@ export type OnboardingPrefill = Partial<
     | "localAuthority"
     | "maxTravelDistance"
     | "phone"
+    | "profileCity"
+    | "profileCountryCode"
     | "postcode"
     | "schoolName"
     | "skills"

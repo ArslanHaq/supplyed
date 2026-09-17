@@ -46,6 +46,7 @@ export function OnboardingPage({
   onDocumentUpload,
   onStepSave,
   prefill,
+  sessionError,
   onLanding,
   onLogin,
 }: {
@@ -64,6 +65,7 @@ export function OnboardingPage({
   onDocumentUpload: (payload: FormData) => Promise<OnboardingDocumentUploadActionResult>;
   onStepSave: (payload: FormData) => Promise<OnboardingFinishResult>;
   prefill?: OnboardingPrefill;
+  sessionError?: string;
   onLanding: () => void;
   onLogin: () => void;
 }) {
@@ -255,9 +257,9 @@ export function OnboardingPage({
             )}
           </div>
 
-          {submitError ? (
+          {sessionError || submitError ? (
             <div className="mt-6 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
-              {submitError}
+              {sessionError || submitError}
             </div>
           ) : null}
 
@@ -276,7 +278,7 @@ export function OnboardingPage({
                 loadingLabel={lockedDocumentStage ? "Sending for review" : isLastStep ? "Creating profile" : "Saving step"}
                 size="lg"
                 iconRight="arrow"
-                disabled={Boolean(uploadPending || requirementUploadPending || documentRequirementsLoading || documentRequirementsError)}
+                disabled={Boolean(uploadPending || requirementUploadPending || (lockedDocumentStage && (documentRequirementsLoading || documentRequirementsError)))}
                 onClick={handlePrimaryAction}
               >
                 {lockedDocumentStage ? "Send for review" : isLastStep ? signupSubmitLabel(activeRole) : "Continue"}

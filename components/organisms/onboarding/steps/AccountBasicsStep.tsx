@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Field, Icon } from "../../../atoms";
+import { CountryCityFields } from "../CountryCityFields";
 import type { AccountStepProps } from "../step-types";
 import { fieldClass } from "../utils";
 
@@ -86,13 +87,29 @@ export function AccountBasicsStep({
             inputMode="tel"
           />
         </Field>
-        <Field label="Postalcode / location" htmlFor="signup-location" error={errors.postcode} required>
+        {roleSelected && activeRole !== "institution" ? (
+          <CountryCityFields
+            city={form.profileCity}
+            cityError={errors.profileCity}
+            cityId="signup-city"
+            cityRequired
+            countryCode={form.profileCountryCode}
+            countryError={errors.profileCountryCode}
+            countryRequired
+            onCityChange={(value) => updateField("profileCity", value)}
+            onCountryChange={(value) => {
+              updateField("profileCountryCode", value);
+              updateField("profileCity", "");
+            }}
+          />
+        ) : null}
+        <Field label="Postal code" htmlFor="signup-location" error={errors.postcode} required>
           <input
             id="signup-location"
             className={fieldClass(errors.postcode)}
             value={form.postcode}
             onChange={(event) => updateField("postcode", event.target.value)}
-            placeholder="M1 1AE or Manchester"
+            placeholder="M1 1AE"
           />
         </Field>
       </div>

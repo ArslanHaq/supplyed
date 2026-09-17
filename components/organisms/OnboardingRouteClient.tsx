@@ -8,7 +8,6 @@ import {
   downloadOnboardingDocument,
   saveOnboardingAction,
   saveOnboardingStep,
-  uploadOnboardingDocument,
 } from "@/app/(app)/onboarding/actions";
 import { hasCreatedRoleProfile, profileEntryStatus } from "@/features/onboarding/profile-progress";
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
@@ -23,9 +22,10 @@ import { getAuthenticatedEntryHref } from "@/lib/routes";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
+import { Btn } from "../atoms";
 import { PageLoader, PublicThemeControls } from "../molecules";
 import { OnboardingPage } from "./OnboardingPage";
-import type { OnboardingPrefill } from "./onboarding/types";
+import type { OnboardingDocumentUploadActionResult, OnboardingPrefill } from "./onboarding/types";
 
 type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
 const sessionRefreshTimeoutMs = 12_000;
@@ -171,25 +171,42 @@ function readMatchingFoundingIntent(initialRole: AppRole | null, accountEmail?: 
 async function refreshSessionFromTicket(ticket?: string) {
   if (!ticket) return { ok: true as const };
 
-  const signInResult = await withClientTimeout(
-    signIn("credentials", {
-      flow: "verified-email-session",
-      redirect: false,
-      redirectTo: "/post-auth",
-      ticket,
-    }),
-    sessionRefreshTimeoutMs,
-    "Your profile was saved, but the session refresh timed out. Refresh the page and sign in again before uploading documents.",
-  );
+  try {
+    const result = await withClientTimeout(
+      signIn("credentials", {
+        flow: "verified-email-session",
+        redirect: false,
+        redirectTo: "/post-auth",
+        ticket,
+      }),
+      sessionRefreshTimeoutMs,
+      "Your profile was saved, but the session refresh timed out. Refresh the page to continue.",
+    );
 
-  if (!signInResult?.ok) {
+    if (!result?.ok) {
+      return { ok: false as const, message: "Your profile was saved. Sign in again to continue." };
+    }
+
+    return { ok: true as const };
+  } catch (error) {
     return {
-      message: signInResult?.error || "Your onboarding was saved, but we could not refresh your session. Sign in again to continue.",
       ok: false as const,
+      message: error instanceof Error ? error.message : "Your profile was saved. Sign in again to continue.",
     };
   }
+}
 
-  return { ok: true as const };
+async function uploadDocument(payload: FormData): Promise<OnboardingDocumentUploadActionResult> {
+  try {
+    const response = await fetch("/api/onboarding/documents", { method: "POST", body: payload });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || typeof result?.ok !== "boolean") {
+      return { ok: false, message: result?.message || "Document upload failed. Please try again." };
+    }
+    return result;
+  } catch {
+    return { ok: false, message: "Could not upload the document. Check your connection and try again." };
+  }
 }
 
 function OnboardingRouteClientInner({
@@ -209,35 +226,41 @@ function OnboardingRouteClientInner({
   const [foundingIntent, setFoundingIntent] = useState(() => readMatchingFoundingIntent(initialRole, accountEmail));
   const foundingRole = foundingIntent ? foundingSignupRole(foundingIntent.type) : null;
   const [sessionRepairError, setSessionRepairError] = useState<string>();
+  const [showDocuments, setShowDocuments] = useState(false);
   const [role, setRoleState] = useState<SignupRole>(() => normalizeSignupRole(initialRole ?? foundingRole));
   const [roleSelected, setRoleSelected] = useState(Boolean(initialRole ?? foundingRole));
   const [step, setStep] = useState(() => initialStepWithFoundingIntent(initialRole, initialProfileSnapshot, foundingIntent));
-  const [savedProfileSnapshot, setSavedProfileSnapshot] = useState<OnboardingProfileSnapshot>();
-  const profileSnapshot = savedProfileSnapshot ?? initialProfileSnapshot;
-  const effectiveApplicationStatus = profileEntryStatus(profileSnapshot);
+  const [savedProfile, setSavedProfile] = useState<{
+    snapshot: OnboardingProfileSnapshot;
+    serverSnapshot: OnboardingProfileSnapshot;
+  }>();
+  const profileSnapshot = savedProfile?.serverSnapshot === initialProfileSnapshot
+    ? savedProfile.snapshot
+    : initialProfileSnapshot;
+  const effectiveApplicationStatus = showDocuments ? "none" : profileEntryStatus(profileSnapshot);
   useEffect(() => {
-    if (initialRole && effectiveApplicationStatus !== "none") {
-      startRouteLoading();
-      const entryHref = getAuthenticatedEntryHref({
-        applicationStatus: effectiveApplicationStatus,
-        role: initialRole,
-      });
+    const shouldRedirect = initialRole && effectiveApplicationStatus !== "none";
+    if (!shouldRedirect && !sessionRepairTicket) return;
 
-      if (!sessionRepairTicket) {
-        router.replace(entryHref);
+    const entryHref = getAuthenticatedEntryHref({ applicationStatus: effectiveApplicationStatus, role: initialRole });
+    if (!sessionRepairTicket) {
+      startRouteLoading();
+      router.replace(entryHref);
+      return;
+    }
+
+    void refreshSessionFromTicket(sessionRepairTicket).then((result) => {
+      if (!result.ok) {
+        setSessionRepairError(result.message);
         return;
       }
-
-      void refreshSessionFromTicket(sessionRepairTicket).then((result) => {
-        if (!result.ok) {
-          setSessionRepairError(result.message);
-          return;
-        }
-
+      setSessionRepairError(undefined);
+      if (shouldRedirect) {
+        startRouteLoading();
         router.replace(entryHref);
-        router.refresh();
-      });
-    }
+      }
+      router.refresh();
+    });
   }, [effectiveApplicationStatus, initialRole, router, sessionRepairTicket]);
 
   function setRole(role: SignupRole) {
@@ -264,31 +287,42 @@ function OnboardingRouteClientInner({
   }
 
   async function saveStep(payload: FormData) {
-    const result = await saveOnboardingStep(payload);
-    if (!result.ok) return result;
-
-    const sessionRefresh = await refreshSessionFromTicket(result.data.ticket);
-    if (!sessionRefresh.ok) return sessionRefresh;
-    setSavedProfileSnapshot(result.data.snapshot);
-    router.refresh();
-
-    return result;
+    return saveOnboardingStep(payload);
   }
 
   async function finishOnboarding(payload: FormData) {
     const result = await saveOnboardingAction(payload);
-    if (!result.ok) return result;
+    if (!result.ok) {
+      router.refresh();
+      return result;
+    }
+
+    if (payload.get("intent") === "profile" && result.data.snapshot && hasCreatedRoleProfile(result.data.snapshot)) {
+      setShowDocuments(true);
+    }
 
     const sessionRefresh = await refreshSessionFromTicket(result.data.ticket);
-    if (!sessionRefresh.ok) return sessionRefresh;
+    if (!sessionRefresh.ok) {
+      if (result.data.snapshot) {
+        setShowDocuments(true);
+        setSavedProfile({
+          snapshot: { ...result.data.snapshot, applicationStatus: "none" },
+          serverSnapshot: initialProfileSnapshot,
+        });
+      }
+      return { ...sessionRefresh, data: result.data };
+    }
 
-    if (result.data.snapshot) setSavedProfileSnapshot(result.data.snapshot);
+    if (result.data.snapshot) {
+      setSavedProfile({ snapshot: result.data.snapshot, serverSnapshot: initialProfileSnapshot });
+    }
 
     if (result.data.applicationStatus === "none") {
       router.refresh();
       return result;
     }
 
+    setShowDocuments(false);
     startRouteLoading();
     router.push(
       getAuthenticatedEntryHref({
@@ -302,10 +336,19 @@ function OnboardingRouteClientInner({
   }
 
   if (initialRole && effectiveApplicationStatus !== "none") {
+    if (sessionRepairError) {
+      return (
+        <div role="alert" className="mx-auto max-w-lg space-y-4 p-8">
+          <h1 className="text-xl font-semibold">Sign in again to continue</h1>
+          <p>{sessionRepairError}</p>
+          <Btn onClick={logout}>Go to login</Btn>
+        </div>
+      );
+    }
     return (
       <PageLoader
-        description={sessionRepairError || "Syncing your latest backend profile status before opening the workspace."}
-        title={sessionRepairError ? "Session refresh failed" : "Updating account status"}
+        description="Syncing your latest backend profile status before opening the workspace."
+        title="Updating account status"
       />
     );
   }
@@ -316,10 +359,11 @@ function OnboardingRouteClientInner({
         accountEmail={accountEmail}
         foundingType={foundingIntent?.type}
         headerActionLabel="Logout"
+        sessionError={sessionRepairError}
         headerPrompt={accountEmail || "Account"}
         initialSnapshot={profileSnapshot}
         onDocumentView={downloadOnboardingDocument}
-        onDocumentUpload={uploadOnboardingDocument}
+        onDocumentUpload={uploadDocument}
         onFinish={finishOnboarding}
         onLanding={goLanding}
         onLogin={logout}

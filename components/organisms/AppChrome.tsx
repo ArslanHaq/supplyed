@@ -40,13 +40,14 @@ const individualNav: NavItem[] = [
 ];
 
 export function AppChrome({
+  verified,
   state,
   children,
   go,
   onLanding,
   onLogout,
   onSettings,
-}: Pick<RouteProps, "state" | "go"> & { children: ReactNode; onLanding: () => void; onLogout: () => void; onSettings: () => void }) {
+}: Pick<RouteProps, "state" | "go"> & { children: ReactNode; verified: boolean; onLanding: () => void; onLogout: () => void; onSettings: () => void }) {
   const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : individualNav;
   const fallbackUserName = state.role === "institution" ? "School workspace" : state.role === "teacher" ? "Instructor" : "Hirer";
   const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
@@ -69,6 +70,7 @@ export function AppChrome({
           <button aria-label="Open messages" className="notif-btn" onClick={() => go("messaging")} type="button"><Icon name="bell" size={16} /><div className="notif-dot" /></button>
           <button aria-label="Open help" className="notif-btn" type="button"><Icon name="help" size={16} /></button>
           <AppAccountMenu
+            verified={verified}
             displayName={userName}
             onDashboard={() => go("dashboard")}
             onLanding={onLanding}

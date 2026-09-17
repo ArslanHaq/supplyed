@@ -96,6 +96,7 @@ export function contentTypeForFile(file: FileLike, allowedMimes: string[]) {
   const explicit = normalizeMime(file.type);
   const allowed = allowedMimes.map(normalizeMime);
   if (explicit && allowed.includes(explicit)) return explicit;
+  if (explicit && explicit !== "application/octet-stream") return explicit;
 
   const extension = `.${file.name.split(".").pop()?.toLowerCase() ?? ""}`;
   const inferred = allowed.find((mime) => (mimeExtensions[mime] ?? []).includes(extension));
@@ -121,8 +122,12 @@ export function isImageRequirement(requirement: Pick<OnboardingDocumentRequireme
   return allowed.length > 0 && allowed.every((mime) => mime.startsWith("image/"));
 }
 
-export function missingRequiredDocuments(requirements: OnboardingDocumentRequirement[], documents: OnboardingDocumentMap) {
-  return requirements.filter((requirement) => requirement.isRequired && !isDocumentReadyForReview(documents[requirement.id]));
+export function missingRequiredDocuments<T extends { id: string; isRequired: boolean }>(requirements: T[], documents: OnboardingDocumentMap) {
+  return requirements.filter((requirement) => {
+    const document = documents[requirement.id];
+    const needsReplacement = ["REJECTED", "REQUIRES_INFO"].includes(document?.status?.toUpperCase() ?? "");
+    return (requirement.isRequired || needsReplacement) && !isDocumentReadyForReview(document);
+  });
 }
 
 export function isDocumentReadyForReview(document?: { uploadedAt?: string | null; status?: string | null }) {
