@@ -4,6 +4,8 @@ import Link from "next/link";
 import { getSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
+import { useOnboardingSnapshot } from "@/features/onboarding/use-onboarding";
+
 import { buttonClassName } from "../atoms";
 import { PublicAccountMenu } from "../molecules/PublicAccountMenu";
 
@@ -15,6 +17,7 @@ type PublicHeaderAccount = {
 
 export function PublicHeaderAccountSlot() {
   const [account, setAccount] = useState<PublicHeaderAccount | null>(null);
+  const verification = useOnboardingSnapshot(account?.email ?? "", { enabled: Boolean(account?.email) });
 
   useEffect(() => {
     let mounted = true;
@@ -35,7 +38,7 @@ export function PublicHeaderAccountSlot() {
   }, []);
 
   if (account) {
-    return <PublicAccountMenu email={account.email} name={account.name} role={account.role} />;
+    return <PublicAccountMenu email={account.email} name={account.name} role={account.role} verified={verification.data?.verified === true} />;
   }
 
   return (

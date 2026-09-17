@@ -13,7 +13,17 @@ const toneClass: Record<Exclude<Tone, "">, string> = {
   green: "bg-success-tint text-success",
 };
 
-export function Avatar({ name, size = "md", tone = "" }: { name: string; size?: keyof typeof sizeClass; tone?: Tone }) {
+export function Avatar({
+  name,
+  size = "md",
+  src,
+  tone = "",
+}: {
+  name: string;
+  size?: keyof typeof sizeClass;
+  src?: string | null;
+  tone?: Tone;
+}) {
   const initials = name
     .split(" ")
     .map((part) => part[0])
@@ -23,12 +33,12 @@ export function Avatar({ name, size = "md", tone = "" }: { name: string; size?: 
   return (
     <div
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full bg-brand-tint font-bold text-brand",
+        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-tint font-bold text-brand",
         sizeClass[size],
         tone ? toneClass[tone] : null,
       )}
     >
-      {initials}
+      {src ? <span aria-hidden="true" className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${src})` }} /> : initials}
     </div>
   );
 }

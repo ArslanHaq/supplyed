@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Country } from "country-state-city";
 
 import { filterProfileDocumentRequirements } from "@/features/onboarding/document-requirements";
-import { isDocumentReadyForReview } from "@/features/onboarding/document-utils";
+import { missingRequiredDocuments } from "@/features/onboarding/document-utils";
 import { useOnboardingDocumentRequirements } from "@/features/onboarding/use-onboarding";
 import type {
   OnboardingDocumentRequirementSnapshot,
@@ -35,8 +36,6 @@ import {
   createInitialForm,
   documentFileError,
   roleLabel,
-  toUploadedFileFromDocument,
-  uploadedFilesFromSnapshot,
 } from "./utils";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -58,6 +57,11 @@ function snapshotFingerprint(snapshot?: OnboardingProfileSnapshot) {
   });
 }
 
+function countryLabel(countryCode: string) {
+  if (!countryCode.trim()) return "Not provided";
+  return Country.getCountryByCode(countryCode)?.name ?? countryCode;
+}
+
 function snapshotString(current: string, next: string) {
   return next.trim() ? next : current;
 }
@@ -73,17 +77,10 @@ function hasCreatedProfile(snapshot: OnboardingProfileSnapshot | undefined, role
   return Boolean(snapshot.recruiter?.id);
 }
 
-function missingRequiredDocumentRequirements(
-  requirements: OnboardingDocumentRequirementSnapshot[],
-  documents: Record<string, OnboardingDocumentSnapshot>,
-) {
-  return requirements.filter((requirement) => requirement.isRequired && !isDocumentReadyForReview(documents[requirement.id]));
-}
-
 function missingSnapshotDocumentRequirements(snapshot: OnboardingProfileSnapshot | undefined, role: SignupRole) {
   if (!snapshot) return [];
 
-  return missingRequiredDocumentRequirements(
+  return missingRequiredDocuments(
     filterProfileDocumentRequirements(snapshot.documentRequirements ?? [], role),
     snapshot.requirementDocuments ?? {},
   );
@@ -105,7 +102,7 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     complianceEmail: snapshotString(current.complianceEmail, next.complianceEmail),
     contactRole: snapshotString(current.contactRole, next.contactRole),
     coverTypes: snapshotStringArray(current.coverTypes, next.coverTypes),
-    currency: next.currency || current.currency || "GBP",
+    currency: snapshot.instructor?.currency || current.currency || "GBP",
     dailyRate: snapshotString(current.dailyRate, next.dailyRate),
     documents: { ...current.documents, ...next.documents },
     email: snapshotString(current.email, next.email),
@@ -113,7 +110,7 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     hourlyRate: snapshotString(current.hourlyRate, next.hourlyRate),
     institutionAddress: snapshotString(current.institutionAddress, next.institutionAddress),
     institutionCity: snapshotString(current.institutionCity, next.institutionCity),
-    institutionCountryCode: next.institutionCountryCode || current.institutionCountryCode || "GB",
+    institutionCountryCode: snapshot.institution?.countryCode || current.institutionCountryCode || "GB",
     institutionDomain: snapshotString(current.institutionDomain, next.institutionDomain),
     institutionProfileId: snapshotString(current.institutionProfileId, next.institutionProfileId),
     institutionRegistrationId: snapshotString(current.institutionRegistrationId, next.institutionRegistrationId),
@@ -121,6 +118,8 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     localAuthority: snapshotString(current.localAuthority, next.localAuthority),
     maxTravelDistance: snapshotString(current.maxTravelDistance, next.maxTravelDistance),
     phone: snapshotString(current.phone, next.phone),
+    profileCity: snapshotString(current.profileCity, next.profileCity),
+    profileCountryCode: snapshot.instructor?.countryCode || snapshot.recruiter?.countryCode || current.profileCountryCode || "GB",
     postcode: snapshotString(current.postcode, next.postcode),
     recruiterProfileId: snapshotString(current.recruiterProfileId, next.recruiterProfileId),
     schoolName: snapshotString(current.schoolName, next.schoolName),
@@ -165,6 +164,8 @@ function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill) {
     localAuthority: fillEmpty(current.localAuthority, prefill.localAuthority),
     maxTravelDistance: fillEmpty(current.maxTravelDistance, prefill.maxTravelDistance),
     phone: fillEmpty(current.phone, prefill.phone),
+    profileCity: fillEmpty(current.profileCity, prefill.profileCity),
+    profileCountryCode: fillEmpty(current.profileCountryCode, prefill.profileCountryCode),
     postcode: fillEmpty(current.postcode, prefill.postcode),
     schoolName: fillEmpty(current.schoolName, prefill.schoolName),
     skills: fillEmptyArray(current.skills, prefill.skills),
@@ -224,6 +225,7 @@ export function useOnboardingForm({
   const progress = Math.round((currentStep / steps.length) * 100);
   const isLastStep = currentStep === steps.length;
   const mountedRef = useRef(true);
+  const mutationPendingRef = useRef(false);
   const previousStepRef = useRef(currentStep);
   const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
   const requirementsQuery = useOnboardingDocumentRequirements(activeRole, { enabled: roleSelected });
@@ -232,6 +234,7 @@ export function useOnboardingForm({
       id: requirement.id,
       context: requirement.context,
       isRequired: requirement.isRequired,
+      requiresReview: requirement.requiresReview,
       documentType: {
         allowedMimes: requirement.allowedMimes,
         code: requirement.code,
@@ -286,7 +289,13 @@ export function useOnboardingForm({
       { label: "Name", value: form.fullName || "Not provided" },
       { label: "Email", value: form.email || accountEmail || "Not provided" },
       { label: "Phone", value: form.phone || "Not provided" },
-      { label: "Postalcode / location", value: form.postcode || "Not provided" },
+      ...(activeRole === "institution"
+        ? [{ label: "Postal code", value: form.postcode || "Not provided" }]
+        : [
+            { label: "Country", value: countryLabel(form.profileCountryCode) },
+            { label: "City", value: form.profileCity || "Not provided" },
+            { label: "Postal code", value: form.postcode || "Not provided" },
+          ]),
     ];
 
     if (activeRole === "teacher") {
@@ -351,9 +360,8 @@ export function useOnboardingForm({
           { label: "Your role", value: form.contactRole || "Not provided" },
           { label: "Domain", value: form.institutionDomain || "Not provided" },
           { label: "Address", value: form.institutionAddress || "Not provided", wide: true },
+          { label: "Country", value: countryLabel(form.institutionCountryCode) },
           { label: "City", value: form.institutionCity || "Not provided" },
-          { label: "County / region", value: form.localAuthority || "Not provided" },
-          { label: "Country", value: form.institutionCountryCode || "GB" },
           { label: "Registration ID", value: form.institutionRegistrationId || "Optional" },
           { label: "Pupil count", value: form.typicalPupilCount || "Optional" },
           { label: "Needs", value: <ReviewBadgeList items={form.coverTypes} />, wide: true },
@@ -402,7 +410,7 @@ export function useOnboardingForm({
   }
 
   async function uploadRequirementDocument(requirementId: string, file: UploadedFile) {
-    if (pending === "submit" || requirementUploadPending) return;
+    if (mutationPendingRef.current || !lockedDocumentStage) return;
 
     const requirement = documentRequirements.find((item) => item.id === requirementId);
     const label = requirement?.documentType.name || "Document";
@@ -437,6 +445,7 @@ export function useOnboardingForm({
 
     setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: undefined }));
     setSubmitError(undefined);
+    mutationPendingRef.current = true;
     setRequirementUploadPending(requirementId);
 
     try {
@@ -462,6 +471,7 @@ export function useOnboardingForm({
         [requirementId]: error instanceof Error && error.message ? error.message : `${label} could not be uploaded. Choose the file again.`,
       }));
     } finally {
+      mutationPendingRef.current = false;
       if (mountedRef.current) setRequirementUploadPending(null);
     }
   }
@@ -510,12 +520,10 @@ export function useOnboardingForm({
     setSubmitError(undefined);
   }
 
-  function applySnapshot(snapshot?: OnboardingProfileSnapshot, options?: { preserveDocumentRequirements?: boolean }) {
+  function applySnapshot(snapshot?: OnboardingProfileSnapshot) {
     if (!snapshot) return;
     setForm((current) => mergeSnapshotForm(current, accountEmail, snapshot));
-    if (snapshot.documentRequirements.length || !options?.preserveDocumentRequirements) {
-      setDocumentRequirementsSnapshot(snapshot.documentRequirements);
-    }
+    setDocumentRequirementsSnapshot(snapshot.documentRequirements);
     setRequirementDocuments(snapshot.requirementDocuments ?? {});
   }
 
@@ -527,7 +535,11 @@ export function useOnboardingForm({
       if (!form.fullName.trim()) nextErrors.fullName = "Enter your full name.";
       if (!form.phone.trim()) nextErrors.phone = "Enter a contact number.";
       else if (!phonePattern.test(form.phone.trim())) nextErrors.phone = "Use a valid phone number.";
-      if (!form.postcode.trim()) nextErrors.postcode = "Enter your postalcode or location.";
+      if (roleSelected && activeRole !== "institution") {
+        if (!form.profileCountryCode.trim()) nextErrors.profileCountryCode = "Select your country.";
+        if (!form.profileCity.trim()) nextErrors.profileCity = "Select your city.";
+      }
+      if (!form.postcode.trim()) nextErrors.postcode = "Enter your postal code.";
 
       if (activeRole === "teacher") {
         if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
@@ -547,8 +559,8 @@ export function useOnboardingForm({
       if (!form.institutionDomain.trim()) nextErrors.institutionDomain = "Enter the school or trust domain.";
       else if (!domainPattern.test(form.institutionDomain.trim())) nextErrors.institutionDomain = "Use a valid domain, for example greenfield.ac.uk.";
       if (!form.institutionAddress.trim()) nextErrors.institutionAddress = "Enter the institution address.";
-      if (!form.institutionCity.trim()) nextErrors.institutionCity = "Enter the city.";
-      if (!form.localAuthority.trim()) nextErrors.localAuthority = "Enter the county or region.";
+      if (!form.institutionCountryCode.trim()) nextErrors.institutionCountryCode = "Select the institution country.";
+      if (!form.institutionCity.trim()) nextErrors.institutionCity = "Select the institution city.";
       if (form.coverTypes.length === 0) nextErrors.coverTypes = "Choose at least one staffing need.";
     }
 
@@ -564,9 +576,10 @@ export function useOnboardingForm({
   }
 
   async function continueStep() {
-    if (lockedDocumentStage || pending || uploadPending || requirementUploadPending) return;
+    if (lockedDocumentStage || mutationPendingRef.current) return;
     if (!validateStep(currentStep)) return;
 
+    mutationPendingRef.current = true;
     setPending("step");
     setSubmitError(undefined);
 
@@ -583,12 +596,13 @@ export function useOnboardingForm({
     } catch (error) {
       setSubmitError(error instanceof Error && error.message ? error.message : "This step could not be saved. Try again.");
     } finally {
+      mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);
     }
   }
 
   async function submitSignup() {
-    if (pending || uploadPending || requirementUploadPending) return;
+    if (lockedDocumentStage || mutationPendingRef.current) return;
     for (let targetStep = 1; targetStep < steps.length; targetStep += 1) {
       if (!validateStep(targetStep as SignupStep)) {
         setStep(targetStep);
@@ -596,62 +610,41 @@ export function useOnboardingForm({
       }
     }
 
+    mutationPendingRef.current = true;
     setPending("submit");
     setSubmitError(undefined);
 
     try {
-      const currentMissingRequirements = missingRequiredDocumentRequirements(documentRequirements, requirementDocuments);
-      const adminConfigResult = await onStepSave(buildPayload());
-      if (!adminConfigResult.ok) {
-        setSubmitError(adminConfigResult.message || "Document requirements could not be checked. Try again.");
-        return;
-      }
-
-      const latestSnapshot = adminConfigResult.data?.snapshot;
-      const latestRequirements = filterProfileDocumentRequirements(latestSnapshot?.documentRequirements ?? [], activeRole);
-      const latestRequirementDocuments = latestSnapshot?.requirementDocuments ?? {};
-      const latestMissingRequirements = missingRequiredDocumentRequirements(latestRequirements, latestRequirementDocuments);
-      const missingRequirementsBeforeProfile = latestMissingRequirements.length > 0 ? latestMissingRequirements : currentMissingRequirements;
-
-      applySnapshot(latestSnapshot);
-
       const payload = buildPayload();
-      if (missingRequirementsBeforeProfile.length > 0) {
-        payload.set("intent", "profile");
-      }
+      payload.set("intent", "profile");
 
       const result = await onFinish(payload);
-      if (!result.ok) {
-        setSubmitError(result.message || "Onboarding could not be submitted. Try again.");
-        return;
-      }
-
       const snapshot = result.data?.snapshot;
-      applySnapshot(snapshot, { preserveDocumentRequirements: missingRequirementsBeforeProfile.length > 0 });
-
-      if (
-        result.data?.applicationStatus === "none" &&
-        (missingRequirementsBeforeProfile.length > 0 || missingSnapshotDocumentRequirements(snapshot, activeRole).length > 0)
-      ) {
+      applySnapshot(snapshot);
+      if (hasCreatedProfile(snapshot, activeRole)) {
         setLockedDocumentStage(true);
         setRequirementDocumentErrors({});
-        setSubmitError(undefined);
+      }
+
+      if (!result.ok) {
+        setSubmitError(result.message || "Onboarding could not be submitted. Try again.");
       }
     } catch (error) {
       setSubmitError(error instanceof Error && error.message ? error.message : "Onboarding could not be submitted. Try again.");
     } finally {
+      mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);
     }
   }
 
   async function submitDocumentsForReview() {
-    if (pending || uploadPending || requirementUploadPending) return;
+    if (!lockedDocumentStage || mutationPendingRef.current) return;
     if (documentRequirementsLoading || documentRequirementsError) {
       setSubmitError("Wait for the document requirements to load, or retry the check before submitting.");
       return;
     }
 
-    const missingRequirements = missingRequiredDocumentRequirements(documentRequirements, requirementDocuments);
+    const missingRequirements = missingRequiredDocuments(documentRequirements, requirementDocuments);
     if (missingRequirements.length > 0) {
       setRequirementDocumentErrors((current) => ({
         ...current,
@@ -661,6 +654,7 @@ export function useOnboardingForm({
       return;
     }
 
+    mutationPendingRef.current = true;
     setPending("submit");
     setSubmitError(undefined);
 
@@ -690,6 +684,7 @@ export function useOnboardingForm({
     } catch (error) {
       setSubmitError(error instanceof Error && error.message ? error.message : "Profile could not be sent for review. Try again.");
     } finally {
+      mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);
     }
   }

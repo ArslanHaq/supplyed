@@ -94,6 +94,7 @@ export function TeacherDocumentsStep({ controller }: StepComponentProps) {
                 onFile={(selected) => uploadDocument(requirement, selected)}
                 onView={() => viewDocument(requirement.id, file)}
                 pending={uploadPending === requirement.id}
+                rejectionComment={file?.rejectionComment}
                 required={requirement.isRequired}
                 status={file?.status}
                 title={documentRequirement.name}

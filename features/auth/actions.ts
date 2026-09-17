@@ -4,6 +4,8 @@ import { actionError, actionOk } from "@/lib/server/action-response";
 import { signIn } from "@/auth";
 import { getAuthenticatedEntryHref } from "@/lib/routes";
 import { api, ApiError } from "@/lib/server/api-client";
+import { getDocumentState } from "@/features/onboarding/documents";
+import { missingRequiredDocuments } from "@/features/onboarding/document-utils";
 import { getServerAuthContext } from "@/lib/server/auth-context";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
@@ -36,9 +38,7 @@ import type { BackendAuthResponse, EmailVerificationResendResponse, TwoFactorLog
 
 async function createVerifiedSessionPayload(response: BackendAuthResponse) {
   const role = normalizeRole(response.user.role);
-  const responseStatus = normalizeStatus(response.user.applicationStatus);
-  const profileStatus = await readProfileApplicationStatus(role, response.accessToken);
-  const applicationStatus = profileStatus !== "none" ? profileStatus : responseStatus;
+  const applicationStatus = await readProfileApplicationStatus(role, response.accessToken);
   const sessionResponse: BackendAuthResponse = {
     ...response,
     user: {
@@ -96,12 +96,13 @@ async function readProfileApplicationStatus(role: AppRole | null, accessToken?: 
       headers: buildBearerHeaders(accessToken),
     });
 
-    if (role === "individual" && isRecord(profile)) {
-      const status = normalizeStatus(profile.status);
-      return status === "rejected" || status === "suspended" ? status : "approved";
-    }
+    const status = normalizeStatus(isRecord(profile) ? profile.status : undefined);
+    if (status === "suspended") return status;
+    if (status === "none" || status === "rejected") return "none";
 
-    return normalizeStatus(isRecord(profile) ? profile.status : undefined);
+    const documents = await getDocumentState(role, { accessToken });
+    if (missingRequiredDocuments(documents.documentRequirements, documents.documents).length > 0) return "none";
+    return status;
   } catch (error) {
     if (error instanceof ApiError && (error.status === 403 || error.status === 404)) return "none";
     throw error;
@@ -300,6 +301,10 @@ export async function signupWithEmailAction(_previousState: unknown, formData: F
       } catch (resendError) {
         return toAuthActionError(resendError, "This email is already registered. Log in or request a new code.");
       }
+    }
+
+    if (error instanceof ApiError && error.status >= 500) {
+      return actionError("We could not finish signup. Please try again with the same email and password; your account may already have been saved.");
     }
 
     return toAuthActionError(error, "We could not create this account.");
