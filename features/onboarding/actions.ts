@@ -15,7 +15,6 @@ import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 import { missingRequiredDocuments } from "./document-utils";
 import {
   getDocumentSnapshots,
-  includeRejectedDocuments,
   getProfileDocumentRequirements as loadProfileDocumentRequirements,
   uploadProfileDocument,
 } from "./documents";
@@ -110,7 +109,6 @@ type BackendUserProfile = {
   phone?: string | null;
   postCode?: string | null;
   role?: unknown;
-  onboarding?: { rejectedDocuments?: unknown };
 };
 
 type BackendInstructorProfile = {
@@ -467,8 +465,8 @@ async function getRecruiterSnapshot(accessToken?: string) {
   }
 }
 
-async function getDocumentSnapshotData(accessToken?: string, rejectedDocuments?: unknown): Promise<DocumentSnapshotData> {
-  const requirementDocuments = includeRejectedDocuments(await getDocumentSnapshots({ accessToken }), rejectedDocuments);
+async function getDocumentSnapshotData(accessToken?: string): Promise<DocumentSnapshotData> {
+  const requirementDocuments = await getDocumentSnapshots({ accessToken });
   const documents: DocumentSnapshotData["documents"] = {};
   for (const document of Object.values(requirementDocuments)) {
     const kind = documentKind(document.code);
@@ -494,11 +492,11 @@ async function getProfileDocumentRequirements(role?: AppRole | null, accessToken
   }));
 }
 
-async function getDocumentState(role?: AppRole | null, accessToken?: string, rejectedDocuments?: unknown) {
+async function getDocumentState(role?: AppRole | null, accessToken?: string) {
   if (!role) return { documentRequirements: [], ...emptyDocumentSnapshotData() };
   const [documentRequirements, documentData] = await Promise.all([
     getProfileDocumentRequirements(role, accessToken),
-    getDocumentSnapshotData(accessToken, rejectedDocuments),
+    getDocumentSnapshotData(accessToken),
   ]);
 
   return { documentRequirements, ...documentData };
@@ -516,7 +514,7 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
     const currentUser = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
     role = normalizeRole(currentUser.role);
     const user = normalizeUserSnapshot(currentUser, authContext.email ?? undefined);
-    const documentState = await getDocumentState(role, undefined, currentUser.onboarding?.rejectedDocuments);
+    const documentState = await getDocumentState(role);
     const snapshot: OnboardingProfileSnapshot = {
       applicationStatus: "none",
       documentRequirements: documentState.documentRequirements,

@@ -59,34 +59,17 @@ type BackendDocumentRequirement = {
   requiresReview?: boolean;
 };
 
-type BackendDocumentReviewComment = {
-  comment?: string | null;
-  createdAt?: string | Date | null;
-  message?: string | null;
-  notes?: string | null;
-  status?: string | null;
-  toStatus?: string | null;
-};
-
 type BackendDocument = {
   applicationId?: string | null;
   contentType?: string | null;
   createdAt?: Date | string;
-  currentVersion?: {
-    reviews?: BackendDocumentReviewComment[] | null;
-  } | null;
   deletedAt?: Date | string | null;
   fileKey?: string | null;
   id?: string;
-  latestReviewComment?: BackendDocumentReviewComment | string | null;
   originalName?: string | null;
   rejectionComment?: string | null;
   requirement?: BackendDocumentRequirement | null;
   requirementId?: string;
-  reviewComment?: BackendDocumentReviewComment | string | null;
-  reviewComments?: BackendDocumentReviewComment[] | BackendDocumentReviewComment | string | null;
-  reviewNotes?: string | null;
-  reviews?: BackendDocumentReviewComment[] | null;
   sizeBytes?: unknown;
   status?: string;
   uploadedAt?: Date | string | null;
@@ -182,49 +165,6 @@ function readStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())) : [];
 }
 
-function readReviewComment(value: unknown): string | undefined {
-  if (typeof value === "string") return readString(value);
-  if (!isRecord(value)) return undefined;
-
-  return readString(value.notes) ?? readString(value.comment) ?? readString(value.message) ?? readString(value.rejectionComment) ?? readString(value.reviewNotes);
-}
-
-function reviewCommentStatus(review: Record<string, unknown>) {
-  return (readString(review.toStatus) ?? readString(review.status))?.toUpperCase();
-}
-
-function reviewCommentTime(review: Record<string, unknown>) {
-  const timestamp = Date.parse(readString(review.createdAt) ?? "");
-  return Number.isFinite(timestamp) ? timestamp : 0;
-}
-
-function latestRejectionComment(reviews: unknown): string | undefined {
-  if (!Array.isArray(reviews)) return readReviewComment(reviews);
-
-  return reviews
-    .filter(isRecord)
-    .filter((review) => {
-      const status = reviewCommentStatus(review);
-      return !status || status === "REJECTED" || status === "REQUIRES_INFO";
-    })
-    .sort((left, right) => reviewCommentTime(right) - reviewCommentTime(left))
-    .map(readReviewComment)
-    .find(Boolean);
-}
-
-function rejectionCommentFromDocument(document: BackendDocument) {
-  return (
-    readString(document.rejectionComment) ??
-    readString(document.reviewNotes) ??
-    readReviewComment(document.latestReviewComment) ??
-    readReviewComment(document.reviewComment) ??
-    latestRejectionComment(document.reviewComments) ??
-    latestRejectionComment(document.currentVersion?.reviews) ??
-    latestRejectionComment(document.reviews) ??
-    null
-  );
-}
-
 /**
  * Right after the profile is created the session token still carries the USER
  * role, so callers can pass a freshly refreshed token instead.
@@ -259,30 +199,13 @@ function normalizeDocument(document: BackendDocument): OnboardingDocumentSnapsho
     code: readString(document.requirement?.documentType?.code) ?? null,
     id: document.id,
     name: readString(document.originalName) ?? "",
-    rejectionComment: rejectionCommentFromDocument(document),
+    rejectionComment: readString(document.rejectionComment) ?? null,
     requirementId: document.requirementId,
     size: readNumber(document.sizeBytes) ?? 0,
     status: readString(document.status) ?? null,
     type: readString(document.contentType) ?? "",
     uploadedAt: readString(document.fileKey) ? (readIsoDate(document.uploadedAt) ?? null) : null,
   };
-}
-
-/** Keep review notes returned by /auth/me alongside the document list. */
-export function includeRejectedDocuments(documents: OnboardingDocumentMap, rejected: unknown): OnboardingDocumentMap {
-  if (!Array.isArray(rejected)) return documents;
-  const result = { ...documents };
-  for (const item of rejected) {
-    if (!isRecord(item)) continue;
-    const document = normalizeDocument(item as BackendDocument);
-    if (!document?.requirementId || !document.uploadedAt || !["REJECTED", "REQUIRES_INFO"].includes(document.status ?? "")) continue;
-    const current = result[document.requirementId];
-    if (!current) result[document.requirementId] = document;
-    else if (current.id === document.id && current.status === document.status && !current.rejectionComment) {
-      result[document.requirementId] = { ...current, rejectionComment: document.rejectionComment };
-    }
-  }
-  return result;
 }
 
 export async function getProfileDocumentRequirements(
