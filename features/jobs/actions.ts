@@ -5,7 +5,13 @@ import { revalidateTag } from "next/cache";
 import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 
-import { normalizeBackendJob, normalizeJobCreateInput, normalizeJobUpdateInput, toCreateJobPayload, toUpdateJobPayload } from "./schemas";
+import {
+  normalizeBackendJob,
+  normalizeJobCreateInput,
+  normalizeJobUpdateInput,
+  toCreateJobPayload,
+  toUpdateJobPayload,
+} from "./schemas";
 import type { BackendJobResponse, JobCreateInput, JobUpdateInput } from "./types";
 
 export async function createJobAction(input: JobCreateInput) {
@@ -14,14 +20,27 @@ export async function createJobAction(input: JobCreateInput) {
 
   try {
     const created = await api.post<BackendJobResponse>("/jobs", toCreateJobPayload(normalizedInput));
-    const job = shouldActivate
-      ? await api.patch<BackendJobResponse>(`/jobs/${created.id}`, { status: "ACTIVE" })
-      : created;
+    let job = created;
+    let publishError: string | undefined;
+    if (shouldActivate) {
+      try {
+        job = await api.patch<BackendJobResponse>(`/jobs/${created.id}`, { status: "ACTIVE" });
+      } catch (error) {
+        publishError = readJobActionError(error, "Publishing failed. Try publishing this saved draft again.");
+      }
+    }
 
     revalidateTag("jobs", "max");
     revalidateTag("jobs:mine", "max");
     revalidateTag(`job:${job.id}`, "max");
-    return actionOk(normalizeBackendJob(job), shouldActivate ? "Job published." : "Job saved as draft.");
+    return actionOk(
+      normalizeBackendJob(job),
+      publishError
+        ? `Draft saved, but not published: ${publishError}`
+        : shouldActivate
+          ? "Job published."
+          : "Job saved as draft.",
+    );
   } catch (error) {
     return actionError(readJobActionError(error, "Job could not be saved. Check the details and try again."), {
       code: readJobActionCode(error),

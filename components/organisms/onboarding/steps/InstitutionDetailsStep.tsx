@@ -20,7 +20,7 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
             placeholder="Greenfield Primary School"
           />
         </Field>
-        <Field label="Your role" htmlFor="contact-role" error={errors.contactRole} required>
+        <Field label="Your role" htmlFor="contact-role" error={errors.contactRole}>
           <input
             id="contact-role"
             className={fieldClass(errors.contactRole)}
@@ -34,7 +34,15 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
             id="institution-domain"
             className={fieldClass(errors.institutionDomain)}
             value={form.institutionDomain}
-            onChange={(event) => updateField("institutionDomain", event.target.value.replace(/^https?:\/\//i, "").split("/")[0].toLowerCase())}
+            onChange={(event) =>
+              updateField(
+                "institutionDomain",
+                event.target.value
+                  .replace(/^https?:\/\//i, "")
+                  .split("/")[0]
+                  .toLowerCase(),
+              )
+            }
             placeholder="greenfield.ac.uk"
           />
         </Field>
@@ -82,7 +90,7 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
         </Field>
       </div>
 
-      <Field label="Staffing needs" error={errors.coverTypes} required>
+      <Field label="Staffing needs" error={errors.coverTypes}>
         <MultiSelectDropdown
           error={Boolean(errors.coverTypes)}
           options={coverTypes}

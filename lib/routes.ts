@@ -38,12 +38,11 @@ export function shouldShowApplicationStatusPage(role: AppRole | null | undefined
 }
 
 export function getAuthenticatedEntryHref({
-  applicationStatus,
   role,
 }: {
   applicationStatus: ApplicationStatus;
   role: AppRole | null | undefined;
 }) {
-  if (!role || !hasSubmittedApplicationStatus(applicationStatus)) return "/onboarding";
+  if (!role) return "/onboarding";
   return buildAppHref("dashboard");
 }

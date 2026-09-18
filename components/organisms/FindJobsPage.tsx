@@ -1,3 +1,4 @@
+import { formatJobPay } from "@/features/jobs/presentation";
 import { useState } from "react";
 
 import type { JobListFilters } from "@/features/jobs/types";
@@ -9,21 +10,23 @@ import { Btn, Field, Icon, Tag } from "../atoms";
 import { SelectDropdown } from "../molecules/OptionDropdowns";
 import { MatchScorePanel, PageHead, SectionLoader } from "../molecules";
 
-export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
-  const [tab, setTab] = useState<"recommended" | "all">("recommended");
+export function FindJobsPage({ go, role }: Pick<RouteProps, "go"> & { role?: RouteProps["role"] }) {
+  const [tab, setTab] = useState<"recommended" | "all">(role === "teacher" ? "recommended" : "all");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   const [minScore, setMinScore] = useState(0);
   const [urgency, setUrgency] = useState("All jobs");
   const [keyStage, setKeyStage] = useState("All stages");
   const [subject, setSubject] = useState("All subjects");
   const filters: JobListFilters = {
+    search,
     keyStage: keyStage === "All stages" ? undefined : keyStage,
     subject: subject === "All subjects" ? undefined : subject,
     urgent: urgency === "Urgent only" ? true : undefined,
   };
   const jobsQuery = useJobs(filters);
   const jobs = jobsQuery.data ?? [];
-  const recommendedQuery = useRecommendedJobs({ limit: 20, minScore, page });
+  const recommendedQuery = useRecommendedJobs({ limit: 20, minScore, page }, role === "teacher" && tab === "recommended");
   const recommendedJobs = recommendedQuery.data?.jobs ?? [];
   const activeCount = tab === "recommended" ? recommendedQuery.data?.pagination.total ?? recommendedJobs.length : jobs.length;
   const activeLoading = tab === "recommended" ? recommendedQuery.isLoading : jobsQuery.isLoading;
@@ -33,10 +36,11 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
     <div className="app-page">
       <PageHead title="Find jobs" subtitle={`${activeCount} ${tab === "recommended" ? "matched" : "open"} roles`} />
       <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-3 shadow-(--shadow-xs)">
-        <Btn size="sm" variant={tab === "recommended" ? "secondary" : "ghost"} onClick={() => setTab("recommended")}>For you</Btn>
+        {role === "teacher" ? <Btn size="sm" variant={tab === "recommended" ? "secondary" : "ghost"} onClick={() => setTab("recommended")}>For you</Btn> : null}
         <Btn size="sm" variant={tab === "all" ? "secondary" : "ghost"} onClick={() => setTab("all")}>All jobs</Btn>
         {tab === "recommended" ? <label className="ml-auto flex items-center gap-2 text-xs font-semibold">Minimum score<input className="input w-24" min={0} max={100} type="number" value={minScore} onChange={(event) => { setMinScore(Math.min(100, Math.max(0, Number(event.target.value) || 0))); setPage(1); }} /></label> : null}
       </div>
+      {tab === "all" ? <input className="input mb-4" aria-label="Search jobs" placeholder="Search roles, skills or location" value={search} onChange={(event) => setSearch(event.target.value)} /> : null}
       {tab === "all" ? <div className="mb-5 grid gap-3 rounded-xl border border-border bg-white p-3 shadow-(--shadow-xs) md:grid-cols-3">
         <Field label="Role type">
           <SelectDropdown
@@ -71,11 +75,11 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
                 <div className="mb-1 font-serif text-xl">{job.title}</div>
                 <div className="mb-3 text-[15px] text-muted">{job.school} - {[job.city, job.county, job.postalCode].filter(Boolean).join(", ")} - {job.date}</div>
                 <div className="mb-3 flex flex-wrap gap-1">{job.requiredSkills.map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div>
-                <div className="flex flex-wrap gap-4 text-xs text-muted"><div className="flex items-center gap-1"><Icon name="pound" size={12} />£{job.rate}/day</div></div>
+                <div className="flex flex-wrap gap-4 text-xs text-muted"><div className="flex items-center gap-1"><Icon name="pound" size={12} />{formatJobPay(job)}</div></div>
               </div>
               <Btn size="sm">View</Btn>
             </div>
-          )) : recommendedJobs.map(({ job, match }) => <div key={job.id} className="card card-pad-lg cursor-pointer" onClick={() => go("job-detail", { jobId: job.id })}><div className="mb-4 flex flex-wrap items-start gap-4"><div className="min-w-[220px] flex-1"><div className="mb-1 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag>{job.requiredSkills.slice(0, 3).map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div><div className="font-serif text-xl">{job.title}</div><div className="text-sm text-muted">{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} · {job.date}{job.minExperienceYears != null ? ` · ${job.minExperienceYears}+ years experience` : ""}</div></div><div className="text-right"><div className="font-serif text-lg">£{job.rate}<span className="font-sans text-xs text-muted">/day</span></div><Btn className="mt-2" size="sm">View & apply</Btn></div></div><div onClick={(event) => event.stopPropagation()}><MatchScorePanel match={match} /></div></div>)}
+          )) : recommendedJobs.map(({ job, match }) => <div key={job.id} className="card card-pad-lg cursor-pointer" onClick={() => go("job-detail", { jobId: job.id })}><div className="mb-4 flex flex-wrap items-start gap-4"><div className="min-w-[220px] flex-1"><div className="mb-1 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag>{job.requiredSkills.slice(0, 3).map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div><div className="font-serif text-xl">{job.title}</div><div className="text-sm text-muted">{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} · {job.date}{job.minExperienceYears != null ? ` · ${job.minExperienceYears}+ years experience` : ""}</div></div><div className="text-right"><div className="font-serif text-lg">{formatJobPay(job)}</div><Btn className="mt-2" size="sm">View & apply</Btn></div></div><div onClick={(event) => event.stopPropagation()}><MatchScorePanel match={match} /></div></div>)}
           {!activeLoading && !activeError && activeCount === 0 ? (
             <div className="card card-pad text-muted">No jobs match these filters.</div>
           ) : null}
@@ -85,7 +89,7 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
           <div className="eyebrow mb-2.5">Map view</div>
           <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br from-[var(--se-tint)] to-[var(--chalk)]">
             {[[30, 25], [55, 40], [40, 65], [70, 55]].map(([x, y], index) => {
-              const job = jobs[index];
+              const job = (tab === "recommended" ? recommendedJobs.map((entry) => entry.job) : jobs)[index];
               if (!job) return null;
 
               return (

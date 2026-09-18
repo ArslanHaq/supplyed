@@ -16,13 +16,7 @@ export async function createApplicationAction(input: ApplicationCreateInput) {
   if (!normalized.jobId) {
     return actionError("Choose a valid job before applying.", { code: "JOB_ID_REQUIRED" });
   }
-  if (!normalized.coverLetter) {
-    return actionError("Add a cover letter before applying.", {
-      code: "COVER_LETTER_REQUIRED",
-      fieldErrors: { coverLetter: "Add a cover letter before applying." },
-    });
-  }
-  if (normalized.coverLetter.length > MAX_COVER_LETTER_LENGTH) {
+  if ((normalized.coverLetter?.length ?? 0) > MAX_COVER_LETTER_LENGTH) {
     return actionError(`Cover letter must be ${MAX_COVER_LETTER_LENGTH.toLocaleString()} characters or fewer.`, {
       code: "COVER_LETTER_TOO_LONG",
       fieldErrors: { coverLetter: `Use ${MAX_COVER_LETTER_LENGTH.toLocaleString()} characters or fewer.` },
@@ -47,6 +41,8 @@ export async function updateApplicationStatusAction(input: ApplicationStatusUpda
   try {
     const application = await api.patch<JobApplication>(`/applications/${input.id}/status`, { status: input.status });
     revalidateTag("applications", "max");
+    revalidateTag("jobs", "max");
+    revalidateTag("jobs:mine", "max");
     revalidateTag(`applications:job:${application.jobId}`, "max");
     return actionOk(normalizeApplication(application), "Application status updated.");
   } catch (error) {

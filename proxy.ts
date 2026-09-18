@@ -1,11 +1,18 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getAuthenticatedEntryHref, hasSubmittedApplicationStatus } from "./lib/routes";
+import { getAuthenticatedEntryHref } from "./lib/routes";
 import type { AppRole, ApplicationStatus } from "./types/supplyed";
 
 const appRoles = new Set<AppRole>(["institution", "teacher", "individual"]);
-const appStatuses = new Set<ApplicationStatus>(["none", "pending_review", "approved", "rejected", "suspended"]);
+const appStatuses = new Set<ApplicationStatus>([
+  "none",
+  "pending_review",
+  "approved",
+  "rejected",
+  "suspended",
+  "deactivated",
+]);
 const guestOnlyRoutes = new Set(["/forgot-password", "/login", "/signup"]);
 
 function getAuthCookieSecret() {
@@ -34,11 +41,14 @@ function readAppRole(role: unknown): AppRole | null {
 }
 
 function readApplicationStatus(status: unknown): ApplicationStatus {
-  return typeof status === "string" && appStatuses.has(status as ApplicationStatus) ? (status as ApplicationStatus) : "none";
+  return typeof status === "string" && appStatuses.has(status as ApplicationStatus)
+    ? (status as ApplicationStatus)
+    : "none";
 }
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  if (pathname === "/find-jobs" || pathname === "/job-detail") return NextResponse.next();
   const isGuestOnlyRoute = guestOnlyRoutes.has(pathname);
   const token = await getToken({
     req: request,
@@ -59,7 +69,7 @@ export async function proxy(request: NextRequest) {
 
   const role = readAppRole(token.role);
   const applicationStatus = readApplicationStatus(token.applicationStatus);
-  const setupComplete = Boolean(role && hasSubmittedApplicationStatus(applicationStatus));
+  const setupComplete = Boolean(role);
   const isOnboardingRoute = pathname.startsWith("/onboarding");
 
   if (isGuestOnlyRoute) {

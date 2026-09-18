@@ -5,8 +5,8 @@ export type ApplicationStage = "applied" | "shortlisted" | "interview" | "hired"
 export type MessageAuthor = "me" | "them";
 export type AppRole = "institution" | "teacher" | "individual";
 export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
-export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
-export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED";
+export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended" | "deactivated";
+export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED" | "SUSPENDED";
 export type JobPayType = "daily" | "fixed" | "hourly";
 
 export type AppPage =
@@ -119,6 +119,7 @@ export type SocialAuthAvailability = {
 };
 
 export type AppState = {
+  isFullyVerified?: boolean;
   accountName?: string;
   role: AppRole;
   page: AppPage;

@@ -20,7 +20,10 @@ function getDisplayName(name?: string | null, email?: string | null) {
   const trimmedName = name?.trim();
   if (trimmedName) return trimmedName;
 
-  const emailName = email?.split("@")[0]?.replace(/[._-]+/g, " ").trim();
+  const emailName = email
+    ?.split("@")[0]
+    ?.replace(/[._-]+/g, " ")
+    .trim();
   return emailName || "SupplyED account";
 }
 
@@ -59,9 +62,7 @@ function getAccountLinks(role?: string | null) {
     ];
   }
 
-  return [
-    { href: "/post-auth", icon: "home", label: "Complete setup", sub: "Continue account setup" },
-  ];
+  return [{ href: "/post-auth", icon: "home", label: "Complete setup", sub: "Continue account setup" }];
 }
 
 export function PublicAccountMenu({ email, name, role, verified }: PublicAccountMenuProps) {
@@ -111,7 +112,10 @@ export function PublicAccountMenu({ email, name, role, verified }: PublicAccount
         <Avatar name={displayName} size="sm" />
         <span className="hidden min-w-0 max-w-[150px] sm:block">
           <span className="block truncate text-sm font-semibold leading-4 text-ink">{displayName}</span>
-          <span className="flex items-center gap-1 text-[11px] leading-4 text-muted"><span className="truncate">{email || roleLabel}</span>{verified ? <Tag tone="green">Verified</Tag> : null}</span>
+          <span className="flex items-center gap-1 text-[11px] leading-4 text-muted">
+            <span className="truncate">{email || roleLabel}</span>
+            {verified ? <Tag tone="green">Verified</Tag> : null}
+          </span>
         </span>
         <Icon className="text-muted" name="chevronDown" size={15} />
       </button>
@@ -130,7 +134,11 @@ export function PublicAccountMenu({ email, name, role, verified }: PublicAccount
                 <div className="mt-2 inline-flex rounded-full bg-brand-tint px-2.5 py-1 text-[11px] font-semibold text-brand">
                   {roleLabel}
                 </div>
-                {verified ? <Tag className="ml-2" tone="green">Verified</Tag> : null}
+                {verified ? (
+                  <Tag className="ml-2" tone="green">
+                    Verified
+                  </Tag>
+                ) : null}
               </div>
             </div>
           </div>

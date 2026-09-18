@@ -1,5 +1,6 @@
 import { useJobApplications } from "@/features/applications/use-applications";
 import type { Job, JobStatus } from "@/features/jobs/types";
+import { displayedJobStatus, formatJobPay } from "@/features/jobs/presentation";
 import type { Tone } from "@/types/supplyed";
 
 import { Btn, Icon, Tag } from "../atoms";
@@ -29,6 +30,7 @@ const statusFilters: Array<{ label: string; value: JobStatusFilter }> = [
   { label: "Draft", value: "DRAFT" },
   { label: "Expired", value: "EXPIRED" },
   { label: "Closed", value: "CLOSED" },
+  { label: "Suspended", value: "SUSPENDED" },
 ];
 
 export function JobManagementList({
@@ -46,20 +48,25 @@ export function JobManagementList({
   onFilterChange,
   title,
 }: JobManagementListProps) {
-  const filteredJobs = filter === "ALL" ? jobs : jobs.filter((job) => job.status === filter);
+  const filteredJobs = filter === "ALL" ? jobs : jobs.filter((job) => displayedJobStatus(job) === filter);
 
   return (
     <>
-      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-col gap-3">
         <div className="section-title mb-0">{title}</div>
         <div className="flex flex-wrap gap-1.5">
           {statusFilters.map((statusFilter) => {
-            const count = statusFilter.value === "ALL" ? jobs.length : jobs.filter((job) => job.status === statusFilter.value).length;
+            const count =
+              statusFilter.value === "ALL"
+                ? jobs.length
+                : jobs.filter((job) => displayedJobStatus(job) === statusFilter.value).length;
             return (
               <button
                 key={statusFilter.value}
                 className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                  filter === statusFilter.value ? "border-brand bg-brand-tint text-brand" : "border-border bg-white text-slate hover:bg-chalk"
+                  filter === statusFilter.value
+                    ? "border-brand bg-brand-tint text-brand"
+                    : "border-border bg-white text-slate hover:bg-chalk"
                 }`}
                 onClick={() => onFilterChange(statusFilter.value)}
                 type="button"
@@ -72,12 +79,21 @@ export function JobManagementList({
       </div>
 
       <div className="card overflow-hidden">
-        {loading ? <div className="p-5"><SectionLoader rows={3} /></div> : null}
+        {loading ? (
+          <div className="p-5">
+            <SectionLoader rows={3} />
+          </div>
+        ) : null}
         {!loading && filteredJobs.length === 0 ? (
-          <div className="px-5 py-8 text-center">
+          <div className="px-5 py-10 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-tint text-brand">
+              <Icon name="file" size={22} />
+            </div>
             <div className="font-serif text-[22px]">No roles found</div>
             <p className="mx-auto mt-2 max-w-[380px] text-sm leading-6 text-muted">{emptyMessage}</p>
-            <Btn className="mt-4" icon="plus" onClick={onCreate}>{emptyActionLabel}</Btn>
+            <Btn className="mt-4" icon="plus" onClick={onCreate}>
+              {emptyActionLabel}
+            </Btn>
           </div>
         ) : null}
         {filteredJobs.map((job) => (
@@ -111,28 +127,54 @@ function JobManagementRow({
   onDelete: (job: Job) => void;
   onEdit: (job: Job) => void;
 }) {
-  const canClose = job.status === "ACTIVE" || job.status === "DRAFT";
+  const canClose = job.status === "ACTIVE" || job.status === "DRAFT" || job.status === "EXPIRED";
   const applicationsQuery = useJobApplications(job.id, { limit: 1 });
   const applicantCount = applicationsQuery.data?.pagination.total;
 
   return (
-    <div className="flex cursor-pointer flex-wrap items-center gap-4 border-b border-border px-5 py-4 last:border-b-0" onClick={() => onApplications(job)}>
+    <div
+      className="flex cursor-pointer flex-wrap items-center gap-4 border-b border-border px-5 py-4 last:border-b-0"
+      onClick={() => onApplications(job)}
+    >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
         <Icon name={job.status === "ACTIVE" ? "checkCircle" : job.status === "DRAFT" ? "edit" : "file"} size={18} />
       </div>
       <div className="min-w-[240px] flex-1">
         <div className="mb-1 flex flex-wrap items-center gap-2">
           {job.urgent ? <Tag tone="red">Urgent</Tag> : null}
-          <Tag tone={statusTone(job.status)}>{formatJobStatus(job.status)}</Tag>
+          <Tag tone={statusTone(job.status)}>{formatJobStatus(displayedJobStatus(job))}</Tag>
           <Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag>
           <span className="text-xs text-muted">{job.postedAt}</span>
         </div>
         <div className="text-[15px] font-semibold">{job.title}</div>
-        <div className="text-xs text-muted">{[job.city === "Location TBC" ? "" : job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} - {job.date} - {formatPay(job)}</div>
-        {job.requiredSkills.length || job.minExperienceYears != null ? <div className="mt-1 flex flex-wrap gap-1">{job.requiredSkills.slice(0, 4).map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div> : null}
+        <div className="text-xs text-muted">
+          {[job.city === "Location TBC" ? "" : job.city, job.county, job.postalCode].filter(Boolean).join(", ") ||
+            "Location TBC"}{" "}
+          - {job.date} - {formatPay(job)}
+        </div>
+        {job.requiredSkills.length || job.minExperienceYears != null ? (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {job.requiredSkills.slice(0, 4).map((skill) => (
+              <span key={skill} className="pill">
+                {skill}
+              </span>
+            ))}
+            {job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}
+          </div>
+        ) : null}
       </div>
       <div className="text-center">
-        <div aria-label={applicantCount !== undefined ? `${applicantCount} applicants` : applicationsQuery.isError ? "Applicant count unavailable" : "Loading applicant count"} aria-live="polite" className="font-serif text-[22px] text-brand">
+        <div
+          aria-label={
+            applicantCount !== undefined
+              ? `${applicantCount} applicants`
+              : applicationsQuery.isError
+                ? "Applicant count unavailable"
+                : "Loading applicant count"
+          }
+          aria-live="polite"
+          className="font-serif text-[22px] text-brand"
+        >
           {applicantCount ?? (applicationsQuery.isError ? "—" : "…")}
         </div>
         <div className="text-xs text-muted">Applicants</div>
@@ -188,12 +230,7 @@ function JobManagementRow({
   );
 }
 
-export function formatPay(job: Job) {
-  if (!job.rate) return "Rate TBC";
-  if (job.payType === "hourly") return `GBP ${job.rate}/hr`;
-  if (job.payType === "fixed") return `GBP ${job.rate} fixed`;
-  return `GBP ${job.rate}/day`;
-}
+export const formatPay = formatJobPay;
 
 export function formatJobStatus(status: Job["status"]) {
   return status ? status.toLowerCase().replace(/_/g, " ") : "draft";

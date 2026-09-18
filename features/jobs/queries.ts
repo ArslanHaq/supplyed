@@ -8,6 +8,7 @@ import type { BackendJobResponse, Job, JobListFilters } from "./types";
 export async function listJobs(filters: JobListFilters = {}): Promise<Job[]> {
   const normalized = normalizeJobFilters(filters);
   const jobs = await api.get<BackendJobResponse[]>("/jobs", {
+    auth: false,
     next: { tags: ["jobs"] },
   });
 
@@ -26,6 +27,7 @@ export async function listMyJobs(filters: JobListFilters = {}): Promise<Job[]> {
 export async function getJob(id: string): Promise<Job | null> {
   try {
     const job = await api.get<BackendJobResponse>(`/jobs/${id}`, {
+      auth: false,
       next: { tags: ["jobs", `job:${id}`] },
     });
 

@@ -1,4 +1,11 @@
-export type JobApplicationStatus = "APPLIED" | "COMPLETED" | "HIRED" | "INTERVIEW" | "REJECTED" | "SHORTLISTED" | "VIEWED";
+export type JobApplicationStatus =
+  | "APPLIED"
+  | "COMPLETED"
+  | "HIRED"
+  | "INTERVIEW"
+  | "REJECTED"
+  | "SHORTLISTED"
+  | "VIEWED";
 
 export type ApplicantSummary = {
   city?: string | null;
@@ -27,7 +34,7 @@ export type JobApplication = {
 };
 
 export type ApplicationCreateInput = {
-  coverLetter: string;
+  coverLetter?: string;
   jobId: string;
 };
 

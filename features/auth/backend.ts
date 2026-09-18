@@ -143,7 +143,8 @@ function readAccessTokenExpiresAt(record: Record<string, unknown>, accessToken?:
 
   if (explicitExpiresAt) return normalizeExpiryTimestamp(explicitExpiresAt);
 
-  const expiresAtIso = readString(record.accessTokenExpiresAt) ?? readString(record.expiresAt) ?? readString(tokens.expiresAt);
+  const expiresAtIso =
+    readString(record.accessTokenExpiresAt) ?? readString(record.expiresAt) ?? readString(tokens.expiresAt);
   if (expiresAtIso) {
     const parsed = Date.parse(expiresAtIso);
     if (Number.isFinite(parsed)) return parsed;
@@ -181,7 +182,12 @@ export function normalizeRole(role: unknown): AppRole | null {
 
   if (normalized === "INSTITUTION" || normalized === "SCHOOL") return "institution";
   if (normalized === "INSTRUCTOR" || normalized === "TEACHER") return "teacher";
-  if (normalized === "INDIVIDUAL" || normalized === "GUARDIAN" || normalized === "PARENT" || normalized === "RECRUITER") {
+  if (
+    normalized === "INDIVIDUAL" ||
+    normalized === "GUARDIAN" ||
+    normalized === "PARENT" ||
+    normalized === "RECRUITER"
+  ) {
     return "individual";
   }
 
@@ -191,14 +197,7 @@ export function normalizeRole(role: unknown): AppRole | null {
 export function normalizeStatus(status: unknown): ApplicationStatus {
   const value = readString(status)?.replace(/-/g, "_").toLowerCase();
 
-  if (
-    !value ||
-    value === "none" ||
-    value === "deactivated" ||
-    value === "incomplete" ||
-    value === "not_completed" ||
-    value === "not_started"
-  ) {
+  if (!value || value === "none" || value === "incomplete" || value === "not_completed" || value === "not_started") {
     return "none";
   }
   if (
@@ -210,6 +209,7 @@ export function normalizeStatus(status: unknown): ApplicationStatus {
   ) {
     return "pending_review";
   }
+  if (value === "deactivated") return "deactivated";
   if (value === "approved" || value === "verified" || value === "active") return "approved";
   if (value === "rejected" || value === "declined") return "rejected";
   if (value === "suspended" || value === "disabled") return "suspended";
@@ -232,6 +232,7 @@ export function normalizeAuthUser(payload: unknown): AuthUser {
     ),
     email,
     emailVerified: readBoolean(user.emailVerified ?? user.isEmailVerified) ?? false,
+    isFullyVerified: user.isFullyVerified === true,
     id,
     instructorProfileId:
       readString(user.instructorProfileId) ??
@@ -292,7 +293,10 @@ function normalizeTwoFactorChallenge(payload: unknown, fallbackEmail: string): T
   };
 }
 
-function normalizeLoginResponse(payload: unknown, fallbackEmail: string): BackendAuthResponse | TwoFactorLoginChallenge {
+function normalizeLoginResponse(
+  payload: unknown,
+  fallbackEmail: string,
+): BackendAuthResponse | TwoFactorLoginChallenge {
   return normalizeTwoFactorChallenge(payload, fallbackEmail) ?? normalizeAuthResponse(payload);
 }
 
@@ -377,7 +381,10 @@ export async function loginWithEmail(input: LoginInput): Promise<BackendAuthResp
   });
 
   if (backendEnabled()) {
-    const response = normalizeLoginResponse(await api.post<unknown>(backendAuthEndpoints.login, input, { auth: false }), input.email);
+    const response = normalizeLoginResponse(
+      await api.post<unknown>(backendAuthEndpoints.login, input, { auth: false }),
+      input.email,
+    );
     if (!("twoFactorRequired" in response)) logLoginUserData(response);
     return response;
   }
@@ -447,7 +454,9 @@ export async function verifyTwoFactorLogin(input: TwoFactorVerificationInput): P
   };
 }
 
-export async function resendEmailVerification(input: ResendEmailVerificationInput): Promise<EmailVerificationResendResponse> {
+export async function resendEmailVerification(
+  input: ResendEmailVerificationInput,
+): Promise<EmailVerificationResendResponse> {
   logBackendPayload(`POST ${backendAuthEndpoints.resendEmailVerification}`, {
     email: input.email,
   });
@@ -526,7 +535,9 @@ export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<Ba
 
   if (backendEnabled()) {
     if (!backendOAuthExchangeEnabled()) {
-      throw new Error("Social sign-in is not available yet. Use email and password while we finish connecting Google sign-in.");
+      throw new Error(
+        "Social sign-in is not available yet. Use email and password while we finish connecting Google sign-in.",
+      );
     }
 
     if (input.provider !== "google") {
@@ -543,7 +554,9 @@ export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<Ba
     );
 
     if ("twoFactorRequired" in response) {
-      throw new Error("This account has two-factor authentication enabled. Sign in with email and password to enter your security code.");
+      throw new Error(
+        "This account has two-factor authentication enabled. Sign in with email and password to enter your security code.",
+      );
     }
 
     return response;
@@ -563,5 +576,7 @@ export async function refreshBackendAuth(refreshToken: string): Promise<BackendA
 
   if (!backendEnabled()) return null;
 
-  return normalizeAuthResponse(await api.post<unknown>(backendAuthEndpoints.refresh, { refreshToken }, { auth: false }));
+  return normalizeAuthResponse(
+    await api.post<unknown>(backendAuthEndpoints.refresh, { refreshToken }, { auth: false }),
+  );
 }

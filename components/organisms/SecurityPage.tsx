@@ -180,6 +180,20 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
     toast({ title: "Recovery codes copied", msg: "Keep them somewhere private and offline.", tone: "success" });
   }
 
+  function downloadRecoveryCodes() {
+    if (recoveryCodes.length === 0) return;
+
+    const file = new Blob([recoveryCodes.join("\n") + "\n"], { type: "text/plain" });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "supplyed-recovery-codes.txt";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
   return (
     <div className="app-page">
       <PageHead
@@ -291,9 +305,10 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                       </code>
                     ))}
                   </div>
-                  <Btn className="mt-4" icon="download" onClick={() => void copyRecoveryCodes()} variant="secondary">
-                    Copy codes
-                  </Btn>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Btn onClick={() => void copyRecoveryCodes()} variant="secondary">Copy codes</Btn>
+                    <Btn icon="download" onClick={downloadRecoveryCodes} variant="secondary">Download codes</Btn>
+                  </div>
                 </div>
               ) : null}
             </section>

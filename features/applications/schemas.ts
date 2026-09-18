@@ -1,4 +1,10 @@
-import type { ApplicationCreateInput, JobApplication, JobApplicationsQuery, JobApplicationStatus, PaginatedApplications } from "./types";
+import type {
+  ApplicationCreateInput,
+  JobApplication,
+  JobApplicationsQuery,
+  JobApplicationStatus,
+  PaginatedApplications,
+} from "./types";
 
 const APPLICATION_STATUSES: JobApplicationStatus[] = [
   "APPLIED",
@@ -35,7 +41,7 @@ export function normalizePaginatedApplications(payload: PaginatedApplications): 
 
 export function normalizeApplicationCreateInput(input: ApplicationCreateInput): ApplicationCreateInput {
   return {
-    coverLetter: input.coverLetter.trim(),
+    coverLetter: input.coverLetter?.trim() || undefined,
     jobId: input.jobId.trim(),
   };
 }

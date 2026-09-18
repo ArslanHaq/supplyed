@@ -77,7 +77,12 @@ export function AccountBasicsStep({
             placeholder="Your full name"
           />
         </Field>
-        <Field label="Phone" htmlFor="signup-phone" error={errors.phone} required>
+        <Field
+          label="Phone"
+          htmlFor="signup-phone"
+          error={errors.phone}
+          hint="Required for full verification before posting or applying."
+        >
           <input
             id="signup-phone"
             className={fieldClass(errors.phone)}
@@ -92,10 +97,8 @@ export function AccountBasicsStep({
             city={form.profileCity}
             cityError={errors.profileCity}
             cityId="signup-city"
-            cityRequired
             countryCode={form.profileCountryCode}
             countryError={errors.profileCountryCode}
-            countryRequired
             onCityChange={(value) => updateField("profileCity", value)}
             onCountryChange={(value) => {
               updateField("profileCountryCode", value);
@@ -103,7 +106,7 @@ export function AccountBasicsStep({
             }}
           />
         ) : null}
-        <Field label="Postal code" htmlFor="signup-location" error={errors.postcode} required>
+        <Field label="Postal code" htmlFor="signup-location" error={errors.postcode}>
           <input
             id="signup-location"
             className={fieldClass(errors.postcode)}

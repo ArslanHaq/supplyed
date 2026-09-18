@@ -24,7 +24,7 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
     documentRequirementIds: normalizeStringList(input.documentRequirementIds ?? []),
     endDate: input.endDate?.trim() || undefined,
     expiresAt: input.expiresAt?.trim() || undefined,
-    keyStages: normalizeStringList(input.keyStages),
+    keyStages: normalizeStringList(input.keyStages ?? []),
     minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
     payAmount: normalizePositiveNumber(input.payAmount),
@@ -60,7 +60,7 @@ export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
 }
 
 export function normalizeBackendJob(job: BackendJobResponse): Job {
-  const payAmount = normalizePositiveNumber(readNumber(job.payAmount)) ?? 0;
+  const payAmount = normalizePositiveNumber(readNumber(job.payAmount));
   const createdAt = readDateIso(job.createdAt);
   const startDate = readDateIso(job.startDate);
   const endDate = readDateIso(job.endDate);
@@ -93,12 +93,12 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
       readPostingModeFromDescription(job.description) ??
       derivePostingMode(startDate, endDate),
     parkingInfo: job.parkingInfo ?? null,
-    payAmount,
+    payAmount: payAmount ?? null,
     payType: job.payType ?? null,
     postedAt: formatRelativeTime(createdAt),
     postedByUserId: job.postedByUserId,
     postalCode: job.postalCode?.trim() || null,
-    rate: payAmount,
+    rate: payAmount ?? 0,
     requiredSkills,
     school: "Hiring account",
     startDate,
@@ -106,7 +106,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     subject,
     title: job.title,
     updatedAt: readDateIso(job.updatedAt),
-    urgent: isUrgent(expiresAt),
+    urgent: job.description?.includes("Marked urgent by the hiring account.") || isUrgent(expiresAt),
   };
 }
 
@@ -115,10 +115,14 @@ export function applyJobFilters(jobs: Job[], filters: JobListFilters = {}) {
 
   return jobs.filter((job) => {
     const matchesSearch = normalized.search
-      ? `${job.title} ${job.school} ${job.city} ${job.county ?? ""} ${job.postalCode ?? ""} ${job.subject} ${job.requiredSkills.join(" ")}`.toLowerCase().includes(normalized.search.toLowerCase())
+      ? `${job.title} ${job.school} ${job.city} ${job.county ?? ""} ${job.postalCode ?? ""} ${job.subject} ${job.requiredSkills.join(" ")}`
+          .toLowerCase()
+          .includes(normalized.search.toLowerCase())
       : true;
     const matchesSubject = normalized.subject ? job.subject === normalized.subject : true;
-    const matchesKeyStage = normalized.keyStage ? job.keyStages?.includes(normalized.keyStage) || job.keyStage === normalized.keyStage : true;
+    const matchesKeyStage = normalized.keyStage
+      ? job.keyStages?.includes(normalized.keyStage) || job.keyStage === normalized.keyStage
+      : true;
     const matchesMode = normalized.mode ? job.mode === normalized.mode : true;
     const matchesUrgent = normalized.urgent === undefined ? true : job.urgent === normalized.urgent;
     const matchesStatus = normalized.status ? job.status === normalized.status : true;
@@ -129,12 +133,12 @@ export function applyJobFilters(jobs: Job[], filters: JobListFilters = {}) {
 
 export function toCreateJobPayload(input: JobCreateInput) {
   const { status: _status, ...payload } = normalizeJobCreateInput(input);
-  return withoutEmptyJobFields(payload);
+  return pickWritableJobFields(withoutEmptyJobFields(payload), true);
 }
 
 export function toUpdateJobPayload(input: JobUpdateInput) {
   const { id: _id, ...payload } = normalizeJobUpdateInput(input);
-  return withoutEmptyJobFields(payload);
+  return pickWritableJobFields(withoutEmptyJobFields(payload), false);
 }
 
 function normalizeStringList(value: string[]) {
@@ -203,7 +207,10 @@ function derivePostingMode(startDate: string | null, endDate: string | null): Jo
 function readPostingMode(value: unknown): Job["mode"] | null {
   if (typeof value !== "string") return null;
 
-  const normalized = value.trim().toLowerCase().replace(/[\s_-]+/g, " ");
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ");
   if (!normalized) return null;
   if (normalized.includes("brief")) return "brief";
   if (normalized.includes("instant")) return "instant";
@@ -212,7 +219,9 @@ function readPostingMode(value: unknown): Job["mode"] | null {
 }
 
 function readPostingModeFromDescription(description: string): Job["mode"] | null {
-  const matches = Array.from(description.matchAll(/(?:^|\n)\s*Posting route:\s*(Instant matching|Open brief)\.\s*(?=\n|$)/gi));
+  const matches = Array.from(
+    description.matchAll(/(?:^|\n)\s*Posting route:\s*(Instant matching|Open brief)\.\s*(?=\n|$)/gi),
+  );
   const match = matches.at(-1);
   return readPostingMode(match?.[1]);
 }
@@ -228,8 +237,34 @@ function withoutEmptyJobFields<Input extends Record<string, unknown>>(input: Inp
     Object.entries(input).filter(([, value]) => {
       if (value === undefined || value === null) return false;
       if (typeof value === "string" && !value.trim()) return false;
-      if (Array.isArray(value) && value.length === 0) return false;
+      // Empty arrays intentionally clear existing skills and key stages.
       return true;
     }),
   ) as Partial<Input>;
+}
+
+function pickWritableJobFields(payload: Record<string, unknown>, create: boolean) {
+  const fields = [
+    "title",
+    "description",
+    "subject",
+    "requiredSkills",
+    "minExperienceYears",
+    "address",
+    "city",
+    "county",
+    "postalCode",
+    "countryCode",
+    "latitude",
+    "longitude",
+    "startDate",
+    "endDate",
+    "keyStages",
+    "parkingInfo",
+    "payAmount",
+    "payType",
+    "expiresAt",
+    create ? "documentRequirementIds" : "status",
+  ];
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => fields.includes(key)));
 }

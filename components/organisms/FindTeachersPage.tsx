@@ -1,3 +1,4 @@
+import { RecommendedTeachersPanel } from "./RecommendedTeachersPanel";
 import { useState } from "react";
 
 import type { TeacherListFilters } from "@/features/teachers/types";
@@ -33,6 +34,7 @@ export function FindTeachersPage({ go, toast, role }: Pick<RouteProps, "go" | "t
         subtitle={isIndividual ? "Browse verified teachers and request safe learner support." : "Browse the full teacher network. Filter, shortlist, invite."}
         actions={isIndividual ? <Btn icon="message" onClick={() => go("messaging")}>Messages</Btn> : <Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn>}
       />
+      <details className="mb-5 rounded-xl border border-border bg-white p-4"><summary className="cursor-pointer font-semibold">Recommended teachers for your jobs</summary><RecommendedTeachersPanel go={go} toast={toast} role={role} /></details>
       <div className="three-panel">
         <div className="card card-pad self-start">
           <div className="label-xs mb-3">Filters</div>

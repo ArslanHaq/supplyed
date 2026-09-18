@@ -7,8 +7,9 @@ import { queryKeys } from "@/lib/query/keys";
 
 import type { ApplicationDocumentRequirement } from "./types";
 
-export function useApplicationDocumentRequirements() {
+export function useApplicationDocumentRequirements(enabled = true) {
   return useQuery({
+    enabled,
     queryFn: () => fetchJson<ApplicationDocumentRequirement[]>("/api/document-requirements/application"),
     queryKey: queryKeys.documentRequirements.application(),
   });

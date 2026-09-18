@@ -48,7 +48,7 @@ export type JobCreateInput = {
   documentRequirementIds?: string[];
   endDate?: string;
   expiresAt?: string;
-  keyStages: string[];
+  keyStages?: string[];
   latitude?: number;
   longitude?: number;
   minExperienceYears?: number;

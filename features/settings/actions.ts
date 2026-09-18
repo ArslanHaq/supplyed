@@ -103,7 +103,10 @@ function instructorPayload(input: SettingsInstructorUpdateInput) {
   const experience = optionalNumber(input.experience);
   const maxTravelDistance = optionalNumber(input.maxTravelDistance);
 
-  if ([hourlyRate, dailyRate, experience, maxTravelDistance].some(hasInvalidNumber)) {
+  if (
+    [hourlyRate, dailyRate, experience, maxTravelDistance].some(hasInvalidNumber) ||
+    (experience !== undefined && !Number.isInteger(experience))
+  ) {
     throw new Error("Rates, experience, and travel distance must be valid positive numbers.");
   }
 
@@ -130,7 +133,10 @@ function instructorPayload(input: SettingsInstructorUpdateInput) {
 function institutionPayload(input: SettingsInstitutionUpdateInput) {
   const typicalPupilCount = optionalNumber(input.typicalPupilCount);
 
-  if (hasInvalidNumber(typicalPupilCount)) {
+  if (
+    hasInvalidNumber(typicalPupilCount) ||
+    (typicalPupilCount !== undefined && !Number.isInteger(typicalPupilCount))
+  ) {
     throw new Error("Typical pupil count must be a valid positive number.");
   }
 
@@ -142,7 +148,11 @@ function institutionPayload(input: SettingsInstitutionUpdateInput) {
     countryCode: optionalText(input.countryCode) ?? "GB",
     county: optionalText(input.county),
     coverTypes: normalizeStringArray(input.coverTypes),
-    domain: text(input.domain).replace(/^https?:\/\//i, "").split("/")[0]?.trim().toLowerCase(),
+    domain: text(input.domain)
+      .replace(/^https?:\/\//i, "")
+      .split("/")[0]
+      ?.trim()
+      .toLowerCase(),
     name: text(input.name),
     postalCode: optionalText(input.postalCode),
     registrationId: optionalText(input.registrationId),

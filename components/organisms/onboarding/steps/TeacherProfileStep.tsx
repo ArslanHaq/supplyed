@@ -14,12 +14,12 @@ export function TeacherProfileStep(props: AccountStepProps) {
         <div>
           <h3 className="font-serif text-2xl leading-tight">Teaching profile</h3>
           <p className="mt-1 text-sm leading-6 text-muted">
-            These details are sent to the instructor profile endpoint and used for matching after review.
+            Add your teaching experience and preferences to help schools find suitable instructors.
           </p>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2">
-          <Field label="Primary subjects" error={errors.subjects} required>
+          <Field label="Primary subjects" error={errors.subjects}>
             <MultiSelectDropdown
               error={Boolean(errors.subjects)}
               options={subjects}
@@ -28,7 +28,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
               onChange={(value) => updateField("subjects", value)}
             />
           </Field>
-          <Field label="Key stages" error={errors.keyStages} required>
+          <Field label="Key stages" error={errors.keyStages}>
             <MultiSelectDropdown
               error={Boolean(errors.keyStages)}
               options={keyStages}
@@ -49,7 +49,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
         </Field>
 
         <div className="grid gap-x-4 sm:grid-cols-2 xl:grid-cols-3">
-          <Field label="Years of experience" htmlFor="experience" error={errors.yearsExperience} required>
+          <Field label="Years of experience" htmlFor="experience" error={errors.yearsExperience}>
             <input
               id="experience"
               className={fieldClass(errors.yearsExperience)}
@@ -88,7 +88,12 @@ export function TeacherProfileStep(props: AccountStepProps) {
               onChange={(value) => updateField("currency", value)}
             />
           </Field>
-          <Field label="Maximum travel distance" htmlFor="travel-distance" error={errors.maxTravelDistance} hint="Miles, optional">
+          <Field
+            label="Maximum travel distance"
+            htmlFor="travel-distance"
+            error={errors.maxTravelDistance}
+            hint="Miles, optional"
+          >
             <input
               id="travel-distance"
               className={fieldClass(errors.maxTravelDistance)}
@@ -109,7 +114,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
           </Field>
         </div>
 
-        <Field label="Teaching bio" htmlFor="bio" error={errors.bio} required>
+        <Field label="Teaching bio" htmlFor="bio" error={errors.bio}>
           <textarea
             id="bio"
             className={areaClass(errors.bio)}

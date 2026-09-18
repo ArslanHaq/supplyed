@@ -101,6 +101,7 @@ type DownloadDocumentResponse = {
 };
 
 type BackendUserProfile = {
+  isFullyVerified?: boolean;
   email?: string;
   emailVerified?: boolean;
   phoneVerified?: boolean;
@@ -169,7 +170,9 @@ type DocumentSnapshotData = {
 };
 
 function readStringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())) : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : [];
 }
 
 function numberString(value: unknown) {
@@ -177,11 +180,16 @@ function numberString(value: unknown) {
   return numeric === undefined ? "" : String(numeric);
 }
 
-function normalizeUserSnapshot(user: BackendUserProfile, fallbackEmail?: string, postcodeFallback = ""): OnboardingUserSnapshot {
+function normalizeUserSnapshot(
+  user: BackendUserProfile,
+  fallbackEmail?: string,
+  postcodeFallback = "",
+): OnboardingUserSnapshot {
   return {
     email: user.email || fallbackEmail || "",
     emailVerified: user.emailVerified === true,
     phoneVerified: user.phoneVerified === true,
+    isFullyVerified: user.isFullyVerified === true,
     fullName: user.name || "",
     phone: user.phone || "",
     postcode: user.postCode || postcodeFallback,
@@ -281,8 +289,9 @@ function missingRequiredDocumentNames(
   requirements: OnboardingDocumentRequirementSnapshot[],
   data: DocumentSnapshotData,
 ) {
-  return missingRequiredDocuments(requirements, data.requirementDocuments)
-    .map((requirement) => requirement.documentType.name);
+  return missingRequiredDocuments(requirements, data.requirementDocuments).map(
+    (requirement) => requirement.documentType.name,
+  );
 }
 
 function emptySnapshot(role: AppRole | null, email?: string): OnboardingProfileSnapshot {
@@ -362,7 +371,13 @@ function buildInstructorProfilePayload(formData: FormData): InstructorProfilePay
 }
 
 function normalizeDomain(value: string) {
-  return value.replace(/^https?:\/\//i, "").split("/")[0]?.trim().toLowerCase() ?? "";
+  return (
+    value
+      .replace(/^https?:\/\//i, "")
+      .split("/")[0]
+      ?.trim()
+      .toLowerCase() ?? ""
+  );
 }
 
 function buildInstitutionProfilePayload(formData: FormData): InstitutionProfilePayload {
@@ -410,20 +425,17 @@ async function getCurrentUserSnapshot(postcodeFallback = "") {
   const authContext = await getServerAuthContext();
   if (!authContext?.userId) return undefined;
 
-  const user = await api.get<BackendUserProfile>(`/users/${authContext.userId}`);
+  const user = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
   return normalizeUserSnapshot(user, authContext.email ?? undefined, postcodeFallback);
 }
 
 async function getCurrentInstructorSnapshot(accessToken?: string) {
   try {
     return normalizeInstructorSnapshot(
-      await api.get<BackendInstructorProfile>(
-        "/instructors/me",
-        {
-          cache: "no-store",
-          ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
-        },
-      ),
+      await api.get<BackendInstructorProfile>("/instructors/me", {
+        cache: "no-store",
+        ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
+      }),
     );
   } catch (error) {
     if (notFoundOrForbidden(error)) return undefined;
@@ -434,13 +446,10 @@ async function getCurrentInstructorSnapshot(accessToken?: string) {
 async function getInstitutionSnapshot(accessToken?: string) {
   try {
     return normalizeInstitutionSnapshot(
-      await api.get<BackendInstitutionProfile>(
-        "/institutions/me",
-        {
-          cache: "no-store",
-          ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
-        },
-      ),
+      await api.get<BackendInstitutionProfile>("/institutions/me", {
+        cache: "no-store",
+        ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
+      }),
     );
   } catch (error) {
     if (notFoundOrForbidden(error)) return undefined;
@@ -451,13 +460,10 @@ async function getInstitutionSnapshot(accessToken?: string) {
 async function getRecruiterSnapshot(accessToken?: string) {
   try {
     return normalizeRecruiterSnapshot(
-      await api.get<BackendRecruiterProfile>(
-        "/recruiters/me",
-        {
-          cache: "no-store",
-          ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
-        },
-      ),
+      await api.get<BackendRecruiterProfile>("/recruiters/me", {
+        cache: "no-store",
+        ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
+      }),
     );
   } catch (error) {
     if (notFoundOrForbidden(error)) return undefined;
@@ -475,21 +481,22 @@ async function getDocumentSnapshotData(accessToken?: string): Promise<DocumentSn
   return { documents, requirementDocuments };
 }
 
-
 async function getProfileDocumentRequirements(role?: AppRole | null, accessToken?: string) {
   const requirements = await loadProfileDocumentRequirements(role, { accessToken });
-  return requirements.map((requirement): OnboardingDocumentRequirementSnapshot => ({
-    context: requirement.context,
-    id: requirement.id,
-    isRequired: requirement.isRequired,
-    requiresReview: requirement.requiresReview,
-    documentType: {
-      allowedMimes: requirement.allowedMimes,
-      code: requirement.code,
-      maxSizeBytes: requirement.maxSizeBytes,
-      name: requirement.name,
-    },
-  }));
+  return requirements.map(
+    (requirement): OnboardingDocumentRequirementSnapshot => ({
+      context: requirement.context,
+      id: requirement.id,
+      isRequired: requirement.isRequired,
+      requiresReview: requirement.requiresReview,
+      documentType: {
+        allowedMimes: requirement.allowedMimes,
+        code: requirement.code,
+        maxSizeBytes: requirement.maxSizeBytes,
+        name: requirement.name,
+      },
+    }),
+  );
 }
 
 async function getDocumentState(role?: AppRole | null, accessToken?: string) {
@@ -525,8 +532,7 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
     };
 
     if (role === "teacher") {
-      snapshot.instructor =
-        await getCurrentInstructorSnapshot();
+      snapshot.instructor = await getCurrentInstructorSnapshot();
       snapshot.applicationStatus = snapshot.instructor?.status ?? "none";
     }
 
@@ -583,11 +589,13 @@ async function getOnboardingAuth(): Promise<BackendAuthResponse & { accessToken:
   const accessToken = await getValidAccessToken(context);
   if (!context || !accessToken) throw new Error("Your session expired. Sign in again to continue.");
 
-  const user = normalizeAuthUser(await api.get("/auth/me", {
-    auth: false,
-    cache: "no-store",
-    headers: buildBearerHeaders(accessToken),
-  }));
+  const user = normalizeAuthUser(
+    await api.get("/auth/me", {
+      auth: false,
+      cache: "no-store",
+      headers: buildBearerHeaders(accessToken),
+    }),
+  );
   if (!user.emailVerified) throw new Error("Verify your email before creating a profile.");
 
   // The backend reads the current role from the database on every request.
@@ -646,10 +654,12 @@ async function saveInstructorProfile(formData: FormData, accessToken: string) {
   if (existing) return existing;
 
   try {
-    return normalizeInstructorSnapshot(await api.post<BackendInstructorProfile>("/instructors", buildInstructorProfilePayload(formData), {
-      auth: false,
-      headers: buildBearerHeaders(accessToken),
-    }));
+    return normalizeInstructorSnapshot(
+      await api.post<BackendInstructorProfile>("/instructors", buildInstructorProfilePayload(formData), {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
   } catch (error) {
     // A previous attempt may have saved the profile before its response was lost.
     const saved = await getCurrentInstructorSnapshot(accessToken);
@@ -663,10 +673,12 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string) {
   if (existing) return existing;
 
   try {
-    return normalizeInstitutionSnapshot(await api.post<BackendInstitutionProfile>("/institutions", buildInstitutionProfilePayload(formData), {
-      auth: false,
-      headers: buildBearerHeaders(accessToken),
-    }));
+    return normalizeInstitutionSnapshot(
+      await api.post<BackendInstitutionProfile>("/institutions", buildInstitutionProfilePayload(formData), {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
   } catch (error) {
     // A previous attempt may have saved the profile before its response was lost.
     const saved = await getInstitutionSnapshot(accessToken);
@@ -680,10 +692,12 @@ async function saveRecruiterProfile(formData: FormData, accessToken: string) {
   if (existing) return existing;
 
   try {
-    return normalizeRecruiterSnapshot(await api.post<BackendRecruiterProfile>("/recruiters", buildRecruiterProfilePayload(formData), {
-      auth: false,
-      headers: buildBearerHeaders(accessToken),
-    }));
+    return normalizeRecruiterSnapshot(
+      await api.post<BackendRecruiterProfile>("/recruiters", buildRecruiterProfilePayload(formData), {
+        auth: false,
+        headers: buildBearerHeaders(accessToken),
+      }),
+    );
   } catch (error) {
     // A previous attempt may have saved the profile before its response was lost.
     const saved = await getRecruiterSnapshot(accessToken);
@@ -705,7 +719,8 @@ async function submitInstructorProfileForReview(accessToken: string, current?: O
     if (!isStatusTransitionRace(error)) throw error;
 
     const currentInstructor = await getCurrentInstructorSnapshot(accessToken);
-    if (currentInstructor && ["pending_review", "approved"].includes(currentInstructor.status)) return currentInstructor;
+    if (currentInstructor && ["pending_review", "approved"].includes(currentInstructor.status))
+      return currentInstructor;
 
     throw error;
   }
@@ -724,7 +739,8 @@ async function submitInstitutionProfileForReview(accessToken: string, current?: 
     if (!isStatusTransitionRace(error)) throw error;
 
     const currentInstitution = await getInstitutionSnapshot(accessToken);
-    if (currentInstitution && ["pending_review", "approved"].includes(currentInstitution.status)) return currentInstitution;
+    if (currentInstitution && ["pending_review", "approved"].includes(currentInstitution.status))
+      return currentInstitution;
 
     throw error;
   }
@@ -755,11 +771,14 @@ export async function uploadOnboardingDocumentAction(formData: FormData) {
     });
     const documentKindValue = documentKind(document.code);
     revalidateTag("onboarding", "max");
-    return actionOk<OnboardingDocumentUploadResult>({
-      document,
-      documents: documentKindValue ? { [documentKindValue]: document } : {},
-      requirementDocuments: { [requirement.id]: document },
-    }, "Document uploaded.");
+    return actionOk<OnboardingDocumentUploadResult>(
+      {
+        document,
+        documents: documentKindValue ? { [documentKindValue]: document } : {},
+        requirementDocuments: { [requirement.id]: document },
+      },
+      "Document uploaded.",
+    );
   } catch (error) {
     return onboardingError(error);
   }
@@ -1089,48 +1108,16 @@ async function submitIndividualOnboarding(formData: FormData) {
     if (!recruiter) throw new Error("The backend did not return the saved individual profile.");
 
     const documentState = await getDocumentState("individual", sessionAuth.accessToken);
-    const ticket = createVerifiedEmailSessionTicket(
-      createSessionResponse({
-        applicationStatus: "none",
-        auth: sessionAuth,
-        name: recruiter.displayName || readFormString(formData, "fullName"),
-        recruiterProfileId: recruiter.id,
-        role: "individual",
-      }),
-    );
-    const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
-    const profileOnly = readFormString(formData, "intent") === "profile";
-
-    if (profileOnly || missingDocuments.length > 0) {
-      revalidateTag("onboarding", "max");
-      return actionOk<OnboardingProgressResult>(
-        {
-          applicationStatus: "none",
-          savedStep: Number(readFormString(formData, "step")) || 2,
-          snapshot: {
-            applicationStatus: "none",
-            documentRequirements: documentState.documentRequirements,
-            documents: documentState.documents,
-            recruiter,
-            requirementDocuments: documentState.requirementDocuments,
-            role: "individual",
-            user,
-          },
-          ticket,
-        },
-        profileOnly && missingDocuments.length === 0
-          ? "Profile created. Upload required documents before sending for review."
-          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
-      );
-    }
-
     let savedRecruiter = (await getRecruiterSnapshot(sessionAuth.accessToken)) ?? recruiter;
-    if (savedRecruiter.status === "none" || savedRecruiter.status === "rejected") {
-      const submitted = normalizeRecruiterSnapshot(await api.patch<BackendRecruiterProfile>("/recruiters/me/status", undefined, {
-        auth: false,
-        headers: buildBearerHeaders(sessionAuth.accessToken),
-      }));
-      if (!submitted || submitted.status !== "pending_review") throw new Error("Your profile could not be submitted for review.");
+    if (["none", "rejected", "deactivated"].includes(savedRecruiter.status)) {
+      const submitted = normalizeRecruiterSnapshot(
+        await api.patch<BackendRecruiterProfile>("/recruiters/me/status", undefined, {
+          auth: false,
+          headers: buildBearerHeaders(sessionAuth.accessToken),
+        }),
+      );
+      if (!submitted || submitted.status !== "pending_review")
+        throw new Error("Your profile could not be submitted for review.");
       savedRecruiter = submitted;
     }
     const applicationStatus = savedRecruiter.status;

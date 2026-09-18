@@ -8,13 +8,23 @@ import { signOut } from "next-auth/react";
 import { defaultState } from "@/data/supplyed";
 import { useOnboardingSnapshot } from "@/features/onboarding/use-onboarding";
 import { startRouteLoading } from "@/lib/navigation-loading";
-import { buildAppHref, shouldShowApplicationStatusPage } from "@/lib/routes";
+import { buildAppHref } from "@/lib/routes";
 import { loadTweaks, saveTweaks } from "@/lib/supplyed-preferences";
 import { applyBrandTheme } from "@/lib/theme";
-import type { AppPage, AppRole, ApplicationStatus, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/types/supplyed";
+import type {
+  AppPage,
+  AppRole,
+  ApplicationStatus,
+  AppState,
+  GoFn,
+  RouteProps,
+  ToastFn,
+  Tweaks,
+} from "@/types/supplyed";
 
 import { ToastStack } from "../molecules";
-import { ApplicationStatusPage } from "./ApplicationStatusPage";
+import { ProfileVerificationPanel } from "./ProfileVerificationPanel";
+import { MyApplicationsPage } from "./MyApplicationsPage";
 import { AppChrome } from "./AppChrome";
 import { ApplicationsPage } from "./ApplicationsPage";
 import { BillingPage } from "./BillingPage";
@@ -68,9 +78,11 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
   const [localState, setState] = useState<AppState>(() => createInitialRouteState(page, sessionState));
   const onboardingQuery = useOnboardingSnapshot(sessionState.email);
   // Ignore a cached result until this visit has checked the latest documents.
-  const onboarding = onboardingQuery.isSuccess && onboardingQuery.isFetchedAfterMount ? onboardingQuery.data : undefined;
+  const onboarding =
+    onboardingQuery.isSuccess && onboardingQuery.isFetchedAfterMount ? onboardingQuery.data : undefined;
   const state: AppState = {
     ...localState,
+    isFullyVerified: onboarding?.verified === true,
     accountName: sessionState.name?.trim() || localState.accountName,
     applicationStatus: onboarding?.applicationStatus ?? sessionState.applicationStatus,
     role: onboarding?.role ?? sessionState.role,
@@ -131,11 +143,17 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
   };
 
   if (onboarding?.completed === false) {
-    return <p role="status" className="p-6 text-muted">Returning to profile setup...</p>;
+    return (
+      <p role="status" className="p-6 text-muted">
+        Returning to profile setup...
+      </p>
+    );
   }
 
   let content: ReactNode = null;
-  if (activePage === "settings") {
+  if (activePage === "find-jobs") {
+    content = <FindJobsPage {...routeProps} />;
+  } else if (activePage === "settings") {
     content = <SettingsPage {...routeProps} verified={onboarding?.verified === true} />;
   } else if (state.role === "institution") {
     if (activePage === "dashboard") content = <InstitutionDashboard {...routeProps} />;
@@ -150,8 +168,8 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else content = <InstitutionDashboard {...routeProps} />;
   } else if (state.role === "teacher") {
     if (activePage === "dashboard") content = <TeacherDashboard {...routeProps} />;
-    else if (activePage === "find-jobs") content = <FindJobsPage {...routeProps} />;
     else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
+    else if (activePage === "applications") content = <MyApplicationsPage {...routeProps} />;
     else if (activePage === "calendar") content = <CalendarPage />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
@@ -171,16 +189,6 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else content = <IndividualDashboard {...routeProps} />;
   }
 
-  if (shouldShowApplicationStatusPage(routeProps.state.role, routeProps.state.applicationStatus)) {
-    return (
-      <ApplicationStatusPage
-        state={routeProps.state}
-        onLanding={goHome}
-        onLogout={logout}
-      />
-    );
-  }
-
   return (
     <>
       <AppChrome
@@ -191,6 +199,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
         onLogout={logout}
         onSettings={() => go("settings")}
       >
+        {activePage !== "dashboard" ? <ProfileVerificationPanel state={routeProps.state} go={go} toast={toast} /> : null}
         {content}
       </AppChrome>
       <TweaksPanel state={routeProps.state} setState={setState} tweaks={tweaks} setTweaks={setTweaks} />

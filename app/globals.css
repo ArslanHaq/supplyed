@@ -617,6 +617,61 @@ a {
   padding: 28px 32px 48px;
 }
 
+/* Align account notices with the page content on every screen size. */
+.verification-notice-wrap {
+  max-width: 1400px;
+  margin: 20px auto 0;
+  padding: 0 32px;
+}
+
+.verification-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.verification-notice-icon {
+  display: flex;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--se-tint);
+  color: var(--se);
+}
+
+.verification-notice-action {
+  align-self: center;
+}
+
+.verification-notice-details {
+  margin-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .verification-notice-wrap {
+    margin-top: 16px;
+    padding: 0 16px;
+  }
+
+  .verification-notice {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .verification-notice-action {
+    width: 100%;
+    margin-top: 4px;
+  }
+}
+
 .page-title-row {
   display: flex;
   align-items: flex-end;

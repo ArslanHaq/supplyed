@@ -15,6 +15,7 @@ type NavItem = {
 const institutionNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
   { id: "post-job", label: "Post job", icon: "plus" },
+  { id: "find-jobs", label: "Browse jobs", icon: "search" },
   { id: "find-teachers", label: "Teachers", icon: "search" },
   { id: "applications", label: "Applications", icon: "users" },
   { id: "messaging", label: "Messages", icon: "message" },
@@ -24,6 +25,7 @@ const institutionNav: NavItem[] = [
 const teacherNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
   { id: "find-jobs", label: "Jobs", icon: "search" },
+  { id: "applications", label: "My applications", icon: "file" },
   { id: "calendar", label: "Calendar", icon: "calendar" },
   { id: "messaging", label: "Messages", icon: "message" },
   { id: "teacher-profile", label: "Profile", icon: "user" },
@@ -32,6 +34,7 @@ const teacherNav: NavItem[] = [
 const individualNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
   { id: "post-job", label: "Post job", icon: "plus" },
+  { id: "find-jobs", label: "Browse jobs", icon: "search" },
   { id: "find-teachers", label: "Teachers", icon: "search" },
   { id: "applications", label: "Applications", icon: "users" },
   { id: "messaging", label: "Messages", icon: "message" },
@@ -47,12 +50,25 @@ export function AppChrome({
   onLanding,
   onLogout,
   onSettings,
-}: Pick<RouteProps, "state" | "go"> & { children: ReactNode; verified: boolean; onLanding: () => void; onLogout: () => void; onSettings: () => void }) {
-  const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : individualNav;
-  const fallbackUserName = state.role === "institution" ? "School workspace" : state.role === "teacher" ? "Instructor" : "Hirer";
+}: Pick<RouteProps, "state" | "go"> & {
+  children: ReactNode;
+  verified: boolean;
+  onLanding: () => void;
+  onLogout: () => void;
+  onSettings: () => void;
+}) {
+  const navItems =
+    state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : individualNav;
+  const fallbackUserName =
+    state.role === "institution" ? "School workspace" : state.role === "teacher" ? "Instructor" : "Hirer";
   const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
   const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Instructor" : "Hirer";
-  const searchPlaceholder = state.role === "teacher" ? "Search jobs..." : state.role === "individual" ? "Search teachers..." : "Search teachers...";
+  const searchPlaceholder =
+    state.role === "teacher"
+      ? "Search jobs..."
+      : state.role === "individual"
+        ? "Search teachers..."
+        : "Search teachers...";
 
   return (
     <div className="workspace-shell">
@@ -60,15 +76,30 @@ export function AppChrome({
         <Logo size={17} onClick={() => go("dashboard")} />
         <nav aria-label={`${userSub} workspace navigation`} className="app-nav-links">
           {navItems.map((item) => (
-            <button key={item.id} className={`app-nav-link ${state.page === item.id ? "active" : ""}`} onClick={() => go(item.id)} type="button">
-              <span className="flex items-center gap-1.5"><Icon name={item.icon} size={13} /> {item.label}</span>
+            <button
+              key={item.id}
+              className={`app-nav-link ${state.page === item.id ? "active" : ""}`}
+              onClick={() => go(item.id)}
+              type="button"
+            >
+              <span className="flex items-center gap-1.5">
+                <Icon name={item.icon} size={13} /> {item.label}
+              </span>
             </button>
           ))}
         </nav>
         <div className="app-nav-right">
-          <div className="flex items-center gap-1.5 rounded-lg bg-chalk px-3 py-1.5"><Icon name="search" size={13} /><input placeholder={searchPlaceholder} className="w-[140px] border-0 bg-transparent outline-none" /></div>
-          <button aria-label="Open messages" className="notif-btn" onClick={() => go("messaging")} type="button"><Icon name="bell" size={16} /><div className="notif-dot" /></button>
-          <button aria-label="Open help" className="notif-btn" type="button"><Icon name="help" size={16} /></button>
+          <div className="flex items-center gap-1.5 rounded-lg bg-chalk px-3 py-1.5">
+            <Icon name="search" size={13} />
+            <input placeholder={searchPlaceholder} className="w-[140px] border-0 bg-transparent outline-none" />
+          </div>
+          <button aria-label="Open messages" className="notif-btn" onClick={() => go("messaging")} type="button">
+            <Icon name="bell" size={16} />
+            <div className="notif-dot" />
+          </button>
+          <button aria-label="Open help" className="notif-btn" type="button">
+            <Icon name="help" size={16} />
+          </button>
           <AppAccountMenu
             verified={verified}
             displayName={userName}

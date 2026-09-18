@@ -77,6 +77,7 @@ export type OnboardingDocumentState = {
 };
 
 export type OnboardingUserSnapshot = {
+  isFullyVerified?: boolean;
   email: string;
   emailVerified: boolean;
   phoneVerified: boolean;

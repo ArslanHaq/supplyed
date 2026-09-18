@@ -31,12 +31,7 @@ import type {
   SignupStep,
   UploadedFile,
 } from "./types";
-import {
-  buildOnboardingPayload,
-  createInitialForm,
-  documentFileError,
-  roleLabel,
-} from "./utils";
+import { buildOnboardingPayload, createInitialForm, documentFileError, roleLabel } from "./utils";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phonePattern = /^[0-9+()\s-]{10,}$/;
@@ -87,10 +82,16 @@ function missingSnapshotDocumentRequirements(snapshot: OnboardingProfileSnapshot
 }
 
 function requirementErrorEntries(requirements: OnboardingDocumentRequirementSnapshot[]) {
-  return Object.fromEntries(requirements.map((requirement) => [requirement.id, `${requirement.documentType.name} is required.`]));
+  return Object.fromEntries(
+    requirements.map((requirement) => [requirement.id, `${requirement.documentType.name} is required.`]),
+  );
 }
 
-function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined, snapshot?: OnboardingProfileSnapshot) {
+function mergeSnapshotForm(
+  current: SignupForm,
+  accountEmail: string | undefined,
+  snapshot?: OnboardingProfileSnapshot,
+) {
   if (!snapshot) return current;
 
   const next = createInitialForm(accountEmail, snapshot);
@@ -119,7 +120,8 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     maxTravelDistance: snapshotString(current.maxTravelDistance, next.maxTravelDistance),
     phone: snapshotString(current.phone, next.phone),
     profileCity: snapshotString(current.profileCity, next.profileCity),
-    profileCountryCode: snapshot.instructor?.countryCode || snapshot.recruiter?.countryCode || current.profileCountryCode || "GB",
+    profileCountryCode:
+      snapshot.instructor?.countryCode || snapshot.recruiter?.countryCode || current.profileCountryCode || "GB",
     postcode: snapshotString(current.postcode, next.postcode),
     recruiterProfileId: snapshotString(current.recruiterProfileId, next.recruiterProfileId),
     schoolName: snapshotString(current.schoolName, next.schoolName),
@@ -134,11 +136,11 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
 }
 
 function fillEmpty(current: string, next?: string) {
-  return current.trim() ? current : next?.trim() ?? current;
+  return current.trim() ? current : (next?.trim() ?? current);
 }
 
 function fillEmptyArray(current: string[], next?: string[]) {
-  return current.length > 0 ? current : next ?? current;
+  return current.length > 0 ? current : (next ?? current);
 }
 
 function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill) {
@@ -204,20 +206,22 @@ export function useOnboardingForm({
   const activeRole: SignupRole = role === "teacher" ? "teacher" : role === "individual" ? "individual" : "institution";
   const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
   const currentStep = Math.min(steps.length, Math.max(1, step)) as SignupStep;
-  const [form, setForm] = useState<SignupForm>(() => mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill));
+  const [form, setForm] = useState<SignupForm>(() =>
+    mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill),
+  );
   const [errors, setErrors] = useState<SignupErrors>({});
   const [documentErrors, setDocumentErrors] = useState<DocumentErrors>({});
   const [pending, setPending] = useState<OnboardingPending>(null);
   const [uploadPending, setUploadPending] = useState<string | null>(null);
   const [viewPending, setViewPending] = useState<string | null>(null);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
-  const [documentRequirementsSnapshot, setDocumentRequirementsSnapshot] = useState<OnboardingDocumentRequirementSnapshot[]>(
-    () => initialSnapshot?.documentRequirements ?? [],
+  const [documentRequirementsSnapshot, setDocumentRequirementsSnapshot] = useState<
+    OnboardingDocumentRequirementSnapshot[]
+  >(() => initialSnapshot?.documentRequirements ?? []);
+  const [lockedDocumentStage, setLockedDocumentStage] = useState(() => hasCreatedProfile(initialSnapshot, activeRole));
+  const [requirementDocuments, setRequirementDocuments] = useState<Record<string, OnboardingDocumentSnapshot>>(
+    () => initialSnapshot?.requirementDocuments ?? {},
   );
-  const [lockedDocumentStage, setLockedDocumentStage] = useState(
-    () => hasCreatedProfile(initialSnapshot, activeRole),
-  );
-  const [requirementDocuments, setRequirementDocuments] = useState<Record<string, OnboardingDocumentSnapshot>>(() => initialSnapshot?.requirementDocuments ?? {});
   const [requirementDocumentErrors, setRequirementDocumentErrors] = useState<Record<string, string | undefined>>({});
   const [requirementUploadPending, setRequirementUploadPending] = useState<string | null>(null);
   const [requirementViewPending, setRequirementViewPending] = useState<string | null>(null);
@@ -241,7 +245,8 @@ export function useOnboardingForm({
         maxSizeBytes: requirement.maxSizeBytes,
         name: requirement.name,
       },
-    })) ?? documentRequirementsSnapshot, activeRole,
+    })) ?? documentRequirementsSnapshot,
+    activeRole,
   );
   const previousSnapshotFingerprintRef = useRef(initialSnapshotFingerprint);
   const prefillFingerprint = useMemo(() => JSON.stringify(prefill ?? {}), [prefill]);
@@ -302,11 +307,19 @@ export function useOnboardingForm({
       const documentLines: ReviewLine[] =
         documentRequirements.length > 0
           ? documentRequirements.map((requirement) => ({
-              label: requirement.isRequired ? requirement.documentType.name : `${requirement.documentType.name} (optional)`,
+              label: requirement.isRequired
+                ? requirement.documentType.name
+                : `${requirement.documentType.name} (optional)`,
               value: <FileSummary file={form.documents[requirement.id] ?? null} />,
               wide: true,
             }))
-          : [{ label: "Documents", value: <span className="text-muted">No document requirements loaded</span>, wide: true }];
+          : [
+              {
+                label: "Documents",
+                value: <span className="text-muted">No document requirements loaded</span>,
+                wide: true,
+              },
+            ];
 
       return [
         {
@@ -321,12 +334,18 @@ export function useOnboardingForm({
             { label: "Skills", value: <ReviewBadgeList items={form.skills} />, wide: true },
             { label: "Experience", value: form.yearsExperience ? `${form.yearsExperience} years` : "Not provided" },
             { label: "Daily rate", value: form.dailyRate ? `${form.currency || "GBP"} ${form.dailyRate}` : "Optional" },
-            { label: "Hourly rate", value: form.hourlyRate ? `${form.currency || "GBP"} ${form.hourlyRate}` : "Optional" },
-            { label: "Travel distance", value: form.maxTravelDistance ? `${form.maxTravelDistance} miles` : "Optional" },
+            {
+              label: "Hourly rate",
+              value: form.hourlyRate ? `${form.currency || "GBP"} ${form.hourlyRate}` : "Optional",
+            },
+            {
+              label: "Travel distance",
+              value: form.maxTravelDistance ? `${form.maxTravelDistance} miles` : "Optional",
+            },
             { label: "TRN", value: form.teachingReferenceNumber || "Optional" },
             { label: "Bio", value: form.bio || "Not provided", wide: true },
           ],
-        }
+        },
       ];
     }
 
@@ -468,7 +487,10 @@ export function useOnboardingForm({
     } catch (error) {
       setRequirementDocumentErrors((current) => ({
         ...current,
-        [requirementId]: error instanceof Error && error.message ? error.message : `${label} could not be uploaded. Choose the file again.`,
+        [requirementId]:
+          error instanceof Error && error.message
+            ? error.message
+            : `${label} could not be uploaded. Choose the file again.`,
       }));
     } finally {
       mutationPendingRef.current = false;
@@ -533,42 +555,33 @@ export function useOnboardingForm({
     if (targetStep === 1) {
       if (!roleSelected) nextErrors.accountRole = "Choose how you want to use SupplyED.";
       if (!form.fullName.trim()) nextErrors.fullName = "Enter your full name.";
-      if (!form.phone.trim()) nextErrors.phone = "Enter a contact number.";
-      else if (!phonePattern.test(form.phone.trim())) nextErrors.phone = "Use a valid phone number.";
-      if (roleSelected && activeRole !== "institution") {
-        if (!form.profileCountryCode.trim()) nextErrors.profileCountryCode = "Select your country.";
-        if (!form.profileCity.trim()) nextErrors.profileCity = "Select your city.";
-      }
-      if (!form.postcode.trim()) nextErrors.postcode = "Enter your postal code.";
-
+      if (form.phone.trim() && !phonePattern.test(form.phone.trim())) nextErrors.phone = "Use a valid phone number.";
       if (activeRole === "teacher") {
-        if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
-        if (form.keyStages.length === 0) nextErrors.keyStages = "Choose at least one key stage.";
-        if (!form.yearsExperience.trim()) nextErrors.yearsExperience = "Enter your years of experience.";
-        else if (Number(form.yearsExperience) < 0) nextErrors.yearsExperience = "Experience cannot be negative.";
+        if (
+          form.yearsExperience &&
+          (!Number.isInteger(Number(form.yearsExperience)) || Number(form.yearsExperience) < 0)
+        )
+          nextErrors.yearsExperience = "Experience cannot be negative.";
         if (form.hourlyRate && Number(form.hourlyRate) < 0) nextErrors.hourlyRate = "Hourly rate cannot be negative.";
         if (form.dailyRate && Number(form.dailyRate) < 0) nextErrors.dailyRate = "Daily rate cannot be negative.";
-        if (form.maxTravelDistance && Number(form.maxTravelDistance) < 0) nextErrors.maxTravelDistance = "Travel distance cannot be negative.";
-        if (form.bio.trim().length < 40) nextErrors.bio = "Write at least 40 characters so schools understand your teaching style.";
+        if (form.maxTravelDistance && Number(form.maxTravelDistance) < 0)
+          nextErrors.maxTravelDistance = "Travel distance cannot be negative.";
       }
     }
 
     if (targetStep === 2 && activeRole === "institution") {
       if (!form.schoolName.trim()) nextErrors.schoolName = "Enter the school or MAT name.";
-      if (!form.contactRole.trim()) nextErrors.contactRole = "Enter your role.";
       if (!form.institutionDomain.trim()) nextErrors.institutionDomain = "Enter the school or trust domain.";
-      else if (!domainPattern.test(form.institutionDomain.trim())) nextErrors.institutionDomain = "Use a valid domain, for example greenfield.ac.uk.";
+      else if (!domainPattern.test(form.institutionDomain.trim()))
+        nextErrors.institutionDomain = "Use a valid domain, for example greenfield.ac.uk.";
       if (!form.institutionAddress.trim()) nextErrors.institutionAddress = "Enter the institution address.";
       if (!form.institutionCountryCode.trim()) nextErrors.institutionCountryCode = "Select the institution country.";
       if (!form.institutionCity.trim()) nextErrors.institutionCity = "Select the institution city.";
-      if (form.coverTypes.length === 0) nextErrors.coverTypes = "Choose at least one staffing need.";
     }
 
     if (targetStep === 3 && activeRole === "institution") {
-      if (!form.complianceContact.trim()) nextErrors.complianceContact = "Enter the safeguarding or compliance lead.";
-      if (!form.complianceEmail.trim()) nextErrors.complianceEmail = "Enter the compliance email.";
-      else if (!emailPattern.test(form.complianceEmail.trim())) nextErrors.complianceEmail = "Use a valid email address.";
-      if (!form.safeguardingConfirmed) nextErrors.safeguardingConfirmed = "Confirm safeguarding responsibility.";
+      if (form.complianceEmail.trim() && !emailPattern.test(form.complianceEmail.trim()))
+        nextErrors.complianceEmail = "Use a valid email address.";
     }
 
     setErrors(nextErrors);
@@ -594,7 +607,9 @@ export function useOnboardingForm({
       setStep(currentStep + 1);
       setErrors({});
     } catch (error) {
-      setSubmitError(error instanceof Error && error.message ? error.message : "This step could not be saved. Try again.");
+      setSubmitError(
+        error instanceof Error && error.message ? error.message : "This step could not be saved. Try again.",
+      );
     } finally {
       mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);
@@ -630,7 +645,9 @@ export function useOnboardingForm({
         setSubmitError(result.message || "Onboarding could not be submitted. Try again.");
       }
     } catch (error) {
-      setSubmitError(error instanceof Error && error.message ? error.message : "Onboarding could not be submitted. Try again.");
+      setSubmitError(
+        error instanceof Error && error.message ? error.message : "Onboarding could not be submitted. Try again.",
+      );
     } finally {
       mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);
@@ -682,7 +699,9 @@ export function useOnboardingForm({
         setSubmitError(result.message || "Upload all required documents before sending the profile for review.");
       }
     } catch (error) {
-      setSubmitError(error instanceof Error && error.message ? error.message : "Profile could not be sent for review. Try again.");
+      setSubmitError(
+        error instanceof Error && error.message ? error.message : "Profile could not be sent for review. Try again.",
+      );
     } finally {
       mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);

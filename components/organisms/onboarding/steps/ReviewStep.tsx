@@ -15,7 +15,8 @@ export function ReviewStep({ controller }: StepComponentProps) {
           <div>
             <div className="font-semibold text-brand-dark">Ready to create profile</div>
             <p className="mt-1 text-sm leading-6 text-brand-dark/80">
-              Review the details below. After you confirm, your profile will be created and any required documents will be handled on the next screen.
+              Review your details before creating your profile. Manage documents and full verification from your
+              workspace after setup.
             </p>
           </div>
         </div>
@@ -23,10 +24,16 @@ export function ReviewStep({ controller }: StepComponentProps) {
 
       <div className="grid gap-4 2xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-4">
-          {reviewGroups[0] ? <ReviewCard group={reviewGroups[0]} onEdit={() => setStep(reviewGroups[0].editStep)} /> : null}
-          {reviewGroups[2] ? <ReviewCard group={reviewGroups[2]} onEdit={() => setStep(reviewGroups[2].editStep)} /> : null}
+          {reviewGroups[0] ? (
+            <ReviewCard group={reviewGroups[0]} onEdit={() => setStep(reviewGroups[0].editStep)} />
+          ) : null}
+          {reviewGroups[2] ? (
+            <ReviewCard group={reviewGroups[2]} onEdit={() => setStep(reviewGroups[2].editStep)} />
+          ) : null}
         </div>
-        {reviewGroups[1] ? <ReviewCard featured group={reviewGroups[1]} onEdit={() => setStep(reviewGroups[1].editStep)} /> : null}
+        {reviewGroups[1] ? (
+          <ReviewCard featured group={reviewGroups[1]} onEdit={() => setStep(reviewGroups[1].editStep)} />
+        ) : null}
       </div>
     </div>
   );

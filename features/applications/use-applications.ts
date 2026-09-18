@@ -8,7 +8,12 @@ import { queryKeys } from "@/lib/query/keys";
 import { startRouteLoading } from "@/lib/navigation-loading";
 
 import { createApplicationAction, updateApplicationStatusAction } from "./actions";
-import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplicationsQuery, PaginatedApplications } from "./types";
+import type {
+  ApplicationCreateInput,
+  ApplicationStatusUpdateInput,
+  JobApplicationsQuery,
+  PaginatedApplications,
+} from "./types";
 
 type CreateApplicationResult = Awaited<ReturnType<typeof createApplicationAction>>;
 
@@ -35,6 +40,7 @@ export function useUpdateApplicationStatus(options: UseCreateApplicationOptions 
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
         ]);
       }
       await options.onSuccess?.(result);
@@ -63,5 +69,21 @@ export function useCreateApplication(options: UseCreateApplicationOptions = {}) 
 
       await options.onSuccess?.(result);
     },
+  });
+}
+
+export function useMyApplications(query: JobApplicationsQuery = {}, enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: [...queryKeys.applications.all, "mine", query],
+    queryFn: () => fetchJson<PaginatedApplications>("/api/applications/me", { query }),
+  });
+}
+export type ApplicationHistoryEntry = { id: string; fromStatus: string | null; toStatus: string; createdAt: string };
+export function useApplicationHistory(id: string, enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: [...queryKeys.applications.all, "history", id],
+    queryFn: () => fetchJson<ApplicationHistoryEntry[]>(`/api/applications/${id}/history`),
   });
 }

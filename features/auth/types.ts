@@ -1,6 +1,7 @@
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 export type AuthUser = {
+  isFullyVerified?: boolean;
   applicationStatus: ApplicationStatus;
   email: string;
   emailVerified: boolean;

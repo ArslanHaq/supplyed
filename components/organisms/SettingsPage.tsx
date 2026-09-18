@@ -16,6 +16,7 @@ import type { AppRole, ApplicationStatus, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Checkbox, Field, Icon, Tag } from "../atoms";
 import { PageHead, SectionLoader } from "../molecules";
+import { ApplicationDocuments } from "./ApplicationDocuments";
 
 type SettingsForm = {
   institution: SettingsInstitutionUpdateInput;
@@ -118,7 +119,14 @@ function arrayToText(values: string[]) {
 }
 
 function textToArray(value: string) {
-  return Array.from(new Set(value.split(",").map((item) => item.trim()).filter(Boolean)));
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
 }
 
 function uniqueCities(cities: ICity[]) {
@@ -146,6 +154,7 @@ function statusLabel(status: ApplicationStatus) {
   if (status === "pending_review") return "Pending review";
   if (status === "rejected") return "Rejected";
   if (status === "suspended") return "Suspended";
+  if (status === "deactivated") return "Deactivated";
   return "Incomplete";
 }
 
@@ -372,7 +381,12 @@ function CountryCityFields({
         </select>
       </Field>
       <Field error={cityError} label="City" required={cityRequired}>
-        <select className="select" disabled={!countryCode} onChange={(event) => onCityChange(event.target.value)} value={city}>
+        <select
+          className="select"
+          disabled={!countryCode}
+          onChange={(event) => onCityChange(event.target.value)}
+          value={city}
+        >
           <option value="">{countryCode ? "Select city" : "Select country first"}</option>
           {city && !currentCityInOptions ? <option value={city}>{city}</option> : null}
           {cityOptions.map((cityOption) => (
@@ -386,7 +400,12 @@ function CountryCityFields({
   );
 }
 
-export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "go" | "state" | "toast"> & { verified: boolean }) {
+export function SettingsPage({
+  go,
+  state,
+  toast,
+  verified,
+}: Pick<RouteProps, "go" | "state" | "toast"> & { verified: boolean }) {
   const profileQuery = useSettingsProfile();
   const profile = profileQuery.data;
   const snapshotKey = JSON.stringify(profile ?? null);
@@ -445,7 +464,10 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
     },
   });
 
-  function updateUser<Field extends keyof SettingsUserUpdateInput>(field: Field, value: SettingsUserUpdateInput[Field]) {
+  function updateUser<Field extends keyof SettingsUserUpdateInput>(
+    field: Field,
+    value: SettingsUserUpdateInput[Field],
+  ) {
     setForm((current) => ({ ...current, user: { ...current.user, [field]: value } }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setSubmitError(undefined);
@@ -628,7 +650,11 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
 
               <div className="grid-2">
                 <Field error={errors.fullName} label="Full name" required>
-                  <input className="input" value={form.instructor.fullName} onChange={(event) => updateInstructor("fullName", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.instructor.fullName}
+                    onChange={(event) => updateInstructor("fullName", event.target.value)}
+                  />
                 </Field>
                 <ProfileImageField
                   disabled={!canSave}
@@ -637,8 +663,13 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   name={form.instructor.fullName || displayName(profile)}
                   onFile={uploadProfileImageFile}
                   pending={uploadProfileImage.isPending}
-                />                <Field label="Address">
-                  <input className="input" value={form.instructor.address} onChange={(event) => updateInstructor("address", event.target.value)} />
+                />{" "}
+                <Field label="Address">
+                  <input
+                    className="input"
+                    value={form.instructor.address}
+                    onChange={(event) => updateInstructor("address", event.target.value)}
+                  />
                 </Field>
                 <CountryCityFields
                   city={form.instructor.city}
@@ -648,35 +679,84 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstructor("city", value)}
                   onCountryChange={updateInstructorCountry}
                 />
-
                 <Field label="Postal code">
-                  <input className="input" value={form.instructor.postalCode} onChange={(event) => updateInstructor("postalCode", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.instructor.postalCode}
+                    onChange={(event) => updateInstructor("postalCode", event.target.value)}
+                  />
                 </Field>
-
                 <Field label="Currency">
-                  <input className="input" value={form.instructor.currency} onChange={(event) => updateInstructor("currency", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.instructor.currency}
+                    onChange={(event) => updateInstructor("currency", event.target.value)}
+                  />
                 </Field>
                 <Field label="Experience">
-                  <input className="input" min={0} type="number" value={form.instructor.experience} onChange={(event) => updateInstructor("experience", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    type="number"
+                    value={form.instructor.experience}
+                    onChange={(event) => updateInstructor("experience", event.target.value)}
+                  />
                 </Field>
                 <Field label="Max travel distance">
-                  <input className="input" min={0} type="number" value={form.instructor.maxTravelDistance} onChange={(event) => updateInstructor("maxTravelDistance", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    type="number"
+                    value={form.instructor.maxTravelDistance}
+                    onChange={(event) => updateInstructor("maxTravelDistance", event.target.value)}
+                  />
                 </Field>
                 <Field label="Hourly rate">
-                  <input className="input" min={0} type="number" value={form.instructor.hourlyRate} onChange={(event) => updateInstructor("hourlyRate", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    type="number"
+                    value={form.instructor.hourlyRate}
+                    onChange={(event) => updateInstructor("hourlyRate", event.target.value)}
+                  />
                 </Field>
                 <Field label="Daily rate">
-                  <input className="input" min={0} type="number" value={form.instructor.dailyRate} onChange={(event) => updateInstructor("dailyRate", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    type="number"
+                    value={form.instructor.dailyRate}
+                    onChange={(event) => updateInstructor("dailyRate", event.target.value)}
+                  />
                 </Field>
               </div>
 
               <Field label="Bio">
-                <textarea className="textarea" value={form.instructor.bio} onChange={(event) => updateInstructor("bio", event.target.value)} />
+                <textarea
+                  className="textarea"
+                  value={form.instructor.bio}
+                  onChange={(event) => updateInstructor("bio", event.target.value)}
+                />
               </Field>
               <div className="grid-2">
-                <ArrayField label="Subjects" onChange={(value) => updateInstructor("subjects", value)} placeholder="Mathematics, Physics" value={form.instructor.subjects} />
-                <ArrayField label="Key stages" onChange={(value) => updateInstructor("keyStages", value)} placeholder="KS2, KS3" value={form.instructor.keyStages} />
-                <ArrayField label="Skills" onChange={(value) => updateInstructor("skills", value)} placeholder="Classroom management, SEN" value={form.instructor.skills} />
+                <ArrayField
+                  label="Subjects"
+                  onChange={(value) => updateInstructor("subjects", value)}
+                  placeholder="Mathematics, Physics"
+                  value={form.instructor.subjects}
+                />
+                <ArrayField
+                  label="Key stages"
+                  onChange={(value) => updateInstructor("keyStages", value)}
+                  placeholder="KS2, KS3"
+                  value={form.instructor.keyStages}
+                />
+                <ArrayField
+                  label="Skills"
+                  onChange={(value) => updateInstructor("skills", value)}
+                  placeholder="Classroom management, SEN"
+                  value={form.instructor.skills}
+                />
               </div>
             </section>
           ) : null}
@@ -689,13 +769,19 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                 </span>
                 <div>
                   <div className="section-title mb-1">Institution profile</div>
-                  <p className="text-sm leading-6 text-muted">Organisation, staffing, and safeguarding profile details.</p>
+                  <p className="text-sm leading-6 text-muted">
+                    Organisation, staffing, and safeguarding profile details.
+                  </p>
                 </div>
               </div>
 
               <div className="grid-2">
                 <Field error={errors.schoolName} label="School or organisation" required>
-                  <input className="input" value={form.institution.name} onChange={(event) => updateInstitution("name", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.institution.name}
+                    onChange={(event) => updateInstitution("name", event.target.value)}
+                  />
                 </Field>
                 <ProfileImageField
                   disabled={!canSave}
@@ -704,14 +790,27 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   name={form.institution.name || displayName(profile)}
                   onFile={uploadProfileImageFile}
                   pending={uploadProfileImage.isPending}
-                />                <Field label="Registration ID">
-                  <input className="input" value={form.institution.registrationId} onChange={(event) => updateInstitution("registrationId", event.target.value)} />
+                />{" "}
+                <Field label="Registration ID">
+                  <input
+                    className="input"
+                    value={form.institution.registrationId}
+                    onChange={(event) => updateInstitution("registrationId", event.target.value)}
+                  />
                 </Field>
                 <Field error={errors.domain} label="Domain" required>
-                  <input className="input" value={form.institution.domain} onChange={(event) => updateInstitution("domain", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.institution.domain}
+                    onChange={(event) => updateInstitution("domain", event.target.value)}
+                  />
                 </Field>
                 <Field error={errors.address} label="Address" required>
-                  <input className="input" value={form.institution.address} onChange={(event) => updateInstitution("address", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.institution.address}
+                    onChange={(event) => updateInstitution("address", event.target.value)}
+                  />
                 </Field>
                 <CountryCityFields
                   city={form.institution.city}
@@ -723,29 +822,58 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstitution("city", value)}
                   onCountryChange={updateInstitutionCountry}
                 />
-
                 <Field label="Postal code">
-                  <input className="input" value={form.institution.postalCode} onChange={(event) => updateInstitution("postalCode", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.institution.postalCode}
+                    onChange={(event) => updateInstitution("postalCode", event.target.value)}
+                  />
                 </Field>
-
                 <Field label="Your role">
-                  <input className="input" value={form.institution.userRole} onChange={(event) => updateInstitution("userRole", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.institution.userRole}
+                    onChange={(event) => updateInstitution("userRole", event.target.value)}
+                  />
                 </Field>
                 <Field label="Typical pupil count">
-                  <input className="input" min={0} type="number" value={form.institution.typicalPupilCount} onChange={(event) => updateInstitution("typicalPupilCount", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    type="number"
+                    value={form.institution.typicalPupilCount}
+                    onChange={(event) => updateInstitution("typicalPupilCount", event.target.value)}
+                  />
                 </Field>
                 <Field label="Compliance contact">
-                  <input className="input" value={form.institution.complianceContact} onChange={(event) => updateInstitution("complianceContact", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.institution.complianceContact}
+                    onChange={(event) => updateInstitution("complianceContact", event.target.value)}
+                  />
                 </Field>
                 <Field error={errors.complianceEmail} label="Compliance email">
-                  <input className="input" value={form.institution.complianceEmail} onChange={(event) => updateInstitution("complianceEmail", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.institution.complianceEmail}
+                    onChange={(event) => updateInstitution("complianceEmail", event.target.value)}
+                  />
                 </Field>
               </div>
 
               <Field label="Staffing needs">
-                <textarea className="textarea" value={form.institution.staffingNeeds} onChange={(event) => updateInstitution("staffingNeeds", event.target.value)} />
+                <textarea
+                  className="textarea"
+                  value={form.institution.staffingNeeds}
+                  onChange={(event) => updateInstitution("staffingNeeds", event.target.value)}
+                />
               </Field>
-              <ArrayField label="Cover types" onChange={(value) => updateInstitution("coverTypes", value)} placeholder="Same-day cover, Long-term roles" value={form.institution.coverTypes} />
+              <ArrayField
+                label="Cover types"
+                onChange={(value) => updateInstitution("coverTypes", value)}
+                placeholder="Same-day cover, Long-term roles"
+                value={form.institution.coverTypes}
+              />
               <Checkbox
                 checked={form.institution.safeguardingConfirmed}
                 label="Safeguarding responsibility confirmed"
@@ -768,7 +896,11 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
 
               <div className="grid-2">
                 <Field error={errors.displayName} label="Display name" required>
-                  <input className="input" value={form.recruiter.displayName} onChange={(event) => updateRecruiter("displayName", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.recruiter.displayName}
+                    onChange={(event) => updateRecruiter("displayName", event.target.value)}
+                  />
                 </Field>
                 <ProfileImageField
                   disabled={!canSave}
@@ -777,8 +909,13 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   name={form.recruiter.displayName || displayName(profile)}
                   onFile={uploadProfileImageFile}
                   pending={uploadProfileImage.isPending}
-                />                <Field label="Address">
-                  <input className="input" value={form.recruiter.address} onChange={(event) => updateRecruiter("address", event.target.value)} />
+                />{" "}
+                <Field label="Address">
+                  <input
+                    className="input"
+                    value={form.recruiter.address}
+                    onChange={(event) => updateRecruiter("address", event.target.value)}
+                  />
                 </Field>
                 <CountryCityFields
                   city={form.recruiter.city}
@@ -788,15 +925,21 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateRecruiter("city", value)}
                   onCountryChange={updateRecruiterCountry}
                 />
-
                 <Field label="Postal code">
-                  <input className="input" value={form.recruiter.postalCode} onChange={(event) => updateRecruiter("postalCode", event.target.value)} />
+                  <input
+                    className="input"
+                    value={form.recruiter.postalCode}
+                    onChange={(event) => updateRecruiter("postalCode", event.target.value)}
+                  />
                 </Field>
-
               </div>
 
               <Field label="Bio">
-                <textarea className="textarea" value={form.recruiter.bio} onChange={(event) => updateRecruiter("bio", event.target.value)} />
+                <textarea
+                  className="textarea"
+                  value={form.recruiter.bio}
+                  onChange={(event) => updateRecruiter("bio", event.target.value)}
+                />
               </Field>
             </section>
           ) : null}
@@ -811,13 +954,23 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
             <Btn onClick={() => go("dashboard")} variant="ghost">
               Cancel
             </Btn>
-            <Btn disabled={!canSave} iconRight="check" loading={updateSettings.isPending} loadingLabel="Saving" size="lg" type="submit">
+            <Btn
+              disabled={!canSave}
+              iconRight="check"
+              loading={updateSettings.isPending}
+              loadingLabel="Saving"
+              size="lg"
+              type="submit"
+            >
               Save settings
             </Btn>
           </div>
         </div>
 
         <aside className="flex flex-col gap-5">
+          <div className="card card-pad">
+            <ApplicationDocuments />
+          </div>
           <section className="card card-pad-lg">
             <div className="flex items-start gap-3">
               <Avatar name={displayName(profile)} src={profileImageUrl} />
@@ -834,6 +987,11 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
             <div className="mt-5 grid gap-3">
               <ReadOnlyLine label="Email status" value={profile.user.emailVerified ? "Verified" : "Not verified"} />
               <ReadOnlyLine label="Phone status" value={profile.user.phoneVerified ? "Verified" : "Not verified"} />
+              {!profile.user.phoneVerified ? (
+                <p className="text-xs text-muted">
+                  Contact SupplyED support to verify your phone number. Changing it requires verification again.
+                </p>
+              ) : null}
               <ReadOnlyLine label="Two-factor" value={profile.user.twoFactorEnabled ? "Enabled" : "Disabled"} />
               <ReadOnlyLine label="Last login" value={formatDate(profile.user.lastLogin)} />
               <ReadOnlyLine label="Updated" value={formatDate(profile.user.updatedAt)} />
@@ -850,7 +1008,14 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
               {role === "teacher" ? (
                 <>
                   <ReadOnlyLine label="DBS verified" value={profile.instructor?.dbsVerified ? "Yes" : "No"} />
-                  <ReadOnlyLine label="Rating" value={profile.instructor?.ratingAverage ? `${profile.instructor.ratingAverage} from ${profile.instructor.ratingCount} reviews` : "No rating"} />
+                  <ReadOnlyLine
+                    label="Rating"
+                    value={
+                      profile.instructor?.ratingAverage
+                        ? `${profile.instructor.ratingAverage} from ${profile.instructor.ratingCount} reviews`
+                        : "No rating"
+                    }
+                  />
                 </>
               ) : null}
 

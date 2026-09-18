@@ -8,7 +8,7 @@ export function InstitutionComplianceStep({ controller }: StepComponentProps) {
   return (
     <div className="space-y-6">
       <div className="grid gap-x-4 sm:grid-cols-2">
-        <Field label="Compliance lead" htmlFor="compliance-contact" error={errors.complianceContact} required>
+        <Field label="Compliance lead" htmlFor="compliance-contact" error={errors.complianceContact}>
           <input
             id="compliance-contact"
             className={fieldClass(errors.complianceContact)}
@@ -17,7 +17,7 @@ export function InstitutionComplianceStep({ controller }: StepComponentProps) {
             placeholder="Name of safeguarding lead"
           />
         </Field>
-        <Field label="Compliance email" htmlFor="compliance-email" error={errors.complianceEmail} required>
+        <Field label="Compliance email" htmlFor="compliance-email" error={errors.complianceEmail}>
           <input
             id="compliance-email"
             className={fieldClass(errors.complianceEmail)}
@@ -37,7 +37,8 @@ export function InstitutionComplianceStep({ controller }: StepComponentProps) {
           <div>
             <div className="font-semibold">Safeguarding responsibility</div>
             <p className="mt-1 text-sm leading-6 text-muted">
-              SupplyED can verify teacher documents, but schools remain responsible for local safeguarding and booking approvals.
+              SupplyED can verify teacher documents, but schools remain responsible for local safeguarding and booking
+              approvals.
             </p>
           </div>
         </div>

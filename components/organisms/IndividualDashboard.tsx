@@ -1,3 +1,5 @@
+import { ProfileVerificationPanel } from "./ProfileVerificationPanel";
+import { isJobOpen } from "@/features/jobs/presentation";
 import { useState } from "react";
 
 import { seedTeachers } from "@/data/supplyed";
@@ -9,11 +11,11 @@ import { Avatar, Btn, Icon, MatchScore, Stat, Tag, VerifyBadge } from "../atoms"
 import { PageHead } from "../molecules";
 import { JobManagementList, type JobStatusFilter } from "./JobManagementList";
 
-export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toast">) {
+export function IndividualDashboard({ go, toast, state }: Pick<RouteProps, "go" | "toast" | "state">) {
   const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ALL");
   const jobsQuery = useMyJobs();
   const jobs = jobsQuery.data ?? [];
-  const activeJobs = jobs.filter((job) => job.status === "ACTIVE");
+  const activeJobs = jobs.filter(isJobOpen);
   const draftJobs = jobs.filter((job) => job.status === "DRAFT");
   const updateJob = useUpdateJob({
     onSuccess: (result) => {
@@ -66,10 +68,15 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
         }
       />
 
+      <ProfileVerificationPanel embedded state={state} go={go} toast={toast} />
       <div className="grid-4 mb-7">
         <Stat value={activeJobs.length} label="Active jobs" delta={`${draftJobs.length} drafts`} />
         <Stat value={jobs.length} label="Total posted" delta="All statuses" />
-        <Stat value={jobs.filter((job) => job.status === "CLOSED").length} label="Closed roles" delta="History retained" />
+        <Stat
+          value={jobs.filter((job) => job.status === "CLOSED").length}
+          label="Closed roles"
+          delta="History retained"
+        />
         <Stat value="100%" label="Safety setup" delta="Account-led contact" />
       </div>
 
@@ -93,7 +100,11 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
           <div className="section-title mt-7">Recommended verified teachers</div>
           <div className="flex flex-col gap-3">
             {seedTeachers.slice(0, 3).map((teacher) => (
-              <div key={teacher.id} className="card card-pad flex cursor-pointer flex-wrap items-center gap-4" onClick={() => go("teacher-profile", { teacherId: teacher.id })}>
+              <div
+                key={teacher.id}
+                className="card card-pad flex cursor-pointer flex-wrap items-center gap-4"
+                onClick={() => go("teacher-profile", { teacherId: teacher.id })}
+              >
                 <Avatar name={teacher.name} tone={teacher.tone} />
                 <div className="min-w-[220px] flex-1">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -129,12 +140,14 @@ export function IndividualDashboard({ go, toast }: Pick<RouteProps, "go" | "toas
               Hirers see verification badges. DBS, identity, and right-to-work documents stay restricted.
             </p>
             <div className="mt-4 space-y-2">
-              {["Account-led messaging", "No learner account required", "Location shared after accepted request"].map((item) => (
-                <div key={item} className="flex items-center gap-2 text-sm">
-                  <Icon name="checkCircle" size={15} className="text-brand" />
-                  <span>{item}</span>
-                </div>
-              ))}
+              {["Account-led messaging", "No learner account required", "Location shared after accepted request"].map(
+                (item) => (
+                  <div key={item} className="flex items-center gap-2 text-sm">
+                    <Icon name="checkCircle" size={15} className="text-brand" />
+                    <span>{item}</span>
+                  </div>
+                ),
+              )}
             </div>
           </div>
 
