@@ -128,6 +128,7 @@ export function toUploadedFileFromDocument(document: OnboardingDocumentSnapshot)
   return {
     id: document.id,
     name: document.name,
+    rejectionComment: document.rejectionComment,
     requirementId: document.requirementId ?? undefined,
     size: document.size,
     status: document.status,
@@ -175,6 +176,8 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     localAuthority: institution?.county ?? "",
     maxTravelDistance: instructor?.maxTravelDistance ?? "",
     phone: user?.phone ?? "",
+    profileCity: instructor?.city || recruiter?.city || "",
+    profileCountryCode: instructor?.countryCode || recruiter?.countryCode || "GB",
     postcode: instructor?.postalCode || institution?.postalCode || recruiter?.postalCode || user?.postcode || "",
     recruiterProfileId: recruiter?.id ?? "",
     safeguardingConfirmed: institution?.safeguardingConfirmed ?? false,
@@ -195,6 +198,8 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("fullName", form.fullName.trim());
   data.set("email", form.email || accountEmail || "");
   data.set("phone", form.phone.trim());
+  data.set("profileCity", form.profileCity.trim());
+  data.set("profileCountryCode", form.profileCountryCode || "GB");
   data.set("postcode", form.postcode.trim());
   data.set("teacherProfileId", form.teacherProfileId);
   data.set("institutionProfileId", form.institutionProfileId);

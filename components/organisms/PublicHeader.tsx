@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { QueryProvider } from "@/lib/query/query-client";
+
 import { Logo } from "../atoms";
 import { PublicHeaderAccountSlot } from "./PublicHeaderAccountSlot";
 
@@ -29,7 +31,7 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
       </nav>
 
       <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-        <PublicHeaderAccountSlot />
+        <QueryProvider><PublicHeaderAccountSlot /></QueryProvider>
       </div>
     </header>
   );

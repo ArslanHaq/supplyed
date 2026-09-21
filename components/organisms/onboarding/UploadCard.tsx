@@ -10,6 +10,7 @@ export function UploadCard({
   actionLabel,
   capture,
   description,
+  disabled = false,
   error,
   file,
   icon,
@@ -18,6 +19,7 @@ export function UploadCard({
   onFile,
   onView,
   pending = false,
+  rejectionComment,
   required,
   status,
   title,
@@ -27,6 +29,7 @@ export function UploadCard({
   actionLabel: string;
   capture?: "user" | "environment";
   description: string;
+  disabled?: boolean;
   error?: string;
   file: UploadedFile | null;
   icon: string;
@@ -35,12 +38,17 @@ export function UploadCard({
   onFile: (file: UploadedFile) => void;
   onView?: () => void;
   pending?: boolean;
+  rejectionComment?: string | null;
   required?: boolean;
   status?: string | null;
   title: string;
   viewPending?: boolean;
 }) {
-  const statusTag = documentStatusTag(status);
+  const effectiveStatus = status ?? file?.status;
+  const statusTag = documentStatusTag(effectiveStatus);
+  const trimmedRejectionComment = rejectionComment?.trim() || file?.rejectionComment?.trim();
+  const showRejectionComment =
+    Boolean(trimmedRejectionComment) && ["REJECTED", "REQUIRES_INFO"].includes((effectiveStatus ?? "").toUpperCase());
 
   return (
     <div
@@ -66,6 +74,12 @@ export function UploadCard({
         </div>
 
         <div className="mt-auto pt-5">
+          {showRejectionComment ? (
+            <div className="mb-3 rounded-lg border border-danger/25 bg-white px-3 py-2 text-xs text-danger">
+              <div className="font-semibold">Review comment</div>
+              <p className="mt-1 whitespace-pre-line leading-5 text-danger/90">{trimmedRejectionComment}</p>
+            </div>
+          ) : null}
           {file ? (
             <div className="mb-3">
               <FileSummary file={file} />
@@ -75,7 +89,7 @@ export function UploadCard({
             <label
               className={cn(
                 "inline-flex items-center justify-center gap-1.5 rounded-full border border-border-strong bg-white px-4 py-2 text-sm font-semibold text-ink transition focus-within:outline-none focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2",
-                pending ? "cursor-wait opacity-70" : "cursor-pointer hover:border-brand hover:bg-brand-tint",
+                pending || disabled ? "cursor-wait opacity-70" : "cursor-pointer hover:border-brand hover:bg-brand-tint",
               )}
               htmlFor={id}
             >
@@ -85,7 +99,7 @@ export function UploadCard({
                 accept={accept}
                 capture={capture}
                 className="sr-only"
-                disabled={pending}
+                disabled={pending || disabled}
                 id={id}
                 onChange={(event) => {
                   const selectedFile = event.target.files?.[0];

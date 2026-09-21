@@ -118,7 +118,7 @@ function instructorPayload(input: SettingsInstructorUpdateInput) {
     experience,
     fullName: text(input.fullName),
     hourlyRate,
-    imageUrl: optionalText(input.imageUrl),
+
     keyStages: normalizeStringArray(input.keyStages),
     maxTravelDistance,
     postalCode: optionalText(input.postalCode),
@@ -143,7 +143,6 @@ function institutionPayload(input: SettingsInstitutionUpdateInput) {
     county: optionalText(input.county),
     coverTypes: normalizeStringArray(input.coverTypes),
     domain: text(input.domain).replace(/^https?:\/\//i, "").split("/")[0]?.trim().toLowerCase(),
-    imageUrl: optionalText(input.imageUrl),
     name: text(input.name),
     postalCode: optionalText(input.postalCode),
     registrationId: optionalText(input.registrationId),
@@ -162,7 +161,7 @@ function recruiterPayload(input: SettingsRecruiterUpdateInput) {
     countryCode: optionalText(input.countryCode) ?? "GB",
     county: optionalText(input.county),
     displayName: text(input.displayName),
-    imageUrl: optionalText(input.imageUrl),
+
     postalCode: optionalText(input.postalCode),
   });
 }
@@ -218,6 +217,116 @@ function mergeLocalSnapshot(current: SettingsProfileSnapshot, input: SettingsUpd
 function assertRoleAllowed(sessionRole: AppRole | null, requestedRole: AppRole) {
   if (!sessionRole || sessionRole === requestedRole) return;
   throw new Error("Refresh the page before saving settings for this account role.");
+}
+
+const profileImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const maxProfileImageBytes = 5 * 1024 * 1024;
+
+type ProfileImageUploadUrlResponse = {
+  expiresAt?: string | Date;
+  fileKey?: string;
+  requiredHeaders?: Record<string, string>;
+  uploadUrl?: string;
+  url?: string;
+};
+
+type ProfileImageResponse = {
+  expiresAt?: string | Date | null;
+  imageUrl?: string | null;
+};
+
+export type SettingsProfileImageUploadResult = {
+  expiresAt: string | null;
+  imageUrl: string | null;
+};
+
+function readFormFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+  if (!(value instanceof File) || value.size <= 0) return null;
+  return value;
+}
+
+function profileImageContentType(file: File) {
+  const explicitType = file.type.toLowerCase();
+  if (profileImageTypes.has(explicitType)) return explicitType;
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png") return "image/png";
+  if (extension === "webp") return "image/webp";
+
+  return explicitType;
+}
+
+function validateProfileImage(file: File | null) {
+  if (!file) return "Choose a profile image to upload.";
+  if (file.size > maxProfileImageBytes) return "Profile image must be 5 MB or smaller.";
+  if (!profileImageTypes.has(profileImageContentType(file))) return "Profile image must be a JPG, PNG, or WebP file.";
+  return undefined;
+}
+
+function responseDate(value: string | Date | null | undefined) {
+  if (value instanceof Date) return value.toISOString();
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+export async function uploadSettingsProfileImageAction(formData: FormData) {
+  const file = readFormFile(formData, "file");
+  const validationError = validateProfileImage(file);
+
+  if (validationError) {
+    return actionError(validationError);
+  }
+
+  if (!backendEnabled()) {
+    return actionError("Profile image upload requires backend file storage.");
+  }
+
+  const authContext = await getServerAuthContext();
+  if (!authContext?.userId) {
+    return actionError("Your session expired. Sign in again to continue.", { code: "SESSION_EXPIRED" });
+  }
+
+  try {
+    const contentType = profileImageContentType(file!);
+    const upload = await api.post<ProfileImageUploadUrlResponse>("/users/me/profile-image/upload-url", {
+      contentType,
+      sizeBytes: file!.size,
+    });
+    const uploadUrl = upload.uploadUrl ?? upload.url;
+    const fileKey = upload.fileKey;
+
+    if (!uploadUrl || !fileKey) {
+      throw new Error("The backend did not return a profile image upload URL.");
+    }
+
+    const uploadResponse = await fetch(uploadUrl, {
+      body: file!,
+      headers: { "Content-Type": contentType, ...(upload.requiredHeaders ?? {}) },
+      method: "PUT",
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Unable to upload ${file!.name}. The signed upload failed with status ${uploadResponse.status}.`);
+    }
+
+    const completed = await api.post<ProfileImageResponse>("/users/me/profile-image/upload-complete", { fileKey });
+
+    revalidateTag("settings", "max");
+    revalidateTag("auth", "max");
+    revalidateTag("auth:me", "max");
+    revalidateTag("onboarding", "max");
+
+    return actionOk<SettingsProfileImageUploadResult>(
+      {
+        expiresAt: responseDate(completed.expiresAt),
+        imageUrl: completed.imageUrl ?? null,
+      },
+      "Profile image updated.",
+    );
+  } catch (error) {
+    return actionFailure(error, "Profile image could not be uploaded. Choose another image and try again.");
+  }
 }
 
 export async function updateSettingsAction(input: SettingsUpdateInput) {

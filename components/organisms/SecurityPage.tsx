@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import {
@@ -10,6 +11,8 @@ import {
   regenerateTwoFactorRecoveryCodesAction,
   startTwoFactorSetupAction,
 } from "@/features/auth/two-factor-actions";
+import { queryKeys } from "@/lib/query/keys";
+import type { SettingsProfileSnapshot } from "@/features/settings/types";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Field, Icon, Tag } from "../atoms";
@@ -43,11 +46,26 @@ function statusLabel(status?: TwoFactorStatus) {
 }
 
 export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast">) {
+  const queryClient = useQueryClient();
+
+  function syncSettingsStatus(enabled: boolean) {
+    queryClient.setQueryData<SettingsProfileSnapshot>(
+      queryKeys.settings.profile(),
+      (current) => current
+        ? { ...current, user: { ...current.user, twoFactorEnabled: enabled } }
+        : current,
+    );
+    return queryClient.invalidateQueries({ queryKey: queryKeys.settings.profile() });
+  }
+
   const [status, setStatus] = useState<TwoFactorStatus>();
   const [setup, setSetup] = useState<TwoFactorSetup>();
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [enableCode, setEnableCode] = useState("");
   const [manageCode, setManageCode] = useState("");
+  const [disableCode, setDisableCode] = useState("");
+  const [disableError, setDisableError] = useState<string>();
+  const [showDisableForm, setShowDisableForm] = useState(false);
   const [codeError, setCodeError] = useState<string>();
   const [pending, setPending] = useState<SecurityPending>("load");
 
@@ -65,6 +83,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
       }
 
       setStatus(result.data);
+      queryClient.setQueryData<SettingsProfileSnapshot>(queryKeys.settings.profile(), (current) => current ? { ...current, user: { ...current.user, twoFactorEnabled: result.data.enabled } } : current);
       setPending(null);
     }
 
@@ -73,7 +92,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
     return () => {
       mounted = false;
     };
-  }, [toast]);
+  }, [toast, queryClient]);
 
   async function startSetup() {
     setPending("setup");
@@ -109,25 +128,29 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
     setSetup(undefined);
     setEnableCode("");
     setRecoveryCodes(result.data.recoveryCodes);
+    await syncSettingsStatus(true);
     toast({ title: "Two-factor enabled", msg: "Save your recovery codes before leaving this page.", tone: "success" });
     setPending(null);
   }
 
-  async function disableTwoFactor() {
+  async function disableTwoFactor(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setPending("disable");
-    setCodeError(undefined);
-    const result = await disableTwoFactorAction(null, formData({ code: manageCode }));
+    setDisableError(undefined);
+    const result = await disableTwoFactorAction(null, formData({ code: disableCode }));
 
     if (!result.ok) {
-      setCodeError(result.fieldErrors?.code ?? result.message);
+      setDisableError(result.fieldErrors?.code ?? result.message);
       toast({ title: "Could not disable 2FA", msg: result.message, tone: "danger" });
       setPending(null);
       return;
     }
 
     setStatus({ enabled: false, recoveryCodesRemaining: 0, setupPending: false });
-    setManageCode("");
+    setDisableCode("");
+    setShowDisableForm(false);
     setRecoveryCodes([]);
+    await syncSettingsStatus(false);
     toast({ title: "Two-factor disabled", msg: "This account now uses password sign-in only.", tone: "success" });
     setPending(null);
   }
@@ -281,8 +304,8 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                 <p className="mb-4 text-sm leading-6 text-muted">
                   Enter a current authenticator code or one recovery code before changing 2FA settings.
                 </p>
-                <form noValidate onSubmit={(event) => event.preventDefault()}>
-                  <Field error={codeError} htmlFor="manage-2fa-code" label="Code or recovery code" required>
+                <div>
+                  <Field error={codeError} htmlFor="manage-2fa-code" label="Code for new recovery codes" required>
                     <input
                       autoComplete="one-time-code"
                       className="input tracking-[0.12em]"
@@ -301,11 +324,45 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                     <Btn loading={pending === "recoveries"} loadingLabel="Generating" onClick={() => void regenerateRecoveryCodes()} variant="secondary">
                       Generate new recovery codes
                     </Btn>
-                    <Btn loading={pending === "disable"} loadingLabel="Disabling" onClick={() => void disableTwoFactor()} variant="danger">
-                      Disable 2FA
-                    </Btn>
+                    {!showDisableForm ? (
+                      <Btn onClick={() => { setDisableError(undefined); setShowDisableForm(true); }} variant="danger">
+                        Disable 2FA
+                      </Btn>
+                    ) : null}
                   </div>
-                </form>
+                </div>
+                {showDisableForm ? (
+                  <form className="mt-5 rounded-xl border border-danger/30 bg-danger-tint p-4" noValidate onSubmit={(event) => void disableTwoFactor(event)}>
+                    <div className="mb-3 font-semibold text-danger">Confirm disabling 2FA</div>
+                    <Field
+                      error={disableError}
+                      hint="Use a new authenticator code or an unused recovery code."
+                      htmlFor="disable-2fa-code"
+                      label="Authenticator or recovery code"
+                      required
+                    >
+                      <input
+                        autoComplete="one-time-code"
+                        autoFocus
+                        className="input"
+                        id="disable-2fa-code"
+                        inputMode="text"
+                        maxLength={19}
+                        onChange={(event) => { setDisableCode(event.target.value.toUpperCase()); setDisableError(undefined); }}
+                        placeholder="Enter your code"
+                        value={disableCode}
+                      />
+                    </Field>
+                    <div className="flex flex-wrap gap-2">
+                      <Btn loading={pending === "disable"} loadingLabel="Disabling" type="submit" variant="danger">
+                        Confirm disable
+                      </Btn>
+                      <Btn disabled={pending === "disable"} onClick={() => { setShowDisableForm(false); setDisableCode(""); setDisableError(undefined); }} variant="secondary">
+                        Cancel
+                      </Btn>
+                    </div>
+                  </form>
+                ) : null}
               </section>
             ) : null}
           </div>

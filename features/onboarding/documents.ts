@@ -1,6 +1,6 @@
 import "server-only";
 
-import { api, ApiError } from "@/lib/server/api-client";
+import { api } from "@/lib/server/api-client";
 import type { AppRole } from "@/types/supplyed";
 import { profileDocumentContext } from "./document-requirements";
 
@@ -8,7 +8,6 @@ import {
   backendProfileRole,
   contentTypeForFile,
   documentFileValidationError,
-  isProfileRequirementContext,
   missingRequiredDocuments,
 } from "./document-utils";
 import type {
@@ -68,6 +67,7 @@ type BackendDocument = {
   fileKey?: string | null;
   id?: string;
   originalName?: string | null;
+  rejectionComment?: string | null;
   requirement?: BackendDocumentRequirement | null;
   requirementId?: string;
   sizeBytes?: unknown;
@@ -174,10 +174,6 @@ function requestOptions(auth: DocumentRequestAuth, extra: RequestOptions = {}): 
   return { ...extra, auth: false, headers: { Authorization: `Bearer ${auth.accessToken}` } };
 }
 
-function notFoundOrForbidden(error: unknown) {
-  return error instanceof ApiError && (error.status === 403 || error.status === 404);
-}
-
 function normalizeRequirement(requirement: BackendDocumentRequirement): OnboardingDocumentRequirement | undefined {
   const documentType = requirement.documentType;
   if (!requirement.id || !documentType?.id) return undefined;
@@ -203,6 +199,7 @@ function normalizeDocument(document: BackendDocument): OnboardingDocumentSnapsho
     code: readString(document.requirement?.documentType?.code) ?? null,
     id: document.id,
     name: readString(document.originalName) ?? "",
+    rejectionComment: readString(document.rejectionComment) ?? null,
     requirementId: document.requirementId,
     size: readNumber(document.sizeBytes) ?? 0,
     status: readString(document.status) ?? null,
@@ -227,8 +224,10 @@ export async function getProfileDocumentRequirements(
   if (response.some((item) => !isRecord(item) || !item.id || !isRecord(item.documentType) || !item.documentType.id)) {
     throw new Error("Document requirements are incomplete. Try again.");
   }
-  console.log("getProfileDocumentRequirements", { role, profileRole, response });
-  if (response.some((item) => item.context !== profileDocumentContext(role))) {
+  // Instructor responses also include application requirements, which belong to job applications.
+  if (response.some((item) =>
+    item.context !== profileDocumentContext(role) && !(role === "teacher" && item.context === "APPLICATION"),
+  )) {
     throw new Error("Document requirements do not match your profile. Retry the check.");
   }
 
@@ -335,7 +334,11 @@ async function findExistingDocument(requirementId: string, auth: DocumentRequest
   const withFile = candidates.filter((document) => Boolean(document.fileKey));
   const pool = withFile.length > 0 ? withFile : candidates;
 
-  return pool.sort((left, right) => (readIsoDate(right.createdAt) ?? "").localeCompare(readIsoDate(left.createdAt) ?? ""))[0];
+  return pool.sort((left, right) =>
+    (readIsoDate(right.uploadedAt) ?? readIsoDate(right.createdAt) ?? "").localeCompare(
+      readIsoDate(left.uploadedAt) ?? readIsoDate(left.createdAt) ?? "",
+    ),
+  )[0];
 }
 
 async function createDocument(requirementId: string, auth: DocumentRequestAuth) {
@@ -358,6 +361,9 @@ export async function uploadProfileDocument({
   file: File;
   requirement: OnboardingDocumentRequirement;
 }): Promise<OnboardingDocumentSnapshot> {
+  const validationError = validateDocumentFile(file, requirement);
+  if (validationError) throw new Error(validationError);
+
   const contentType = contentTypeForFile(file, requirement.allowedMimes);
   const existing = await findExistingDocument(requirement.id, auth);
   const documentId = existing?.id ?? (await createDocument(requirement.id, auth));

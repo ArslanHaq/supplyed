@@ -8,10 +8,14 @@ import type { AppRole } from "@/types/supplyed";
 
 import type { OnboardingDocumentRequirement, OnboardingSnapshot } from "./types";
 
-export function useOnboardingSnapshot() {
+export function useOnboardingSnapshot(accountEmail: string, options: { enabled?: boolean } = {}) {
   return useQuery({
+    enabled: options.enabled ?? Boolean(accountEmail),
     queryFn: () => fetchJson<OnboardingSnapshot>("/api/onboarding/me"),
-    queryKey: queryKeys.onboarding.current(),
+    queryKey: [...queryKeys.onboarding.current(), accountEmail],
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
+    staleTime: 0,
   });
 }
 

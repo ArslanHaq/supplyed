@@ -1,6 +1,5 @@
 import { Field } from "../../../atoms";
-import { SelectDropdown } from "../../../molecules/OptionDropdowns";
-import { countryCodes } from "../constants";
+import { CountryCityFields } from "../CountryCityFields";
 import type { AccountStepProps } from "../step-types";
 import { fieldClass } from "../utils";
 import { AccountBasicsStep } from "./AccountBasicsStep";
@@ -46,24 +45,20 @@ export function InstitutionProfileStep(props: AccountStepProps) {
               placeholder="1 School Lane"
             />
           </Field>
-          <Field label="City" htmlFor="institution-city" error={errors.institutionCity} required>
-            <input
-              id="institution-city"
-              className={fieldClass(errors.institutionCity)}
-              value={form.institutionCity}
-              onChange={(event) => updateField("institutionCity", event.target.value)}
-              placeholder="Manchester"
-            />
-          </Field>
-          <Field label="Country" error={errors.institutionCountryCode}>
-            <SelectDropdown
-              error={Boolean(errors.institutionCountryCode)}
-              options={countryCodes}
-              placeholder="Select country"
-              value={form.institutionCountryCode}
-              onChange={(value) => updateField("institutionCountryCode", value)}
-            />
-          </Field>
+          <CountryCityFields
+            city={form.institutionCity}
+            cityError={errors.institutionCity}
+            cityId="institution-city"
+            cityRequired
+            countryCode={form.institutionCountryCode}
+            countryError={errors.institutionCountryCode}
+            countryRequired
+            onCityChange={(value) => updateField("institutionCity", value)}
+            onCountryChange={(value) => {
+              updateField("institutionCountryCode", value);
+              updateField("institutionCity", "");
+            }}
+          />
         </div>
       </div>
     </AccountBasicsStep>

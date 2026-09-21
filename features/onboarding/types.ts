@@ -3,6 +3,7 @@ import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 export type OnboardingSnapshot = {
   applicationStatus: ApplicationStatus;
   completed: boolean;
+  verified: boolean;
   role: AppRole | null;
   step: number;
 };
@@ -31,6 +32,7 @@ export type OnboardingDocumentSnapshot = {
   dbsNumber?: string | null;
   id: string;
   name: string;
+  rejectionComment?: string | null;
   requirementId?: string | null;
   size: number;
   status?: string | null;
@@ -52,6 +54,7 @@ export type OnboardingDocumentRequirementSnapshot = {
   documentTypeId?: string;
   id: string;
   isRequired: boolean;
+  requiresReview: boolean;
 };
 
 export type OnboardingDocumentRequirement = {
@@ -75,6 +78,8 @@ export type OnboardingDocumentState = {
 
 export type OnboardingUserSnapshot = {
   email: string;
+  emailVerified: boolean;
+  phoneVerified: boolean;
   fullName: string;
   phone: string;
   postcode: string;
@@ -82,6 +87,8 @@ export type OnboardingUserSnapshot = {
 
 export type OnboardingInstructorSnapshot = {
   bio: string;
+  city: string;
+  countryCode: string;
   currency: string;
   dailyRate: string;
   fullName: string;

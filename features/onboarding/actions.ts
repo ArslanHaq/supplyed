@@ -2,19 +2,23 @@
 
 import { revalidateTag } from "next/cache";
 
-import { normalizeRole, normalizeStatus, refreshBackendAuth } from "@/features/auth/backend";
+import { normalizeAuthUser, normalizeRole, normalizeStatus } from "@/features/auth/backend";
 import { createVerifiedEmailSessionTicket } from "@/features/auth/session-ticket";
 import type { BackendAuthResponse } from "@/features/auth/types";
 import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 import { getServerAuthContext } from "@/lib/server/auth-context";
+import { getValidAccessToken } from "@/lib/server/token-refresh";
+import { readUnverifiedJwtExpiresAt } from "@/lib/server/jwt";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
-import { filterProfileDocumentRequirements } from "./document-requirements";
-import { isDocumentReadyForReview } from "./document-utils";
-import { getDocumentSnapshots, getProfileDocumentRequirements as loadProfileDocumentRequirements } from "./documents";
+import { missingRequiredDocuments } from "./document-utils";
+import {
+  getDocumentSnapshots,
+  getProfileDocumentRequirements as loadProfileDocumentRequirements,
+  uploadProfileDocument,
+} from "./documents";
 import { hasCreatedRoleProfile } from "./profile-progress";
-import { normalizeOnboardingSubmitInput } from "./schemas";
 import type {
   OnboardingDocumentDownloadResult,
   OnboardingDocumentKind,
@@ -26,17 +30,12 @@ import type {
   OnboardingProfileSnapshot,
   OnboardingProgressResult,
   OnboardingRecruiterSnapshot,
-  OnboardingSubmitInput,
   OnboardingSubmitResult,
   OnboardingUserSnapshot,
 } from "./types";
 
 function backendEnabled() {
   return Boolean(process.env.API_BASE_URL);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function readString(value: unknown): string | undefined {
@@ -52,21 +51,10 @@ function readNumber(value: unknown): number | undefined {
   return undefined;
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      timeout = setTimeout(() => reject(new Error(message)), ms);
-    }),
-  ]).finally(() => {
-    if (timeout) clearTimeout(timeout);
-  });
-}
-
 type InstructorProfilePayload = {
   bio?: string;
+  city?: string;
+  countryCode?: string;
   currency?: string;
   dailyRate?: number;
   experience?: number;
@@ -98,19 +86,13 @@ type InstitutionProfilePayload = {
 };
 
 type RecruiterProfilePayload = {
+  city?: string;
   countryCode?: string;
   displayName: string;
   postalCode?: string;
 };
 
 type BackendDocumentType = "ADDRESS_PROOF" | "DBS" | "ID" | "QUALIFICATION";
-
-type UploadDocumentResponse = {
-  fileKey?: string;
-  requiredHeaders?: Record<string, string>;
-  uploadUrl?: string;
-  url?: string;
-};
 
 type DownloadDocumentResponse = {
   downloadUrl?: string;
@@ -120,6 +102,8 @@ type DownloadDocumentResponse = {
 
 type BackendUserProfile = {
   email?: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
   id?: string;
   name?: string | null;
   phone?: string | null;
@@ -129,6 +113,8 @@ type BackendUserProfile = {
 
 type BackendInstructorProfile = {
   bio?: string | null;
+  city?: string | null;
+  countryCode?: string;
   currency?: string | null;
   dailyRate?: unknown;
   experience?: number | null;
@@ -177,63 +163,10 @@ type BackendRecruiterProfile = {
   status?: unknown;
 };
 
-type BackendDocumentProfile = {
-  contentType?: string;
-  fileKey?: string | null;
-  originalName?: string | null;
-  currentVersion?: {
-    contentType?: string;
-    createdAt?: string | Date | null;
-    documentExpiryDate?: string | Date | null;
-    id?: string;
-    originalName?: string;
-    sizeBytes?: number;
-  } | null;
-  dbsNumber?: string | null;
-  documentType?: {
-    code?: string;
-    name?: string;
-  } | null;
-  id?: string;
-  name?: string;
-  requirement?: {
-    documentType?: {
-      code?: string;
-      name?: string;
-    } | null;
-  } | null;
-  requirementId?: string | null;
-  sizeBytes?: number;
-  status?: unknown;
-  type?: unknown;
-  uploadedAt?: string | Date | null;
-  updatedAt?: string | Date | null;
-};
-
-type BackendDocumentListResponse = BackendDocumentProfile[] | { documents?: BackendDocumentProfile[] };
-
-type BackendDocumentRequirementProfile = {
-  context?: string;
-  documentTypeId?: string;
-  documentType?: {
-    allowedMimes?: unknown;
-    code?: string;
-    id?: string;
-    maxSizeBytes?: number;
-    name?: string;
-  } | null;
-  id?: string;
-  isRequired?: boolean;
-};
-
 type DocumentSnapshotData = {
   documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>;
   requirementDocuments: Record<string, OnboardingDocumentSnapshot>;
 };
-
-const allowedDocumentTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
-const maxDocumentSizeBytes = 10 * 1024 * 1024;
-const backendRefreshTimeoutMs = 12_000;
 
 function readStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())) : [];
@@ -247,6 +180,8 @@ function numberString(value: unknown) {
 function normalizeUserSnapshot(user: BackendUserProfile, fallbackEmail?: string, postcodeFallback = ""): OnboardingUserSnapshot {
   return {
     email: user.email || fallbackEmail || "",
+    emailVerified: user.emailVerified === true,
+    phoneVerified: user.phoneVerified === true,
     fullName: user.name || "",
     phone: user.phone || "",
     postcode: user.postCode || postcodeFallback,
@@ -258,6 +193,8 @@ function normalizeInstructorSnapshot(profile: BackendInstructorProfile): Onboard
 
   return {
     bio: profile.bio || "",
+    city: profile.city || "",
+    countryCode: profile.countryCode || "GB",
     currency: profile.currency || "GBP",
     dailyRate: numberString(profile.dailyRate),
     fullName: profile.fullName || "",
@@ -336,98 +273,15 @@ function backendDocumentType(kind: string): BackendDocumentType | undefined {
   return undefined;
 }
 
-function documentCodeFromDocument(document: BackendDocumentProfile) {
-  return (
-    readString(document.type) ??
-    readString(document.documentType?.code) ??
-    readString(document.requirement?.documentType?.code)
-  );
-}
-
-function dateString(value: string | Date | null | undefined) {
-  return value instanceof Date ? value.toISOString() : readString(value);
-}
-
-function normalizeDocumentSnapshot(document: BackendDocumentProfile): OnboardingDocumentSnapshot | undefined {
-  const version = document.currentVersion ?? null;
-  const name = readString(document.originalName) ?? readString(document.name) ?? readString(version?.originalName);
-  const contentType = readString(document.contentType) ?? readString(version?.contentType);
-  const sizeBytes = readNumber(document.sizeBytes) ?? readNumber(version?.sizeBytes);
-  const uploadedAt = dateString(document.uploadedAt) ?? dateString(version?.createdAt) ?? dateString(document.updatedAt);
-
-  if (!document.id || !name || !contentType || !sizeBytes || !uploadedAt) {
-    return undefined;
-  }
-
-  return {
-    dbsNumber: document.dbsNumber,
-    id: document.id,
-    name,
-    requirementId: readString(document.requirementId) ?? null,
-    size: sizeBytes,
-    status: readString(document.status),
-    type: contentType,
-    uploadedAt,
-  };
-}
-
-function normalizeDocumentRequirement(requirement: BackendDocumentRequirementProfile): OnboardingDocumentRequirementSnapshot | undefined {
-  const context = readString(requirement.context);
-  if (!requirement.id || !context || !requirement.documentType?.code || !requirement.documentType.name) return undefined;
-
-  return {
-    context,
-    documentType: {
-      allowedMimes: readStringArray(requirement.documentType.allowedMimes),
-      code: requirement.documentType.code,
-      id: readString(requirement.documentType.id),
-      maxSizeBytes: requirement.documentType.maxSizeBytes || maxDocumentSizeBytes,
-      name: requirement.documentType.name,
-    },
-    documentTypeId: readString(requirement.documentTypeId),
-    id: requirement.id,
-    isRequired: Boolean(requirement.isRequired),
-  };
-}
-
-function roleQueryValue(role: AppRole | null | undefined) {
-  if (role === "teacher") return "INSTRUCTOR";
-  if (role === "institution") return "INSTITUTION";
-  if (role === "individual") return "RECRUITER";
-  return undefined;
-}
-
-function requirementForKind(requirements: OnboardingDocumentRequirementSnapshot[], kind: OnboardingDocumentKind) {
-  const type = backendDocumentType(kind);
-  return requirements.find((requirement) => requirement.documentType.code.toUpperCase() === type);
-}
-
 function emptyDocumentSnapshotData(): DocumentSnapshotData {
   return { documents: {}, requirementDocuments: {} };
-}
-
-function readDocumentList(response: BackendDocumentListResponse) {
-  if (Array.isArray(response)) return response;
-  if (isRecord(response) && Array.isArray(response.documents)) return response.documents;
-  return [];
-}
-
-function addDocumentSnapshot(data: DocumentSnapshotData, document: BackendDocumentProfile) {
-  const snapshot = normalizeDocumentSnapshot(document);
-  if (!snapshot) return;
-
-  const kind = documentKind(documentCodeFromDocument(document));
-  if (kind) data.documents[kind] = snapshot;
-  if (snapshot.requirementId) data.requirementDocuments[snapshot.requirementId] = snapshot;
 }
 
 function missingRequiredDocumentNames(
   requirements: OnboardingDocumentRequirementSnapshot[],
   data: DocumentSnapshotData,
 ) {
-  return requirements
-    .filter((requirement) => requirement.isRequired)
-    .filter((requirement) => !isDocumentReadyForReview(data.requirementDocuments[requirement.id]))
+  return missingRequiredDocuments(requirements, data.requirementDocuments)
     .map((requirement) => requirement.documentType.name);
 }
 
@@ -440,15 +294,13 @@ function emptySnapshot(role: AppRole | null, email?: string): OnboardingProfileS
     role,
     user: {
       email: email || "",
+      emailVerified: false,
+      phoneVerified: false,
       fullName: "",
       phone: "",
       postcode: "",
     },
   };
-}
-
-function isFormData(input: FormData | OnboardingSubmitInput): input is FormData {
-  return typeof FormData !== "undefined" && input instanceof FormData;
 }
 
 function readFormString(formData: FormData, key: string) {
@@ -488,57 +340,12 @@ function readFormFile(formData: FormData, key: string) {
   return value;
 }
 
-function contentTypeFromFile(file: File) {
-  const explicitType = file.type.toLowerCase();
-  if (allowedDocumentTypes.has(explicitType)) return explicitType;
-
-  const extension = file.name.split(".").pop()?.toLowerCase();
-  if (extension === "pdf") return "application/pdf";
-  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
-  if (extension === "png") return "image/png";
-
-  return explicitType;
-}
-
-function validateDocumentFile(file: File | null, label: string) {
-  if (!file) return `${label} is required.`;
-  if (file.size > maxDocumentSizeBytes) return `${label} must be 10 MB or smaller.`;
-
-  const contentType = contentTypeFromFile(file);
-  if (!allowedDocumentTypes.has(contentType)) return `${label} must be a PDF, JPG, or PNG file.`;
-
-  return undefined;
-}
-function readFormValue(value: FormDataEntryValue) {
-  if (value instanceof File) return undefined;
-  if (!value.trim()) return "";
-
-  try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    return value;
-  }
-}
-
-function buildGenericSubmitInput(formData: FormData): OnboardingSubmitInput {
-  const values: Record<string, unknown> = {};
-
-  for (const [key, value] of formData.entries()) {
-    const parsedValue = readFormValue(value);
-    if (parsedValue !== undefined) values[key] = parsedValue;
-  }
-
-  return {
-    role: readFormString(formData, "role") as AppRole,
-    step: Number(readFormString(formData, "step")) || 4,
-    values,
-  };
-}
-
 function buildInstructorProfilePayload(formData: FormData): InstructorProfilePayload {
   const postalCode = readFormString(formData, "postcode");
   const profile: InstructorProfilePayload = {
     bio: readFormString(formData, "bio") || undefined,
+    city: readFormString(formData, "profileCity") || undefined,
+    countryCode: readFormString(formData, "profileCountryCode") || "GB",
     currency: readFormString(formData, "currency") || "GBP",
     dailyRate: readFormNumber(formData, "dailyRate"),
     experience: readFormNumber(formData, "yearsExperience"),
@@ -580,7 +387,8 @@ function buildInstitutionProfilePayload(formData: FormData): InstitutionProfileP
 
 function buildRecruiterProfilePayload(formData: FormData): RecruiterProfilePayload {
   return {
-    countryCode: "GB",
+    city: readFormString(formData, "profileCity") || undefined,
+    countryCode: readFormString(formData, "profileCountryCode") || "GB",
     displayName: readFormString(formData, "fullName"),
     postalCode: readFormString(formData, "postcode") || undefined,
   };
@@ -606,28 +414,15 @@ async function getCurrentUserSnapshot(postcodeFallback = "") {
   return normalizeUserSnapshot(user, authContext.email ?? undefined, postcodeFallback);
 }
 
-async function getInstructorSnapshotById(id: string | null | undefined) {
-  if (!id) return undefined;
-
-  try {
-    return normalizeInstructorSnapshot(await api.get<BackendInstructorProfile>(`/instructors/${id}`));
-  } catch (error) {
-    if (notFoundOrForbidden(error)) return undefined;
-    throw error;
-  }
-}
-
 async function getCurrentInstructorSnapshot(accessToken?: string) {
   try {
     return normalizeInstructorSnapshot(
       await api.get<BackendInstructorProfile>(
         "/instructors/me",
-        accessToken
-          ? {
-              auth: false,
-              headers: buildBearerHeaders(accessToken),
-            }
-          : undefined,
+        {
+          cache: "no-store",
+          ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
+        },
       ),
     );
   } catch (error) {
@@ -641,12 +436,10 @@ async function getInstitutionSnapshot(accessToken?: string) {
     return normalizeInstitutionSnapshot(
       await api.get<BackendInstitutionProfile>(
         "/institutions/me",
-        accessToken
-          ? {
-              auth: false,
-              headers: buildBearerHeaders(accessToken),
-            }
-          : undefined,
+        {
+          cache: "no-store",
+          ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
+        },
       ),
     );
   } catch (error) {
@@ -660,12 +453,10 @@ async function getRecruiterSnapshot(accessToken?: string) {
     return normalizeRecruiterSnapshot(
       await api.get<BackendRecruiterProfile>(
         "/recruiters/me",
-        accessToken
-          ? {
-              auth: false,
-              headers: buildBearerHeaders(accessToken),
-            }
-          : undefined,
+        {
+          cache: "no-store",
+          ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
+        },
       ),
     );
   } catch (error) {
@@ -691,6 +482,7 @@ async function getProfileDocumentRequirements(role?: AppRole | null, accessToken
     context: requirement.context,
     id: requirement.id,
     isRequired: requirement.isRequired,
+    requiresReview: requirement.requiresReview,
     documentType: {
       allowedMimes: requirement.allowedMimes,
       code: requirement.code,
@@ -786,24 +578,25 @@ function createSessionResponse({
   };
 }
 
-async function refreshSessionForRole(
-  refreshToken: string,
-  options: {
-    applicationStatus: OnboardingSubmitResult["applicationStatus"];
-    instructorProfileId?: string;
-    institutionProfileId?: string;
-    recruiterProfileId?: string;
-    name?: string;
-    role: AppRole;
-  },
-) {
-  const refreshedAuth = await withTimeout(
-    refreshBackendAuth(refreshToken),
-    backendRefreshTimeoutMs,
-    "Your profile was saved, but the backend token refresh timed out. Try again before uploading documents.",
-  );
-  if (!refreshedAuth?.accessToken) return undefined;
-  return createVerifiedEmailSessionTicket(createSessionResponse({ ...options, auth: refreshedAuth }));
+async function getOnboardingAuth(): Promise<BackendAuthResponse & { accessToken: string }> {
+  const context = await getServerAuthContext();
+  const accessToken = await getValidAccessToken(context);
+  if (!context || !accessToken) throw new Error("Your session expired. Sign in again to continue.");
+
+  const user = normalizeAuthUser(await api.get("/auth/me", {
+    auth: false,
+    cache: "no-store",
+    headers: buildBearerHeaders(accessToken),
+  }));
+  if (!user.emailVerified) throw new Error("Verify your email before creating a profile.");
+
+  // The backend reads the current role from the database on every request.
+  return {
+    accessToken,
+    accessTokenExpiresAt: readUnverifiedJwtExpiresAt(accessToken),
+    refreshToken: context.refreshToken ?? undefined,
+    user,
+  };
 }
 
 async function saveUserBasics(formData: FormData, postcodeFallback = "") {
@@ -836,104 +629,6 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   return getCurrentUserSnapshot(postcodeFallback);
 }
 
-async function uploadInstructorDocument({
-  accessToken,
-  dbsNumber,
-  file,
-  requirementId,
-  type,
-}: {
-  accessToken: string;
-  dbsNumber?: string;
-  file: File;
-  requirementId?: string;
-  type?: BackendDocumentType;
-}) {
-  const contentType = contentTypeFromFile(file);
-  const authOptions = {
-    auth: false,
-    headers: buildBearerHeaders(accessToken),
-  };
-
-  if (requirementId) {
-    const existingDocument = (await getDocumentSnapshots({ accessToken }))[requirementId];
-    const documentId = existingDocument?.id ?? (await api.post<BackendDocumentProfile>(
-      "/documents",
-      { applicationId: null, requirementId },
-      authOptions,
-    )).id;
-
-    if (!documentId) throw new Error("The backend did not create the document record.");
-
-    const upload = await api.post<UploadDocumentResponse>(
-      `/documents/${documentId}/upload-url`,
-      { contentType, sizeBytes: file.size },
-      authOptions,
-    );
-    const uploadUrl = upload.uploadUrl ?? upload.url;
-    if (!uploadUrl || !upload.fileKey) throw new Error("The backend did not return a document upload URL.");
-
-    const uploadResponse = await fetch(uploadUrl, {
-      body: file,
-      headers: {
-        ...upload.requiredHeaders,
-        "Content-Type": contentType,
-      },
-      method: "PUT",
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`Unable to upload ${file.name}. The signed upload failed with status ${uploadResponse.status}.`);
-    }
-
-    const completedDocument = await api.post<BackendDocumentProfile>(
-      `/documents/${documentId}/upload-complete`,
-      { fileKey: upload.fileKey, originalName: file.name },
-      authOptions,
-    );
-
-    return normalizeDocumentSnapshot({ ...completedDocument, requirementId });
-  }
-
-  if (!type) throw new Error("Choose a valid document type before uploading.");
-
-  const upload = await api.post<UploadDocumentResponse & { document?: { id?: string } }>(
-    "/documents/upload-url",
-    {
-      contentType,
-      dbsNumber: type === "DBS" ? dbsNumber : undefined,
-      name: file.name,
-      sizeBytes: file.size,
-      type,
-    },
-    authOptions,
-  );
-  const uploadUrl = upload.uploadUrl ?? upload.url;
-  const documentId = upload.document?.id;
-  if (!uploadUrl || !documentId) throw new Error("The backend did not return a document upload URL.");
-
-  const uploadResponse = await fetch(uploadUrl, {
-    body: file,
-    headers: {
-      ...upload.requiredHeaders,
-      "Content-Type": contentType,
-    },
-    method: "PUT",
-  });
-
-  if (!uploadResponse.ok) {
-    throw new Error(`Unable to upload ${file.name}. The signed upload failed with status ${uploadResponse.status}.`);
-  }
-
-  const completedDocument = await api.post<BackendDocumentProfile>(
-    `/documents/${documentId}/complete`,
-    undefined,
-    authOptions,
-  );
-
-  return normalizeDocumentSnapshot(completedDocument);
-}
-
 function onboardingError(error: unknown) {
   if (error instanceof ApiError) {
     return actionError(error.message || "Onboarding could not be submitted.");
@@ -946,154 +641,59 @@ function onboardingError(error: unknown) {
   return actionError("Onboarding could not be submitted. Try again.");
 }
 
-async function saveInstructorProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+async function saveInstructorProfile(formData: FormData, accessToken: string) {
   const existing = await getCurrentInstructorSnapshot(accessToken);
   if (existing) return existing;
-  const profile = buildInstructorProfilePayload(formData);
-  const profileId = readFormString(formData, "teacherProfileId") || existingProfileId || "";
-
-  if (!profile.fullName) {
-    throw new Error("Enter your full name before continuing.");
-  }
-
-  if (profileId) {
-    return normalizeInstructorSnapshot(
-      await api.patch<BackendInstructorProfile>(`/instructors/${profileId}`, profile, {
-        auth: false,
-        headers: buildBearerHeaders(accessToken),
-      }),
-    );
-  }
-
-  const currentInstructor = await getCurrentInstructorSnapshot(accessToken);
-  if (currentInstructor?.id) {
-    return normalizeInstructorSnapshot(
-      await api.patch<BackendInstructorProfile>(`/instructors/${currentInstructor.id}`, profile, {
-        auth: false,
-        headers: buildBearerHeaders(accessToken),
-      }),
-    );
-  }
 
   try {
-    return normalizeInstructorSnapshot(
-      await api.post<BackendInstructorProfile>("/instructors", profile, {
-        auth: false,
-        headers: buildBearerHeaders(accessToken),
-      }),
-    );
+    return normalizeInstructorSnapshot(await api.post<BackendInstructorProfile>("/instructors", buildInstructorProfilePayload(formData), {
+      auth: false,
+      headers: buildBearerHeaders(accessToken),
+    }));
   } catch (error) {
-    if (error instanceof ApiError && error.status === 403) {
-      throw new Error(
-        "We found an existing teacher profile for this account, but could not restore it in this session. Sign out and sign in again, then try once more.",
-      );
-    }
-
-    if (error instanceof ApiError && error.status === 409) {
-      throw new Error("Your teacher profile already exists, but the backend does not expose an authenticated instructor profile lookup yet.");
-    }
-
+    // A previous attempt may have saved the profile before its response was lost.
+    const saved = await getCurrentInstructorSnapshot(accessToken);
+    if (saved) return saved;
     throw error;
   }
 }
 
-async function saveInstitutionProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+async function saveInstitutionProfile(formData: FormData, accessToken: string) {
   const existing = await getInstitutionSnapshot(accessToken);
   if (existing) return existing;
-  const profile = buildInstitutionProfilePayload(formData);
-  const profileId = readFormString(formData, "institutionProfileId") || existingProfileId || "";
-
-  if (!profile.name || !profile.domain || !profile.address || !profile.city) {
-    throw new Error("Complete the required institution profile fields before continuing.");
-  }
-
-  if (profileId) {
-    return normalizeInstitutionSnapshot(
-      await api.patch<BackendInstitutionProfile>(`/institutions/${profileId}`, profile, {
-        auth: false,
-        headers: buildBearerHeaders(accessToken),
-      }),
-    );
-  }
-
-  const currentInstitution = await getInstitutionSnapshot(accessToken);
-  if (currentInstitution?.id) {
-    return normalizeInstitutionSnapshot(
-      await api.patch<BackendInstitutionProfile>(`/institutions/${currentInstitution.id}`, profile, {
-        auth: false,
-        headers: buildBearerHeaders(accessToken),
-      }),
-    );
-  }
 
   try {
-    return normalizeInstitutionSnapshot(
-      await api.post<BackendInstitutionProfile>("/institutions", profile, {
-        auth: false,
-        headers: buildBearerHeaders(accessToken),
-      }),
-    );
+    return normalizeInstitutionSnapshot(await api.post<BackendInstitutionProfile>("/institutions", buildInstitutionProfilePayload(formData), {
+      auth: false,
+      headers: buildBearerHeaders(accessToken),
+    }));
   } catch (error) {
-    if (error instanceof ApiError && error.status === 403) {
-      throw new Error(
-        "We found an existing school profile for this account, but could not restore it in this session. Sign out and sign in again, then try once more.",
-      );
-    }
-
-    if (error instanceof ApiError && error.status === 409) {
-      return getInstitutionSnapshot(accessToken);
-    }
-
+    // A previous attempt may have saved the profile before its response was lost.
+    const saved = await getInstitutionSnapshot(accessToken);
+    if (saved) return saved;
     throw error;
   }
 }
 
-async function saveRecruiterProfile(formData: FormData, accessToken: string, existingProfileId?: string | null) {
+async function saveRecruiterProfile(formData: FormData, accessToken: string) {
   const existing = await getRecruiterSnapshot(accessToken);
   if (existing) return existing;
-  const profile = buildRecruiterProfilePayload(formData);
-  const profileId = readFormString(formData, "recruiterProfileId") || existingProfileId || "";
-
-  if (!profile.displayName) {
-    throw new Error("Enter your full name before continuing.");
-  }
-
-  if (profileId) {
-    return normalizeRecruiterSnapshot(
-      await api.patch<BackendRecruiterProfile>("/recruiters/me", profile, {
-        auth: false,
-        headers: buildBearerHeaders(accessToken),
-      }),
-    );
-  }
-
-  const currentRecruiter = await getRecruiterSnapshot(accessToken);
-  if (currentRecruiter?.id) {
-    return normalizeRecruiterSnapshot(
-      await api.patch<BackendRecruiterProfile>("/recruiters/me", profile, {
-        auth: false,
-        headers: buildBearerHeaders(accessToken),
-      }),
-    );
-  }
 
   try {
-    return normalizeRecruiterSnapshot(
-      await api.post<BackendRecruiterProfile>("/recruiters", profile, {
-        auth: false,
-        headers: buildBearerHeaders(accessToken),
-      }),
-    );
+    return normalizeRecruiterSnapshot(await api.post<BackendRecruiterProfile>("/recruiters", buildRecruiterProfilePayload(formData), {
+      auth: false,
+      headers: buildBearerHeaders(accessToken),
+    }));
   } catch (error) {
-    if (error instanceof ApiError && error.status === 409) {
-      return getRecruiterSnapshot(accessToken);
-    }
-
+    // A previous attempt may have saved the profile before its response was lost.
+    const saved = await getRecruiterSnapshot(accessToken);
+    if (saved) return saved;
     throw error;
   }
 }
 
-async function submitInstructorProfileForReview(accessToken: string, fallback?: OnboardingInstructorSnapshot) {
+async function submitInstructorProfileForReview(accessToken: string, current?: OnboardingInstructorSnapshot) {
+  if (current && ["pending_review", "approved"].includes(current.status)) return current;
   try {
     return normalizeInstructorSnapshot(
       await api.patch<BackendInstructorProfile>("/instructors/me/status", undefined, {
@@ -1111,7 +711,8 @@ async function submitInstructorProfileForReview(accessToken: string, fallback?: 
   }
 }
 
-async function submitInstitutionProfileForReview(accessToken: string, fallback?: OnboardingInstitutionSnapshot) {
+async function submitInstitutionProfileForReview(accessToken: string, current?: OnboardingInstitutionSnapshot) {
+  if (current && ["pending_review", "approved"].includes(current.status)) return current;
   try {
     return normalizeInstitutionSnapshot(
       await api.patch<BackendInstitutionProfile>("/institutions/me/status", undefined, {
@@ -1132,134 +733,33 @@ async function submitInstitutionProfileForReview(accessToken: string, fallback?:
 export async function uploadOnboardingDocumentAction(formData: FormData) {
   const kind = readFormString(formData, "kind");
   const requirementId = readFormString(formData, "requirementId");
-  const type = backendDocumentType(kind);
   const file = readFormFile(formData, "file");
-  const dbsNumber = readFormString(formData, "dbsNumber");
-
-  if (!type && !requirementId) {
-    return actionError("Choose a valid document type before uploading.");
-  }
-
-  const fileError = validateDocumentFile(file, "Document");
-  if (fileError) {
-    return actionError(fileError);
-  }
-
-  if (type === "DBS" && !dbsNumber) {
-    return actionError("Enter your enhanced DBS certificate number before uploading the DBS certificate.", {
-      fieldErrors: { dbsNumber: "Enter your enhanced DBS certificate number before uploading the DBS certificate." },
-    });
-  }
-
-  if (!backendEnabled()) {
-    const document: OnboardingDocumentSnapshot = {
-      dbsNumber: type === "DBS" ? dbsNumber : undefined,
-      id: `local-${requirementId || kind}-${Date.now()}`,
-      name: file!.name,
-      requirementId: requirementId || null,
-      size: file!.size,
-      status: "PENDING",
-      type: contentTypeFromFile(file!),
-      uploadedAt: new Date().toISOString(),
-    };
-
-    return actionOk<OnboardingDocumentUploadResult>(
-      {
-        document,
-        documents: kind ? { [kind]: document } : {},
-        requirementDocuments: requirementId ? { [requirementId]: document } : {},
-      },
-      "Document uploaded.",
-    );
-  }
-
-  const authContext = await getServerAuthContext();
-  if (!authContext?.accessToken) {
-    return actionError("Your session expired. Sign in again before uploading documents.");
-  }
+  if (!file) return actionError("Choose a non-empty document to upload.");
+  if (!requirementId && !backendDocumentType(kind)) return actionError("Choose a valid document requirement.");
 
   try {
-    // The session token may still carry the USER role from before the profile
-    // was created; the document routes need the profile role.
-    const refreshedAuth = authContext.refreshToken
-      ? await withTimeout(
-          refreshBackendAuth(authContext.refreshToken),
-          backendRefreshTimeoutMs,
-          "The backend token refresh timed out. Try uploading this document again.",
-        )
-      : null;
-    const uploadRole = (readFormString(formData, "role") as AppRole) || normalizeRole(refreshedAuth?.user.role ?? authContext.role) || "teacher";
-    let accessToken = refreshedAuth?.accessToken ?? authContext.accessToken;
+    const auth = await getOnboardingAuth();
+    const role = auth.user.role;
+    if (!role) return actionError("Create your profile before uploading documents.");
 
-    if (requirementId) {
-      const requirements = await getProfileDocumentRequirements(uploadRole, accessToken);
+    const requirements = await loadProfileDocumentRequirements(role, { accessToken: auth.accessToken });
+    const requirement = requirementId
+      ? requirements.find((item) => item.id === requirementId)
+      : requirements.find((item) => item.code === backendDocumentType(kind));
+    if (!requirement) return actionError("This document is not required for your profile.");
 
-      if (!requirements.some((requirement) => requirement.id === requirementId)) {
-        return actionError("This document is not required for the selected profile.");
-      }
-
-      if (uploadRole === "teacher") {
-        await saveInstructorProfile(
-          formData,
-          accessToken,
-          authContext.instructorProfileId ?? refreshedAuth?.user.instructorProfileId,
-        );
-      }
-
-      if (uploadRole === "institution") {
-        await saveInstitutionProfile(
-          formData,
-          accessToken,
-          authContext.institutionProfileId ?? refreshedAuth?.user.institutionProfileId,
-        );
-      }
-
-      if (uploadRole === "individual") {
-        await saveRecruiterProfile(
-          formData,
-          accessToken,
-          authContext.recruiterProfileId ?? refreshedAuth?.user.recruiterProfileId,
-        );
-      }
-
-      if (authContext.refreshToken) {
-        const profileAuth = await refreshBackendAuth(authContext.refreshToken);
-        accessToken = profileAuth?.accessToken ?? accessToken;
-      }
-    }
-
-    let uploadRequirementId = requirementId;
-
-    if (!uploadRequirementId && type) {
-      const requirements = await getProfileDocumentRequirements(uploadRole, accessToken);
-      uploadRequirementId = requirementForKind(requirements, kind as OnboardingDocumentKind)?.id ?? "";
-    }
-
-    const document = await uploadInstructorDocument({
-      accessToken,
-      dbsNumber: type === "DBS" ? dbsNumber : undefined,
-      file: file!,
-      requirementId: uploadRequirementId || undefined,
-      type,
+    const document = await uploadProfileDocument({
+      auth: { accessToken: auth.accessToken },
+      file,
+      requirement,
     });
-
-    if (!document) {
-      throw new Error("The backend did not return the uploaded document.");
-    }
-
-    const documentData = await getDocumentSnapshotData(accessToken);
-    if (kind) documentData.documents[kind as OnboardingDocumentKind] = document;
-    if (document.requirementId) documentData.requirementDocuments[document.requirementId] = document;
-
+    const documentKindValue = documentKind(document.code);
     revalidateTag("onboarding", "max");
-    return actionOk<OnboardingDocumentUploadResult>(
-      {
-        document,
-        documents: documentData.documents,
-        requirementDocuments: documentData.requirementDocuments,
-      },
-      "Document uploaded.",
-    );
+    return actionOk<OnboardingDocumentUploadResult>({
+      document,
+      documents: documentKindValue ? { [documentKindValue]: document } : {},
+      requirementDocuments: { [requirement.id]: document },
+    }, "Document uploaded.");
   } catch (error) {
     return onboardingError(error);
   }
@@ -1333,9 +833,9 @@ export async function saveOnboardingStepAction(formData: FormData) {
 
   try {
     const documentState = normalizeRole(authContext.role)
-      ? await getDocumentState(role, authContext.accessToken ?? undefined)
+      ? await getDocumentState(role)
       : {
-          documentRequirements: await getProfileDocumentRequirements(role, authContext.accessToken ?? undefined),
+          documentRequirements: await getProfileDocumentRequirements(role),
           ...emptyDocumentSnapshotData(),
         };
 
@@ -1380,25 +880,18 @@ async function submitInstructorOnboarding(formData: FormData) {
   try {
     const postcode = readFormString(formData, "postcode");
     const user = await saveUserBasics(formData, postcode);
-    const profileAuth = await refreshBackendAuth(authContext.refreshToken);
-    const profileAccessToken = profileAuth?.accessToken ?? authContext.accessToken;
-    const instructor = await saveInstructorProfile(
-      formData,
-      profileAccessToken,
-      authContext.instructorProfileId ?? profileAuth?.user.instructorProfileId,
-    );
+    const sessionAuth = await getOnboardingAuth();
+    if (sessionAuth.user.role && sessionAuth.user.role !== "teacher") {
+      return actionError("This account already has a different profile. Refresh the page to continue.");
+    }
+    const instructor = await saveInstructorProfile(formData, sessionAuth.accessToken);
     if (!instructor) throw new Error("The backend did not return the saved teacher profile.");
 
-    const refreshedAuth = await refreshBackendAuth(authContext.refreshToken);
-    if (!refreshedAuth?.accessToken) {
-      return actionError("Your teacher profile was created, but we could not refresh your session. Sign in again to continue.");
-    }
-
-    const documentState = await getDocumentState("teacher", refreshedAuth.accessToken);
+    const documentState = await getDocumentState("teacher", sessionAuth.accessToken);
     const ticket = createVerifiedEmailSessionTicket(
       createSessionResponse({
         applicationStatus: "none",
-        auth: refreshedAuth,
+        auth: sessionAuth,
         instructorProfileId: instructor.id,
         name: instructor.fullName || readFormString(formData, "fullName"),
         role: "teacher",
@@ -1430,7 +923,7 @@ async function submitInstructorOnboarding(formData: FormData) {
       );
     }
 
-    const submittedInstructor = await submitInstructorProfileForReview(refreshedAuth.accessToken, instructor);
+    const submittedInstructor = await submitInstructorProfileForReview(sessionAuth.accessToken, instructor);
     if (!submittedInstructor || submittedInstructor.status === "none") {
       throw new Error("The backend did not mark your teacher profile as pending review.");
     }
@@ -1453,7 +946,7 @@ async function submitInstructorOnboarding(formData: FormData) {
         ticket: createVerifiedEmailSessionTicket(
           createSessionResponse({
             applicationStatus: submittedInstructor.status,
-            auth: refreshedAuth,
+            auth: sessionAuth,
             instructorProfileId: submittedInstructor.id,
             name: submittedInstructor.fullName || readFormString(formData, "fullName"),
             role: "teacher",
@@ -1488,25 +981,18 @@ async function submitInstitutionOnboarding(formData: FormData) {
   try {
     const postcode = readFormString(formData, "postcode");
     const user = await saveUserBasics(formData, postcode);
-    const profileAuth = await refreshBackendAuth(authContext.refreshToken);
-    const profileAccessToken = profileAuth?.accessToken ?? authContext.accessToken;
-    const institution = await saveInstitutionProfile(
-      formData,
-      profileAccessToken,
-      authContext.institutionProfileId ?? profileAuth?.user.institutionProfileId,
-    );
+    const sessionAuth = await getOnboardingAuth();
+    if (sessionAuth.user.role && sessionAuth.user.role !== "institution") {
+      return actionError("This account already has a different profile. Refresh the page to continue.");
+    }
+    const institution = await saveInstitutionProfile(formData, sessionAuth.accessToken);
     if (!institution) throw new Error("The backend did not return the saved institution profile.");
 
-    const refreshedAuth = await refreshBackendAuth(authContext.refreshToken);
-    if (!refreshedAuth?.accessToken) {
-      return actionError("Your school profile was created, but we could not refresh your session. Sign in again to continue.");
-    }
-
-    const documentState = await getDocumentState("institution", refreshedAuth.accessToken);
+    const documentState = await getDocumentState("institution", sessionAuth.accessToken);
     const ticket = createVerifiedEmailSessionTicket(
       createSessionResponse({
         applicationStatus: "none",
-        auth: refreshedAuth,
+        auth: sessionAuth,
         institutionProfileId: institution.id,
         name: institution.name,
         role: "institution",
@@ -1538,7 +1024,7 @@ async function submitInstitutionOnboarding(formData: FormData) {
       );
     }
 
-    const submittedInstitution = await submitInstitutionProfileForReview(refreshedAuth.accessToken, institution);
+    const submittedInstitution = await submitInstitutionProfileForReview(sessionAuth.accessToken, institution);
     if (!submittedInstitution || submittedInstitution.status === "none") {
       throw new Error("The backend did not mark your school profile as pending review.");
     }
@@ -1560,7 +1046,7 @@ async function submitInstitutionOnboarding(formData: FormData) {
         ticket: createVerifiedEmailSessionTicket(
           createSessionResponse({
             applicationStatus: submittedInstitution.status,
-            auth: refreshedAuth,
+            auth: sessionAuth,
             institutionProfileId: submittedInstitution.id,
             name: submittedInstitution.name,
             role: "institution",
@@ -1595,25 +1081,18 @@ async function submitIndividualOnboarding(formData: FormData) {
   try {
     const postcode = readFormString(formData, "postcode");
     const user = await saveUserBasics(formData, postcode);
-    const profileAuth = await refreshBackendAuth(authContext.refreshToken);
-    const profileAccessToken = profileAuth?.accessToken ?? authContext.accessToken;
-    const recruiter = await saveRecruiterProfile(
-      formData,
-      profileAccessToken,
-      authContext.recruiterProfileId ?? profileAuth?.user.recruiterProfileId,
-    );
+    const sessionAuth = await getOnboardingAuth();
+    if (sessionAuth.user.role && sessionAuth.user.role !== "individual") {
+      return actionError("This account already has a different profile. Refresh the page to continue.");
+    }
+    const recruiter = await saveRecruiterProfile(formData, sessionAuth.accessToken);
     if (!recruiter) throw new Error("The backend did not return the saved individual profile.");
 
-    const refreshedAuth = await refreshBackendAuth(authContext.refreshToken);
-    if (!refreshedAuth?.accessToken) {
-      return actionError("Your individual profile was created, but we could not refresh your session. Sign in again to continue.");
-    }
-
-    const documentState = await getDocumentState("individual", refreshedAuth.accessToken);
+    const documentState = await getDocumentState("individual", sessionAuth.accessToken);
     const ticket = createVerifiedEmailSessionTicket(
       createSessionResponse({
         applicationStatus: "none",
-        auth: refreshedAuth,
+        auth: sessionAuth,
         name: recruiter.displayName || readFormString(formData, "fullName"),
         recruiterProfileId: recruiter.id,
         role: "individual",
@@ -1645,11 +1124,11 @@ async function submitIndividualOnboarding(formData: FormData) {
       );
     }
 
-    let savedRecruiter = (await getRecruiterSnapshot(refreshedAuth.accessToken)) ?? recruiter;
+    let savedRecruiter = (await getRecruiterSnapshot(sessionAuth.accessToken)) ?? recruiter;
     if (savedRecruiter.status === "none" || savedRecruiter.status === "rejected") {
       const submitted = normalizeRecruiterSnapshot(await api.patch<BackendRecruiterProfile>("/recruiters/me/status", undefined, {
         auth: false,
-        headers: buildBearerHeaders(refreshedAuth.accessToken),
+        headers: buildBearerHeaders(sessionAuth.accessToken),
       }));
       if (!submitted || submitted.status !== "pending_review") throw new Error("Your profile could not be submitted for review.");
       savedRecruiter = submitted;
@@ -1673,7 +1152,7 @@ async function submitIndividualOnboarding(formData: FormData) {
         ticket: createVerifiedEmailSessionTicket(
           createSessionResponse({
             applicationStatus,
-            auth: refreshedAuth,
+            auth: sessionAuth,
             name: savedRecruiter.displayName || readFormString(formData, "fullName"),
             recruiterProfileId: savedRecruiter.id,
             role: "individual",
@@ -1687,49 +1166,10 @@ async function submitIndividualOnboarding(formData: FormData) {
   }
 }
 
-export async function submitOnboardingAction(input: FormData | OnboardingSubmitInput) {
-  if (isFormData(input)) {
-    const role = readFormString(input, "role");
-
-    if (role === "teacher") {
-      return submitInstructorOnboarding(input);
-    }
-
-    if (role === "institution") {
-      return submitInstitutionOnboarding(input);
-    }
-
-    if (role === "individual") {
-      return submitIndividualOnboarding(input);
-    }
-
-    const normalizedInput = normalizeOnboardingSubmitInput(buildGenericSubmitInput(input));
-    if (backendEnabled()) {
-      const result = await api.post<OnboardingSubmitResult>("/onboarding/submit", normalizedInput);
-      revalidateTag("onboarding", "max");
-      return actionOk(result, "Onboarding submitted.");
-    }
-
-    revalidateTag("onboarding", "max");
-    return actionOk<OnboardingSubmitResult>(
-      {
-        applicationStatus: "pending_review",
-      },
-      "Onboarding submitted.",
-    );
-  }
-
-  const normalizedInput = normalizeOnboardingSubmitInput(input);
-
-  if (backendEnabled()) {
-    const result = await api.post<OnboardingSubmitResult>("/onboarding/submit", normalizedInput);
-    revalidateTag("onboarding", "max");
-    return actionOk(result, "Onboarding submitted.");
-  }
-
-  revalidateTag("onboarding", "max");
-  return actionOk<OnboardingSubmitResult>(
-    { applicationStatus: "pending_review" },
-    "Onboarding submission is ready for NestJS integration.",
-  );
+export async function submitOnboardingAction(formData: FormData) {
+  const role = readFormString(formData, "role");
+  if (role === "teacher") return submitInstructorOnboarding(formData);
+  if (role === "institution") return submitInstitutionOnboarding(formData);
+  if (role === "individual") return submitIndividualOnboarding(formData);
+  return actionError("Choose a valid account type before creating your profile.");
 }

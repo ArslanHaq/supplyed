@@ -1,27 +1,15 @@
 import { filterProfileDocumentRequirements } from "@/features/onboarding/document-requirements";
 
 import { Btn, Icon } from "../../../atoms";
-import { isDocumentReadyForReview } from "@/features/onboarding/document-utils";
+import { acceptAttribute, describeAllowedMimes, formatByteLimit, isDocumentReadyForReview } from "@/features/onboarding/document-utils";
 import type { StepComponentProps } from "../step-types";
 import { UploadCard } from "../UploadCard";
 import { toUploadedFileFromDocument } from "../utils";
 
-function acceptForMimes(mimes: string[]) {
-  const values = mimes
-    .map((mime) => {
-      if (mime === "application/pdf") return ".pdf";
-      if (mime === "image/jpeg") return ".jpg,.jpeg";
-      if (mime === "image/png") return ".png";
-      return mime;
-    })
-    .filter(Boolean);
-
-  return values.length > 0 ? values.join(",") : ".pdf,.png,.jpg,.jpeg";
-}
-
 export function DocumentUploadStep({ controller }: StepComponentProps) {
   const {
     activeRole,
+    pending,
     documentRequirements,
     documentRequirementsLoading,
     documentRequirementsError,
@@ -33,9 +21,7 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
     uploadRequirementDocument,
     viewRequirementDocument,
   } = controller;
-  const requiredDocuments = filterProfileDocumentRequirements(documentRequirements, activeRole).filter(
-    (requirement) => requirement.isRequired,
-  );
+  const profileDocuments = filterProfileDocumentRequirements(documentRequirements, activeRole);
 
   if (documentRequirementsError) return (
     <div role="alert" className="space-y-4">
@@ -55,15 +41,15 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
           <div>
             <div className="font-semibold text-brand-dark">Profile created</div>
             <p className="mt-1 text-sm leading-6 text-brand-dark/80">
-              Upload the required document{requiredDocuments.length === 1 ? "" : "s"} below. This stage is locked so the profile can move cleanly into review.
+              Upload any required documents below, then continue to your dashboard. You can replace documents that need changes here.
             </p>
           </div>
         </div>
       </div>
 
-      {requiredDocuments.length > 0 ? (
+      {profileDocuments.length > 0 ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          {requiredDocuments.map((requirement) => {
+          {profileDocuments.map((requirement) => {
             const document = requirementDocuments[requirement.id];
             const file = document ? toUploadedFileFromDocument(document) : null;
 
@@ -72,12 +58,17 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
                 key={requirement.id}
                 id={`required-document-${requirement.id}`}
                 title={requirement.documentType.name}
-                description="Upload this required profile document before sending the profile for review."
+                description={requirement.isRequired ? "Upload this document before continuing to your dashboard." : "You can add this document if it applies to you."}
                 icon="file"
-                accept={acceptForMimes(requirement.documentType.allowedMimes)}
+                accept={acceptAttribute(requirement.documentType.allowedMimes)}
+                meta={`${describeAllowedMimes(requirement.documentType.allowedMimes)} - Up to ${formatByteLimit(requirement.documentType.maxSizeBytes)}`}
+                required={requirement.isRequired}
+                disabled={Boolean(pending || requirementUploadPending)}
                 file={file}
                 error={requirementDocumentErrors[requirement.id] || (document?.uploadedAt && !isDocumentReadyForReview(document) ? "This document needs to be uploaded again before you can resubmit." : undefined)}
                 pending={requirementUploadPending === requirement.id}
+                rejectionComment={document?.rejectionComment}
+                status={document?.status}
                 viewPending={requirementViewPending === requirement.id}
                 actionLabel="Upload document"
                 onFile={(file) => uploadRequirementDocument(requirement.id, file)}

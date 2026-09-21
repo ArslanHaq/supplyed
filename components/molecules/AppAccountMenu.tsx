@@ -2,9 +2,10 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
-import { Avatar, Icon } from "../atoms";
+import { Avatar, Icon, Tag } from "../atoms";
 
 type AppAccountMenuProps = {
+  verified: boolean;
   displayName: string;
   onDashboard: () => void;
   onLanding: () => void;
@@ -56,6 +57,7 @@ function AppAccountMenuItem({ icon, label, onSelect, sub, tone }: MenuAction) {
 }
 
 export function AppAccountMenu({
+  verified,
   displayName,
   onDashboard,
   onLanding,
@@ -140,7 +142,7 @@ export function AppAccountMenu({
         <Avatar name={displayName} size="sm" />
         <span className="hidden min-w-0 sm:block">
           <span className="block max-w-[190px] truncate text-sm font-semibold leading-4 text-ink">{displayName}</span>
-          <span className="block truncate text-[11px] leading-4 text-muted">{roleLabel}</span>
+          <span className="flex items-center gap-1 text-[11px] leading-4 text-muted"><span>{roleLabel}</span>{verified ? <Tag tone="green">Verified</Tag> : null}</span>
         </span>
         <Icon className={`text-muted transition ${open ? "rotate-180" : ""}`} name="chevronDown" size={15} />
       </button>
@@ -159,6 +161,7 @@ export function AppAccountMenu({
                 <div className="mt-2 inline-flex rounded-full bg-brand-tint px-2.5 py-1 text-[11px] font-semibold text-brand">
                   {roleLabel}
                 </div>
+                {verified ? <Tag className="ml-2" tone="green">Verified</Tag> : null}
               </div>
             </div>
           </div>
