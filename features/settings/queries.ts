@@ -9,7 +9,6 @@ import type {
   SettingsInstitutionProfile,
   SettingsInstructorProfile,
   SettingsProfileSnapshot,
-  SettingsRecruiterProfile,
   SettingsUserSnapshot,
 } from "./types";
 
@@ -165,29 +164,6 @@ function normalizeInstitution(payload: unknown): SettingsInstitutionProfile | un
   };
 }
 
-function normalizeRecruiter(payload: unknown): SettingsRecruiterProfile | undefined {
-  const record = nestedRecord(payload, "recruiter");
-  if (!isRecord(record) || !readString(record.id)) return undefined;
-
-  const status = normalizeStatus(record.status);
-
-  return {
-    address: readString(record.address),
-    bio: readString(record.bio),
-    city: readString(record.city),
-    countryCode: readString(record.countryCode) || "GB",
-    county: readString(record.county),
-    createdAt: readDate(record.createdAt),
-    displayName: readString(record.displayName),
-    id: readString(record.id),
-    imageUrl: readString(record.imageUrl),
-    postalCode: readString(record.postalCode),
-    status: status === "none" ? "approved" : status,
-    updatedAt: readDate(record.updatedAt),
-    userId: readNullableString(record.userId),
-  };
-}
-
 type BackendProfileImageResponse = {
   expiresAt?: string | Date | null;
   imageUrl?: string | null;
@@ -207,7 +183,6 @@ function applySignedProfileImageUrl(
   profile: {
     institution?: SettingsInstitutionProfile;
     instructor?: SettingsInstructorProfile;
-    recruiter?: SettingsRecruiterProfile;
   },
   imageUrl: string | undefined,
 ) {
@@ -221,9 +196,6 @@ function applySignedProfileImageUrl(
     profile.institution = { ...profile.institution, imageUrl };
   }
 
-  if (role === "individual" && profile.recruiter) {
-    profile.recruiter = { ...profile.recruiter, imageUrl };
-  }
 }
 
 async function optionalApiGet<Data>(path: string, options: Parameters<typeof api.get<Data>>[1] = {}) {
@@ -240,12 +212,11 @@ function applicationStatusForRole(
   profile: {
     institution?: SettingsInstitutionProfile;
     instructor?: SettingsInstructorProfile;
-    recruiter?: SettingsRecruiterProfile;
   },
 ): ApplicationStatus {
   if (role === "teacher") return profile.instructor?.status ?? "none";
   if (role === "institution") return profile.institution?.status ?? "none";
-  if (role === "individual") return profile.recruiter?.status ?? "none";
+
   return "none";
 }
 
@@ -285,7 +256,6 @@ export async function getSettingsProfileSnapshot(): Promise<SettingsProfileSnaps
   const profile: {
     institution?: SettingsInstitutionProfile;
     instructor?: SettingsInstructorProfile;
-    recruiter?: SettingsRecruiterProfile;
   } = {};
 
   if (role === "teacher") {
@@ -309,13 +279,6 @@ export async function getSettingsProfileSnapshot(): Promise<SettingsProfileSnaps
     );
   }
 
-  if (role === "individual") {
-    profile.recruiter = normalizeRecruiter(
-      await optionalApiGet<unknown>("/recruiters/me", {
-        next: { tags: ["settings", "recruiters:me"] },
-      }),
-    );
-  }
 
   applySignedProfileImageUrl(role, profile, await getSignedProfileImageUrl(role));
 

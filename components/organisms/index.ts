@@ -7,7 +7,6 @@ export { FindJobsPage } from "./FindJobsPage";
 export { FindTeachersPage } from "./FindTeachersPage";
 export { FoundingInterestPage } from "./FoundingInterestPage";
 export { ForgotPasswordRouteClient } from "./ForgotPasswordRouteClient";
-export { IndividualDashboard } from "./IndividualDashboard";
 export { InstitutionDashboard } from "./InstitutionDashboard";
 export { JobDetailPage } from "./JobDetailPage";
 export { LandingPage } from "./LandingPage";

@@ -45,7 +45,6 @@ export type JobCreateInput = {
   countryCode?: string;
   county?: string;
   description: string;
-  documentRequirementIds?: string[];
   endDate?: string;
   expiresAt?: string;
   keyStages: string[];
@@ -63,7 +62,7 @@ export type JobCreateInput = {
   title: string;
 };
 
-export type JobUpdateInput = Partial<Omit<JobCreateInput, "documentRequirementIds" | "status">> & {
+export type JobUpdateInput = Partial<Omit<JobCreateInput, "status">> & {
   id: string;
   status?: JobStatus;
 };

@@ -29,6 +29,48 @@ export function InstitutionComplianceStep({ controller }: StepComponentProps) {
         </Field>
       </div>
 
+      {form.institutionType === "MAT_SCHOOL" ? (
+        <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-5">
+          <div className="mb-2 font-semibold text-brand-dark">Trust signatory approval</div>
+          <p className="mb-4 text-sm leading-6 text-brand-dark/80">
+            We will email an authorised trust representative. The school can be submitted for review after they approve it.
+          </p>
+          <div className="grid gap-x-4 sm:grid-cols-2">
+            <Field label="Signatory name" htmlFor="signatory-name" error={errors.signatoryName} required>
+              <input
+                id="signatory-name"
+                className={fieldClass(errors.signatoryName)}
+                maxLength={200}
+                value={form.signatoryName}
+                onChange={(event) => updateField("signatoryName", event.target.value)}
+                placeholder="Jane Smith"
+              />
+            </Field>
+            <Field label="Signatory email" htmlFor="signatory-email" error={errors.signatoryEmail} required>
+              <input
+                id="signatory-email"
+                className={fieldClass(errors.signatoryEmail)}
+                maxLength={254}
+                value={form.signatoryEmail}
+                onChange={(event) => updateField("signatoryEmail", event.target.value)}
+                placeholder="jane.smith@trust.org.uk"
+                type="email"
+              />
+            </Field>
+            <Field label="Signatory job title" htmlFor="signatory-job-title" error={errors.signatoryJobTitle} required>
+              <input
+                id="signatory-job-title"
+                className={fieldClass(errors.signatoryJobTitle)}
+                maxLength={150}
+                value={form.signatoryJobTitle}
+                onChange={(event) => updateField("signatoryJobTitle", event.target.value)}
+                placeholder="Chief Financial Officer"
+              />
+            </Field>
+          </div>
+        </div>
+      ) : null}
+
       <div className="rounded-xl border border-border bg-chalk p-5">
         <div className="mb-3 flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">

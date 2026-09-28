@@ -24,7 +24,7 @@ export function FindTeachersPage({ go, toast, role }: Pick<RouteProps, "go" | "t
     const matchesStages = selectedStages.length === 0 || selectedStages.some((stage) => teacher.keyStages.includes(stage));
     return matchesStages;
   });
-  const isIndividual = role === "individual";
+  const isIndividual = false;
 
   return (
     <div className="app-page">

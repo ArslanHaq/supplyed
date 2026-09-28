@@ -7,7 +7,7 @@ import { buttonClassName, Icon, Tag } from "@/components/atoms";
 
 export const metadata: Metadata = {
   title: "How It Works",
-  description: "A dummy end-to-end overview of how schools, individual hirers, and supply teachers use SupplyED.",
+  description: "A dummy end-to-end overview of how schools, multi-academy trusts, and supply teachers use SupplyED.",
   alternates: {
     canonical: "/how-it-works",
   },
@@ -25,14 +25,14 @@ const teacherSteps = [
   ["Accept or propose", "Teachers can accept instant cover or apply to longer-term briefs."],
 ];
 
-const individualSteps = [
-  ["Create a learner request", "Hirers add subject, stage, format, schedule, and safe contact preferences."],
-  ["Review verified teachers", "SupplyED shows DBS and identity verification as badges while documents stay private."],
-  ["Message from the account", "All communication remains under the verified hiring account before sessions are confirmed."],
+const matSteps = [
+  ["Add trust details", "The school selects the MAT path and records the trust name and company number."],
+  ["Request signatory approval", "SupplyED emails an authorised trust representative a secure approval link."],
+  ["Submit the school", "After approval, the school completes compliance documents and sends its profile for review."],
 ];
 
 const workflow = [
-  { label: "Account", icon: "user", copy: "Schools, teachers, and individual hirers choose their path after email verification." },
+  { label: "Account", icon: "user", copy: "Schools and teachers choose their path when creating the account." },
   { label: "Compliance", icon: "shield", copy: "DBS, right-to-work, identity, and safeguarding details are captured." },
   { label: "Matching", icon: "search", copy: "Dummy matching ranks staff and roles using profile fit and availability." },
   { label: "Booking", icon: "calendar", copy: "Messages, booking notes, and next actions stay in one workspace." },
@@ -61,7 +61,7 @@ export default function HowItWorksPage() {
                 One workflow for cover, compliance, and confidence.
               </h1>
               <p className="mt-5 max-w-[650px] text-base leading-7 text-white/65 sm:text-lg">
-                Dummy product flow for the prototype: schools post staffing needs, individuals create learner requests, teachers build trusted profiles, and each side moves through matching, messaging, and booking.
+                Schools post staffing needs, MAT schools collect trust approval, teachers build trusted profiles, and each side moves through matching, messaging, and booking.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href={actionHref}>
@@ -73,13 +73,6 @@ export default function HowItWorksPage() {
                   style={{ background: "transparent", borderColor: "rgba(255,255,255,0.28)", color: "#fff" }}
                 >
                   Start as teacher
-                </Link>
-                <Link
-                  className={buttonClassName({ variant: "secondary", className: "rounded-full px-6 py-3" })}
-                  href={actionHref}
-                  style={{ background: "transparent", borderColor: "rgba(255,255,255,0.28)", color: "#fff" }}
-                >
-                  Hire talent
                 </Link>
               </div>
             </div>
@@ -152,10 +145,10 @@ export default function HowItWorksPage() {
             </article>
 
             <article className="rounded-xl border border-border p-6">
-              <Tag tone="green">For individuals</Tag>
-              <h2 className="mt-4 font-serif text-3xl">Find verified support without exposing private learner data.</h2>
+              <Tag tone="green">For MAT schools</Tag>
+              <h2 className="mt-4 font-serif text-3xl">Join through your trust with recorded approval.</h2>
               <div className="mt-6 space-y-5">
-                {individualSteps.map(([title, copy], index) => (
+                {matSteps.map(([title, copy], index) => (
                   <div key={title} className="flex gap-4">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success text-xs font-bold text-white">{index + 1}</div>
                     <div>

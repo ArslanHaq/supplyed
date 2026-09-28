@@ -173,6 +173,12 @@ function readOptionalUserPayload(payload: unknown) {
   return payload;
 }
 
+export function toBackendRole(role?: AppRole | null): string | undefined {
+  if (role === "teacher") return "INSTRUCTOR";
+  if (role === "institution") return "INSTITUTION";
+  return undefined;
+}
+
 export function normalizeRole(role: unknown): AppRole | null {
   const value = readString(role)?.trim();
   if (!value) return null;
@@ -181,9 +187,7 @@ export function normalizeRole(role: unknown): AppRole | null {
 
   if (normalized === "INSTITUTION" || normalized === "SCHOOL") return "institution";
   if (normalized === "INSTRUCTOR" || normalized === "TEACHER") return "teacher";
-  if (normalized === "INDIVIDUAL" || normalized === "GUARDIAN" || normalized === "PARENT" || normalized === "RECRUITER") {
-    return "individual";
-  }
+  if (normalized === "ADMIN") return "admin";
 
   return null;
 }
@@ -243,11 +247,6 @@ export function normalizeAuthUser(payload: unknown): AuthUser {
       readString(user.institutionProfileID) ??
       readString(user.institutionId) ??
       (isRecord(user.institutionProfile) ? readString(user.institutionProfile.id) : undefined),
-    recruiterProfileId:
-      readString(user.recruiterProfileId) ??
-      readString(user.recruiterProfileID) ??
-      readString(user.recruiterId) ??
-      (isRecord(user.recruiterProfile) ? readString(user.recruiterProfile.id) : undefined),
     name: readString(user.name) ?? readString(user.fullName) ?? null,
     role: normalizeRole(user.role),
   };
@@ -351,14 +350,17 @@ function normalizePasswordResetChallenge(payload: unknown): PasswordResetChallen
 }
 
 export async function createEmailAccount(input: SignupInput): Promise<EmailVerificationChallenge> {
-  logBackendPayload(`POST ${backendAuthEndpoints.register}`, {
+  const payload = {
     email: input.email,
     password: input.password,
-  });
+    role: toBackendRole(input.role),
+  };
+
+  logBackendPayload(`POST ${backendAuthEndpoints.register}`, payload);
 
   if (backendEnabled()) {
     return normalizeEmailVerificationChallenge(
-      await api.post<unknown>(backendAuthEndpoints.register, input, { auth: false }),
+      await api.post<unknown>(backendAuthEndpoints.register, payload, { auth: false }),
       input.email,
     );
   }
@@ -538,7 +540,7 @@ export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<Ba
     }
 
     const response = normalizeLoginResponse(
-      await api.post<unknown>(backendAuthEndpoints.oauthGoogle, { credential: input.providerIdToken }, { auth: false }),
+      await api.post<unknown>(backendAuthEndpoints.oauthGoogle, { credential: input.providerIdToken, role: toBackendRole(input.role) }, { auth: false }),
       input.email,
     );
 

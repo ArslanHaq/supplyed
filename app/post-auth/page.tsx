@@ -15,14 +15,14 @@ export default async function PostAuthPage() {
     redirect("/login");
   }
 
-  const snapshot = process.env.API_BASE_URL && session.user.isEmailVerified && !session.user.authErrorMessage
+  const snapshot = process.env.API_BASE_URL && session.user.role !== "admin" && session.user.isEmailVerified && !session.user.authErrorMessage
     ? await getOnboardingProfileSnapshot()
     : null;
 
   return (
     <PostAuthRedirectClient
       sessionUser={{
-        applicationStatus: snapshot ? profileEntryStatus(snapshot) : session.user.applicationStatus,
+        applicationStatus: session.user.role === "admin" ? "approved" : snapshot ? profileEntryStatus(snapshot) : session.user.applicationStatus,
         authErrorMessage: session.user.authErrorMessage,
         authErrorProvider: session.user.authErrorProvider,
         email: session.user.email ?? "",

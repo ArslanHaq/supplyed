@@ -79,11 +79,11 @@ function SignupRouteClientInner({
     return data;
   }
 
-  async function startVerification(email: string, password: string) {
+  async function startVerification(email: string, password: string, role: string) {
     let result: Awaited<ReturnType<typeof signupAction>>;
 
     try {
-      result = await signupAction(null, formData({ email, password }));
+      result = await signupAction(null, formData({ email, password, role }));
     } catch (error) {
       const message = readUnknownAuthErrorMessage(error, "We could not create this account.");
       showAuthError(message);

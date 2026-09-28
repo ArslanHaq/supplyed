@@ -18,13 +18,11 @@ import type { SignupForm, UploadedFile } from "./types";
 
 export function roleLabel(role: string) {
   if (role === "teacher") return "Supply teacher";
-  if (role === "individual") return "Individual hirer";
   return "School / MAT";
 }
 
 export function signupHeroTitle(role: string) {
   if (role === "teacher") return "Build your trusted teacher profile.";
-  if (role === "individual") return "Find trusted support for a learner.";
   return "Create your school staffing workspace.";
 }
 
@@ -33,17 +31,13 @@ export function signupHeroCopy(role: string) {
     return "Complete your teaching profile once, then use it for matching, messaging, bookings, and compliance checks.";
   }
 
-  if (role === "individual") {
-    return "Create a safe request, browse verified teachers, and keep every conversation under the verified hiring account.";
-  }
-
   return "Set up a verified workspace for posting cover, reviewing ranked matches, and keeping compliance visible.";
 }
 
 export function signupStepTitle(role: string, step: number) {
   if (step === 1) return role === "teacher" ? "Complete your teacher profile" : "Complete profile basics";
   if (step === 2) {
-    if (role === "teacher" || role === "individual") return "Full review";
+    if (role === "teacher") return "Full review";
     return "Add school details";
   }
   if (step === 3) return role === "institution" ? "Complete compliance" : "Full review";
@@ -151,11 +145,11 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
   const user = snapshot?.user;
   const instructor = snapshot?.instructor;
   const institution = snapshot?.institution;
-  const recruiter = snapshot?.recruiter;
+  const signatoryApproval = snapshot?.signatoryApproval;
 
   return {
     ...initialForm,
-    bio: instructor?.bio ?? recruiter?.bio ?? "",
+    bio: instructor?.bio ?? "",
     complianceContact: institution?.complianceContact ?? "",
     complianceEmail: institution?.complianceEmail ?? "",
     contactRole: institution?.userRole ?? "",
@@ -164,7 +158,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     dailyRate: instructor?.dailyRate ?? "",
     documents: uploadedFilesFromSnapshot(snapshot?.documents),
     email: user?.email || accountEmail || "",
-    fullName: instructor?.fullName || recruiter?.displayName || user?.fullName || "",
+    fullName: instructor?.fullName || user?.fullName || "",
     hourlyRate: instructor?.hourlyRate ?? "",
     institutionAddress: institution?.address ?? "",
     institutionCity: institution?.city ?? "",
@@ -172,21 +166,26 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     institutionDomain: institution?.domain ?? "",
     institutionProfileId: institution?.id ?? "",
     institutionRegistrationId: institution?.registrationId ?? "",
+    institutionType: institution?.institutionType ?? "SINGLE_SCHOOL",
     keyStages: instructor?.keyStages ?? [],
     localAuthority: institution?.county ?? "",
     maxTravelDistance: instructor?.maxTravelDistance ?? "",
     phone: user?.phone ?? "",
-    profileCity: instructor?.city || recruiter?.city || "",
-    profileCountryCode: instructor?.countryCode || recruiter?.countryCode || "GB",
-    postcode: instructor?.postalCode || institution?.postalCode || recruiter?.postalCode || user?.postcode || "",
-    recruiterProfileId: recruiter?.id ?? "",
+    profileCity: instructor?.city || "",
+    profileCountryCode: instructor?.countryCode || "GB",
+    postcode: instructor?.postalCode || institution?.postalCode || user?.postcode || "",
     safeguardingConfirmed: institution?.safeguardingConfirmed ?? false,
     schoolName: institution?.name ?? "",
     skills: instructor?.skills ?? [],
     staffingNeeds: institution?.staffingNeeds ?? "",
+    signatoryEmail: signatoryApproval?.signatoryEmail ?? "",
+    signatoryJobTitle: signatoryApproval?.signatoryJobTitle ?? "",
+    signatoryName: signatoryApproval?.signatoryName ?? "",
     subjects: instructor?.subjects ?? [],
     teacherProfileId: instructor?.id ?? "",
     typicalPupilCount: institution?.typicalPupilCount ?? "",
+    trustCompanyNumber: institution?.trust?.companyNumber ?? "",
+    trustName: institution?.trust?.name ?? "",
     yearsExperience: instructor?.yearsExperience ?? "",
   };
 }
@@ -203,7 +202,7 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("postcode", form.postcode.trim());
   data.set("teacherProfileId", form.teacherProfileId);
   data.set("institutionProfileId", form.institutionProfileId);
-  data.set("recruiterProfileId", form.recruiterProfileId);
+  data.set("institutionType", form.institutionType);
   data.set("schoolName", form.schoolName.trim());
   data.set("contactRole", form.contactRole.trim());
   data.set("institutionAddress", form.institutionAddress.trim());
@@ -213,6 +212,11 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("institutionRegistrationId", form.institutionRegistrationId.trim());
   data.set("localAuthority", form.localAuthority.trim());
   data.set("staffingNeeds", form.staffingNeeds.trim());
+  data.set("trustName", form.trustName.trim());
+  data.set("trustCompanyNumber", form.trustCompanyNumber.trim());
+  data.set("signatoryName", form.signatoryName.trim());
+  data.set("signatoryEmail", form.signatoryEmail.trim());
+  data.set("signatoryJobTitle", form.signatoryJobTitle.trim());
   data.set("coverTypes", JSON.stringify(form.coverTypes));
   data.set("typicalPupilCount", form.typicalPupilCount.trim());
   data.set("complianceContact", form.complianceContact.trim());

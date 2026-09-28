@@ -44,6 +44,7 @@ export function getAuthenticatedEntryHref({
   applicationStatus: ApplicationStatus;
   role: AppRole | null | undefined;
 }) {
+  if (role === "admin") return buildAppHref("dashboard");
   if (!role || !hasSubmittedApplicationStatus(applicationStatus)) return "/onboarding";
   return buildAppHref("dashboard");
 }

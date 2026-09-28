@@ -11,7 +11,7 @@ export async function getOnboardingSnapshot(): Promise<OnboardingSnapshot> {
     const session = await auth();
     const applicationStatus = session?.user.applicationStatus ?? "none";
     const role = session?.user.role ?? null;
-    return { applicationStatus, completed: Boolean(role) && applicationStatus !== "none", verified: false, role, step: 1 };
+    return { applicationStatus, completed: Boolean(role) && applicationStatus !== "none", verified: false, role, signatoryApproval: null, step: 1 };
   }
 
   const profile = await getOnboardingProfileSnapshot();
@@ -21,6 +21,7 @@ export async function getOnboardingSnapshot(): Promise<OnboardingSnapshot> {
     completed: Boolean(profile.role) && applicationStatus !== "none",
     verified: isProfileVerified(profile),
     role: profile.role,
+    signatoryApproval: profile.signatoryApproval ?? null,
     step: hasCreatedRoleProfile(profile) ? (profile.role === "institution" ? 4 : 2) : 1,
   };
 }

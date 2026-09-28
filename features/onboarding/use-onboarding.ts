@@ -30,7 +30,7 @@ export function useOnboardingDocumentRequirements(
   return useQuery({
     enabled: options.enabled ?? Boolean(role),
     initialData: options.initialData && options.initialData.length > 0 ? options.initialData : undefined,
-    queryFn: () => fetchJson<OnboardingDocumentRequirement[]>("/api/onboarding/document-requirements", { query: { role } }),
+    queryFn: () => fetchJson<OnboardingDocumentRequirement[]>("/api/onboarding/document-requirements"),
     queryKey: queryKeys.onboarding.documentRequirements(role ?? "none"),
     staleTime: 0,
   });

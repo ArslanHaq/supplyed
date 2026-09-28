@@ -7,7 +7,7 @@ import type { OnboardingDocumentMap, OnboardingDocumentRequirement } from "./typ
  * form. Nothing here touches the backend or the browser.
  */
 
-export type BackendProfileRole = "INSTITUTION" | "INSTRUCTOR" | "RECRUITER";
+export type BackendProfileRole = "INSTITUTION" | "INSTRUCTOR";
 
 type FileLike = { name: string; size: number; type: string };
 
@@ -35,11 +35,11 @@ const mimeLabels: Record<string, string> = {
   "image/webp": "WEBP",
 };
 
-/** The `role` query value the backend needs when the caller still has the USER role. */
+/** Maps the local profile name to the backend role name used by document helpers. */
 export function backendProfileRole(role: AppRole | null | undefined): BackendProfileRole | undefined {
   if (role === "teacher") return "INSTRUCTOR";
   if (role === "institution") return "INSTITUTION";
-  if (role === "individual") return "RECRUITER";
+
   return undefined;
 }
 

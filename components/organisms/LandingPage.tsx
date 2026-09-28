@@ -17,9 +17,9 @@ const heroSignals = [
     icon: "user",
   },
   {
-    title: "Individual hirers",
-    copy: "Find verified teaching support for yourself, your child, or another learner.",
-    icon: "heart",
+    title: "MAT schools",
+    copy: "Connect a school to its trust and collect signatory approval during verified onboarding.",
+    icon: "building",
   },
   {
     title: "Education leaders",

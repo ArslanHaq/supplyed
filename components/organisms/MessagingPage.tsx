@@ -14,9 +14,7 @@ export function MessagingPage({ state, setState, role }: Pick<RouteProps, "state
         subtitle={
           role === "teacher"
             ? "Stay in touch with schools and placement details."
-            : role === "individual"
-              ? "Coordinate safely with verified teachers from the hiring account."
-              : "Coordinate quickly with candidates and schools."
+            : "Coordinate quickly with candidates and schools."
         }
       />
       <div className="three-panel">

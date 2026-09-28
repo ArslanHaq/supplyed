@@ -2,9 +2,9 @@ import { useState } from "react";
 
 import { passwordRequirementsMessage, validatePassword } from "@/features/auth/schemas";
 import type { FoundingSignupType } from "@/lib/founding-signup-intent";
-import type { SocialAuthAvailability } from "@/types/supplyed";
+import type { AppRole, SocialAuthAvailability } from "@/types/supplyed";
 
-import { Btn, Checkbox, Field, Logo } from "../atoms";
+import { Btn, Checkbox, Field, Icon, Logo } from "../atoms";
 import {
   ConfirmPasswordMismatch,
   hasConfirmPasswordMismatch,
@@ -14,8 +14,13 @@ import {
 } from "../molecules";
 import { PasswordInput } from "../atoms/PasswordInput";
 
-type AccessErrors = Partial<Record<"email" | "password" | "confirmPassword" | "termsAccepted", string>>;
+type AccessErrors = Partial<Record<"role" | "email" | "password" | "confirmPassword" | "termsAccepted", string>>;
 type AccessResult = { ok: true } | { fieldErrors?: AccessErrors; message: string; ok: false };
+
+const accountRoleOptions = [
+  ["institution", "School / MAT", "building", "Post roles, review ranked matches, and manage compliance."],
+  ["teacher", "Supply teacher", "user", "Build your profile, find roles, and manage availability."],
+] as const;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -37,7 +42,7 @@ export function SignupAccessPage({
   initialEmail?: string;
   onLanding: () => void;
   onLogin: () => void;
-  onAccountCreated: (email: string, password: string) => Promise<AccessResult>;
+  onAccountCreated: (email: string, password: string, role: AppRole) => Promise<AccessResult>;
   onGoogleAuth: () => void;
   onMicrosoftAuth: () => void;
   socialAuth: SocialAuthAvailability;
@@ -50,12 +55,16 @@ export function SignupAccessPage({
   const [pending, setPending] = useState(false);
   const isFoundingSignup = Boolean(foundingType);
   const expectedEmail = initialEmail?.trim().toLowerCase();
+  const [role, setRole] = useState<AppRole | null>(
+    isFoundingSignup ? (foundingType === "teacher" ? "teacher" : "institution") : null
+  );
 
   function validate() {
     const nextErrors: AccessErrors = {};
     const trimmedEmail = email.trim();
     const normalizedEmail = trimmedEmail.toLowerCase();
 
+    if (!role) nextErrors.role = "Choose an account type.";
     if (!trimmedEmail) nextErrors.email = "Enter your email address.";
     else if (!emailPattern.test(trimmedEmail)) nextErrors.email = "Use a valid email address.";
     else if (expectedEmail && normalizedEmail !== expectedEmail) {
@@ -76,7 +85,7 @@ export function SignupAccessPage({
     if (pending) return;
     if (!validate()) return;
     setPending(true);
-    const result = await onAccountCreated(email.trim(), password);
+    const result = await onAccountCreated(email.trim(), password, role!);
 
     if (!result.ok) {
       setErrors(result.fieldErrors ?? { email: result.message });
@@ -85,6 +94,16 @@ export function SignupAccessPage({
     }
 
     setPending(false);
+  }
+
+  function startSocialSignup(handler: () => void) {
+    if (!role) {
+      setErrors((current) => ({ ...current, role: "Choose an account type before using social sign-up." }));
+      return;
+    }
+
+    document.cookie = `supplyed_signup_role=${role}; path=/; max-age=3600; SameSite=Lax`;
+    handler();
   }
 
   const confirmPasswordMismatch = hasConfirmPasswordMismatch(password, confirmPassword);
@@ -126,7 +145,7 @@ export function SignupAccessPage({
                   ? foundingType === "teacher"
                     ? "Your teacher path opens after verification."
                     : "Your school path opens after verification."
-                  : "Role is selected only after the user is signed in.",
+                  : "Onboarding for your selected role starts after verification.",
               ],
             ].map(([title, copy], index) => (
               <div key={title} className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
@@ -165,12 +184,45 @@ export function SignupAccessPage({
           ) : null}
 
           <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
+            <div className="mb-6">
+              <Field label="Choose account type" error={errors.role} required>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {accountRoleOptions.map(([value, title, icon, copy]) => {
+                    const selected = role === value;
+
+                    return (
+                      <button
+                        key={value}
+                        aria-pressed={selected}
+                        className="rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint"
+                        onClick={() => {
+                          setRole(value);
+                          setErrors((current) => ({ ...current, role: undefined }));
+                        }}
+                        style={{
+                          background: selected ? "var(--se-tint)" : "#fff",
+                          borderColor: selected ? "var(--se)" : "var(--border)",
+                        }}
+                        type="button"
+                      >
+                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-white text-brand shadow-sm">
+                          <Icon name={icon as "building" | "user" | "heart"} size={18} />
+                        </div>
+                        <div className="font-serif text-[17px] leading-snug">{title}</div>
+                        <p className="mt-1 text-[13px] leading-5 text-muted">{copy}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+            </div>
+
             <SocialAuthButtons
               available={socialAuth}
               disabled={pending}
               intent="signup"
-              onGoogle={onGoogleAuth}
-              onMicrosoft={onMicrosoftAuth}
+              onGoogle={() => startSocialSignup(onGoogleAuth)}
+              onMicrosoft={() => startSocialSignup(onMicrosoftAuth)}
             />
 
             <div className="grid gap-x-4 sm:grid-cols-2">

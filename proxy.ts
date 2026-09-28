@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedEntryHref, hasSubmittedApplicationStatus } from "./lib/routes";
 import type { AppRole, ApplicationStatus } from "./types/supplyed";
 
-const appRoles = new Set<AppRole>(["institution", "teacher", "individual"]);
+const appRoles = new Set<AppRole>(["admin", "institution", "teacher"]);
 const appStatuses = new Set<ApplicationStatus>(["none", "pending_review", "approved", "rejected", "suspended"]);
 const guestOnlyRoutes = new Set(["/forgot-password", "/login", "/signup"]);
 
@@ -59,7 +59,7 @@ export async function proxy(request: NextRequest) {
 
   const role = readAppRole(token.role);
   const applicationStatus = readApplicationStatus(token.applicationStatus);
-  const setupComplete = Boolean(role && hasSubmittedApplicationStatus(applicationStatus));
+  const setupComplete = role === "admin" || Boolean(role && hasSubmittedApplicationStatus(applicationStatus));
   const isOnboardingRoute = pathname.startsWith("/onboarding");
 
   if (isGuestOnlyRoute) {
@@ -68,6 +68,10 @@ export async function proxy(request: NextRequest) {
 
   if (!setupComplete && !isOnboardingRoute) {
     return redirectTo(request, "/onboarding");
+  }
+
+  if (role === "admin" && isOnboardingRoute) {
+    return redirectTo(request, "/dashboard");
   }
 
   // The onboarding server page checks live profile and document state. A JWT

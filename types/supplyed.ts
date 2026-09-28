@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 export type Tone = "" | "purple" | "amber" | "green";
 export type ApplicationStage = "applied" | "shortlisted" | "interview" | "hired";
 export type MessageAuthor = "me" | "them";
-export type AppRole = "institution" | "teacher" | "individual";
+export type AppRole = "admin" | "institution" | "teacher";
 export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
 export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
 export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED";

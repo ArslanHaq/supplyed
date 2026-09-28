@@ -13,7 +13,6 @@ import type {
   SettingsInstitutionUpdateInput,
   SettingsInstructorUpdateInput,
   SettingsProfileSnapshot,
-  SettingsRecruiterUpdateInput,
   SettingsUpdateInput,
   SettingsUserUpdateInput,
 } from "./types";
@@ -153,19 +152,6 @@ function institutionPayload(input: SettingsInstitutionUpdateInput) {
   });
 }
 
-function recruiterPayload(input: SettingsRecruiterUpdateInput) {
-  return withoutUndefined({
-    address: optionalText(input.address),
-    bio: optionalText(input.bio),
-    city: optionalText(input.city),
-    countryCode: optionalText(input.countryCode) ?? "GB",
-    county: optionalText(input.county),
-    displayName: text(input.displayName),
-
-    postalCode: optionalText(input.postalCode),
-  });
-}
-
 function validateProfile(input: SettingsUpdateInput) {
   const errors: Partial<Record<SettingsActionField, string>> = {};
 
@@ -183,9 +169,6 @@ function validateProfile(input: SettingsUpdateInput) {
     }
   }
 
-  if (input.role === "individual") {
-    if (!text(input.recruiter?.displayName)) errors.displayName = "Enter your profile display name.";
-  }
 
   return errors;
 }
@@ -201,10 +184,6 @@ function mergeLocalSnapshot(current: SettingsProfileSnapshot, input: SettingsUpd
       input.role === "teacher" && input.instructor && current.instructor
         ? { ...current.instructor, ...input.instructor }
         : current.instructor,
-    recruiter:
-      input.role === "individual" && input.recruiter && current.recruiter
-        ? { ...current.recruiter, ...input.recruiter }
-        : current.recruiter,
     role: input.role,
     user: {
       ...current.user,
@@ -366,11 +345,6 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
       if (!profileId || !input.institution) return actionError("Institution profile was not found.");
 
       await api.patch(`/institutions/${profileId}`, institutionPayload(input.institution));
-    }
-
-    if (input.role === "individual") {
-      if (!input.recruiter) return actionError("Individual profile was not found.");
-      await api.patch("/recruiters/me", recruiterPayload(input.recruiter));
     }
 
     revalidateTag("settings", "max");

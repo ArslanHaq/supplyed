@@ -21,7 +21,6 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
     countryCode: input.countryCode?.trim().toUpperCase() || "GB",
     county: input.county?.trim() || undefined,
     description: input.description.trim(),
-    documentRequirementIds: normalizeStringList(input.documentRequirementIds ?? []),
     endDate: input.endDate?.trim() || undefined,
     expiresAt: input.expiresAt?.trim() || undefined,
     keyStages: normalizeStringList(input.keyStages),

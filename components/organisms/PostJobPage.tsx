@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 
-import { useApplicationDocumentRequirements } from "@/features/document-requirements/use-document-requirements";
 import { useCreateJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
 import type { RouteProps } from "@/types/supplyed";
@@ -17,7 +16,6 @@ type JobFormState = {
   countryCode: string;
   county: string;
   description: string;
-  documentRequirementIds: string[];
   endDate: string;
   expiresAt: string;
   keyStages: string[];
@@ -46,7 +44,6 @@ const initialForm: JobFormState = {
   countryCode: "GB",
   county: "",
   description: "",
-  documentRequirementIds: [],
   endDate: "",
   expiresAt: "",
   keyStages: [],
@@ -123,13 +120,6 @@ function PostJobEditor({
   const [savingIntent, setSavingIntent] = useState<"draft" | "publish" | null>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const isEditing = Boolean(editingJob);
-  const documentRequirementsQuery = useApplicationDocumentRequirements();
-  const documentRequirements = documentRequirementsQuery.data ?? [];
-  const documentRequirementOptions = documentRequirements.map((requirement) => ({
-    description: requirement.description,
-    label: requirement.name,
-    value: requirement.id,
-  }));
   const todayDate = getTodayDateInput();
 
   const createJob = useCreateJob({
@@ -218,8 +208,7 @@ function PostJobEditor({
     setSavingIntent(status === "ACTIVE" ? "publish" : "draft");
 
     if (editingJob) {
-      const { documentRequirementIds: _createOnlyDocumentRequirements, ...updatePayload } = payload;
-      updateJob.mutate({ ...updatePayload, id: editingJob.id } satisfies JobUpdateInput);
+      updateJob.mutate({ ...payload, id: editingJob.id } satisfies JobUpdateInput);
       return;
     }
 
@@ -390,35 +379,6 @@ function PostJobEditor({
           <Field error={errors.expiresAt} hint="Optional. If set, the job stops appearing publicly after this date." label="Listing expiry">
             <input className="input" min={todayDate} type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
           </Field>
-          {!isEditing ? <div className="md:col-span-2">
-            <Field htmlFor="job-document-requirements" hint="Optional. Select the documents applicants should provide." label="Application document requirements">
-              <MultiSelectDropdown
-                id="job-document-requirements"
-                disabled={documentRequirementsQuery.isLoading || documentRequirementsQuery.isError || documentRequirementOptions.length === 0}
-                error={documentRequirementsQuery.isError}
-                options={documentRequirementOptions}
-                placeholder={
-                  documentRequirementsQuery.isLoading
-                    ? "Loading document requirements..."
-                    : documentRequirementsQuery.isError
-                      ? "Document requirements unavailable"
-                      : documentRequirementOptions.length === 0
-                        ? "No document requirements available"
-                        : "Select document requirements"
-                }
-                value={form.documentRequirementIds}
-                onChange={(value) => updateForm("documentRequirementIds", value)}
-              />
-              {documentRequirementsQuery.isError ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-danger" role="alert">
-                  <span>Could not load document requirements.</span>
-                  <button className="cursor-pointer font-semibold underline underline-offset-2" onClick={() => void documentRequirementsQuery.refetch()} type="button">
-                    Try again
-                  </button>
-                </div>
-              ) : null}
-            </Field>
-          </div> : null}
         </div>
         <Field label="Parking / arrival notes">
           <textarea
@@ -463,9 +423,6 @@ function PostJobEditor({
             {form.minExperienceYears ? <span className="pill">{form.minExperienceYears}+ years experience</span> : null}
             {form.requiredSkills.map((skill) => <span key={skill} className="pill">{skill}</span>)}
             {form.qtsRequired ? <span className="pill">QTS required</span> : null}
-            {documentRequirements
-              .filter((requirement) => form.documentRequirementIds.includes(requirement.id))
-              .map((requirement) => <span key={requirement.id} className="pill">{requirement.name}</span>)}
           </div>
         </div>
       </div>
@@ -534,7 +491,7 @@ function PostJobEditor({
   return (
     <div className="app-page">
       <PageHead
-        title={isEditing ? "Edit job post" : role === "individual" ? "Post a hiring role" : "Post a new role"}
+        title={isEditing ? "Edit job post" : "Post a new role"}
         subtitle={isEditing ? "Update the role, keep it as draft, or publish the latest version." : "Create the role once, publish it to active listings, then review applications from the same workspace."}
       />
       <div className="mb-7 flex flex-wrap gap-2.5">
@@ -675,7 +632,6 @@ function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract
     countryCode: form.countryCode || undefined,
     county: form.county || undefined,
     description: buildDescription(form, mode),
-    documentRequirementIds: form.documentRequirementIds,
     endDate: toIsoDate(form.endDate),
     expiresAt: toIsoDate(form.expiresAt),
     keyStages: form.keyStages,
@@ -745,7 +701,6 @@ function toFormState(job: Job): JobFormState {
     countryCode: job.countryCode ?? "GB",
     county: job.county ?? "",
     description: readEditableDescription(job.description ?? ""),
-    documentRequirementIds: [],
     endDate: toDateInput(job.endDate),
     expiresAt: toDateInput(job.expiresAt),
     keyStages: job.keyStages?.length ? job.keyStages : [],

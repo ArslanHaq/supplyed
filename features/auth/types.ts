@@ -7,7 +7,6 @@ export type AuthUser = {
   id: string;
   instructorProfileId?: string;
   institutionProfileId?: string;
-  recruiterProfileId?: string;
   name?: string | null;
   role: AppRole | null;
 };
@@ -34,6 +33,7 @@ export type TwoFactorVerificationInput = {
 export type SignupInput = {
   email: string;
   password: string;
+  role: AppRole | null;
 };
 
 export type EmailVerificationChallenge = {
@@ -103,4 +103,5 @@ export type OAuthBackendInput = {
   providerAccessToken?: string;
   providerAccountId: string;
   providerIdToken?: string;
+  role?: AppRole | null;
 };

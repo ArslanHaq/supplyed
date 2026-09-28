@@ -26,14 +26,12 @@ async function createSessionRepairTicket(session: Session, snapshot: OnboardingP
 
   const instructorProfileId = snapshot.instructor?.id ?? authContext.instructorProfileId ?? user.instructorProfileId;
   const institutionProfileId = snapshot.institution?.id ?? authContext.institutionProfileId ?? user.institutionProfileId;
-  const recruiterProfileId = snapshot.recruiter?.id ?? authContext.recruiterProfileId ?? user.recruiterProfileId;
   const applicationStatus = profileEntryStatus(snapshot);
   const role = snapshot.role;
   const needsRepair =
     applicationStatus !== user.applicationStatus || role !== user.role ||
     instructorProfileId !== user.instructorProfileId ||
-    institutionProfileId !== user.institutionProfileId ||
-    recruiterProfileId !== user.recruiterProfileId;
+    institutionProfileId !== user.institutionProfileId;
 
   if (!needsRepair) return undefined;
 
@@ -48,8 +46,7 @@ async function createSessionRepairTicket(session: Session, snapshot: OnboardingP
       id: user.id,
       instructorProfileId: readOptional(instructorProfileId),
       institutionProfileId: readOptional(institutionProfileId),
-      recruiterProfileId: readOptional(recruiterProfileId),
-      name: user.name ?? snapshot.instructor?.fullName ?? snapshot.institution?.name ?? snapshot.recruiter?.displayName ?? null,
+      name: user.name ?? snapshot.instructor?.fullName ?? snapshot.institution?.name ?? null,
       role,
     },
   };
@@ -64,6 +61,7 @@ export default async function OnboardingPage() {
     redirect("/login");
   }
   if (!session.user.isEmailVerified) redirect("/post-auth");
+  if (session.user.role === "admin") redirect("/dashboard");
 
   const snapshot = await getOnboardingProfileSnapshot();
   const sessionRepairTicket = await createSessionRepairTicket(session, snapshot);

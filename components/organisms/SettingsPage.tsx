@@ -8,7 +8,6 @@ import type {
   SettingsInstitutionUpdateInput,
   SettingsInstructorUpdateInput,
   SettingsProfileSnapshot,
-  SettingsRecruiterUpdateInput,
   SettingsUpdateInput,
   SettingsUserUpdateInput,
 } from "@/features/settings/types";
@@ -20,7 +19,6 @@ import { PageHead, SectionLoader } from "../molecules";
 type SettingsForm = {
   institution: SettingsInstitutionUpdateInput;
   instructor: SettingsInstructorUpdateInput;
-  recruiter: SettingsRecruiterUpdateInput;
   user: SettingsUserUpdateInput;
 };
 
@@ -56,7 +54,7 @@ function profileImageValidationError(file: File) {
 function profileImageUrlForRole(form: SettingsForm, role: AppRole | null | undefined) {
   if (role === "teacher") return form.instructor.imageUrl;
   if (role === "institution") return form.institution.imageUrl;
-  if (role === "individual") return form.recruiter.imageUrl;
+
   return "";
 }
 const countryOptions = Country.getAllCountries().sort((first, second) => first.name.localeCompare(second.name));
@@ -101,18 +99,6 @@ const emptyInstitution: SettingsInstitutionUpdateInput = {
   userRole: "",
 };
 
-const emptyRecruiter: SettingsRecruiterUpdateInput = {
-  address: "",
-  bio: "",
-  city: "",
-  countryCode: "GB",
-  county: "",
-  displayName: "",
-  id: "",
-  imageUrl: "",
-  postalCode: "",
-};
-
 function arrayToText(values: string[]) {
   return values.join(", ");
 }
@@ -137,7 +123,7 @@ function uniqueCities(cities: ICity[]) {
 function roleLabel(role: AppRole | null | undefined) {
   if (role === "teacher") return "Teacher";
   if (role === "institution") return "Institution";
-  if (role === "individual") return "Individual";
+
   return "Account";
 }
 
@@ -172,7 +158,7 @@ function formatDate(value: string | null) {
 function displayName(snapshot: SettingsProfileSnapshot) {
   if (snapshot.role === "institution") return snapshot.institution?.name || snapshot.user.name;
   if (snapshot.role === "teacher") return snapshot.instructor?.fullName || snapshot.user.name;
-  if (snapshot.role === "individual") return snapshot.recruiter?.displayName || snapshot.user.name;
+
   return snapshot.user.name || snapshot.user.email;
 }
 
@@ -226,22 +212,6 @@ function createForm(snapshot?: SettingsProfileSnapshot): SettingsForm {
           }
         : {}),
     },
-    recruiter: {
-      ...emptyRecruiter,
-      ...(snapshot?.recruiter
-        ? {
-            address: snapshot.recruiter.address,
-            bio: snapshot.recruiter.bio,
-            city: snapshot.recruiter.city,
-            countryCode: snapshot.recruiter.countryCode,
-            county: snapshot.recruiter.county,
-            displayName: snapshot.recruiter.displayName,
-            id: snapshot.recruiter.id,
-            imageUrl: snapshot.recruiter.imageUrl,
-            postalCode: snapshot.recruiter.postalCode,
-          }
-        : {}),
-    },
     user: {
       name: snapshot?.user.name ?? "",
       phone: snapshot?.user.phone ?? "",
@@ -252,7 +222,7 @@ function createForm(snapshot?: SettingsProfileSnapshot): SettingsForm {
 function profileExists(snapshot: SettingsProfileSnapshot, role: AppRole) {
   if (role === "teacher") return Boolean(snapshot.instructor?.id);
   if (role === "institution") return Boolean(snapshot.institution?.id);
-  return Boolean(snapshot.recruiter?.id);
+  return false;
 }
 
 function ReadOnlyLine({ label, value }: { label: string; value: string }) {
@@ -481,28 +451,13 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
     setSubmitError(undefined);
   }
 
-  function updateRecruiter<Field extends keyof SettingsRecruiterUpdateInput>(
-    field: Field,
-    value: SettingsRecruiterUpdateInput[Field],
-  ) {
-    setForm((current) => ({ ...current, recruiter: { ...current.recruiter, [field]: value } }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
-    setSubmitError(undefined);
-  }
-
-  function updateRecruiterCountry(countryCode: string) {
-    setForm((current) => ({ ...current, recruiter: { ...current.recruiter, city: "", countryCode } }));
-    setErrors((current) => ({ ...current, city: undefined, countryCode: undefined }));
-    setSubmitError(undefined);
-  }
-
   function setProfileImageUrl(imageUrl: string | null) {
     const value = imageUrl ?? "";
 
     setForm((current) => {
       if (role === "teacher") return { ...current, instructor: { ...current.instructor, imageUrl: value } };
       if (role === "institution") return { ...current, institution: { ...current.institution, imageUrl: value } };
-      if (role === "individual") return { ...current, recruiter: { ...current.recruiter, imageUrl: value } };
+
       return current;
     });
   }
@@ -530,7 +485,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
     const payload: SettingsUpdateInput = {
       institution: role === "institution" ? form.institution : undefined,
       instructor: role === "teacher" ? form.instructor : undefined,
-      recruiter: role === "individual" ? form.recruiter : undefined,
+
       role,
       user: form.user,
     };
@@ -754,52 +709,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
             </section>
           ) : null}
 
-          {role === "individual" ? (
-            <section className="card card-pad-lg">
-              <div className="mb-5 flex items-start gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
-                  <Icon name="heart" size={22} />
-                </span>
-                <div>
-                  <div className="section-title mb-1">Individual profile</div>
-                  <p className="text-sm leading-6 text-muted">Hiring profile, public name, and location details.</p>
-                </div>
-              </div>
 
-              <div className="grid-2">
-                <Field error={errors.displayName} label="Display name" required>
-                  <input className="input" value={form.recruiter.displayName} onChange={(event) => updateRecruiter("displayName", event.target.value)} />
-                </Field>
-                <ProfileImageField
-                  disabled={!canSave}
-                  error={profileImageError}
-                  imageUrl={form.recruiter.imageUrl}
-                  name={form.recruiter.displayName || displayName(profile)}
-                  onFile={uploadProfileImageFile}
-                  pending={uploadProfileImage.isPending}
-                />                <Field label="Address">
-                  <input className="input" value={form.recruiter.address} onChange={(event) => updateRecruiter("address", event.target.value)} />
-                </Field>
-                <CountryCityFields
-                  city={form.recruiter.city}
-                  cityError={errors.city}
-                  countryCode={form.recruiter.countryCode}
-                  countryError={errors.countryCode}
-                  onCityChange={(value) => updateRecruiter("city", value)}
-                  onCountryChange={updateRecruiterCountry}
-                />
-
-                <Field label="Postal code">
-                  <input className="input" value={form.recruiter.postalCode} onChange={(event) => updateRecruiter("postalCode", event.target.value)} />
-                </Field>
-
-              </div>
-
-              <Field label="Bio">
-                <textarea className="textarea" value={form.recruiter.bio} onChange={(event) => updateRecruiter("bio", event.target.value)} />
-              </Field>
-            </section>
-          ) : null}
 
           {submitError ? (
             <div className="rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
@@ -861,12 +771,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                 </>
               ) : null}
 
-              {role === "individual" ? (
-                <>
-                  <ReadOnlyLine label="Created" value={formatDate(profile.recruiter?.createdAt ?? null)} />
-                  <ReadOnlyLine label="Updated" value={formatDate(profile.recruiter?.updatedAt ?? null)} />
-                </>
-              ) : null}
+
             </div>
           </section>
         </aside>

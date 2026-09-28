@@ -8,8 +8,9 @@ import { fieldClass } from "../utils";
 const accountRoleOptions = [
   ["institution", "School / MAT", "building", "Post roles, review ranked matches, and manage compliance."],
   ["teacher", "Supply teacher", "user", "Build your profile, find roles, and manage availability."],
-  ["individual", "Individual hirer", "heart", "Find verified teachers for yourself, your child, or another learner."],
 ] as const;
+
+
 
 export function AccountBasicsStep({
   accountEmail,
@@ -36,36 +37,38 @@ export function AccountBasicsStep({
         </div>
       </div>
 
-      <Field label="Choose account type" error={errors.accountRole} required>
-        <div className="grid gap-3 lg:grid-cols-3">
-          {accountRoleOptions.map(([value, title, icon, copy]) => {
-            const selected = roleSelected && activeRole === value;
+      {!roleSelected ? (
+        <Field label="Choose account type" error={errors.accountRole} required>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {accountRoleOptions.map(([value, title, icon, copy]) => {
+              const selected = activeRole === value;
 
-            return (
-              <button
-                key={value}
-                aria-pressed={selected}
-                className="rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint sm:p-5"
-                onClick={() => {
-                  setRole(value);
-                  clearFieldError("accountRole");
-                }}
-                style={{
-                  background: selected ? "var(--se-tint)" : "#fff",
-                  borderColor: selected ? "var(--se)" : "var(--border)",
-                }}
-                type="button"
-              >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-brand">
-                  <Icon name={icon} size={20} />
-                </div>
-                <div className="font-serif text-xl">{title}</div>
-                <p className="mt-2 text-sm leading-6 text-muted">{copy}</p>
-              </button>
-            );
-          })}
-        </div>
-      </Field>
+              return (
+                <button
+                  key={value}
+                  aria-pressed={selected}
+                  className="rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint sm:p-5"
+                  onClick={() => {
+                    setRole(value);
+                    clearFieldError("accountRole");
+                  }}
+                  style={{
+                    background: selected ? "var(--se-tint)" : "#fff",
+                    borderColor: selected ? "var(--se)" : "var(--border)",
+                  }}
+                  type="button"
+                >
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-brand">
+                    <Icon name={icon as "building" | "user" | "heart"} size={20} />
+                  </div>
+                  <div className="font-serif text-xl">{title}</div>
+                  <p className="mt-2 text-sm leading-6 text-muted">{copy}</p>
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+      ) : null}
 
       <div className="grid gap-x-4 sm:grid-cols-2">
         <Field label="Full name" htmlFor="signup-name" error={errors.fullName} required>

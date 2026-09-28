@@ -29,14 +29,9 @@ const teacherNav: NavItem[] = [
   { id: "teacher-profile", label: "Profile", icon: "user" },
 ];
 
-const individualNav: NavItem[] = [
+const adminNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
-  { id: "post-job", label: "Post job", icon: "plus" },
-  { id: "find-teachers", label: "Teachers", icon: "search" },
-  { id: "applications", label: "Applications", icon: "users" },
-  { id: "messaging", label: "Messages", icon: "message" },
-  { id: "calendar", label: "Schedule", icon: "calendar" },
-  { id: "billing", label: "Payments", icon: "file" },
+  { id: "security", label: "Security", icon: "shield" },
 ];
 
 export function AppChrome({
@@ -48,11 +43,11 @@ export function AppChrome({
   onLogout,
   onSettings,
 }: Pick<RouteProps, "state" | "go"> & { children: ReactNode; verified: boolean; onLanding: () => void; onLogout: () => void; onSettings: () => void }) {
-  const navItems = state.role === "institution" ? institutionNav : state.role === "teacher" ? teacherNav : individualNav;
-  const fallbackUserName = state.role === "institution" ? "School workspace" : state.role === "teacher" ? "Instructor" : "Hirer";
+  const navItems = state.role === "admin" ? adminNav : state.role === "institution" ? institutionNav : teacherNav;
+  const fallbackUserName = state.role === "admin" ? "Administrator" : state.role === "institution" ? "School workspace" : "Instructor";
   const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
-  const userSub = state.role === "institution" ? "School account" : state.role === "teacher" ? "Instructor" : "Hirer";
-  const searchPlaceholder = state.role === "teacher" ? "Search jobs..." : state.role === "individual" ? "Search teachers..." : "Search teachers...";
+  const userSub = state.role === "admin" ? "Administrator" : state.role === "institution" ? "School account" : "Instructor";
+  const searchPlaceholder = state.role === "admin" ? "Search admin panel..." : state.role === "teacher" ? "Search jobs..." : "Search teachers...";
 
   return (
     <div className="workspace-shell">

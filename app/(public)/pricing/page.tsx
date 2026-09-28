@@ -7,7 +7,7 @@ import { buttonClassName, Icon, Tag } from "@/components/atoms";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Simple dummy pricing plans for schools, individual hirers, trusts, and supply teachers using SupplyED.",
+  description: "Simple dummy pricing plans for schools, multi-academy trusts, and supply teachers using SupplyED.",
   alternates: {
     canonical: "/pricing",
   },
@@ -33,12 +33,12 @@ const plans = [
     features: ["Unlimited job posts", "AI ranked teacher matches", "Compliance snapshot", "Messaging and booking workflow"],
   },
   {
-    name: "Individual",
-    price: "Free",
-    caption: "For individuals requesting safe learner support for themselves or another learner.",
-    cta: "Hire talent",
+    name: "MAT school",
+    price: "Custom",
+    caption: "For schools joining through a multi-academy trust.",
+    cta: "Join through a trust",
     tone: "green" as const,
-    features: ["Learner requests", "Verified teacher badges", "Account-led messaging", "Booking preparation tools"],
+    features: ["Trust details", "Signatory approval", "Verified teacher access", "School-level workspace"],
   },
   {
     name: "Trust",
@@ -53,8 +53,8 @@ const plans = [
 const comparisons = [
   ["Teacher profile", "Included", "Included", "-", "Included"],
   ["Job posting", "-", "Unlimited", "-", "Unlimited"],
-  ["Learner requests", "-", "-", "Included", "Included"],
-  ["Compliance dashboard", "Profile only", "School view", "Verified badges", "Trust-wide"],
+  ["Trust signatory approval", "-", "-", "Included", "Included"],
+  ["Compliance dashboard", "Profile only", "School view", "School view", "Trust-wide"],
   ["Messaging", "Included", "Included", "Included", "Included"],
   ["Support", "Standard", "Priority", "Standard", "Dedicated"],
 ];
@@ -62,7 +62,7 @@ const comparisons = [
 const faqs = [
   ["Can schools trial SupplyED?", "Yes. Dummy trial data assumes a 14-day pilot with no long-term commitment."],
   ["Are teachers charged?", "No. The teacher plan is listed as free so supply staff can build verified profiles and receive matches."],
-  ["Can individuals join?", "Yes. Any verified account can create learner requests and contact verified teachers through guarded messaging."],
+  ["How do MAT schools join?", "Choose the MAT school option during onboarding, add the trust, and collect signatory approval before review."],
   ["Does pricing include compliance checks?", "The example plans include compliance visibility. Real verification costs can be added later."],
 ];
 
@@ -82,7 +82,7 @@ export default function PricingPage() {
                 Simple plans for flexible school staffing.
               </h1>
               <p className="mt-5 text-base leading-7 text-muted sm:text-lg">
-                Dummy pricing for the prototype: keep teachers and individual hirers free, give schools predictable monthly access, and reserve custom workflows for trust-level teams.
+                Dummy pricing for the prototype: keep teachers free, give schools predictable monthly access, and reserve custom workflows for trust-level teams.
               </p>
             </div>
           </div>

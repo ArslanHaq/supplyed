@@ -5,7 +5,7 @@ import { Avatar, Btn, Icon, MatchScore, Stars, Tag, VerifyBadge } from "../atoms
 
 export function TeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ctx" | "go" | "role">) {
   const teacher = seedTeachers.find((item) => item.id === (ctx.teacherId || "t-sarah")) || seedTeachers[0];
-  const isIndividual = role === "individual";
+  const isIndividual = false;
 
   return (
     <div className="app-page">
