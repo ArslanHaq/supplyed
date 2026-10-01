@@ -88,6 +88,17 @@ export function AccountBasicsStep({
             inputMode="tel"
           />
         </Field>
+        {roleSelected && activeRole === "institution" ? (
+          <Field label="Postal code" htmlFor="signup-postcode" error={errors.postcode} required>
+            <input
+              id="signup-postcode"
+              className={fieldClass(errors.postcode)}
+              value={form.postcode}
+              onChange={(event) => updateField("postcode", event.target.value)}
+              placeholder="M1 1AE"
+            />
+          </Field>
+        ) : null}
         {roleSelected && activeRole !== "institution" ? (
           <>
             <CountryCityFields
