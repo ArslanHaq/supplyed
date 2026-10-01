@@ -106,7 +106,7 @@ export function TwoFactorChallengePage({
             </p>
           </div>
 
-          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
+          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" method="post" noValidate onSubmit={handleSubmit}>
             {notice ? (
               <div className="mb-5 rounded-lg border border-brand/20 bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
                 {notice}

@@ -180,6 +180,28 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
     toast({ title: "Recovery codes copied", msg: "Keep them somewhere private and offline.", tone: "success" });
   }
 
+  function downloadRecoveryCodes() {
+    if (recoveryCodes.length === 0) return;
+
+    const fileContent = [
+      "SupplyED recovery codes",
+      "Store these somewhere private and offline. Each code can be used once.",
+      "",
+      ...recoveryCodes,
+      "",
+    ].join("\n");
+    const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "supplyed-recovery-codes.txt";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast({ title: "Recovery codes downloaded", msg: "Keep the file somewhere private and offline.", tone: "success" });
+  }
+
   return (
     <div className="app-page">
       <PageHead
@@ -191,46 +213,70 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
       {pending === "load" ? <SectionLoader rows={4} /> : null}
 
       {pending !== "load" ? (
-        <div className="two-col">
-          <div className="flex flex-col gap-5">
-            <section className="card card-pad-lg">
-              <div className="mb-4 flex items-start gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
-                  <Icon name="shield" size={22} />
-                </span>
-                <div>
-                  <div className="section-title mb-1">Two-factor authentication</div>
-                  <p className="text-sm leading-6 text-muted">
-                    Use an authenticator app to require a second verification step after password sign-in.
-                  </p>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="min-w-0 space-y-5">
+            <section className="card overflow-hidden">
+              <div className="border-b border-border bg-[linear-gradient(135deg,#fff_0%,#f6fbf8_55%,rgb(var(--se-rgb)/0.10)_100%)] px-5 py-5 sm:px-7">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-tint text-brand">
+                      <Icon name="shield" size={24} />
+                    </span>
+                    <div>
+                      <div className="section-title mb-1">Two-factor authentication</div>
+                      <p className="max-w-[620px] text-sm leading-6 text-muted">
+                        Add an authenticator app so password sign-in always needs a second code.
+                      </p>
+                    </div>
+                  </div>
+                  <Tag tone={status?.enabled ? "green" : status?.setupPending ? "amber" : "ghost"}>{statusLabel(status)}</Tag>
                 </div>
               </div>
 
-              {status?.enabled ? (
-                <div className="rounded-xl border border-success/25 bg-success-tint p-4 text-sm leading-6 text-success">
-                  2FA is active. Login now requires either an authenticator code or one unused recovery code.
+              <div className="card-pad-lg">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-border bg-chalk p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Sign-in protection</div>
+                    <div className="mt-2 font-serif text-2xl text-ink">{status?.enabled ? "Active" : "Not active"}</div>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      {status?.enabled
+                        ? "Login requires an authenticator code or an unused recovery code."
+                        : "Start setup, scan the QR code, then confirm the first authenticator code."}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-chalk p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Recovery codes</div>
+                    <div className="mt-2 font-serif text-2xl text-ink">{status?.recoveryCodesRemaining ?? 0}</div>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Backup codes let you regain access if your authenticator device is unavailable.
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <div className="rounded-xl border border-border bg-chalk p-4 text-sm leading-6 text-muted">
-                  2FA is not enabled yet. Start setup, scan the QR code, then confirm the first code from your app.
-                </div>
-              )}
 
-              {!status?.enabled ? (
-                <Btn className="mt-5" icon="shield" loading={pending === "setup"} loadingLabel="Starting setup" onClick={startSetup}>
-                  {setup ? "Restart setup" : "Set up authenticator"}
-                </Btn>
-              ) : null}
+                {!status?.enabled ? (
+                  <Btn className="mt-5" icon="shield" loading={pending === "setup"} loadingLabel="Starting setup" onClick={startSetup}>
+                    {setup ? "Restart authenticator setup" : "Set up authenticator"}
+                  </Btn>
+                ) : null}
+              </div>
             </section>
 
             {setup ? (
               <section className="card card-pad-lg">
-                <div className="section-title">Scan this QR code</div>
-                <p className="mb-5 text-sm leading-6 text-muted">
-                  Add SupplyED to Google Authenticator, Microsoft Authenticator, 1Password, or any TOTP app.
-                </p>
+                <div className="mb-5 flex items-start gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
+                    <Icon name="lock" size={22} />
+                  </span>
+                  <div>
+                    <div className="section-title mb-1">Connect your authenticator app</div>
+                    <p className="text-sm leading-6 text-muted">
+                      Scan the QR code, or use the manual setup key, then enter the 6-digit code from your app.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
-                  <div className="rounded-xl border border-border bg-white p-4">
+                  <div className="rounded-xl border border-border bg-white p-4 shadow-(--shadow-xs)">
                     <Image
                       alt="Two-factor setup QR code"
                       className="h-auto w-full"
@@ -270,40 +316,57 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
             ) : null}
           </div>
 
-          <div className="flex flex-col gap-5">
+          <aside className="min-w-0 space-y-5">
             <section className="card card-pad-lg">
-              <div className="section-title">Recovery codes</div>
-              <p className="text-sm leading-6 text-muted">
-                Recovery codes are one-time backup keys for account access if your authenticator device is unavailable.
-              </p>
-              <div className="mt-4 rounded-xl border border-border bg-chalk p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Codes remaining</div>
-                <div className="mt-1 font-serif text-3xl">{status?.recoveryCodesRemaining ?? 0}</div>
+              <div className="mb-5 flex items-start gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
+                  <Icon name="file" size={22} />
+                </span>
+                <div>
+                  <div className="section-title mb-1">Recovery codes</div>
+                  <p className="text-sm leading-6 text-muted">Save the one-time backup keys somewhere private.</p>
+                </div>
               </div>
 
               {recoveryCodes.length > 0 ? (
-                <div className="mt-4 rounded-xl border border-warning/30 bg-warning-tint p-4">
+                <div className="rounded-xl border border-warning/30 bg-warning-tint p-4">
                   <div className="mb-3 text-sm font-semibold text-warning">Save these now. They are shown only once.</div>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                     {recoveryCodes.map((code) => (
                       <code key={code} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-ink">
                         {code}
                       </code>
                     ))}
                   </div>
-                  <Btn className="mt-4" icon="download" onClick={() => void copyRecoveryCodes()} variant="secondary">
-                    Copy codes
-                  </Btn>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                    <Btn onClick={() => void copyRecoveryCodes()} variant="secondary">
+                      Copy codes
+                    </Btn>
+                    <Btn icon="download" onClick={downloadRecoveryCodes}>
+                      Download .txt
+                    </Btn>
+                  </div>
                 </div>
-              ) : null}
+              ) : (
+                <div className="rounded-xl border border-border bg-chalk p-4 text-sm leading-6 text-muted">
+                  New recovery codes appear here immediately after enabling 2FA or generating a fresh set.
+                </div>
+              )}
             </section>
 
             {status?.enabled ? (
               <section className="card card-pad-lg">
-                <div className="section-title">Manage 2FA</div>
-                <p className="mb-4 text-sm leading-6 text-muted">
-                  Enter a current authenticator code or one recovery code before changing 2FA settings.
-                </p>
+                <div className="mb-4 flex items-start gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
+                    <Icon name="settings" size={22} />
+                  </span>
+                  <div>
+                    <div className="section-title mb-1">Manage 2FA</div>
+                    <p className="text-sm leading-6 text-muted">
+                      Enter a current authenticator code or one recovery code before changing settings.
+                    </p>
+                  </div>
+                </div>
                 <div>
                   <Field error={codeError} htmlFor="manage-2fa-code" label="Code for new recovery codes" required>
                     <input
@@ -365,7 +428,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                 ) : null}
               </section>
             ) : null}
-          </div>
+          </aside>
         </div>
       ) : null}
     </div>

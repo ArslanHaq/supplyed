@@ -98,13 +98,39 @@ function clearBackendAuthError(token: Record<string, unknown>) {
   delete token.backendAuthErrorProvider;
 }
 
+function readJwtSubject(payload: Record<string, unknown> | undefined) {
+  return readString(payload?.sub);
+}
+
+function readJwtTokenKind(payload: Record<string, unknown> | undefined): "access" | "refresh" | undefined {
+  const rawKind =
+    readString(payload?.tokenType) ??
+    readString(payload?.token_type) ??
+    readString(payload?.tokenUse) ??
+    readString(payload?.token_use) ??
+    readString(payload?.type) ??
+    readString(payload?.typ) ??
+    readString(payload?.kind);
+  const kind = rawKind?.replace(/[\s_-]/g, "").toLowerCase();
+
+  if (kind === "access" || kind === "accesstoken") return "access";
+  if (kind === "refresh" || kind === "refreshtoken") return "refresh";
+
+  return undefined;
+}
+
+function hasUnexpectedJwtTokenKind(payload: Record<string, unknown> | undefined, expected: "access" | "refresh") {
+  const kind = readJwtTokenKind(payload);
+  return Boolean(kind && kind !== expected);
+}
+
 function canApplyBackendTokenUpdate(token: Record<string, unknown>, accessToken: string, refreshToken?: string) {
   const userId = readString(token.userId) ?? readString(token.sub);
   const accessPayload = readUnverifiedJwtPayload(accessToken);
   const refreshPayload = refreshToken ? readUnverifiedJwtPayload(refreshToken) : undefined;
 
-  if (!userId || accessPayload?.sub !== userId || accessPayload.tokenType !== "access") return false;
-  if (refreshToken && (refreshPayload?.sub !== userId || refreshPayload.tokenType !== "refresh")) return false;
+  if (!userId || readJwtSubject(accessPayload) !== userId || hasUnexpectedJwtTokenKind(accessPayload, "access")) return false;
+  if (refreshToken && (readJwtSubject(refreshPayload) !== userId || hasUnexpectedJwtTokenKind(refreshPayload, "refresh"))) return false;
 
   return true;
 }

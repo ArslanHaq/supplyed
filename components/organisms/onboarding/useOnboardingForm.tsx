@@ -307,13 +307,13 @@ export function useOnboardingForm({
       { label: "Name", value: form.fullName || "Not provided" },
       { label: "Email", value: form.email || accountEmail || "Not provided" },
       { label: "Phone", value: form.phone || "Not provided" },
-      ...(activeRole === "institution"
-        ? [{ label: "Postal code", value: form.postcode || "Not provided" }]
-        : [
+      ...(activeRole === "teacher"
+        ? [
             { label: "Country", value: countryLabel(form.profileCountryCode) },
             { label: "City", value: form.profileCity || "Not provided" },
             { label: "Postal code", value: form.postcode || "Not provided" },
-          ]),
+          ]
+        : []),
     ];
 
     if (activeRole === "teacher") {
@@ -374,6 +374,7 @@ export function useOnboardingForm({
           { label: "Your role", value: form.contactRole || "Not provided" },
           { label: "Domain", value: form.institutionDomain || "Not provided" },
           { label: "Address", value: form.institutionAddress || "Not provided", wide: true },
+          { label: "Postal code", value: form.postcode || "Not provided" },
           { label: "Country", value: countryLabel(form.institutionCountryCode) },
           { label: "City", value: form.institutionCity || "Not provided" },
           { label: "Registration ID", value: form.institutionRegistrationId || "Optional" },
@@ -561,7 +562,7 @@ export function useOnboardingForm({
         if (!form.profileCountryCode.trim()) nextErrors.profileCountryCode = "Select your country.";
         if (!form.profileCity.trim()) nextErrors.profileCity = "Select your city.";
       }
-      if (!form.postcode.trim()) nextErrors.postcode = "Enter your postal code.";
+      if (activeRole === "teacher" && !form.postcode.trim()) nextErrors.postcode = "Enter your postal code.";
 
       if (activeRole === "teacher") {
         if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
@@ -581,6 +582,7 @@ export function useOnboardingForm({
       if (!form.institutionDomain.trim()) nextErrors.institutionDomain = "Enter the school or trust domain.";
       else if (!domainPattern.test(form.institutionDomain.trim())) nextErrors.institutionDomain = "Use a valid domain, for example greenfield.ac.uk.";
       if (!form.institutionAddress.trim()) nextErrors.institutionAddress = "Enter the institution address.";
+      if (!form.postcode.trim()) nextErrors.postcode = "Enter the institution postal code.";
       if (!form.institutionCountryCode.trim()) nextErrors.institutionCountryCode = "Select the institution country.";
       if (!form.institutionCity.trim()) nextErrors.institutionCity = "Select the institution city.";
       if (form.coverTypes.length === 0) nextErrors.coverTypes = "Choose at least one staffing need.";

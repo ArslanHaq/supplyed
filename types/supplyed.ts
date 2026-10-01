@@ -13,6 +13,7 @@ export type AppPage =
   | "dashboard"
   | "post-job"
   | "applications"
+  | "bookings"
   | "find-teachers"
   | "find-jobs"
   | "job-detail"
@@ -98,6 +99,7 @@ export type Message = {
 };
 
 export type RouteContext = {
+  applicationId?: string;
   jobId?: string;
   teacherId?: string;
 };

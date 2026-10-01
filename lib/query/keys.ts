@@ -3,10 +3,15 @@ export const queryKeys = {
     all: ["applications"] as const,
     byJob: (jobId: string, filters?: Record<string, unknown>) =>
       [...queryKeys.applications.all, "job", jobId, filters ?? {}] as const,
+    mine: (filters?: Record<string, unknown>) => [...queryKeys.applications.all, "mine", filters ?? {}] as const,
   },
   auth: {
     all: ["auth"] as const,
     me: () => [...queryKeys.auth.all, "me"] as const,
+  },
+  bookings: {
+    all: ["bookings"] as const,
+    mine: (filters?: Record<string, unknown>) => [...queryKeys.bookings.all, "mine", filters ?? {}] as const,
   },
   jobs: {
     all: ["jobs"] as const,
@@ -25,6 +30,11 @@ export const queryKeys = {
     all: ["onboarding"] as const,
     current: () => [...queryKeys.onboarding.all, "current"] as const,
     documentRequirements: (role: string) => [...queryKeys.onboarding.all, "document-requirements", role] as const,
+  },
+  reviews: {
+    all: ["reviews"] as const,
+    institution: (institutionId: string) => [...queryKeys.reviews.all, "institution", institutionId] as const,
+    instructor: (instructorId: string) => [...queryKeys.reviews.all, "instructor", instructorId] as const,
   },
   settings: {
     all: ["settings"] as const,

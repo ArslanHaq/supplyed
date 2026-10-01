@@ -17,8 +17,9 @@ import { ToastStack } from "../molecules";
 import { ApplicationStatusPage } from "./ApplicationStatusPage";
 import { AdminDashboard } from "./AdminDashboard";
 import { AppChrome } from "./AppChrome";
-import { ApplicationsPage } from "./ApplicationsPage";
+import { ApplicationsPage } from "./ApplicationsWorkspacePage";
 import { BillingPage } from "./BillingPage";
+import { BookingsPage } from "./BookingsPage";
 import { CalendarPage } from "./CalendarPage";
 import { FindJobsPage } from "./FindJobsPage";
 import { FindTeachersPage } from "./FindTeachersPage";
@@ -29,11 +30,13 @@ import { PostJobPage } from "./PostJobPage";
 import { SecurityPage } from "./SecurityPage";
 import { SettingsPage } from "./SettingsPage";
 import { TeacherDashboard } from "./TeacherDashboard";
+import { TeacherApplicationsPage } from "./TeacherApplicationsPage";
 import { TeacherProfilePage } from "./TeacherProfilePage";
 import { TweaksPanel } from "./TweaksPanel";
 
 function readContext(searchParams: URLSearchParams) {
   return {
+    applicationId: searchParams.get("applicationId") || undefined,
     jobId: searchParams.get("jobId") || undefined,
     teacherId: searchParams.get("teacherId") || undefined,
   };
@@ -141,6 +144,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     if (activePage === "dashboard") content = <InstitutionDashboard {...routeProps} />;
     else if (activePage === "post-job") content = <PostJobPage {...routeProps} />;
     else if (activePage === "applications") content = <ApplicationsPage {...routeProps} />;
+    else if (activePage === "bookings") content = <BookingsPage {...routeProps} />;
     else if (activePage === "find-teachers") content = <FindTeachersPage {...routeProps} />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
@@ -151,6 +155,8 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
   } else if (state.role === "teacher") {
     if (activePage === "dashboard") content = <TeacherDashboard {...routeProps} />;
     else if (activePage === "find-jobs") content = <FindJobsPage {...routeProps} />;
+    else if (activePage === "applications") content = <TeacherApplicationsPage {...routeProps} />;
+    else if (activePage === "bookings") content = <BookingsPage {...routeProps} />;
     else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
     else if (activePage === "calendar") content = <CalendarPage />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;

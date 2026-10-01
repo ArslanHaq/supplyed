@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { confirmPasswordResetAction, requestPasswordResetAction } from "@/app/(auth)/forgot-password/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { passwordRequirementsMessage, validatePassword } from "@/features/auth/schemas";
+import {
+  formatCodeResendCountdown,
+  nextCodeResendAvailableAt,
+  secondsUntilCodeResend,
+} from "@/lib/code-resend-cooldown";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { useAuthToasts } from "@/lib/use-auth-toasts";
 
@@ -37,18 +42,6 @@ function formData(values: Record<string, string>) {
   return data;
 }
 
-function readCooldownUntil(expiresInMinutes: unknown) {
-  return typeof expiresInMinutes === "number" && Number.isFinite(expiresInMinutes) && expiresInMinutes > 0
-    ? Date.now() + expiresInMinutes * 60 * 1000
-    : undefined;
-}
-
-function formatCountdown(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-}
-
 export function ForgotPasswordRouteClient() {
   const router = useRouter();
   const [stage, setStage] = useState<ResetStage>("request");
@@ -74,7 +67,7 @@ export function ForgotPasswordRouteClient() {
         return;
       }
 
-      setResendRemainingSeconds(Math.max(0, Math.ceil((resendAvailableAt - Date.now()) / 1000)));
+      setResendRemainingSeconds(secondsUntilCodeResend(resendAvailableAt));
     }
 
     syncResendTimer();
@@ -165,7 +158,7 @@ export function ForgotPasswordRouteClient() {
       setEmail(trimmedEmail);
       setMessage(result.message ?? "Check your email for a 6-digit reset code. If this address is registered, it should arrive shortly.");
       setResetToken(result.data.otpToken);
-      setResendAvailableAt(readCooldownUntil(result.data.expiresInMinutes));
+      setResendAvailableAt(nextCodeResendAvailableAt());
       setCode(emptyCode);
       setPassword("");
       setConfirmPassword("");
@@ -199,7 +192,7 @@ export function ForgotPasswordRouteClient() {
 
       setMessage(result.message ?? "We sent a fresh reset code if this email is linked to SupplyED.");
       setResetToken(result.data.otpToken);
-      setResendAvailableAt(readCooldownUntil(result.data.expiresInMinutes));
+      setResendAvailableAt(nextCodeResendAvailableAt());
       setCode(emptyCode);
       setErrors({});
       window.setTimeout(() => codeRefs.current[0]?.focus(), 40);
@@ -314,7 +307,7 @@ export function ForgotPasswordRouteClient() {
                   </Btn>
                 </div>
               ) : stage === "reset" ? (
-                <form noValidate onSubmit={confirmReset}>
+                <form method="post" noValidate onSubmit={confirmReset}>
                   <div className="mb-5 rounded-lg border border-brand/20 bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
                     <div className="font-semibold text-brand-dark">Check your email</div>
                     <p className="mt-1">{message}</p>
@@ -393,12 +386,12 @@ export function ForgotPasswordRouteClient() {
                       variant="secondary"
                       onClick={resendCode}
                     >
-                      {resendLocked ? `Resend in ${formatCountdown(resendRemainingSeconds)}` : "Send new code"}
+                      {resendLocked ? `Resend in ${formatCodeResendCountdown(resendRemainingSeconds)}` : "Send new code"}
                     </Btn>
                   </div>
                 </form>
               ) : (
-                <form noValidate onSubmit={requestReset}>
+                <form method="post" noValidate onSubmit={requestReset}>
                   <Field label="Email address" htmlFor="reset-email" error={errors.email} required>
                     <input
                       aria-invalid={Boolean(errors.email)}

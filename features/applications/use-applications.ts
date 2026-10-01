@@ -25,6 +25,13 @@ export function useJobApplications(jobId: string | undefined, query: JobApplicat
   });
 }
 
+export function useMyApplications(query: JobApplicationsQuery = {}) {
+  return useQuery({
+    queryFn: () => fetchJson<PaginatedApplications>("/api/applications/me", { query }),
+    queryKey: queryKeys.applications.mine(query),
+  });
+}
+
 export function useUpdateApplicationStatus(options: UseCreateApplicationOptions = {}) {
   const queryClient = useQueryClient();
   return useMutation({

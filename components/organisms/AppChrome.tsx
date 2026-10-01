@@ -17,6 +17,7 @@ const institutionNav: NavItem[] = [
   { id: "post-job", label: "Post job", icon: "plus" },
   { id: "find-teachers", label: "Teachers", icon: "search" },
   { id: "applications", label: "Applications", icon: "users" },
+  { id: "bookings", label: "Bookings", icon: "file" },
   { id: "messaging", label: "Messages", icon: "message" },
   { id: "billing", label: "Billing", icon: "file" },
 ];
@@ -24,6 +25,8 @@ const institutionNav: NavItem[] = [
 const teacherNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
   { id: "find-jobs", label: "Jobs", icon: "search" },
+  { id: "applications", label: "Applications", icon: "users" },
+  { id: "bookings", label: "Bookings", icon: "file" },
   { id: "calendar", label: "Calendar", icon: "calendar" },
   { id: "messaging", label: "Messages", icon: "message" },
   { id: "teacher-profile", label: "Profile", icon: "user" },

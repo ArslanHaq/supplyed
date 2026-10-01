@@ -142,19 +142,6 @@ function statusTone(status: ApplicationStatus): "green" | "amber" | "red" | "gho
   return "ghost";
 }
 
-function formatDate(value: string | null) {
-  if (!value) return "Not recorded";
-
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return "Not recorded";
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(parsed));
-}
-
 function displayName(snapshot: SettingsProfileSnapshot) {
   if (snapshot.role === "institution") return snapshot.institution?.name || snapshot.user.name;
   if (snapshot.role === "teacher") return snapshot.instructor?.fullName || snapshot.user.name;
@@ -223,15 +210,6 @@ function profileExists(snapshot: SettingsProfileSnapshot, role: AppRole) {
   if (role === "teacher") return Boolean(snapshot.instructor?.id);
   if (role === "institution") return Boolean(snapshot.institution?.id);
   return false;
-}
-
-function ReadOnlyLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-chalk px-3 py-2.5">
-      <div className="text-[10px] font-bold uppercase tracking-[1px] text-muted">{label}</div>
-      <div className="mt-1 truncate text-sm font-semibold text-ink">{value}</div>
-    </div>
-  );
 }
 
 function ArrayField({
@@ -532,68 +510,67 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
         }
       />
 
-      <div className="two-col">
-        <div className="flex flex-col gap-5">
-          <section className="card card-pad-lg">
-            <div className="mb-5 flex items-start gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
-                <Icon name="user" size={22} />
-              </span>
-              <div>
-                <div className="section-title mb-1">Account</div>
-                <p className="text-sm leading-6 text-muted">Core identity stored on your SupplyED user account.</p>
+      <div className="max-w-[1120px]">
+        <section className="card card-pad-lg">
+          <div className="mb-6 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <Avatar name={displayName(profile)} size="lg" src={profileImageUrl} />
+              <div className="min-w-0">
+                <div className="section-title mb-1">My profile</div>
+                <div className="truncate font-serif text-2xl leading-tight text-ink sm:text-3xl">{displayName(profile)}</div>
+                <p className="mt-1 text-sm leading-6 text-muted">{profile.user.email}</p>
               </div>
             </div>
+            <Btn icon="shield" onClick={() => go("security")} variant="secondary">
+              Manage security
+            </Btn>
+          </div>
 
-            <div className="grid-2">
-              <Field error={errors.name} label="Display name" required>
-                <input
-                  className="input"
-                  onChange={(event) => updateUser("name", event.target.value)}
-                  placeholder="Abdul Waheed"
-                  value={form.user.name}
-                />
-              </Field>
-              <Field label="Email">
-                <input className="input bg-chalk text-muted" readOnly value={profile.user.email} />
-              </Field>
-              <Field error={errors.phone} label="Phone">
-                <input
-                  className="input"
-                  inputMode="tel"
-                  onChange={(event) => updateUser("phone", event.target.value)}
-                  placeholder="+44 7700 000000"
-                  value={form.user.phone}
-                />
-              </Field>
-            </div>
-          </section>
+          <div className="grid-2">
+            <ProfileImageField
+              disabled={!canSave}
+              error={profileImageError}
+              imageUrl={profileImageUrl}
+              name={displayName(profile)}
+              onFile={uploadProfileImageFile}
+              pending={uploadProfileImage.isPending}
+            />
+            <Field error={errors.name} label="Display name" required>
+              <input
+                className="input"
+                onChange={(event) => updateUser("name", event.target.value)}
+                placeholder="Abdul Waheed"
+                value={form.user.name}
+              />
+            </Field>
+            <Field label="Email">
+              <input className="input bg-chalk text-muted" readOnly value={profile.user.email} />
+            </Field>
+            <Field error={errors.phone} label="Phone">
+              <input
+                className="input"
+                inputMode="tel"
+                onChange={(event) => updateUser("phone", event.target.value)}
+                placeholder="+44 7700 000000"
+                value={form.user.phone}
+              />
+            </Field>
 
-          {role === "teacher" ? (
-            <section className="card card-pad-lg">
-              <div className="mb-5 flex items-start gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
-                  <Icon name="award" size={22} />
-                </span>
-                <div>
-                  <div className="section-title mb-1">Teacher profile</div>
-                  <p className="text-sm leading-6 text-muted">Teaching, location, rate, and public profile details.</p>
-                </div>
-              </div>
-
-              <div className="grid-2">
+            {role === "teacher" ? (
+              <>
                 <Field error={errors.fullName} label="Full name" required>
-                  <input className="input" value={form.instructor.fullName} onChange={(event) => updateInstructor("fullName", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstructor("fullName", event.target.value)}
+                    value={form.instructor.fullName}
+                  />
                 </Field>
-                <ProfileImageField
-                  disabled={!canSave}
-                  error={profileImageError}
-                  imageUrl={form.instructor.imageUrl}
-                  name={form.instructor.fullName || displayName(profile)}
-                  onFile={uploadProfileImageFile}
-                  pending={uploadProfileImage.isPending}
-                />                <Field label="Address">
-                  <input className="input" value={form.instructor.address} onChange={(event) => updateInstructor("address", event.target.value)} />
+                <Field label="Address">
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstructor("address", event.target.value)}
+                    value={form.instructor.address}
+                  />
                 </Field>
                 <CountryCityFields
                   city={form.instructor.city}
@@ -603,70 +580,117 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstructor("city", value)}
                   onCountryChange={updateInstructorCountry}
                 />
-
                 <Field label="Postal code">
-                  <input className="input" value={form.instructor.postalCode} onChange={(event) => updateInstructor("postalCode", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstructor("postalCode", event.target.value)}
+                    value={form.instructor.postalCode}
+                  />
                 </Field>
-
                 <Field label="Currency">
-                  <input className="input" value={form.instructor.currency} onChange={(event) => updateInstructor("currency", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstructor("currency", event.target.value)}
+                    value={form.instructor.currency}
+                  />
                 </Field>
                 <Field label="Experience">
-                  <input className="input" min={0} type="number" value={form.instructor.experience} onChange={(event) => updateInstructor("experience", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstructor("experience", event.target.value)}
+                    type="number"
+                    value={form.instructor.experience}
+                  />
                 </Field>
                 <Field label="Max travel distance">
-                  <input className="input" min={0} type="number" value={form.instructor.maxTravelDistance} onChange={(event) => updateInstructor("maxTravelDistance", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstructor("maxTravelDistance", event.target.value)}
+                    type="number"
+                    value={form.instructor.maxTravelDistance}
+                  />
                 </Field>
                 <Field label="Hourly rate">
-                  <input className="input" min={0} type="number" value={form.instructor.hourlyRate} onChange={(event) => updateInstructor("hourlyRate", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstructor("hourlyRate", event.target.value)}
+                    type="number"
+                    value={form.instructor.hourlyRate}
+                  />
                 </Field>
                 <Field label="Daily rate">
-                  <input className="input" min={0} type="number" value={form.instructor.dailyRate} onChange={(event) => updateInstructor("dailyRate", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstructor("dailyRate", event.target.value)}
+                    type="number"
+                    value={form.instructor.dailyRate}
+                  />
                 </Field>
-              </div>
-
-              <Field label="Bio">
-                <textarea className="textarea" value={form.instructor.bio} onChange={(event) => updateInstructor("bio", event.target.value)} />
-              </Field>
-              <div className="grid-2">
-                <ArrayField label="Subjects" onChange={(value) => updateInstructor("subjects", value)} placeholder="Mathematics, Physics" value={form.instructor.subjects} />
-                <ArrayField label="Key stages" onChange={(value) => updateInstructor("keyStages", value)} placeholder="KS2, KS3" value={form.instructor.keyStages} />
-                <ArrayField label="Skills" onChange={(value) => updateInstructor("skills", value)} placeholder="Classroom management, SEN" value={form.instructor.skills} />
-              </div>
-            </section>
-          ) : null}
-
-          {role === "institution" ? (
-            <section className="card card-pad-lg">
-              <div className="mb-5 flex items-start gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
-                  <Icon name="building" size={22} />
-                </span>
-                <div>
-                  <div className="section-title mb-1">Institution profile</div>
-                  <p className="text-sm leading-6 text-muted">Organisation, staffing, and safeguarding profile details.</p>
+                <div className="sm:col-span-2">
+                  <Field label="Bio">
+                    <textarea
+                      className="textarea"
+                      onChange={(event) => updateInstructor("bio", event.target.value)}
+                      value={form.instructor.bio}
+                    />
+                  </Field>
                 </div>
-              </div>
+                <ArrayField
+                  label="Subjects"
+                  onChange={(value) => updateInstructor("subjects", value)}
+                  placeholder="Mathematics, Physics"
+                  value={form.instructor.subjects}
+                />
+                <ArrayField
+                  label="Key stages"
+                  onChange={(value) => updateInstructor("keyStages", value)}
+                  placeholder="KS2, KS3"
+                  value={form.instructor.keyStages}
+                />
+                <div className="sm:col-span-2">
+                  <ArrayField
+                    label="Skills"
+                    onChange={(value) => updateInstructor("skills", value)}
+                    placeholder="Classroom management, SEN"
+                    value={form.instructor.skills}
+                  />
+                </div>
+              </>
+            ) : null}
 
-              <div className="grid-2">
+            {role === "institution" ? (
+              <>
                 <Field error={errors.schoolName} label="School or organisation" required>
-                  <input className="input" value={form.institution.name} onChange={(event) => updateInstitution("name", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("name", event.target.value)}
+                    value={form.institution.name}
+                  />
                 </Field>
-                <ProfileImageField
-                  disabled={!canSave}
-                  error={profileImageError}
-                  imageUrl={form.institution.imageUrl}
-                  name={form.institution.name || displayName(profile)}
-                  onFile={uploadProfileImageFile}
-                  pending={uploadProfileImage.isPending}
-                />                <Field label="Registration ID">
-                  <input className="input" value={form.institution.registrationId} onChange={(event) => updateInstitution("registrationId", event.target.value)} />
+                <Field label="Registration ID">
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("registrationId", event.target.value)}
+                    value={form.institution.registrationId}
+                  />
                 </Field>
                 <Field error={errors.domain} label="Domain" required>
-                  <input className="input" value={form.institution.domain} onChange={(event) => updateInstitution("domain", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("domain", event.target.value)}
+                    value={form.institution.domain}
+                  />
                 </Field>
                 <Field error={errors.address} label="Address" required>
-                  <input className="input" value={form.institution.address} onChange={(event) => updateInstitution("address", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("address", event.target.value)}
+                    value={form.institution.address}
+                  />
                 </Field>
                 <CountryCityFields
                   city={form.institution.city}
@@ -678,103 +702,86 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstitution("city", value)}
                   onCountryChange={updateInstitutionCountry}
                 />
-
                 <Field label="Postal code">
-                  <input className="input" value={form.institution.postalCode} onChange={(event) => updateInstitution("postalCode", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("postalCode", event.target.value)}
+                    value={form.institution.postalCode}
+                  />
                 </Field>
-
                 <Field label="Your role">
-                  <input className="input" value={form.institution.userRole} onChange={(event) => updateInstitution("userRole", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("userRole", event.target.value)}
+                    value={form.institution.userRole}
+                  />
                 </Field>
                 <Field label="Typical pupil count">
-                  <input className="input" min={0} type="number" value={form.institution.typicalPupilCount} onChange={(event) => updateInstitution("typicalPupilCount", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstitution("typicalPupilCount", event.target.value)}
+                    type="number"
+                    value={form.institution.typicalPupilCount}
+                  />
                 </Field>
                 <Field label="Compliance contact">
-                  <input className="input" value={form.institution.complianceContact} onChange={(event) => updateInstitution("complianceContact", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("complianceContact", event.target.value)}
+                    value={form.institution.complianceContact}
+                  />
                 </Field>
                 <Field error={errors.complianceEmail} label="Compliance email">
-                  <input className="input" value={form.institution.complianceEmail} onChange={(event) => updateInstitution("complianceEmail", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("complianceEmail", event.target.value)}
+                    value={form.institution.complianceEmail}
+                  />
                 </Field>
-              </div>
-
-              <Field label="Staffing needs">
-                <textarea className="textarea" value={form.institution.staffingNeeds} onChange={(event) => updateInstitution("staffingNeeds", event.target.value)} />
-              </Field>
-              <ArrayField label="Cover types" onChange={(value) => updateInstitution("coverTypes", value)} placeholder="Same-day cover, Long-term roles" value={form.institution.coverTypes} />
-              <Checkbox
-                checked={form.institution.safeguardingConfirmed}
-                label="Safeguarding responsibility confirmed"
-                onChange={(value) => updateInstitution("safeguardingConfirmed", value)}
-              />
-            </section>
-          ) : null}
-
-
-
-          {submitError ? (
-            <div className="rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
-              {submitError}
-            </div>
-          ) : null}
-
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Btn onClick={() => go("dashboard")} variant="ghost">
-              Cancel
-            </Btn>
-            <Btn disabled={!canSave} iconRight="check" loading={updateSettings.isPending} loadingLabel="Saving" size="lg" type="submit">
-              Save settings
-            </Btn>
-          </div>
-        </div>
-
-        <aside className="flex flex-col gap-5">
-          <section className="card card-pad-lg">
-            <div className="flex items-start gap-3">
-              <Avatar name={displayName(profile)} src={profileImageUrl} />
-              <div className="min-w-0">
-                <div className="truncate font-serif text-2xl leading-tight">{displayName(profile)}</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Tag tone="ghost">{roleLabel(role)}</Tag>
-                  <Tag tone={statusTone(profile.applicationStatus)}>{statusLabel(profile.applicationStatus)}</Tag>
-                  {verified ? <Tag tone="green">Verified</Tag> : null}
+                <div className="sm:col-span-2">
+                  <Field label="Staffing needs">
+                    <textarea
+                      className="textarea"
+                      onChange={(event) => updateInstitution("staffingNeeds", event.target.value)}
+                      value={form.institution.staffingNeeds}
+                    />
+                  </Field>
                 </div>
-              </div>
-            </div>
+                <div className="sm:col-span-2">
+                  <ArrayField
+                    label="Cover types"
+                    onChange={(value) => updateInstitution("coverTypes", value)}
+                    placeholder="Same-day cover, Long-term roles"
+                    value={form.institution.coverTypes}
+                  />
+                </div>
+                <div className="sm:col-span-2 rounded-lg border border-border bg-chalk px-4 py-3">
+                  <Checkbox
+                    checked={form.institution.safeguardingConfirmed}
+                    label="Safeguarding responsibility confirmed"
+                    onChange={(value) => updateInstitution("safeguardingConfirmed", value)}
+                  />
+                </div>
+              </>
+            ) : null}
+          </div>
+        </section>
 
-            <div className="mt-5 grid gap-3">
-              <ReadOnlyLine label="Email status" value={profile.user.emailVerified ? "Verified" : "Not verified"} />
-              <ReadOnlyLine label="Phone status" value={profile.user.phoneVerified ? "Verified" : "Not verified"} />
-              <ReadOnlyLine label="Two-factor" value={profile.user.twoFactorEnabled ? "Enabled" : "Disabled"} />
-              <ReadOnlyLine label="Last login" value={formatDate(profile.user.lastLogin)} />
-              <ReadOnlyLine label="Updated" value={formatDate(profile.user.updatedAt)} />
-            </div>
+        {submitError ? (
+          <div className="mt-5 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
+            {submitError}
+          </div>
+        ) : null}
 
-            <Btn className="mt-5 w-full" icon="shield" onClick={() => go("security")} variant="secondary">
-              Manage two-factor
-            </Btn>
-          </section>
-
-          <section className="card card-pad-lg">
-            <div className="section-title mb-4">Profile record</div>
-            <div className="grid gap-3">
-              {role === "teacher" ? (
-                <>
-                  <ReadOnlyLine label="DBS verified" value={profile.instructor?.dbsVerified ? "Yes" : "No"} />
-                  <ReadOnlyLine label="Rating" value={profile.instructor?.ratingAverage ? `${profile.instructor.ratingAverage} from ${profile.instructor.ratingCount} reviews` : "No rating"} />
-                </>
-              ) : null}
-
-              {role === "institution" ? (
-                <>
-                  <ReadOnlyLine label="Verified" value={profile.institution?.verified ? "Yes" : "No"} />
-                  <ReadOnlyLine label="Created" value={formatDate(profile.institution?.createdAt ?? null)} />
-                </>
-              ) : null}
-
-
-            </div>
-          </section>
-        </aside>
+        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Btn onClick={() => go("dashboard")} variant="ghost">
+            Cancel
+          </Btn>
+          <Btn disabled={!canSave} iconRight="check" loading={updateSettings.isPending} loadingLabel="Saving" size="lg" type="submit">
+            Save settings
+          </Btn>
+        </div>
       </div>
     </form>
   );

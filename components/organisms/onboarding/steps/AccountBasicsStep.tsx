@@ -10,8 +10,6 @@ const accountRoleOptions = [
   ["teacher", "Supply teacher", "user", "Build your profile, find roles, and manage availability."],
 ] as const;
 
-
-
 export function AccountBasicsStep({
   accountEmail,
   children,
@@ -31,7 +29,7 @@ export function AccountBasicsStep({
             <Icon name="checkCircle" size={19} />
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-brand-dark">Account verified</div>
+            <div className="font-semibold text-brand-dark">Email verified</div>
             <div className="truncate text-sm text-brand-dark/75">{form.email || accountEmail || "Verified email"}</div>
           </div>
         </div>
@@ -91,30 +89,32 @@ export function AccountBasicsStep({
           />
         </Field>
         {roleSelected && activeRole !== "institution" ? (
-          <CountryCityFields
-            city={form.profileCity}
-            cityError={errors.profileCity}
-            cityId="signup-city"
-            cityRequired
-            countryCode={form.profileCountryCode}
-            countryError={errors.profileCountryCode}
-            countryRequired
-            onCityChange={(value) => updateField("profileCity", value)}
-            onCountryChange={(value) => {
-              updateField("profileCountryCode", value);
-              updateField("profileCity", "");
-            }}
-          />
+          <>
+            <CountryCityFields
+              city={form.profileCity}
+              cityError={errors.profileCity}
+              cityId="signup-city"
+              cityRequired
+              countryCode={form.profileCountryCode}
+              countryError={errors.profileCountryCode}
+              countryRequired
+              onCityChange={(value) => updateField("profileCity", value)}
+              onCountryChange={(value) => {
+                updateField("profileCountryCode", value);
+                updateField("profileCity", "");
+              }}
+            />
+            <Field label="Postal code" htmlFor="signup-location" error={errors.postcode} required>
+              <input
+                id="signup-location"
+                className={fieldClass(errors.postcode)}
+                value={form.postcode}
+                onChange={(event) => updateField("postcode", event.target.value)}
+                placeholder="M1 1AE"
+              />
+            </Field>
+          </>
         ) : null}
-        <Field label="Postal code" htmlFor="signup-location" error={errors.postcode} required>
-          <input
-            id="signup-location"
-            className={fieldClass(errors.postcode)}
-            value={form.postcode}
-            onChange={(event) => updateField("postcode", event.target.value)}
-            placeholder="M1 1AE"
-          />
-        </Field>
       </div>
 
       {children}

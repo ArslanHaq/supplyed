@@ -116,14 +116,18 @@ function prefillFromFoundingIntent(intent: FoundingSignupIntent | null): Onboard
 }
 
 function hasFoundingAccountBasics(intent: FoundingSignupIntent) {
-  return Boolean(intent.name?.trim() && intent.phone?.trim() && intent.postcode?.trim());
+  return Boolean(intent.name?.trim() && intent.phone?.trim());
+}
+
+function hasFoundingTeacherBasics(intent: FoundingSignupIntent) {
+  return Boolean(hasFoundingAccountBasics(intent) && intent.postcode?.trim());
 }
 
 function hasFoundingTeacherProfile(intent: FoundingSignupIntent) {
   const keyStages = intent.keyStages ?? keyStagesFromFoundingPhase(intent.phase);
 
   return Boolean(
-    hasFoundingAccountBasics(intent) &&
+    hasFoundingTeacherBasics(intent) &&
       intent.subjects?.length &&
       keyStages?.length &&
       intent.yearsExperience?.trim() &&

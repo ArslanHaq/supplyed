@@ -5,6 +5,7 @@ const sizeClass = {
   sm: "h-8 w-8 text-[11px]",
   md: "h-10 w-10 text-xs",
   lg: "h-14 w-14 text-base",
+  xl: "h-24 w-24 text-2xl",
 };
 
 const toneClass: Record<Exclude<Tone, "">, string> = {

@@ -183,7 +183,7 @@ export function SignupAccessPage({
             </div>
           ) : null}
 
-          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
+          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" method="post" noValidate onSubmit={handleSubmit}>
             <div className="mb-6">
               <Field label="Choose account type" error={errors.role} required>
                 <div className="grid gap-3 sm:grid-cols-2">

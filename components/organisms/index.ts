@@ -1,6 +1,7 @@
 export { ApplicationStatusPage } from "./ApplicationStatusPage";
 export { AppChrome } from "./AppChrome";
-export { ApplicationsPage } from "./ApplicationsPage";
+export { ApplicationsPage } from "./ApplicationsWorkspacePage";
+export { BookingsPage } from "./BookingsPage";
 export { BillingPage } from "./BillingPage";
 export { CalendarPage } from "./CalendarPage";
 export { FindJobsPage } from "./FindJobsPage";

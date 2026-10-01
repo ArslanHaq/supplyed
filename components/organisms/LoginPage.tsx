@@ -120,7 +120,7 @@ export function LoginPage({
             </p>
           </div>
 
-          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleCredentialSubmit}>
+          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" method="post" noValidate onSubmit={handleCredentialSubmit}>
             <SocialAuthButtons available={socialAuth} disabled={pending} onGoogle={onGoogleAuth} onMicrosoft={onMicrosoftAuth} />
 
             <Field label="Email address" htmlFor="login-email" error={errors.email} required>

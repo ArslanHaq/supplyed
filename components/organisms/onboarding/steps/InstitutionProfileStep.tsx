@@ -45,6 +45,15 @@ export function InstitutionProfileStep(props: AccountStepProps) {
               placeholder="1 School Lane"
             />
           </Field>
+          <Field label="Postal code" htmlFor="institution-postcode" error={errors.postcode} required>
+            <input
+              id="institution-postcode"
+              className={fieldClass(errors.postcode)}
+              value={form.postcode}
+              onChange={(event) => updateField("postcode", event.target.value)}
+              placeholder="M1 1AE"
+            />
+          </Field>
           <CountryCityFields
             city={form.institutionCity}
             cityError={errors.institutionCity}

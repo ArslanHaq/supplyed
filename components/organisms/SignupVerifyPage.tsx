@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+import { formatCodeResendCountdown, secondsUntilCodeResend } from "@/lib/code-resend-cooldown";
+
 import { Btn, Field, Icon, Logo } from "../atoms";
 
 type VerifyErrors = Partial<Record<"code", string>>;
@@ -40,7 +42,7 @@ export function SignupVerifyPage({
         return;
       }
 
-      setResendRemainingSeconds(Math.max(0, Math.ceil((resendAvailableAt - Date.now()) / 1000)));
+      setResendRemainingSeconds(secondsUntilCodeResend(resendAvailableAt));
     }
 
     syncResendTimer();
@@ -50,12 +52,6 @@ export function SignupVerifyPage({
 
     return () => window.clearInterval(timer);
   }, [resendAvailableAt]);
-
-  function formatCountdown(seconds: number) {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-  }
 
   function validate() {
     if (codeValue.length !== 6) {
@@ -164,7 +160,7 @@ export function SignupVerifyPage({
             </p>
           </div>
 
-          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
+          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" method="post" noValidate onSubmit={handleSubmit}>
             {notice ? (
               <div className="mb-5 rounded-lg border border-warning/30 bg-warning-tint p-4 text-sm leading-6 text-warning">
                 {notice}
@@ -194,7 +190,7 @@ export function SignupVerifyPage({
             </Field>
 
             <div className="mb-6 rounded-lg bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
-              Codes are validated by SupplyED before your workspace session is created. Request a new code after the current one expires.
+              Codes are validated by SupplyED before your workspace session is created. You can request another code every 60 seconds.
             </div>
 
             <Btn className="w-full" loading={pending === "verify"} loadingLabel="Verifying email" size="lg" type="submit" iconRight="arrow">
@@ -212,13 +208,13 @@ export function SignupVerifyPage({
                 variant="secondary"
                 onClick={resendCode}
               >
-                {resendLocked ? `Resend in ${formatCountdown(resendRemainingSeconds)}` : "Resend code"}
+                {resendLocked ? `Resend in ${formatCodeResendCountdown(resendRemainingSeconds)}` : "Resend code"}
               </Btn>
             </div>
 
             {resendLocked ? (
               <p className="mt-3 text-center text-xs text-muted" aria-live="polite">
-                You can request a new code when this one expires.
+                The resend option becomes available again after 60 seconds.
               </p>
             ) : null}
 
