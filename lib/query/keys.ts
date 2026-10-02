@@ -31,6 +31,12 @@ export const queryKeys = {
     current: () => [...queryKeys.onboarding.all, "current"] as const,
     documentRequirements: (role: string) => [...queryKeys.onboarding.all, "document-requirements", role] as const,
   },
+  payments: {
+    all: ["payments"] as const,
+    allInvoices: (filters?: Record<string, unknown>) => [...queryKeys.payments.all, "invoices", "all", filters ?? {}] as const,
+    myInvoices: (filters?: Record<string, unknown>) => [...queryKeys.payments.all, "invoices", "mine", filters ?? {}] as const,
+    payoutAccount: () => [...queryKeys.payments.all, "payout-account"] as const,
+  },
   reviews: {
     all: ["reviews"] as const,
     institution: (institutionId: string) => [...queryKeys.reviews.all, "institution", institutionId] as const,

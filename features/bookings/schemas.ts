@@ -1,5 +1,6 @@
 import type {
   Booking,
+  BookingInvoiceSummary,
   BookingListQuery,
   BookingReview,
   BookingReviewInput,
@@ -47,6 +48,21 @@ function normalizeReview(review: BookingReview): BookingReview {
   };
 }
 
+const invoiceStatuses = new Set<BookingInvoiceSummary["status"]>(["OPEN", "PAID", "UNCOLLECTIBLE"]);
+
+function normalizeInvoiceSummary(invoice: BookingInvoiceSummary | null | undefined): BookingInvoiceSummary | null {
+  if (!invoice?.id || !invoiceStatuses.has(invoice.status)) return null;
+
+  return {
+    dueAt: readDateIso(invoice.dueAt),
+    hostedInvoiceUrl: invoice.hostedInvoiceUrl ?? null,
+    id: invoice.id,
+    paidAt: readDateIso(invoice.paidAt),
+    status: invoice.status,
+    totalAmountPence: readNumber(invoice.totalAmountPence) ?? 0,
+  };
+}
+
 export function normalizeBooking(booking: Booking): Booking {
   return {
     ...booking,
@@ -78,6 +94,7 @@ export function normalizeBooking(booking: Booking): Booking {
       id: booking.instructor?.id ?? "",
       imageUrl: booking.instructor?.imageUrl ?? null,
     },
+    invoice: normalizeInvoiceSummary(booking.invoice),
     payAmount: readNumber(booking.payAmount),
     payType: booking.payType ?? null,
     reviews: Array.isArray(booking.reviews) ? booking.reviews.map(normalizeReview) : [],

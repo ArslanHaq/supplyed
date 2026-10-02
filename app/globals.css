@@ -1249,13 +1249,12 @@ a {
 
 .toast-stack {
   position: fixed;
-  top: max(18px, calc(env(safe-area-inset-top) + 12px));
-  left: 50%;
-  width: min(460px, calc(100vw - 32px));
-  transform: translateX(-50%);
+  top: max(16px, calc(env(safe-area-inset-top) + 12px));
+  right: max(16px, calc(env(safe-area-inset-right) + 12px));
+  width: min(360px, calc(100vw - 32px));
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   pointer-events: none;
   z-index: 120;
 }
@@ -1264,11 +1263,11 @@ a {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  min-height: 62px;
+  min-height: 52px;
   overflow: hidden;
-  padding: 14px 44px 15px 16px;
+  padding: 11px 38px 12px 12px;
   border-radius: var(--radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background:
@@ -1277,7 +1276,7 @@ a {
   color: #fff;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.22);
   pointer-events: auto;
-  transform-origin: top center;
+  transform-origin: top right;
   animation: toast-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   backdrop-filter: blur(18px);
 }
@@ -1297,8 +1296,8 @@ a {
 }
 
 .toast-icon {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1320,24 +1319,25 @@ a {
 }
 
 .toast-title {
+  font-size: 13.5px;
   font-weight: 700;
   line-height: 1.25;
 }
 
 .toast-message {
-  margin-top: 3px;
+  margin-top: 2px;
   color: rgba(255, 255, 255, 0.76);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 
 .toast-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -1384,24 +1384,24 @@ a {
 @keyframes toast-enter {
   from {
     opacity: 0;
-    transform: translateY(-14px) scale(0.98);
+    transform: translateX(24px) scale(0.98);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateX(0) scale(1);
   }
 }
 
 @keyframes toast-exit {
   from {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateX(0) scale(1);
   }
 
   to {
     opacity: 0;
-    transform: translateY(-10px) scale(0.98);
+    transform: translateX(24px) scale(0.98);
   }
 }
 
@@ -1674,6 +1674,5 @@ a {
     right: 16px;
     top: max(12px, calc(env(safe-area-inset-top) + 10px));
     width: auto;
-    transform: none;
   }
 }

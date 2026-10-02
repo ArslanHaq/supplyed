@@ -33,6 +33,16 @@ export type BookingPartySummary = {
   name?: string;
 };
 
+/** The booking's current invoice: none until the school invoices it, and never one still being created or voided. */
+export type BookingInvoiceSummary = {
+  dueAt?: string | null;
+  hostedInvoiceUrl?: string | null;
+  id: string;
+  paidAt?: string | null;
+  status: "OPEN" | "PAID" | "UNCOLLECTIBLE";
+  totalAmountPence: number;
+};
+
 export type Booking = {
   applicationId: string;
   cancelReason?: string | null;
@@ -44,6 +54,7 @@ export type Booking = {
   id: string;
   institution: BookingPartySummary;
   instructor: BookingPartySummary;
+  invoice: BookingInvoiceSummary | null;
   job: BookingJobSummary;
   payAmount?: number | null;
   payType?: string | null;

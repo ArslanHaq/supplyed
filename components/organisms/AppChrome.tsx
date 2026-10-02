@@ -19,7 +19,7 @@ const institutionNav: NavItem[] = [
   { id: "applications", label: "Applications", icon: "users" },
   { id: "bookings", label: "Bookings", icon: "file" },
   { id: "messaging", label: "Messages", icon: "message" },
-  { id: "billing", label: "Billing", icon: "file" },
+  { id: "billing", label: "Billing", icon: "pound" },
 ];
 
 const teacherNav: NavItem[] = [
@@ -27,6 +27,7 @@ const teacherNav: NavItem[] = [
   { id: "find-jobs", label: "Jobs", icon: "search" },
   { id: "applications", label: "Applications", icon: "users" },
   { id: "bookings", label: "Bookings", icon: "file" },
+  { id: "billing", label: "Earnings", icon: "pound" },
   { id: "calendar", label: "Calendar", icon: "calendar" },
   { id: "messaging", label: "Messages", icon: "message" },
   { id: "teacher-profile", label: "Profile", icon: "user" },
@@ -34,6 +35,7 @@ const teacherNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
+  { id: "billing", label: "Payments", icon: "pound" },
   { id: "security", label: "Security", icon: "shield" },
 ];
 

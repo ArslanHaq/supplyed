@@ -2,10 +2,11 @@ import { useRef, useState } from "react";
 
 import { useCreateJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
+import { isValidUkPostcode } from "@/lib/postcode";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Tag } from "../atoms";
-import { FormattedJobDescription, PageHead, TagInput } from "../molecules";
+import { FormattedJobDescription, PageHead, PostcodeLookup, TagInput } from "../molecules";
 import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdowns";
 
 type PostingMode = "instant" | "brief";
@@ -280,15 +281,19 @@ function PostJobEditor({
           <div className="md:col-span-2 rounded-xl border border-border bg-chalk/40 p-4">
             <div className="mb-3 text-sm font-semibold">Role location</div>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field error={errors.postalCode} label="Postcode" hint="Use a valid UK postcode, for example M5 4WT.">
-                <input
-                  className="input"
-                  maxLength={20}
-                  placeholder="M5 4WT"
-                  value={form.postalCode}
-                  onChange={(event) => updateForm("postalCode", event.target.value.toUpperCase())}
-                />
-              </Field>
+              <PostcodeLookup
+                error={errors.postalCode}
+                hint="Fills in the town and county from the postcode."
+                id="post-job-postcode"
+                onChange={(value) => updateForm("postalCode", value)}
+                onSelect={(selection) => {
+                  updateForm("postalCode", selection.postcode);
+                  updateForm("countryCode", "GB");
+                  if (selection.city) updateForm("city", selection.city);
+                  if (selection.county) updateForm("county", selection.county);
+                }}
+                value={form.postalCode}
+              />
               <Field error={errors.address} label="Address">
                 <input className="input" maxLength={250} placeholder="School or street address" value={form.address} onChange={(event) => updateForm("address", event.target.value)} />
               </Field>
@@ -589,10 +594,6 @@ function validateOptionalJobFields(form: JobFormState): JobFormErrors {
     if (!Number.isInteger(years) || years < 0) errors.minExperienceYears = "Enter a whole number of 0 or more.";
   }
   return errors;
-}
-
-function isValidUkPostcode(value: string) {
-  return /^(GIR\s?0AA|(?:(?:[A-PR-UWYZ][0-9][0-9A-HJKSTUW]?|[A-PR-UWYZ][A-HK-Y][0-9][0-9ABEHMNPRV-Y]?|[A-PR-UWYZ][0-9][A-HJKSTUW]|[A-PR-UWYZ][A-HK-Y][0-9][ABEHMNPRV-Y])\s?[0-9][ABD-HJLNP-UW-Z]{2}))$/i.test(value.trim());
 }
 
 function validateJobDates(form: JobFormState): JobFormErrors {

@@ -14,7 +14,7 @@ import type {
 import type { AppRole, ApplicationStatus, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Checkbox, Field, Icon, Tag } from "../atoms";
-import { PageHead, SectionLoader } from "../molecules";
+import { PageHead, PostcodeLookup, SectionLoader } from "../molecules";
 
 type SettingsForm = {
   institution: SettingsInstitutionUpdateInput;
@@ -565,6 +565,18 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.instructor.fullName}
                   />
                 </Field>
+                <PostcodeLookup
+                  id="settings-instructor-postcode"
+                  label="Postal code"
+                  onChange={(value) => updateInstructor("postalCode", value)}
+                  onSelect={(selection) => {
+                    updateInstructorCountry("GB");
+                    updateInstructor("postalCode", selection.postcode);
+                    if (selection.city) updateInstructor("city", selection.city);
+                    if (selection.county) updateInstructor("county", selection.county);
+                  }}
+                  value={form.instructor.postalCode}
+                />
                 <Field label="Address">
                   <input
                     className="input"
@@ -580,13 +592,6 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstructor("city", value)}
                   onCountryChange={updateInstructorCountry}
                 />
-                <Field label="Postal code">
-                  <input
-                    className="input"
-                    onChange={(event) => updateInstructor("postalCode", event.target.value)}
-                    value={form.instructor.postalCode}
-                  />
-                </Field>
                 <Field label="Currency">
                   <input
                     className="input"
@@ -685,6 +690,18 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.institution.domain}
                   />
                 </Field>
+                <PostcodeLookup
+                  id="settings-institution-postcode"
+                  label="Postal code"
+                  onChange={(value) => updateInstitution("postalCode", value)}
+                  onSelect={(selection) => {
+                    updateInstitutionCountry("GB");
+                    updateInstitution("postalCode", selection.postcode);
+                    if (selection.city) updateInstitution("city", selection.city);
+                    if (selection.county) updateInstitution("county", selection.county);
+                  }}
+                  value={form.institution.postalCode}
+                />
                 <Field error={errors.address} label="Address" required>
                   <input
                     className="input"
@@ -702,13 +719,6 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstitution("city", value)}
                   onCountryChange={updateInstitutionCountry}
                 />
-                <Field label="Postal code">
-                  <input
-                    className="input"
-                    onChange={(event) => updateInstitution("postalCode", event.target.value)}
-                    value={form.institution.postalCode}
-                  />
-                </Field>
                 <Field label="Your role">
                   <input
                     className="input"

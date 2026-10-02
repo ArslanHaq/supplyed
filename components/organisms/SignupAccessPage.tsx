@@ -281,7 +281,15 @@ export function SignupAccessPage({
                   setTermsAccepted(value);
                   setErrors((current) => ({ ...current, termsAccepted: undefined }));
                 }}
-                label="I agree to SupplyED's verification, privacy, and marketplace terms."
+                label={
+                  <>
+                    I agree to SupplyED&apos;s{" "}
+                    <a className="font-semibold text-brand underline underline-offset-2" href="/terms" rel="noopener" target="_blank">
+                      Terms &amp; Conditions
+                    </a>
+                    , including verification and privacy terms.
+                  </>
+                }
               />
             </Field>
 

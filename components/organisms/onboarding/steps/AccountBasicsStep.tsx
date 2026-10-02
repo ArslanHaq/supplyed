@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Field, Icon } from "../../../atoms";
+import { PostcodeLookup } from "../../../molecules";
 import { CountryCityFields } from "../CountryCityFields";
 import type { AccountStepProps } from "../step-types";
 import { fieldClass } from "../utils";
@@ -88,19 +89,22 @@ export function AccountBasicsStep({
             inputMode="tel"
           />
         </Field>
-        {roleSelected && activeRole === "institution" ? (
-          <Field label="Postal code" htmlFor="signup-postcode" error={errors.postcode} required>
-            <input
-              id="signup-postcode"
-              className={fieldClass(errors.postcode)}
-              value={form.postcode}
-              onChange={(event) => updateField("postcode", event.target.value)}
-              placeholder="M1 1AE"
-            />
-          </Field>
-        ) : null}
         {roleSelected && activeRole !== "institution" ? (
           <>
+            <PostcodeLookup
+              error={errors.postcode}
+              id="signup-location"
+              label="Postal code"
+              onChange={(value) => updateField("postcode", value)}
+              onSelect={(selection) => {
+                updateField("postcode", selection.postcode);
+                updateField("profileCountryCode", "GB");
+                if (selection.city) updateField("profileCity", selection.city);
+              }}
+              placeholder="M1 1AE"
+              required
+              value={form.postcode}
+            />
             <CountryCityFields
               city={form.profileCity}
               cityError={errors.profileCity}
@@ -115,15 +119,6 @@ export function AccountBasicsStep({
                 updateField("profileCity", "");
               }}
             />
-            <Field label="Postal code" htmlFor="signup-location" error={errors.postcode} required>
-              <input
-                id="signup-location"
-                className={fieldClass(errors.postcode)}
-                value={form.postcode}
-                onChange={(event) => updateField("postcode", event.target.value)}
-                placeholder="M1 1AE"
-              />
-            </Field>
           </>
         ) : null}
       </div>

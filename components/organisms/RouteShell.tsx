@@ -149,7 +149,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
     else if (activePage === "security") content = <SecurityPage {...routeProps} />;
-    else if (activePage === "billing") content = <BillingPage />;
+    else if (activePage === "billing") content = <BillingPage {...routeProps} />;
     else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
     else content = <InstitutionDashboard {...routeProps} />;
   } else if (state.role === "teacher") {
@@ -162,9 +162,11 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
     else if (activePage === "security") content = <SecurityPage {...routeProps} />;
+    else if (activePage === "billing") content = <BillingPage {...routeProps} />;
     else content = <TeacherDashboard {...routeProps} />;
   } else if (state.role === "admin") {
     if (activePage === "security") content = <SecurityPage {...routeProps} />;
+    else if (activePage === "billing") content = <BillingPage {...routeProps} />;
     else content = <AdminDashboard />;
   }
 

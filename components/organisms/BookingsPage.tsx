@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 
 import type { Booking, BookingStatus } from "@/features/bookings/types";
 import { useBookings, useCreateBookingReview, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
+import { formatPence } from "@/features/payments/schemas";
+import { useCreateInvoice } from "@/features/payments/use-payments";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, Icon, Tag } from "../atoms";
+import { Avatar, Btn, buttonClassName, Icon, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
 
 type Tab = "active" | "all" | "cancelled" | "completed" | "no-show";
@@ -31,6 +33,7 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
   const [tab, setTab] = useState<Tab>("all");
   const [reviewTarget, setReviewTarget] = useState<Booking | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
+  const [invoiceTarget, setInvoiceTarget] = useState<Booking | null>(null);
   const bookingsQuery = useBookings({ limit: 100 });
   const allBookings = bookingsQuery.data?.bookings ?? [];
   const bookings = tabStatus[tab] ? allBookings.filter((booking) => booking.status === tabStatus[tab]) : allBookings;
@@ -55,6 +58,17 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
         tone: result.ok ? "success" : "danger",
       });
       if (result.ok) setReviewTarget(null);
+    },
+  });
+
+  const createInvoice = useCreateInvoice({
+    onSuccess: (result) => {
+      toast({
+        title: result.ok ? "Invoice sent" : "Could not create invoice",
+        msg: result.message ?? "The school has been sent the invoice.",
+        tone: result.ok ? "success" : "danger",
+      });
+      if (result.ok) setInvoiceTarget(null);
     },
   });
 
@@ -101,6 +115,7 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
                 cancelling={updateBooking.isPending && cancelTarget?.id === booking.id}
                 onCancel={setCancelTarget}
                 onComplete={(id) => updateBooking.mutate({ action: "complete", id })}
+                onInvoice={setInvoiceTarget}
                 onNoShow={(id) => updateBooking.mutate({ action: "no-show", id })}
                 onReview={setReviewTarget}
                 pending={updateBooking.isPending}
@@ -119,6 +134,18 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
         }}
         onSubmit={(reason) => {
           if (cancelTarget) updateBooking.mutate({ action: "cancel", id: cancelTarget.id, reason });
+        }}
+      />
+
+      <CreateInvoiceModal
+        key={invoiceTarget?.id ?? "none"}
+        booking={invoiceTarget}
+        loading={createInvoice.isPending}
+        onClose={() => {
+          if (!createInvoice.isPending) setInvoiceTarget(null);
+        }}
+        onSubmit={(unitsWorked, poNumber) => {
+          if (invoiceTarget) createInvoice.mutate({ bookingId: invoiceTarget.id, poNumber, unitsWorked });
         }}
       />
 
@@ -142,6 +169,7 @@ function BookingCard({
   cancelling,
   onCancel,
   onComplete,
+  onInvoice,
   onNoShow,
   onReview,
   pending,
@@ -151,6 +179,7 @@ function BookingCard({
   cancelling: boolean;
   onCancel: (booking: Booking) => void;
   onComplete: (id: string) => void;
+  onInvoice: (booking: Booking) => void;
   onNoShow: (id: string) => void;
   onReview: (booking: Booking) => void;
   pending: boolean;
@@ -189,6 +218,8 @@ function BookingCard({
 
       {booking.cancelReason ? <p className="mt-4 rounded-lg bg-danger-tint px-3 py-2 text-sm text-danger">{booking.cancelReason}</p> : null}
 
+      {booking.status === "COMPLETED" ? <InvoiceStrip booking={booking} onInvoice={onInvoice} role={role} /> : null}
+
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <div className="text-xs text-muted">
           {reviewable
@@ -218,6 +249,130 @@ function BookingCard({
       </div>
     </article>
   );
+}
+
+/** Payment state of a completed booking: invoice it (school), pay it, or see where it stands. */
+function InvoiceStrip({ booking, onInvoice, role }: { booking: Booking; onInvoice: (booking: Booking) => void; role: AppRole }) {
+  const invoice = booking.invoice;
+  let label: string;
+  let tag: { text: string; tone: "amber" | "green" | "red" } | null = null;
+
+  if (!invoice) {
+    label = role === "teacher" ? "The school will invoice this booking, then you get paid." : "Invoice this booking to pay the teacher.";
+  } else if (invoice.status === "PAID") {
+    label = `${formatPence(invoice.totalAmountPence)} paid${invoice.paidAt ? ` on ${formatDate(invoice.paidAt)}` : ""}.`;
+    tag = { text: "Paid", tone: "green" };
+  } else {
+    const overdue = isPastDue(invoice.dueAt);
+    label = `${formatPence(invoice.totalAmountPence)} invoiced${invoice.dueAt ? `, due ${formatDate(invoice.dueAt)}` : ""}.`;
+    tag = invoice.status === "UNCOLLECTIBLE" ? { text: "Written off", tone: "red" } : { text: overdue ? "Overdue" : "Awaiting payment", tone: overdue ? "red" : "amber" };
+  }
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-chalk px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <Icon name="pound" size={14} />
+        {tag ? <Tag tone={tag.tone}>{tag.text}</Tag> : null}
+        <span>{label}</span>
+      </div>
+      {role === "institution" && !invoice ? (
+        <Btn size="sm" onClick={() => onInvoice(booking)}>Create invoice</Btn>
+      ) : null}
+      {role === "institution" && invoice?.status === "OPEN" && invoice.hostedInvoiceUrl ? (
+        <a className={buttonClassName({ size: "sm" })} href={invoice.hostedInvoiceUrl} rel="noopener noreferrer" target="_blank">
+          Pay invoice
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+function CreateInvoiceModal({
+  booking,
+  loading,
+  onClose,
+  onSubmit,
+}: {
+  booking: Booking | null;
+  loading: boolean;
+  onClose: () => void;
+  onSubmit: (unitsWorked: number | undefined, poNumber: string | undefined) => void;
+}) {
+  const payType = booking?.payType ?? "daily";
+  const fixed = payType === "fixed";
+  const unit = payType === "hourly" ? "hours" : "days";
+  const [units, setUnits] = useState(() => (booking && payType === "daily" ? String(bookingDays(booking) ?? "") : ""));
+  const [poNumber, setPoNumber] = useState("");
+  const unitsValue = Number(units);
+  const unitsValid = fixed || (units.trim() !== "" && Number.isFinite(unitsValue) && unitsValue > 0 && /^\d+(\.\d{1,2})?$/.test(units.trim()));
+  const rate = booking?.payAmount ?? 0;
+  const teacherPay = fixed ? rate : unitsValid ? rate * unitsValue : 0;
+
+  return (
+    <Modal open={Boolean(booking)} onClose={onClose}>
+      <form
+        className="p-6 sm:p-7"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (unitsValid) onSubmit(fixed ? undefined : unitsValue, poNumber.trim() || undefined);
+        }}
+      >
+        <Tag tone="green">Invoice</Tag>
+        <h2 className="mt-4 font-serif text-2xl">Invoice {booking?.instructor.fullName ?? "this booking"}</h2>
+        <p className="mt-3 text-sm leading-6 text-muted">
+          Stripe emails you the invoice with a link to pay by card, bank transfer or Direct Debit. When it is paid, the teacher
+          receives their pay and SupplyEd keeps its processing fee, which is added as a separate line.
+        </p>
+
+        {fixed ? (
+          <p className="mt-4 rounded-lg bg-chalk px-3 py-2 text-sm">Fixed price: {formatPence(Math.round(rate * 100))}</p>
+        ) : (
+          <label className="mt-4 block text-sm font-semibold">
+            {payType === "hourly" ? "Hours worked" : "Days worked"}
+            <input
+              className="input mt-2 w-full"
+              inputMode="decimal"
+              onChange={(event) => setUnits(event.target.value)}
+              placeholder={payType === "hourly" ? "e.g. 7.5" : "e.g. 5 or 4.5"}
+              value={units}
+            />
+            <span className="mt-1 block text-xs font-normal text-muted">
+              At {formatPence(Math.round(rate * 100))} per {unit === "hours" ? "hour" : "day"}. Use halves for half days.
+            </span>
+          </label>
+        )}
+
+        <label className="mt-4 block text-sm font-semibold">
+          PO number <span className="font-normal text-muted">(optional)</span>
+          <input className="input mt-2 w-full" maxLength={100} onChange={(event) => setPoNumber(event.target.value)} value={poNumber} />
+        </label>
+
+        {unitsValid ? (
+          <p className="mt-4 text-sm">
+            Teacher pay: <strong>{formatPence(Math.round(teacherPay * 100))}</strong> <span className="text-muted">+ SupplyEd processing fee</span>
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Btn disabled={loading} variant="ghost" onClick={onClose}>Cancel</Btn>
+          <Btn disabled={!unitsValid} loading={loading} loadingLabel="Sending" type="submit">Send invoice</Btn>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function isPastDue(dueAt?: string | null) {
+  return Boolean(dueAt) && new Date(dueAt as string).getTime() < Date.now();
+}
+
+/** Days in the booking, counting both ends; a sensible default for "days worked". */
+function bookingDays(booking: Booking) {
+  if (!booking.startDate || !booking.endDate) return null;
+  const day = 24 * 60 * 60 * 1000;
+  const start = new Date(booking.startDate);
+  const end = new Date(booking.endDate);
+  return Math.floor((Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()) - Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())) / day) + 1;
 }
 
 function CancelBookingModal({

@@ -1,5 +1,6 @@
 import { Field } from "../../../atoms";
 import { CountryCityFields } from "../CountryCityFields";
+import { PostcodeLookup } from "../../../molecules";
 import { MultiSelectDropdown } from "../../../molecules/OptionDropdowns";
 import { coverTypes } from "../constants";
 import type { StepComponentProps } from "../step-types";
@@ -97,6 +98,21 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
             placeholder="URN, company number, or trust ID"
           />
         </Field>
+        <PostcodeLookup
+          error={errors.postcode}
+          hint="Fills in the town from the postcode."
+          id="institution-postcode"
+          label="Postal code"
+          onChange={(value) => updateField("postcode", value)}
+          onSelect={(selection) => {
+            updateField("postcode", selection.postcode);
+            updateField("institutionCountryCode", "GB");
+            if (selection.city) updateField("institutionCity", selection.city);
+          }}
+          placeholder="M1 1AE"
+          required
+          value={form.postcode}
+        />
         <Field label="Address" htmlFor="institution-address" error={errors.institutionAddress} required>
           <input
             id="institution-address"

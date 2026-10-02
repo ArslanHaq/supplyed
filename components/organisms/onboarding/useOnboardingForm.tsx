@@ -562,7 +562,6 @@ export function useOnboardingForm({
         if (!form.profileCountryCode.trim()) nextErrors.profileCountryCode = "Select your country.";
         if (!form.profileCity.trim()) nextErrors.profileCity = "Select your city.";
       }
-      if (roleSelected && activeRole === "institution" && !form.postcode.trim()) nextErrors.postcode = "Enter the institution postal code.";
       if (activeRole === "teacher" && !form.postcode.trim()) nextErrors.postcode = "Enter your postal code.";
 
       if (activeRole === "teacher") {

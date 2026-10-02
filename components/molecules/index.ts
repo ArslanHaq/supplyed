@@ -16,3 +16,5 @@ export { RouteErrorState } from "./RouteErrorState";
 export { SocialAuthButtons } from "./SocialAuthButtons";
 export { ToastStack } from "./ToastStack";
 export { TagInput } from "./TagInput";
+export { PostcodeLookup } from "./PostcodeLookup";
+export type { PostcodeLookupSelection } from "./PostcodeLookup";

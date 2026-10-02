@@ -93,6 +93,7 @@ export const config = {
     "/login",
     "/messaging/:path*",
     "/onboarding/:path*",
+    "/payouts/:path*",
     "/post-job/:path*",
     "/settings/:path*",
     "/signup",

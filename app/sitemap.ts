@@ -10,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/founding-teachers", priority: 0.9 },
     { path: "/how-it-works", priority: 0.8 },
     { path: "/pricing", priority: 0.8 },
+    { path: "/terms", priority: 0.3 },
   ].map(({ path, priority }) => ({
     url: `${siteConfig.url}${path}`,
     lastModified: now,
