@@ -3,8 +3,22 @@ import "server-only";
 import { api, ApiError } from "@/lib/server/api-client";
 import { requirePayoutInstructor } from "./payout-auth";
 
-import { normalizeInvoicesQuery, normalizePaginatedInvoices, normalizePayoutAccount, normalizePayoutBalance } from "./schemas";
-import type { InvoiceListQuery, PaginatedInvoices, PayoutAccount, PayoutBalance } from "./types";
+import {
+  normalizeAdminInvoicesQuery,
+  normalizeInvoice,
+  normalizeInvoicesQuery,
+  normalizePaginatedInvoices,
+  normalizePayoutAccount,
+  normalizePayoutBalance,
+} from "./schemas";
+import type {
+  AdminInvoiceListQuery,
+  Invoice,
+  InvoiceListQuery,
+  PaginatedInvoices,
+  PayoutAccount,
+  PayoutBalance,
+} from "./types";
 
 function backendEnabled() {
   return Boolean(process.env.API_BASE_URL);

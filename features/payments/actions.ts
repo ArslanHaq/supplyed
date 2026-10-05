@@ -5,7 +5,9 @@ import { revalidateTag } from "next/cache";
 import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 
+import { requirePayoutInstructor } from "./payout-auth";
 import { normalizeInvoice, normalizePayoutSummary, normalizeStripeLink } from "./schemas";
+import { isStripePayoutUrl } from "./stripe-links";
 import type { CreateInvoiceInput, Invoice, PayoutSummary, RefundInvoiceInput, StripeLink } from "./types";
 
 /** A fresh Stripe onboarding link for the signed-in teacher; the client redirects to it. */

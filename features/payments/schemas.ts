@@ -1,4 +1,5 @@
 import type {
+  AdminInvoiceListQuery,
   Invoice,
   InvoiceListQuery,
   InvoiceStatus,

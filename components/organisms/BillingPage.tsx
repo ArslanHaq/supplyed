@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { formatPence } from "@/features/payments/schemas";
+import { describeRequirement, formatPence } from "@/features/payments/schemas";
 import { stripeInvoiceUrl } from "@/features/payments/invoice-links";
 import type { AdminInvoiceListQuery, Invoice, InvoiceStatus, PaginatedInvoices, RefundReason } from "@/features/payments/types";
 import {
@@ -42,7 +42,7 @@ const filters: Array<{ label: string; status?: InvoiceStatus; value: Filter }> =
  * earnings, and the admin's view of all invoices.
  */
 export function BillingPage({ role, toast }: Pick<RouteProps, "role" | "toast">) {
-  if (role === "teacher") return <TeacherEarnings />;
+  if (role === "teacher") return <TeacherEarnings toast={toast} />;
   if (role === "admin") return <AdminPayments toast={toast} />;
   return <SchoolInvoices toast={toast} />;
 }
@@ -107,7 +107,7 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
 
 // ---- Teacher ----
 
-function TeacherEarnings() {
+function TeacherEarnings({ toast }: { toast: ToastFn }) {
   const searchParams = useSearchParams();
   const returned = searchParams.get("payouts");
   const [filter, setFilter] = useState<Filter>("all");
