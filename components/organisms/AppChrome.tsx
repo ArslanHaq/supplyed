@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { useConversationStream, useUnreadMessages } from "@/features/conversations/use-conversations";
 import { getDisplayName } from "@/lib/user-display";
 import type { AppPage, RouteProps } from "@/types/supplyed";
 
@@ -53,6 +54,10 @@ export function AppChrome({
   const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
   const userSub = state.role === "admin" ? "Administrator" : state.role === "institution" ? "School account" : "Instructor";
   const searchPlaceholder = state.role === "admin" ? "Search admin panel..." : state.role === "teacher" ? "Search jobs..." : "Search teachers...";
+  // Teachers and schools message each other; one live connection keeps every screen up to date.
+  const messagingEnabled = state.role === "teacher" || state.role === "institution";
+  useConversationStream(messagingEnabled);
+  const unread = useUnreadMessages({ enabled: messagingEnabled }).data?.total ?? 0;
 
   return (
     <div className="workspace-shell">
@@ -61,13 +66,20 @@ export function AppChrome({
         <nav aria-label={`${userSub} workspace navigation`} className="app-nav-links">
           {navItems.map((item) => (
             <button key={item.id} className={`app-nav-link ${state.page === item.id ? "active" : ""}`} onClick={() => go(item.id)} type="button">
-              <span className="flex items-center gap-1.5"><Icon name={item.icon} size={13} /> {item.label}</span>
+              <span className="flex items-center gap-1.5">
+                <Icon name={item.icon} size={13} /> {item.label}
+                {item.id === "messaging" && unread > 0 ? (
+                  <span aria-label={`${unread} unread`} className="rounded-full bg-brand px-1.5 text-[11px] font-bold leading-[18px] text-white">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                ) : null}
+              </span>
             </button>
           ))}
         </nav>
         <div className="app-nav-right">
           <div className="flex items-center gap-1.5 rounded-lg bg-chalk px-3 py-1.5"><Icon name="search" size={13} /><input placeholder={searchPlaceholder} className="w-[140px] border-0 bg-transparent outline-none" /></div>
-          <button aria-label="Open messages" className="notif-btn" onClick={() => go("messaging")} type="button"><Icon name="bell" size={16} /><div className="notif-dot" /></button>
+          <button aria-label="Open messages" className="notif-btn" onClick={() => go("messaging")} type="button"><Icon name="bell" size={16} />{unread > 0 ? <div className="notif-dot" /> : null}</button>
           <button aria-label="Open help" className="notif-btn" type="button"><Icon name="help" size={16} /></button>
           <AppAccountMenu
             verified={verified}

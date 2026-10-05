@@ -116,7 +116,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
             onBack={closeApplication}
             onBookInterview={(application) => changeStatus(application, "INTERVIEW")}
             onHire={setHireTarget}
-            onMessage={(teacherId) => go("messaging", { teacherId })}
+            onMessage={(applicationId) => go("messaging", { applicationId })}
             onOpenTeacher={(teacherId) => go("teacher-profile", { teacherId })}
             onStatusChange={changeStatus}
             pending={updateStatus.isPending}
@@ -275,7 +275,7 @@ function ApplicationDetail({
   onBack: () => void;
   onBookInterview: (application: JobApplication) => void;
   onHire: (application: JobApplication) => void;
-  onMessage: (teacherId: string) => void;
+  onMessage: (applicationId: string) => void;
   onOpenTeacher: (teacherId: string) => void;
   onStatusChange: (application: JobApplication, status: JobApplicationStatus) => void;
   pending: boolean;
@@ -351,7 +351,7 @@ function ApplicationDetail({
           <section className="card card-pad-lg">
             <div className="section-title mb-4">Main actions</div>
             <div className="grid gap-3">
-              <Btn className="h-12 w-full" disabled={!instructor?.id} icon="message" size="lg" onClick={() => instructor?.id ? onMessage(instructor.id) : undefined}>
+              <Btn className="h-12 w-full" icon="message" size="lg" onClick={() => onMessage(application.id)}>
                 Message teacher
               </Btn>
               <InterviewButton

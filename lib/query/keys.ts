@@ -13,6 +13,13 @@ export const queryKeys = {
     all: ["bookings"] as const,
     mine: (filters?: Record<string, unknown>) => [...queryKeys.bookings.all, "mine", filters ?? {}] as const,
   },
+  conversations: {
+    all: ["conversations"] as const,
+    forApplication: (applicationId: string) => [...queryKeys.conversations.all, "application", applicationId] as const,
+    list: () => [...queryKeys.conversations.all, "list"] as const,
+    messages: (conversationId: string) => [...queryKeys.conversations.all, "messages", conversationId] as const,
+    unread: () => [...queryKeys.conversations.all, "unread"] as const,
+  },
   jobs: {
     all: ["jobs"] as const,
     detail: (id: string) => [...queryKeys.jobs.all, "detail", id] as const,

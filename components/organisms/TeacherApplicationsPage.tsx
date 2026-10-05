@@ -110,6 +110,7 @@ function TeacherApplicationCard({ application, go }: { application: JobApplicati
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           {job?.rate ? <div className="text-right"><div className="font-serif text-xl">GBP {job.rate}</div><div className="text-xs text-muted">per day</div></div> : null}
+          <Btn size="sm" icon="message" onClick={() => go("messaging", { applicationId: application.id })}>Message school</Btn>
           <Btn size="sm" variant="secondary" onClick={() => go("job-detail", { jobId: application.jobId })}>View job</Btn>
         </div>
       </div>
