@@ -9,12 +9,19 @@ import {
   createInvoiceAction,
   createPayoutDashboardLinkAction,
   createPayoutOnboardingLinkAction,
+  instantPayoutAction,
   refundInvoiceAction,
   resendInvoiceAction,
   voidInvoiceAction,
 } from "./actions";
-import type { AdminInvoiceListQuery, CreateInvoiceInput, Invoice, InvoiceListQuery, PaginatedInvoices, PayoutAccount, RefundInvoiceInput } from "./types";
-import { isStripePayoutUrl, openStripePayoutPage } from "./stripe-links";
+import type {
+  CreateInvoiceInput,
+  InvoiceListQuery,
+  PaginatedInvoices,
+  PayoutAccount,
+  PayoutBalance,
+  RefundInvoiceInput,
+} from "./types";
 
 type MutationOptions<Result> = {
   onError?: () => void;
@@ -29,12 +36,29 @@ export function usePayoutAccount(options: { enabled?: boolean; pollUntilReady?: 
     enabled: options.enabled ?? true,
     queryFn: () => fetchJson<PayoutAccount>("/api/payments/payout-account"),
     queryKey: queryKeys.payments.payoutAccount(),
-    refetchInterval: options.pollUntilReady
-      ? (query) => query.state.data?.connected && !query.state.data.ready ? 15_000 : false
-      : false,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-    staleTime: 0,
+  });
+}
+
+export function usePayoutBalance(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    enabled: options.enabled ?? true,
+    queryFn: () => fetchJson<PayoutBalance>("/api/payments/payout-account/balance"),
+    queryKey: queryKeys.payments.balance(),
+  });
+}
+
+type PayoutResult = Awaited<ReturnType<typeof instantPayoutAction>>;
+
+export function useInstantPayout(options: MutationOptions<PayoutResult> = {}) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (amountPence?: number) => instantPayoutAction(amountPence),
+    onError: options.onError,
+    onSuccess: async (result) => {
+      if (result.ok) await queryClient.invalidateQueries({ queryKey: queryKeys.payments.balance() });
+      await options.onSuccess?.(result);
+    },
   });
 }
 
