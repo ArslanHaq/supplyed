@@ -8,8 +8,10 @@ import { describeRequirement, formatPence } from "@/features/payments/schemas";
 import type { Invoice, InvoiceStatus, PaginatedInvoices, RefundReason } from "@/features/payments/types";
 import {
   useAllInvoices,
+  useInstantPayout,
   useMyInvoices,
   usePayoutAccount,
+  usePayoutBalance,
   usePayoutLink,
   useRefundInvoice,
   useResendInvoice,
@@ -116,6 +118,7 @@ function TeacherEarnings({ toast }: { toast: ToastFn }) {
       {returned === "error" ? <Notice tone="red">We could not reopen payout setup. Try again below.</Notice> : null}
 
       <PayoutSetupCard toast={toast} />
+      <CashOutCard toast={toast} />
 
       <div className="my-6 grid gap-4 sm:grid-cols-3">
         <Stat value={formatPence(sum(paid, "teacherAmountPence"))} label="Paid to you" />
@@ -169,7 +172,7 @@ function PayoutSetupCard({ toast }: { toast: ToastFn }) {
               ? "You're set up to be paid. Schools' payments for your bookings go straight to your bank account."
               : account.connected
                 ? "Stripe needs a few more details before you can be paid. It only takes a couple of minutes."
-                : "Add your bank account through Stripe, our payments partner, so schools can pay you. SupplyEd never sees your bank details."}
+                : "Takes about 2 minutes on Stripe, our payments partner: your date of birth, your bank account, and accepting Stripe's terms. We fill in the rest from your profile, and SupplyEd never sees your bank details."}
           </p>
           {!account.ready && account.connected && missing.length ? (
             <ul className="mt-3 flex flex-wrap gap-2">
@@ -194,6 +197,91 @@ function PayoutSetupCard({ toast }: { toast: ToastFn }) {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * Uber-style cash out: as soon as a school pays by card, the teacher can send
+ * their earnings to their bank in minutes instead of waiting for the automatic payout.
+ */
+function CashOutCard({ toast }: { toast: ToastFn }) {
+  const payoutQuery = usePayoutAccount();
+  const ready = payoutQuery.data?.ready === true;
+  const balanceQuery = usePayoutBalance({ enabled: ready });
+  const [confirming, setConfirming] = useState(false);
+  const cashOut = useInstantPayout({
+    onSuccess: (result) => {
+      notify(toast, result, "Cash-out sent", "Could not cash out");
+      if (result.ok) setConfirming(false);
+    },
+  });
+  const balance = balanceQuery.data;
+
+  if (!ready) return null;
+  if (balanceQuery.isLoading) return <div className="mt-4"><SectionLoader rows={1} /></div>;
+  if (!balance) return null;
+
+  const canCashOut = Boolean(balance.instantDestination) && balance.instantAvailablePence >= 40;
+
+  return (
+    <>
+      <section className="card card-pad-lg mt-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-[240px] flex-1">
+            <div className="text-xs font-semibold uppercase tracking-[1px] text-muted">Available to cash out now</div>
+            <div className="mt-1 font-serif text-4xl">{formatPence(balance.instantAvailablePence)}</div>
+            <p className="mt-2 text-sm text-muted">
+              {balance.instantDestination
+                ? `Cash out to ${balance.instantDestination.label}. It usually arrives within 30 minutes, any day.`
+                : "Your bank doesn't support instant cash-outs. Add a debit card in Manage payouts to cash out instantly."}
+              {balance.pendingPence > 0 ? ` Otherwise ${formatPence(balance.pendingPence)} is paid to your bank automatically in a few days.` : ""}
+            </p>
+          </div>
+          <Btn disabled={!canCashOut} icon="zap" onClick={() => setConfirming(true)}>
+            Cash out
+          </Btn>
+        </div>
+
+        {balance.recentPayouts.length ? (
+          <div className="mt-5 border-t border-border pt-4">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-muted">Recent payouts</div>
+            {balance.recentPayouts.map((payout) => (
+              <div key={payout.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm">
+                <span>
+                  {payout.method === "instant" ? "Cash out" : "Automatic payout"}
+                  {payout.arrivalDate ? <span className="text-muted"> · {formatDate(payout.arrivalDate)}</span> : null}
+                </span>
+                <span className="flex items-center gap-2">
+                  <Tag tone={payout.status === "paid" ? "green" : payout.status === "failed" || payout.status === "canceled" ? "red" : "amber"}>
+                    {payout.status.replace(/_/g, " ")}
+                  </Tag>
+                  <strong>{formatPence(payout.amountPence)}</strong>
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <Modal open={confirming} onClose={() => !cashOut.isPending && setConfirming(false)}>
+        <div className="p-6 sm:p-7">
+          <Tag tone="green">Cash out</Tag>
+          <h2 className="mt-4 font-serif text-2xl">Send {formatPence(balance.instantAvailablePence)} now?</h2>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            It goes to {balance.instantDestination?.label ?? "your bank"} and usually arrives within 30 minutes. The amount shown is what
+            you receive.
+          </p>
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Btn disabled={cashOut.isPending} variant="ghost" onClick={() => setConfirming(false)}>
+              Not now
+            </Btn>
+            <Btn loading={cashOut.isPending} loadingLabel="Sending" onClick={() => cashOut.mutate(undefined)}>
+              Cash out {formatPence(balance.instantAvailablePence)}
+            </Btn>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }
 

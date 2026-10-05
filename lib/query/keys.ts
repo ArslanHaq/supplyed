@@ -33,6 +33,7 @@ export const queryKeys = {
   },
   payments: {
     all: ["payments"] as const,
+    balance: () => [...queryKeys.payments.all, "balance"] as const,
     allInvoices: (filters?: Record<string, unknown>) => [...queryKeys.payments.all, "invoices", "all", filters ?? {}] as const,
     myInvoices: (filters?: Record<string, unknown>) => [...queryKeys.payments.all, "invoices", "mine", filters ?? {}] as const,
     payoutAccount: () => [...queryKeys.payments.all, "payout-account"] as const,

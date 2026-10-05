@@ -12,6 +12,27 @@ export type PayoutAccount = {
   requirementsDue: string[];
 };
 
+export type PayoutSummary = {
+  amountPence: number;
+  arrivalDate: string | null;
+  id: string;
+  /** "instant" or "standard" (Stripe's automatic payout). */
+  method: string;
+  /** pending | in_transit | paid | failed | canceled */
+  status: string;
+};
+
+/** The teacher's Stripe balance and what can be cashed out right now. */
+export type PayoutBalance = {
+  availablePence: number;
+  /** What can be cashed out now; already net of any instant payout fee. */
+  instantAvailablePence: number;
+  /** Where a cash-out goes; null when nothing linked supports instant payouts. */
+  instantDestination: { id: string; label: string } | null;
+  pendingPence: number;
+  recentPayouts: PayoutSummary[];
+};
+
 /** A single-use Stripe page (onboarding or the Express dashboard). */
 export type StripeLink = {
   expiresAt: string | null;

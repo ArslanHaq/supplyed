@@ -1,4 +1,13 @@
-import type { Invoice, InvoiceListQuery, InvoiceStatus, PaginatedInvoices, PayoutAccount, StripeLink } from "./types";
+import type {
+  Invoice,
+  InvoiceListQuery,
+  InvoiceStatus,
+  PaginatedInvoices,
+  PayoutAccount,
+  PayoutBalance,
+  PayoutSummary,
+  StripeLink,
+} from "./types";
 
 export const invoiceStatuses = new Set<InvoiceStatus>(["PENDING", "OPEN", "PAID", "VOID", "UNCOLLECTIBLE"]);
 
@@ -30,6 +39,28 @@ export function normalizePayoutAccount(account: Partial<PayoutAccount> | null | 
     payoutsEnabled: Boolean(account?.payoutsEnabled),
     ready: Boolean(account?.ready),
     requirementsDue: Array.isArray(account?.requirementsDue) ? account.requirementsDue.filter((item) => typeof item === "string") : [],
+  };
+}
+
+export function normalizePayoutSummary(payout: Partial<PayoutSummary>): PayoutSummary {
+  return {
+    amountPence: readNumber(payout.amountPence) ?? 0,
+    arrivalDate: readDateIso(payout.arrivalDate),
+    id: payout.id ?? "",
+    method: payout.method ?? "standard",
+    status: payout.status ?? "pending",
+  };
+}
+
+export function normalizePayoutBalance(balance: Partial<PayoutBalance> | null | undefined): PayoutBalance {
+  return {
+    availablePence: readNumber(balance?.availablePence) ?? 0,
+    instantAvailablePence: readNumber(balance?.instantAvailablePence) ?? 0,
+    instantDestination: balance?.instantDestination?.id
+      ? { id: balance.instantDestination.id, label: balance.instantDestination.label ?? "Your bank" }
+      : null,
+    pendingPence: readNumber(balance?.pendingPence) ?? 0,
+    recentPayouts: Array.isArray(balance?.recentPayouts) ? balance.recentPayouts.map(normalizePayoutSummary) : [],
   };
 }
 

@@ -5,8 +5,8 @@ import { revalidateTag } from "next/cache";
 import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 
-import { normalizeInvoice, normalizeStripeLink } from "./schemas";
-import type { CreateInvoiceInput, Invoice, RefundInvoiceInput, StripeLink } from "./types";
+import { normalizeInvoice, normalizePayoutSummary, normalizeStripeLink } from "./schemas";
+import type { CreateInvoiceInput, Invoice, PayoutSummary, RefundInvoiceInput, StripeLink } from "./types";
 
 /** A fresh Stripe onboarding link for the signed-in teacher; the client redirects to it. */
 export async function createPayoutOnboardingLinkAction() {
@@ -25,6 +25,20 @@ export async function createPayoutDashboardLinkAction() {
     return actionOk(normalizeStripeLink(link));
   } catch (error) {
     return actionError(readPaymentError(error, "The payouts dashboard could not be opened."), { code: errorCode(error) });
+  }
+}
+
+/** Cashes out the teacher's instantly available balance (or part of it) to their bank or debit card. */
+export async function instantPayoutAction(amountPence?: number) {
+  if (amountPence !== undefined && (!Number.isInteger(amountPence) || amountPence < 40)) {
+    return actionError("Cash-outs start at £0.40.", { code: "PAYOUT_AMOUNT_INVALID" });
+  }
+
+  try {
+    const payout = await api.post<PayoutSummary>("/payments/payout-account/instant-payout", { amountPence });
+    return actionOk(normalizePayoutSummary(payout), "On its way. It usually arrives within 30 minutes.");
+  } catch (error) {
+    return actionError(readPaymentError(error, "The cash-out could not be sent."), { code: errorCode(error) });
   }
 }
 

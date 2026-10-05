@@ -2,8 +2,8 @@ import "server-only";
 
 import { api } from "@/lib/server/api-client";
 
-import { normalizeInvoicesQuery, normalizePaginatedInvoices, normalizePayoutAccount } from "./schemas";
-import type { InvoiceListQuery, PaginatedInvoices, PayoutAccount } from "./types";
+import { normalizeInvoicesQuery, normalizePaginatedInvoices, normalizePayoutAccount, normalizePayoutBalance } from "./schemas";
+import type { InvoiceListQuery, PaginatedInvoices, PayoutAccount, PayoutBalance } from "./types";
 
 function backendEnabled() {
   return Boolean(process.env.API_BASE_URL);
@@ -21,6 +21,13 @@ export async function getMyPayoutAccount(): Promise<PayoutAccount> {
   if (!backendEnabled()) return normalizePayoutAccount(null);
 
   return normalizePayoutAccount(await api.get<PayoutAccount>("/payments/payout-account", { cache: "no-store" }));
+}
+
+/** The teacher's Stripe balance, including what can be cashed out now. */
+export async function getMyPayoutBalance(): Promise<PayoutBalance> {
+  if (!backendEnabled()) return normalizePayoutBalance(null);
+
+  return normalizePayoutBalance(await api.get<PayoutBalance>("/payments/payout-account/balance", { cache: "no-store" }));
 }
 
 /** A school's bills, or a teacher's earnings. */
