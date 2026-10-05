@@ -4,13 +4,12 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { describeRequirement, formatPence } from "@/features/payments/schemas";
-import type { Invoice, InvoiceStatus, PaginatedInvoices, RefundReason } from "@/features/payments/types";
+import { formatPence } from "@/features/payments/schemas";
+import { stripeInvoiceUrl } from "@/features/payments/invoice-links";
+import type { AdminInvoiceListQuery, Invoice, InvoiceStatus, PaginatedInvoices, RefundReason } from "@/features/payments/types";
 import {
   useAllInvoices,
   useMyInvoices,
-  usePayoutAccount,
-  usePayoutLink,
   useRefundInvoice,
   useResendInvoice,
   useVoidInvoice,
@@ -19,14 +18,19 @@ import type { AppRole, RouteProps, ToastFn } from "@/types/supplyed";
 
 import { Btn, buttonClassName, Stat, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
+import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
+import { PayoutSettings } from "./PayoutSettings";
+import { AdminPayoutLookup } from "./AdminPayoutLookup";
 
-type Filter = "all" | "paid" | "unpaid" | "void";
+type Filter = "all" | "paid" | "unpaid" | "void" | "written-off" | "pending";
 
 const filters: Array<{ label: string; status?: InvoiceStatus; value: Filter }> = [
   { label: "All", value: "all" },
   { label: "Unpaid", status: "OPEN", value: "unpaid" },
   { label: "Paid", status: "PAID", value: "paid" },
   { label: "Void", status: "VOID", value: "void" },
+  { label: "Written off", status: "UNCOLLECTIBLE", value: "written-off" },
+  { label: "Processing", status: "PENDING", value: "pending" },
 ];
 
 /**
@@ -34,7 +38,7 @@ const filters: Array<{ label: string; status?: InvoiceStatus; value: Filter }> =
  * earnings, and the admin's view of all invoices.
  */
 export function BillingPage({ role, toast }: Pick<RouteProps, "role" | "toast">) {
-  if (role === "teacher") return <TeacherEarnings toast={toast} />;
+  if (role === "teacher") return <TeacherEarnings />;
   if (role === "admin") return <AdminPayments toast={toast} />;
   return <SchoolInvoices toast={toast} />;
 }
@@ -43,39 +47,40 @@ export function BillingPage({ role, toast }: Pick<RouteProps, "role" | "toast">)
 
 function SchoolInvoices({ toast }: { toast: ToastFn }) {
   const [filter, setFilter] = useState<Filter>("all");
-  const invoicesQuery = useMyInvoices({ limit: 100 });
+  const [page, setPage] = useState(1);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const invoicesQuery = useMyInvoices(invoiceQuery(filter, page));
   const invoices = invoicesQuery.data?.invoices ?? [];
-  const resend = useResendInvoice({ onSuccess: (result) => notify(toast, result, "Invoice sent", "Could not resend invoice") });
+  const resend = useResendInvoice({ onSuccess: (result) => notify(toast, result, "Invoice sent", "Could not resend invoice"), onError: () => mutationFailure(toast) });
   const outstanding = invoices.filter((invoice) => invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE");
-  const paidThisYear = invoices.filter((invoice) => invoice.status === "PAID" && isThisYear(invoice.paidAt));
+  const paid = invoices.filter((invoice) => invoice.status === "PAID");
 
   return (
     <div className="app-page">
       <PageHead
         title="Billing"
         subtitle="Invoices for completed bookings. Each one covers the teacher's pay plus the SupplyEd processing fee."
+        actions={<RefreshInvoices query={invoicesQuery} />}
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat value={formatPence(sum(outstanding, "totalAmountPence"))} label="Outstanding" />
-        <Stat value={outstanding.filter(isOverdue).length} label="Overdue invoices" />
-        <Stat value={formatPence(sum(paidThisYear, "totalAmountPence"))} label="Paid this year" />
+        <Stat value={formatPence(sum(outstanding, "totalAmountPence"))} label="Outstanding on this page" />
+        <Stat value={outstanding.filter(isOverdue).length} label="Overdue on this page" />
+        <Stat value={formatPence(sum(paid, "totalAmountPence"))} label="Paid invoice totals on this page" />
       </div>
 
       <InvoiceList
         emptyMessage="Invoices appear here once you invoice a completed booking from Bookings."
         filter={filter}
-        onFilter={setFilter}
+        onFilter={(value) => { setFilter(value); setPage(1); }}
+        onPage={setPage}
         query={invoicesQuery}
         renderActions={(invoice) => (
           <>
-            {invoice.status === "OPEN" && invoice.hostedInvoiceUrl ? (
-              <a className={buttonClassName({ size: "sm" })} href={invoice.hostedInvoiceUrl} rel="noopener noreferrer" target="_blank">
-                Pay invoice
-              </a>
-            ) : null}
+            <Btn size="sm" variant="ghost" onClick={() => setDetailId(invoice.id)}>Details</Btn>
+            <PaymentLink invoice={invoice} />
             <PdfLink invoice={invoice} />
-            {invoice.status === "OPEN" ? (
+            {isUnpaid(invoice) ? (
               <Btn
                 disabled={resend.isPending}
                 loading={resend.isPending && resend.variables === invoice.id}
@@ -91,109 +96,52 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
         )}
         role="institution"
       />
+      <InvoiceDetailsModal id={detailId} onClose={() => setDetailId(null)} role="institution" />
     </div>
   );
 }
 
 // ---- Teacher ----
 
-function TeacherEarnings({ toast }: { toast: ToastFn }) {
+function TeacherEarnings() {
   const searchParams = useSearchParams();
   const returned = searchParams.get("payouts");
   const [filter, setFilter] = useState<Filter>("all");
-  const invoicesQuery = useMyInvoices({ limit: 100 });
+  const [page, setPage] = useState(1);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const invoicesQuery = useMyInvoices(invoiceQuery(filter, page));
   const invoices = invoicesQuery.data?.invoices ?? [];
   const paid = invoices.filter((invoice) => invoice.status === "PAID");
   const awaiting = invoices.filter((invoice) => invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE");
 
   return (
     <div className="app-page">
-      <PageHead title="Earnings" subtitle="Get paid for your bookings. Schools pay through Stripe and your share goes straight to your bank." />
+      <PageHead title="Earnings" subtitle="Schools pay booking invoices through Stripe. Your earnings are sent to your connected payout account." actions={<RefreshInvoices query={invoicesQuery} />} />
 
       {returned === "returned" ? (
         <Notice tone="green">Thanks. Stripe is checking your details; this can take a minute. Refresh if your status has not updated.</Notice>
       ) : null}
       {returned === "error" ? <Notice tone="red">We could not reopen payout setup. Try again below.</Notice> : null}
 
-      <PayoutSetupCard toast={toast} />
+      <PayoutSettings returnedFromStripe={returned === "returned"} />
 
       <div className="my-6 grid gap-4 sm:grid-cols-3">
-        <Stat value={formatPence(sum(paid, "teacherAmountPence"))} label="Paid to you" />
-        <Stat value={formatPence(sum(awaiting, "teacherAmountPence"))} label="Awaiting school payment" />
-        <Stat value={paid.length} label="Paid bookings" />
+        <Stat value={formatPence(sum(paid, "teacherAmountPence"))} label="Pay on paid invoices on this page" />
+        <Stat value={formatPence(sum(awaiting, "teacherAmountPence"))} label="Awaiting payment on this page" />
+        <Stat value={paid.length} label="Paid bookings on this page" />
       </div>
 
       <InvoiceList
         emptyMessage="Once a school invoices a completed booking, it appears here with your pay."
         filter={filter}
-        onFilter={setFilter}
+        onFilter={(value) => { setFilter(value); setPage(1); }}
+        onPage={setPage}
         query={invoicesQuery}
+        renderActions={(invoice) => <Btn size="sm" variant="ghost" onClick={() => setDetailId(invoice.id)}>Invoice details</Btn>}
         role="teacher"
       />
+      <InvoiceDetailsModal id={detailId} onClose={() => setDetailId(null)} role="teacher" />
     </div>
-  );
-}
-
-function PayoutSetupCard({ toast }: { toast: ToastFn }) {
-  const payoutQuery = usePayoutAccount();
-  const account = payoutQuery.data;
-  const onFailure = (result: { message?: string; ok: boolean }) => {
-    if (!result.ok) toast({ msg: result.message ?? "Please try again.", title: "Could not open Stripe", tone: "danger" });
-  };
-  const onboarding = usePayoutLink("onboarding", { onSuccess: onFailure });
-  const dashboard = usePayoutLink("dashboard", { onSuccess: onFailure });
-  const missing = [...new Set((account?.requirementsDue ?? []).map(describeRequirement))];
-
-  if (payoutQuery.isLoading) return <SectionLoader rows={2} />;
-
-  if (payoutQuery.error || !account) {
-    return <Notice tone="red">Payout status is unavailable right now. Refresh the page to try again.</Notice>;
-  }
-
-  return (
-    <section className="card card-pad-lg">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-[240px] flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-serif text-2xl leading-tight">Payouts</h2>
-            {account.ready ? (
-              <Tag tone="green">Active</Tag>
-            ) : account.connected ? (
-              <Tag tone="amber">Action needed</Tag>
-            ) : (
-              <Tag tone="ghost">Not set up</Tag>
-            )}
-          </div>
-          <p className="mt-2 max-w-[560px] text-sm leading-6 text-muted">
-            {account.ready
-              ? "You're set up to be paid. Schools' payments for your bookings go straight to your bank account."
-              : account.connected
-                ? "Stripe needs a few more details before you can be paid. It only takes a couple of minutes."
-                : "Add your bank account through Stripe, our payments partner, so schools can pay you. SupplyEd never sees your bank details."}
-          </p>
-          {!account.ready && account.connected && missing.length ? (
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {missing.map((label) => (
-                <li key={label}>
-                  <Tag tone="ghost">{label}</Tag>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {account.ready ? (
-            <Btn loading={dashboard.isPending} loadingLabel="Opening" variant="secondary" onClick={() => dashboard.mutate()}>
-              Manage payouts
-            </Btn>
-          ) : (
-            <Btn loading={onboarding.isPending} loadingLabel="Opening Stripe" onClick={() => onboarding.mutate()}>
-              {account.connected ? "Continue setup" : "Set up payouts"}
-            </Btn>
-          )}
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -201,36 +149,49 @@ function PayoutSetupCard({ toast }: { toast: ToastFn }) {
 
 function AdminPayments({ toast }: { toast: ToastFn }) {
   const [filter, setFilter] = useState<Filter>("all");
+  const [profileFilters, setProfileFilters] = useState<ProfileInvoiceFilters>({});
+  const [page, setPage] = useState(1);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [voidTarget, setVoidTarget] = useState<Invoice | null>(null);
   const [refundTarget, setRefundTarget] = useState<Invoice | null>(null);
-  const invoicesQuery = useAllInvoices({ limit: 100 });
+  const [refundError, setRefundError] = useState<string | null>(null);
+  const invoicesQuery = useAllInvoices({ ...invoiceQuery(filter, page), ...profileFilters });
   const invoices = invoicesQuery.data?.invoices ?? [];
   const paid = invoices.filter((invoice) => invoice.status === "PAID");
-  const voidInvoice = useVoidInvoice({ onSuccess: (result) => notify(toast, result, "Invoice voided", "Could not void invoice") });
+  const resend = useResendInvoice({ onSuccess: (result) => notify(toast, result, "Invoice sent", "Could not resend invoice"), onError: () => mutationFailure(toast) });
+  const voidInvoice = useVoidInvoice({ onSuccess: (result) => { notify(toast, result, "Invoice voided", "Could not void invoice"); if (result.ok) setVoidTarget(null); }, onError: () => mutationFailure(toast) });
   const refund = useRefundInvoice({
     onSuccess: (result) => {
       notify(toast, result, "Refund issued", "Could not refund");
-      if (result.ok) setRefundTarget(null);
+      if (result.ok) { setRefundTarget(null); setRefundError(null); }
+      else setRefundError(actionMessage(result));
     },
+    onError: () => setRefundError("The refund could not be submitted. Please try again."),
   });
 
   return (
     <>
       <div className="app-page">
-        <PageHead title="Payments" subtitle="Every invoice on the platform. Void unpaid invoices to reissue them; refund paid ones." />
+        <PageHead title="Payments" subtitle="Every invoice on the platform. Void unpaid invoices to reissue them; refund paid ones." actions={<RefreshInvoices query={invoicesQuery} />} />
+
+        <AdminInvoiceFilters onApply={(value) => { setProfileFilters(value); setPage(1); }} />
+        <AdminPayoutLookup />
 
         <div className="mb-6 grid gap-4 sm:grid-cols-3">
-          <Stat value={formatPence(sum(paid, "totalAmountPence"))} label="Collected" />
-          <Stat value={formatPence(sum(paid, "feeAmountPence"))} label="SupplyEd fees" />
-          <Stat value={invoices.filter((invoice) => invoice.status === "OPEN").length} label="Unpaid invoices" />
+          <Stat value={formatPence(sum(paid, "totalAmountPence"))} label="Paid invoice totals on this page" />
+          <Stat value={formatPence(sum(paid, "feeAmountPence"))} label="Fees on paid invoices on this page" />
+          <Stat value={invoices.filter(isUnpaid).length} label="Unpaid invoices on this page" />
         </div>
 
         <InvoiceList
           emptyMessage="Invoices appear here when schools invoice completed bookings."
           filter={filter}
-          onFilter={setFilter}
+          onFilter={(value) => { setFilter(value); setPage(1); }}
+          onPage={setPage}
           query={invoicesQuery}
           renderActions={(invoice) => (
             <>
+              <Btn size="sm" variant="ghost" onClick={() => setDetailId(invoice.id)}>Details</Btn>
               <PdfLink invoice={invoice} />
               {invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE" ? (
                 <Btn
@@ -239,13 +200,14 @@ function AdminPayments({ toast }: { toast: ToastFn }) {
                   loadingLabel="Voiding"
                   size="sm"
                   variant="danger"
-                  onClick={() => voidInvoice.mutate(invoice.id)}
+                  onClick={() => setVoidTarget(invoice)}
                 >
                   Void
                 </Btn>
               ) : null}
+              {isUnpaid(invoice) ? <Btn disabled={resend.isPending} loading={resend.isPending && resend.variables === invoice.id} loadingLabel="Sending" size="sm" variant="ghost" onClick={() => resend.mutate(invoice.id)}>Email again</Btn> : null}
               {invoice.status === "PAID" && invoice.amountRefundedPence < invoice.totalAmountPence ? (
-                <Btn size="sm" variant="secondary" onClick={() => setRefundTarget(invoice)}>
+                <Btn disabled={refund.isPending} size="sm" variant="secondary" onClick={() => { setRefundError(null); setRefundTarget(invoice); }}>
                   Refund
                 </Btn>
               ) : null}
@@ -258,6 +220,7 @@ function AdminPayments({ toast }: { toast: ToastFn }) {
       <RefundModal
         key={refundTarget?.id ?? "none"}
         invoice={refundTarget}
+        error={refundError}
         loading={refund.isPending}
         onClose={() => {
           if (!refund.isPending) setRefundTarget(null);
@@ -266,17 +229,31 @@ function AdminPayments({ toast }: { toast: ToastFn }) {
           if (refundTarget) refund.mutate({ amountPence, id: refundTarget.id, reason });
         }}
       />
+      <Modal open={Boolean(voidTarget)} onClose={() => { if (!voidInvoice.isPending) setVoidTarget(null); }}>
+        <div className="p-6 sm:p-7">
+          <h2 className="font-serif text-2xl">Void this invoice?</h2>
+          <p className="mt-3 text-sm leading-6 text-muted">This cancels the unpaid invoice for {voidTarget?.booking.jobTitle}. The school can issue a replacement invoice for the booking.</p>
+          <div className="mt-6 flex justify-end gap-3">
+            <Btn disabled={voidInvoice.isPending} variant="ghost" onClick={() => setVoidTarget(null)}>Keep invoice</Btn>
+            <Btn loading={voidInvoice.isPending} loadingLabel="Voiding" variant="danger" onClick={() => { if (voidTarget) voidInvoice.mutate(voidTarget.id); }}>Void invoice</Btn>
+          </div>
+        </div>
+
+      </Modal>
+      <InvoiceDetailsModal id={detailId} onClose={() => setDetailId(null)} role="admin" />
     </>
   );
 }
 
 function RefundModal({
   invoice,
+  error,
   loading,
   onClose,
   onSubmit,
 }: {
   invoice: Invoice | null;
+  error: string | null;
   loading: boolean;
   onClose: () => void;
   onSubmit: (amountPence: number | undefined, reason: RefundReason) => void;
@@ -285,7 +262,7 @@ function RefundModal({
   const [reason, setReason] = useState<RefundReason>("requested_by_customer");
   const refundable = invoice ? invoice.totalAmountPence - invoice.amountRefundedPence : 0;
   const pence = amount.trim() ? Math.round(Number(amount) * 100) : undefined;
-  const invalid = pence !== undefined && (!Number.isFinite(pence) || pence < 1 || pence > refundable);
+  const invalid = refundable < 1 || (pence !== undefined && (!/^\d+(\.\d{1,2})?$/.test(amount.trim()) || !Number.isSafeInteger(pence) || pence < 1 || pence > refundable));
 
   return (
     <Modal open={Boolean(invoice)} onClose={onClose}>
@@ -293,7 +270,7 @@ function RefundModal({
         className="p-6 sm:p-7"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!invalid) onSubmit(pence, reason);
+          if (!loading && !invalid) onSubmit(pence, reason);
         }}
       >
         <Tag tone="red">Refund</Tag>
@@ -312,6 +289,7 @@ function RefundModal({
             value={amount}
           />
         </label>
+        {error ? <p className="mt-3 text-sm text-danger" role="alert">{error}</p> : null}
         {invalid ? <p className="mt-2 text-sm text-danger">Enter an amount between £0.01 and {formatPence(refundable)}.</p> : null}
         <label className="mt-4 block text-sm font-semibold">
           Reason
@@ -336,10 +314,47 @@ function RefundModal({
 
 // ---- Shared ----
 
+type ProfileInvoiceFilters = Pick<AdminInvoiceListQuery, "bookingId" | "instructorId" | "institutionId">;
+
+function AdminInvoiceFilters({ onApply }: { onApply: (filters: ProfileInvoiceFilters) => void }) {
+  const [values, setValues] = useState({ bookingId: "", instructorId: "", institutionId: "" });
+  const [error, setError] = useState<string | null>(null);
+  const fields = [
+    { key: "bookingId", label: "Booking ID" },
+    { key: "instructorId", label: "Instructor profile ID" },
+    { key: "institutionId", label: "School profile ID" },
+  ] as const;
+
+  return (
+    <details className="card card-pad mb-4">
+      <summary className="cursor-pointer text-sm font-semibold">Filter invoices by booking or profile</summary>
+      <form className="mt-4" onSubmit={(event) => {
+        event.preventDefault();
+        if (Object.values(values).some((value) => value.trim() && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim()))) {
+          setError("Enter a valid UUID for each filter, or leave it empty.");
+          return;
+        }
+        setError(null);
+        onApply({ bookingId: values.bookingId.trim() || undefined, instructorId: values.instructorId.trim() || undefined, institutionId: values.institutionId.trim() || undefined });
+      }}>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {fields.map((field) => <label key={field.key} className="text-sm font-semibold">{field.label}<input className="input mt-2 w-full font-normal" value={values[field.key]} onChange={(event) => setValues({ ...values, [field.key]: event.target.value })} placeholder="UUID" /></label>)}
+        </div>
+        {error ? <p className="mt-3 text-sm text-danger" role="alert">{error}</p> : null}
+        <div className="mt-4 flex justify-end gap-2">
+          <Btn size="sm" variant="ghost" onClick={() => { setValues({ bookingId: "", instructorId: "", institutionId: "" }); setError(null); onApply({}); }}>Clear filters</Btn>
+          <Btn size="sm" type="submit">Apply filters</Btn>
+        </div>
+      </form>
+    </details>
+  );
+}
+
 function InvoiceList({
   emptyMessage,
   filter,
   onFilter,
+  onPage,
   query,
   renderActions,
   role,
@@ -347,17 +362,18 @@ function InvoiceList({
   emptyMessage: string;
   filter: Filter;
   onFilter: (filter: Filter) => void;
+  onPage: (page: number) => void;
   query: { data?: PaginatedInvoices; error: Error | null; isLoading: boolean };
   renderActions?: (invoice: Invoice) => ReactNode;
   role: AppRole;
 }) {
-  const status = filters.find((item) => item.value === filter)?.status;
-  const invoices = (query.data?.invoices ?? []).filter((invoice) => !status || invoice.status === status);
+  const invoices = query.data?.invoices ?? [];
+  const pagination = query.data?.pagination;
 
   return (
     <>
       <div className="card card-pad mb-4 flex flex-wrap items-center gap-3">
-        {filters.map((item) => (
+        {filters.filter((item) => role === "admin" || item.value !== "pending").map((item) => (
           <Btn key={item.value} size="sm" variant={filter === item.value ? "secondary" : "ghost"} onClick={() => onFilter(item.value)}>
             {item.label}
           </Btn>
@@ -375,6 +391,13 @@ function InvoiceList({
           {invoices.map((invoice) => (
             <InvoiceRow key={invoice.id} actions={renderActions?.(invoice)} invoice={invoice} role={role} />
           ))}
+        </div>
+      ) : null}
+      {pagination && pagination.totalPages > 1 ? (
+        <div className="mt-5 flex items-center justify-between gap-3 text-sm">
+          <Btn disabled={pagination.page <= 1 || query.isLoading} size="sm" variant="ghost" onClick={() => onPage(pagination.page - 1)}>Previous</Btn>
+          <span className="text-muted">Page {pagination.page} of {pagination.totalPages} · {pagination.total} invoices</span>
+          <Btn disabled={!pagination.hasNextPage || query.isLoading} size="sm" variant="ghost" onClick={() => onPage(pagination.page + 1)}>Next</Btn>
         </div>
       ) : null}
     </>
@@ -397,8 +420,8 @@ function InvoiceRow({ actions, invoice, role }: { actions?: ReactNode; invoice: 
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-serif text-xl leading-tight">{invoice.booking.jobTitle}</h3>
             <InvoiceStatusTag invoice={invoice} />
-            {invoice.amountRefundedPence > 0 ? <Tag tone="ghost">Refunded {formatPence(invoice.amountRefundedPence)}</Tag> : null}
-            {invoice.disputeStatus ? <Tag tone="red">Disputed</Tag> : null}
+            {invoice.amountRefundedPence > 0 ? <Tag tone="ghost">Invoice refunded {formatPence(invoice.amountRefundedPence)}</Tag> : null}
+            {invoice.disputeStatus ? <Tag tone="red">Dispute: {invoice.disputeStatus.replaceAll("_", " ")}</Tag> : null}
           </div>
           <div className="mt-1 text-sm text-muted">
             {counterpart} · {formatDateRange(invoice.booking.startDate, invoice.booking.endDate)}
@@ -435,13 +458,31 @@ function InvoiceStatusTag({ invoice }: { invoice: Invoice }) {
 }
 
 function PdfLink({ invoice }: { invoice: Invoice }) {
-  if (!invoice.invoicePdfUrl || invoice.status === "PENDING") return null;
+  const url = stripeInvoiceUrl(invoice.invoicePdfUrl);
+  if (!url || invoice.status === "PENDING") return null;
 
   return (
-    <a className={buttonClassName({ size: "sm", variant: "ghost" })} href={invoice.invoicePdfUrl} rel="noopener noreferrer" target="_blank">
+    <a className={buttonClassName({ size: "sm", variant: "ghost" })} href={url} rel="noopener noreferrer" target="_blank">
       PDF
     </a>
   );
+}
+
+function PaymentLink({ invoice }: { invoice: Invoice }) {
+  const url = stripeInvoiceUrl(invoice.hostedInvoiceUrl);
+  return isUnpaid(invoice) && url ? <a className={buttonClassName({ size: "sm" })} href={url} rel="noopener noreferrer" target="_blank">Pay in Stripe</a> : null;
+}
+
+function RefreshInvoices({ query }: { query: { isFetching: boolean; refetch: () => unknown } }) {
+  return <Btn loading={query.isFetching} loadingLabel="Refreshing" size="sm" variant="ghost" onClick={() => { void query.refetch(); }}>Refresh status</Btn>;
+}
+
+function invoiceQuery(filter: Filter, page: number) {
+  return { limit: 20, page, status: filters.find((item) => item.value === filter)?.status };
+}
+
+function isUnpaid(invoice: Invoice) {
+  return invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE";
 }
 
 function Notice({ children, tone }: { children: ReactNode; tone: "green" | "red" }) {
@@ -464,12 +505,21 @@ function EmptyState({ title, message }: { title: string; message: string }) {
   );
 }
 
-function notify(toast: ToastFn, result: { message?: string; ok: boolean }, success: string, failure: string) {
+function notify(toast: ToastFn, result: { message?: string; ok: boolean; requestId?: string }, success: string, failure: string) {
   toast({
-    msg: result.message ?? (result.ok ? "Done." : "Please try again."),
+    msg: actionMessage(result),
     title: result.ok ? success : failure,
     tone: result.ok ? "success" : "danger",
   });
+}
+
+function actionMessage(result: { message?: string; ok: boolean; requestId?: string }) {
+  const message = result.message ?? (result.ok ? "Done." : "Please try again.");
+  return !result.ok && result.requestId ? `${message} Support reference: ${result.requestId}` : message;
+}
+
+function mutationFailure(toast: ToastFn) {
+  toast({ title: "Payment action unavailable", msg: "The request could not be submitted. Please try again.", tone: "danger" });
 }
 
 function sum(invoices: Invoice[], field: "feeAmountPence" | "teacherAmountPence" | "totalAmountPence") {
@@ -478,10 +528,6 @@ function sum(invoices: Invoice[], field: "feeAmountPence" | "teacherAmountPence"
 
 function isOverdue(invoice: Invoice) {
   return invoice.status === "OPEN" && Boolean(invoice.dueAt) && new Date(invoice.dueAt as string).getTime() < Date.now();
-}
-
-function isThisYear(value: string | null) {
-  return Boolean(value) && new Date(value as string).getFullYear() === new Date().getFullYear();
 }
 
 function describeWork(invoice: Invoice) {

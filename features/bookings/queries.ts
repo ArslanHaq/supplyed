@@ -28,7 +28,7 @@ export async function listMyBookings(query: BookingListQuery = {}): Promise<Pagi
   if (!backendEnabled()) return emptyBookings(normalized);
 
   const result = await api.get<PaginatedBookings>("/bookings/me", {
-    next: { tags: ["bookings"] },
+    cache: "no-store",
     query: normalized,
   });
 

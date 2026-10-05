@@ -1,4 +1,4 @@
-import type { Invoice, InvoiceListQuery, InvoiceStatus, PaginatedInvoices, PayoutAccount, StripeLink } from "./types";
+import type { AdminInvoiceListQuery, Invoice, InvoiceListQuery, InvoiceStatus, PaginatedInvoices, PayoutAccount, StripeLink } from "./types";
 
 export const invoiceStatuses = new Set<InvoiceStatus>(["PENDING", "OPEN", "PAID", "VOID", "UNCOLLECTIBLE"]);
 
@@ -38,6 +38,14 @@ export function normalizeStripeLink(link: Partial<StripeLink>): StripeLink {
 }
 
 export function normalizeInvoice(invoice: Invoice): Invoice {
+  const paidAt = readDateIso(invoice.paidAt);
+  const rawStatus = typeof invoice.status === "string" ? invoice.status.toUpperCase() : "";
+  const status = paidAt
+    ? "PAID"
+    : invoiceStatuses.has(rawStatus as InvoiceStatus)
+      ? rawStatus as InvoiceStatus
+      : "OPEN";
+
   return {
     ...invoice,
     amountRefundedPence: readNumber(invoice.amountRefundedPence) ?? 0,
@@ -57,11 +65,11 @@ export function normalizeInvoice(invoice: Invoice): Invoice {
     hostedInvoiceUrl: invoice.hostedInvoiceUrl ?? null,
     invoiceNumber: invoice.invoiceNumber ?? null,
     invoicePdfUrl: invoice.invoicePdfUrl ?? null,
-    paidAt: readDateIso(invoice.paidAt),
+    paidAt,
     payType: invoice.payType ?? "daily",
     poNumber: invoice.poNumber ?? null,
     rateAmount: readNumber(invoice.rateAmount) ?? 0,
-    status: invoiceStatuses.has(invoice.status) ? invoice.status : "OPEN",
+    status,
     teacherAmountPence: readNumber(invoice.teacherAmountPence) ?? 0,
     totalAmountPence: readNumber(invoice.totalAmountPence) ?? 0,
     unitsWorked: readNumber(invoice.unitsWorked),
@@ -85,9 +93,19 @@ export function normalizePaginatedInvoices(payload: PaginatedInvoices): Paginate
 
 export function normalizeInvoicesQuery(query: InvoiceListQuery = {}): InvoiceListQuery {
   return {
-    limit: query.limit && Number.isFinite(query.limit) ? Math.min(100, Math.max(1, query.limit)) : 20,
-    page: query.page && Number.isFinite(query.page) ? Math.max(1, query.page) : 1,
+    limit: query.limit && Number.isFinite(query.limit) ? Math.min(100, Math.max(1, Math.floor(query.limit))) : 20,
+    page: query.page && Number.isFinite(query.page) ? Math.max(1, Math.floor(query.page)) : 1,
+    status: query.status && query.status !== "PENDING" && invoiceStatuses.has(query.status) ? query.status : undefined,
+  };
+}
+
+export function normalizeAdminInvoicesQuery(query: AdminInvoiceListQuery = {}): AdminInvoiceListQuery {
+  return {
+    ...normalizeInvoicesQuery(query),
     status: query.status && invoiceStatuses.has(query.status) ? query.status : undefined,
+    bookingId: query.bookingId?.trim() || undefined,
+    instructorId: query.instructorId?.trim() || undefined,
+    institutionId: query.institutionId?.trim() || undefined,
   };
 }
 

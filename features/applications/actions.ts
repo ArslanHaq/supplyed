@@ -48,6 +48,10 @@ export async function updateApplicationStatusAction(input: ApplicationStatusUpda
     const application = await api.patch<JobApplication>(`/applications/${input.id}/status`, { status: input.status });
     revalidateTag("applications", "max");
     revalidateTag(`applications:job:${application.jobId}`, "max");
+    if (application.status === "HIRED") {
+      revalidateTag("bookings", "max");
+      revalidateTag("invoices", "max");
+    }
     return actionOk(normalizeApplication(application), "Application status updated.");
   } catch (error) {
     return actionError(readApplicationError(error), { code: error instanceof ApiError ? error.code : undefined });

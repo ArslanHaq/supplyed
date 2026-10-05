@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { City, Country, type ICity } from "country-state-city";
 
+import { usePhoneVerificationPending } from "@/features/auth/use-phone-verification";
 import { useSettingsProfile, useUpdateSettings, useUploadSettingsProfileImage } from "@/features/settings/use-settings";
 import type {
   SettingsInstitutionUpdateInput,
@@ -15,6 +16,8 @@ import type { AppRole, ApplicationStatus, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Checkbox, Field, Icon, Tag } from "../atoms";
 import { PageHead, PostcodeLookup, SectionLoader } from "../molecules";
+import { PayoutSettings } from "./PayoutSettings";
+import { PhoneVerification } from "../molecules/PhoneVerification";
 
 type SettingsForm = {
   institution: SettingsInstitutionUpdateInput;
@@ -336,8 +339,14 @@ function CountryCityFields({
 
 export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "go" | "state" | "toast"> & { verified: boolean }) {
   const profileQuery = useSettingsProfile();
+  const phoneVerificationPending = usePhoneVerificationPending();
   const profile = profileQuery.data;
-  const snapshotKey = JSON.stringify(profile ?? null);
+  const snapshotKey = JSON.stringify(profile ? {
+    ...profile,
+    institution: profile.institution ? { ...profile.institution, imageUrl: undefined } : undefined,
+    instructor: profile.instructor ? { ...profile.instructor, imageUrl: undefined } : undefined,
+    user: { ...profile.user, phone: undefined, phoneVerified: undefined, updatedAt: undefined },
+  } : null);
   const [formCache, setFormCache] = useState<SettingsFormCache>(() => ({
     form: createForm(profile),
     snapshotKey,
@@ -454,6 +463,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   }
   function saveSettings(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (phoneVerificationPending) return;
 
     if (!profile || !role) {
       setSubmitError("Profile settings are not ready yet.");
@@ -465,7 +475,8 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
       instructor: role === "teacher" ? form.instructor : undefined,
 
       role,
-      user: form.user,
+      // Phone changes are committed only by successful SMS verification.
+      user: { ...form.user, phone: profile.user.phone },
     };
 
     updateSettings.mutate(payload);
@@ -546,15 +557,17 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
             <Field label="Email">
               <input className="input bg-chalk text-muted" readOnly value={profile.user.email} />
             </Field>
-            <Field error={errors.phone} label="Phone">
-              <input
-                className="input"
-                inputMode="tel"
-                onChange={(event) => updateUser("phone", event.target.value)}
-                placeholder="+44 7700 000000"
-                value={form.user.phone}
+            <div className="sm:col-span-2">
+              <PhoneVerification
+                disabled={updateSettings.isPending}
+                error={errors.phone}
+                onChange={(phone) => updateUser("phone", phone)}
+                phone={form.user.phone}
+                savedPhone={profile.user.phone}
+                verified={profile.user.phoneVerified}
               />
-            </Field>
+              <p className="mb-4 text-xs text-muted">Phone changes take effect after you confirm the SMS code.</p>
+            </div>
 
             {role === "teacher" ? (
               <>
@@ -778,6 +791,8 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
           </div>
         </section>
 
+        {role === "teacher" && profile.instructor?.id ? <div className="mt-6"><PayoutSettings /></div> : null}
+
         {submitError ? (
           <div className="mt-5 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
             {submitError}
@@ -788,7 +803,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
           <Btn onClick={() => go("dashboard")} variant="ghost">
             Cancel
           </Btn>
-          <Btn disabled={!canSave} iconRight="check" loading={updateSettings.isPending} loadingLabel="Saving" size="lg" type="submit">
+          <Btn disabled={!canSave || phoneVerificationPending} iconRight="check" loading={updateSettings.isPending} loadingLabel="Saving" size="lg" type="submit">
             Save settings
           </Btn>
         </div>

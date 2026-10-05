@@ -582,9 +582,13 @@ async function getOnboardingAuth(): Promise<BackendAuthResponse & { accessToken:
 }
 
 async function saveUserBasics(formData: FormData, postcodeFallback = "") {
+  let currentPhone = "";
+  let currentPhoneVerified = false;
   if (backendEnabled()) {
     const current = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
     if (normalizeRole(current.role)) return normalizeUserSnapshot(current, current.email, postcodeFallback);
+    currentPhone = current.phone?.trim() ?? "";
+    currentPhoneVerified = current.phoneVerified === true;
   }
   if (!backendEnabled()) {
     return normalizeUserSnapshot(
@@ -601,10 +605,14 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   const name = readFormString(formData, "fullName");
   const phone = readFormString(formData, "phone");
 
+  if (currentPhoneVerified && phone !== currentPhone) {
+    throw new Error("Verify your new phone number before creating this profile.");
+  }
+
   if (name || phone) {
     await api.patch("/users/me", {
       name: name || undefined,
-      phone: phone || undefined,
+      phone: phone && phone !== currentPhone ? phone : undefined,
     });
   }
 
@@ -797,6 +805,12 @@ export async function saveOnboardingStepAction(formData: FormData) {
   }
 
   try {
+    const savedUser = await getCurrentUserSnapshot(postcode);
+    const stepUser = {
+      ...user,
+      emailVerified: savedUser?.emailVerified === true,
+      phoneVerified: savedUser?.phoneVerified === true && savedUser.phone === user.phone,
+    };
     const documentState = normalizeRole(authContext.role)
       ? await getDocumentState(role)
       : {
@@ -814,7 +828,7 @@ export async function saveOnboardingStepAction(formData: FormData) {
           documents: documentState.documents,
           requirementDocuments: documentState.requirementDocuments,
           role,
-          user,
+          user: stepUser,
         },
       },
       "Step saved.",

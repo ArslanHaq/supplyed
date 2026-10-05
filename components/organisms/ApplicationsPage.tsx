@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 
 import type { JobApplication, JobApplicationStatus } from "@/features/applications/types";
 import { useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
@@ -83,6 +84,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
           <p className="mt-3 text-sm leading-6 text-muted">
             This confirms the teacher for the role and creates the booking contract from the job dates, pay, and school details. Both the school and teacher can then open it from Bookings.
           </p>
+          <BookingPaymentNotice job={job} />
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Btn variant="ghost" disabled={updateStatus.isPending} onClick={() => setHireTarget(null)}>Cancel</Btn>
             <Btn loading={updateStatus.isPending} onClick={() => {

@@ -13,7 +13,8 @@ import {
   resendInvoiceAction,
   voidInvoiceAction,
 } from "./actions";
-import type { CreateInvoiceInput, InvoiceListQuery, PaginatedInvoices, PayoutAccount, RefundInvoiceInput } from "./types";
+import type { AdminInvoiceListQuery, CreateInvoiceInput, Invoice, InvoiceListQuery, PaginatedInvoices, PayoutAccount, RefundInvoiceInput } from "./types";
+import { isStripePayoutUrl, openStripePayoutPage } from "./stripe-links";
 
 type MutationOptions<Result> = {
   onError?: () => void;
@@ -23,11 +24,17 @@ type MutationOptions<Result> = {
 type LinkResult = Awaited<ReturnType<typeof createPayoutOnboardingLinkAction>>;
 type InvoiceResult = Awaited<ReturnType<typeof createInvoiceAction>>;
 
-export function usePayoutAccount(options: { enabled?: boolean } = {}) {
+export function usePayoutAccount(options: { enabled?: boolean; pollUntilReady?: boolean } = {}) {
   return useQuery({
     enabled: options.enabled ?? true,
     queryFn: () => fetchJson<PayoutAccount>("/api/payments/payout-account"),
     queryKey: queryKeys.payments.payoutAccount(),
+    refetchInterval: options.pollUntilReady
+      ? (query) => query.state.data?.connected && !query.state.data.ready ? 15_000 : false
+      : false,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 }
 
@@ -36,24 +43,54 @@ export function useMyInvoices(query: InvoiceListQuery = {}, options: { enabled?:
     enabled: options.enabled ?? true,
     queryFn: () => fetchJson<PaginatedInvoices>("/api/invoices/me", { query }),
     queryKey: queryKeys.payments.myInvoices(query),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: (current) => current.state.data?.invoices.some((invoice) => invoice.status === "OPEN" || invoice.status === "PAID" || invoice.status === "UNCOLLECTIBLE") ? 15_000 : false,
   });
 }
 
-export function useAllInvoices(query: InvoiceListQuery = {}, options: { enabled?: boolean } = {}) {
+export function useAllInvoices(query: AdminInvoiceListQuery = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
     enabled: options.enabled ?? true,
     queryFn: () => fetchJson<PaginatedInvoices>("/api/invoices", { query }),
     queryKey: queryKeys.payments.allInvoices(query),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: (current) => current.state.data?.invoices.some((invoice) => invoice.status !== "VOID") ? 15_000 : false,
+  });
+}
+
+export function useInvoice(id: string | null) {
+  return useQuery({
+    enabled: Boolean(id),
+    queryFn: () => fetchJson<Invoice>(`/api/invoices/${encodeURIComponent(id ?? "")}`),
+    queryKey: [...queryKeys.payments.all, "invoice", id],
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: (current) => current.state.data && current.state.data.status !== "VOID" ? 15_000 : false,
   });
 }
 
 /** Opens Stripe's hosted onboarding (or the payouts dashboard) in this tab once the link is ready. */
 export function usePayoutLink(kind: "dashboard" | "onboarding", options: MutationOptions<LinkResult> = {}) {
-  return useMutation({
-    mutationFn: () => (kind === "onboarding" ? createPayoutOnboardingLinkAction() : createPayoutDashboardLinkAction()),
+  return useMutation<LinkResult, Error, void>({
+    mutationFn: async () => {
+      const result = await (kind === "onboarding" ? createPayoutOnboardingLinkAction() : createPayoutDashboardLinkAction());
+      if (result.ok && !isStripePayoutUrl(result.data.url)) {
+        return { ok: false, message: "Stripe returned an invalid payout link. Please try again." };
+      }
+      return result;
+    },
     onError: options.onError,
     onSuccess: async (result) => {
-      if (result.ok && result.data.url) window.location.assign(result.data.url);
+      if (result.ok) {
+        try {
+          openStripePayoutPage(result.data.url);
+        } catch {
+          // The component can show an explicit target="_top" link if the preview blocks automatic navigation.
+          options.onError?.();
+        }
+      }
       await options.onSuccess?.(result);
     },
   });

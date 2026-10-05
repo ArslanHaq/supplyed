@@ -248,6 +248,8 @@ export function normalizeAuthUser(payload: unknown): AuthUser {
       readString(user.institutionId) ??
       (isRecord(user.institutionProfile) ? readString(user.institutionProfile.id) : undefined),
     name: readString(user.name) ?? readString(user.fullName) ?? null,
+    phone: readString(user.phone) ?? "",
+    phoneVerified: readBoolean(user.phoneVerified) ?? false,
     role: normalizeRole(user.role),
   };
 }

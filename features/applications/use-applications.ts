@@ -42,6 +42,10 @@ export function useUpdateApplicationStatus(options: UseCreateApplicationOptions 
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
+          ...(result.data.status === "HIRED" ? [
+            queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.payments.all }),
+          ] : []),
         ]);
       }
       await options.onSuccess?.(result);

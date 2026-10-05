@@ -20,6 +20,9 @@ export function useBookings(query: BookingListQuery = {}) {
   return useQuery({
     queryFn: () => fetchJson<PaginatedBookings>("/api/bookings/me", { query }),
     queryKey: queryKeys.bookings.mine(query),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: (current) => current.state.data?.bookings.some((booking) => booking.invoice?.status === "OPEN" || booking.invoice?.status === "UNCOLLECTIBLE") ? 15_000 : false,
   });
 }
 

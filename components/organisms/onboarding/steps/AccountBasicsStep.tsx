@@ -79,14 +79,19 @@ export function AccountBasicsStep({
             placeholder="Your full name"
           />
         </Field>
-        <Field label="Phone" htmlFor="signup-phone" error={errors.phone} required>
+        <Field label="Phone number" htmlFor="signup-phone" error={errors.phone} required
+          hint="Use your country code. Numbers without a country code are treated as UK numbers.">
           <input
-            id="signup-phone"
+            autoComplete="tel"
             className={fieldClass(errors.phone)}
-            value={form.phone}
+            disabled={Boolean(controller.pending)}
+            id="signup-phone"
+            inputMode="tel"
+            maxLength={30}
             onChange={(event) => updateField("phone", event.target.value)}
             placeholder="+44 7700 900000"
-            inputMode="tel"
+            type="tel"
+            value={form.phone}
           />
         </Field>
         {roleSelected && activeRole !== "institution" ? (

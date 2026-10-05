@@ -6,6 +6,7 @@ import type { AppRole } from "@/types/supplyed";
 
 import { Btn, Field, Icon, Logo, Tag } from "../atoms";
 import { Modal } from "../molecules";
+import { PhoneVerification } from "../molecules/PhoneVerification";
 import type {
   OnboardingDocumentDownloadActionResult,
   OnboardingDocumentUploadActionResult,
@@ -96,6 +97,7 @@ export function OnboardingPage({
     isLastStep,
     lockedDocumentStage,
     pending,
+    phoneVerificationPending,
     progress,
     requirementUploadPending,
     steps,
@@ -117,6 +119,7 @@ export function OnboardingPage({
   }
 
   function handlePrimaryAction() {
+    if (phoneVerificationPending) return;
     if (lockedDocumentStage) {
       void submitDocumentsForReview();
       return;
@@ -191,6 +194,7 @@ export function OnboardingPage({
                 return (
                   <button
                     key={item.label}
+                    disabled={Boolean(pending) || phoneVerificationPending}
                     className="flex w-full gap-3 text-left"
                     onClick={() => {
                       if (!lockedDocumentStage && itemStep < currentStep) setStep(itemStep);
@@ -259,11 +263,14 @@ export function OnboardingPage({
 
           <div className="flex-1">
             {lockedDocumentStage ? (
-              <div className={controller.form.institutionType === "MAT_SCHOOL" ? "grid items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "space-y-6"}>
-                {controller.form.institutionType === "MAT_SCHOOL" ? (
-                  <SignatoryApprovalCard controller={controller} onRefresh={onRefresh} />
-                ) : null}
-                <DocumentUploadStep controller={controller} />
+              <div className="space-y-6">
+                <PhoneVerificationCard controller={controller} />
+                <div className={controller.form.institutionType === "MAT_SCHOOL" ? "grid items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "space-y-6"}>
+                  {controller.form.institutionType === "MAT_SCHOOL" ? (
+                    <SignatoryApprovalCard controller={controller} onRefresh={onRefresh} />
+                  ) : null}
+                  <DocumentUploadStep controller={controller} />
+                </div>
               </div>
             ) : (
               <OnboardingStepContent
@@ -285,7 +292,7 @@ export function OnboardingPage({
             {lockedDocumentStage ? (
               <span className="text-sm font-semibold text-muted">Profile created. Previous onboarding steps are locked.</span>
             ) : (
-              <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending)} onClick={() => setStep(Math.max(1, currentStep - 1))}>Back</Btn>
+              <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending) || phoneVerificationPending} onClick={() => setStep(Math.max(1, currentStep - 1))}>Back</Btn>
             )}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <span className="self-center text-xs font-semibold uppercase tracking-[1px] text-muted">
@@ -296,7 +303,7 @@ export function OnboardingPage({
                 loadingLabel={lockedDocumentStage ? "Sending for review" : isLastStep ? "Creating profile" : "Saving step"}
                 size="lg"
                 iconRight="arrow"
-                disabled={Boolean(uploadPending || requirementUploadPending || (lockedDocumentStage && (documentRequirementsLoading || documentRequirementsError)))}
+                disabled={Boolean(phoneVerificationPending || uploadPending || requirementUploadPending || (lockedDocumentStage && (documentRequirementsLoading || documentRequirementsError)))}
                 onClick={handlePrimaryAction}
               >
                 {lockedDocumentStage ? "Send for review" : isLastStep ? signupSubmitLabel(activeRole) : "Continue"}
@@ -325,6 +332,29 @@ export function OnboardingPage({
         </div>
       </Modal>
       <DocumentPreviewModal preview={documentPreview} onClose={closeDocumentPreview} />
+    </div>
+  );
+}
+
+function PhoneVerificationCard({ controller }: { controller: OnboardingFormController }) {
+  return (
+    <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="font-semibold text-brand-dark">Verify your phone</div>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-brand-dark/75">
+            Your profile has been created. Confirm the phone number saved on your profile before sending it for review.
+          </p>
+        </div>
+        <PhoneVerification
+          disabled={Boolean(controller.pending)}
+          hidePhoneInput
+          onChange={(phone) => controller.updateField("phone", phone)}
+          phone={controller.form.phone || controller.savedPhone}
+          savedPhone={controller.savedPhone}
+          verified={controller.phoneVerified}
+        />
+      </div>
     </div>
   );
 }

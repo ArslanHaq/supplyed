@@ -1,9 +1,10 @@
 import "server-only";
 
-import { api } from "@/lib/server/api-client";
+import { api, ApiError } from "@/lib/server/api-client";
+import { requirePayoutInstructor } from "./payout-auth";
 
-import { normalizeInvoicesQuery, normalizePaginatedInvoices, normalizePayoutAccount } from "./schemas";
-import type { InvoiceListQuery, PaginatedInvoices, PayoutAccount } from "./types";
+import { normalizeAdminInvoicesQuery, normalizeInvoice, normalizeInvoicesQuery, normalizePaginatedInvoices, normalizePayoutAccount } from "./schemas";
+import type { AdminInvoiceListQuery, Invoice, InvoiceListQuery, PaginatedInvoices, PayoutAccount } from "./types";
 
 function backendEnabled() {
   return Boolean(process.env.API_BASE_URL);
@@ -18,7 +19,8 @@ function emptyInvoices(query: InvoiceListQuery): PaginatedInvoices {
 
 /** The teacher's payout setup. */
 export async function getMyPayoutAccount(): Promise<PayoutAccount> {
-  if (!backendEnabled()) return normalizePayoutAccount(null);
+  await requirePayoutInstructor();
+  if (!backendEnabled()) throw new ApiError("Payout settings are unavailable. Please try again later.", 503);
 
   return normalizePayoutAccount(await api.get<PayoutAccount>("/payments/payout-account", { cache: "no-store" }));
 }
@@ -29,7 +31,7 @@ export async function listMyInvoices(query: InvoiceListQuery = {}): Promise<Pagi
   if (!backendEnabled()) return emptyInvoices(normalized);
 
   const result = await api.get<PaginatedInvoices>("/invoices/me", {
-    next: { tags: ["invoices"] },
+    cache: "no-store",
     query: normalized,
   });
 
@@ -37,14 +39,19 @@ export async function listMyInvoices(query: InvoiceListQuery = {}): Promise<Pagi
 }
 
 /** Admin: every invoice on the platform. */
-export async function listAllInvoices(query: InvoiceListQuery = {}): Promise<PaginatedInvoices> {
-  const normalized = normalizeInvoicesQuery(query);
+export async function listAllInvoices(query: AdminInvoiceListQuery = {}): Promise<PaginatedInvoices> {
+  const normalized = normalizeAdminInvoicesQuery(query);
   if (!backendEnabled()) return emptyInvoices(normalized);
 
   const result = await api.get<PaginatedInvoices>("/invoices", {
-    next: { tags: ["invoices"] },
+    cache: "no-store",
     query: normalized,
   });
 
   return normalizePaginatedInvoices(result);
+}
+
+/** Invoice parties and administrators can read their latest Stripe invoice state. */
+export async function getInvoice(id: string): Promise<Invoice> {
+  return normalizeInvoice(await api.get<Invoice>(`/invoices/${encodeURIComponent(id)}`, { cache: "no-store" }));
 }

@@ -29,7 +29,6 @@ type SettingsActionField =
   | "phone"
   | "schoolName";
 
-const phonePattern = /^[0-9+()\s-]{7,}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function backendEnabled() {
@@ -81,19 +80,17 @@ function actionFailure(error: unknown, fallback: string) {
 function validateUser(input: SettingsUserUpdateInput) {
   const errors: Partial<Record<SettingsActionField, string>> = {};
   const name = text(input.name);
-  const phone = text(input.phone);
 
   if (!name) errors.name = "Enter your display name.";
-  if (phone && !phonePattern.test(phone)) errors.phone = "Use a valid phone number.";
 
   return errors;
 }
 
 function userPayload(input: SettingsUserUpdateInput) {
-  return withoutUndefined({
+  // Phone changes are saved by the verification endpoint, including across tabs.
+  return {
     name: text(input.name),
-    phone: optionalText(input.phone),
-  });
+  };
 }
 
 function instructorPayload(input: SettingsInstructorUpdateInput) {
@@ -188,7 +185,6 @@ function mergeLocalSnapshot(current: SettingsProfileSnapshot, input: SettingsUpd
     user: {
       ...current.user,
       name: text(input.user.name),
-      phone: text(input.user.phone),
     },
   };
 }

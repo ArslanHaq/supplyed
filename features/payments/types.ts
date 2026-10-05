@@ -73,6 +73,12 @@ export type InvoiceListQuery = {
   status?: InvoiceStatus;
 };
 
+export type AdminInvoiceListQuery = InvoiceListQuery & {
+  bookingId?: string;
+  instructorId?: string;
+  institutionId?: string;
+};
+
 export type CreateInvoiceInput = {
   bookingId: string;
   poNumber?: string;

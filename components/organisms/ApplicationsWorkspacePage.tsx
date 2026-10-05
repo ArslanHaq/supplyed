@@ -12,6 +12,7 @@ import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Tag } from "../atoms";
 import { MatchScorePanel, Modal, PageHead, SectionLoader } from "../molecules";
+import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 
 type ApplicationRow = {
   application: JobApplication;
@@ -53,7 +54,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
         toast({
           title: hired ? "Teacher hired" : result.ok ? "Application updated" : "Could not update application",
           msg: hired
-            ? "The teacher has been hired and earlier stages are now locked."
+            ? "Your booking is ready. Once completed, create its Stripe invoice from Bookings."
             : result.message ?? "The application status was updated.",
           tone: result.ok ? "success" : "danger",
         });
@@ -192,6 +193,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
           <p className="mt-3 text-sm leading-6 text-muted">
             Hiring locks the earlier application stages and creates the booking contract from this job.
           </p>
+          <BookingPaymentNotice job={job} />
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Btn variant="ghost" disabled={updateStatus.isPending} onClick={() => setHireTarget(null)}>Cancel</Btn>
             <Btn loading={updateStatus.isPending} onClick={() => {

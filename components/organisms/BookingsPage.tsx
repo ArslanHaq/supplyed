@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react";
 
 import type { Booking, BookingStatus } from "@/features/bookings/types";
+import { bookingDays, invoiceUnitsLimit } from "@/features/bookings/schemas";
 import { useBookings, useCreateBookingReview, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
 import { formatPence } from "@/features/payments/schemas";
-import { useCreateInvoice } from "@/features/payments/use-payments";
+import { stripeInvoiceUrl } from "@/features/payments/invoice-links";
+import { useCreateInvoice, useInvoice } from "@/features/payments/use-payments";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, buttonClassName, Icon, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
+import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 
 type Tab = "active" | "all" | "cancelled" | "completed" | "no-show";
 
@@ -31,12 +34,14 @@ const tabs: Array<{ label: string; value: Tab }> = [
 
 export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">) {
   const [tab, setTab] = useState<Tab>("all");
+  const [page, setPage] = useState(1);
   const [reviewTarget, setReviewTarget] = useState<Booking | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const [invoiceTarget, setInvoiceTarget] = useState<Booking | null>(null);
-  const bookingsQuery = useBookings({ limit: 100 });
-  const allBookings = bookingsQuery.data?.bookings ?? [];
-  const bookings = tabStatus[tab] ? allBookings.filter((booking) => booking.status === tabStatus[tab]) : allBookings;
+  const [invoiceDetailsId, setInvoiceDetailsId] = useState<string | null>(null);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const bookingsQuery = useBookings({ limit: 20, page, status: tabStatus[tab] });
+  const bookings = bookingsQuery.data?.bookings ?? [];
   const updateBooking = useUpdateBookingStatus({
     onSuccess: (result) => {
       toast({
@@ -47,6 +52,7 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
       if (result.ok) {
         setCancelTarget(null);
         setTab("all");
+        setPage(1);
       }
     },
   });
@@ -62,13 +68,20 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
   });
 
   const createInvoice = useCreateInvoice({
+    onError: () => setInvoiceError("The invoice request could not be submitted. Please try again."),
     onSuccess: (result) => {
       toast({
         title: result.ok ? "Invoice sent" : "Could not create invoice",
-        msg: result.message ?? "The school has been sent the invoice.",
+        msg: !result.ok && result.requestId ? `${result.message} Support reference: ${result.requestId}` : result.message ?? "The school has been sent the invoice.",
         tone: result.ok ? "success" : "danger",
       });
-      if (result.ok) setInvoiceTarget(null);
+      if (result.ok) {
+        setInvoiceTarget(null);
+        setInvoiceError(null);
+        setInvoiceDetailsId(result.data.id);
+      } else {
+        setInvoiceError(result.requestId ? `${result.message} Support reference: ${result.requestId}` : result.message);
+      }
     },
   });
 
@@ -82,7 +95,7 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
         <PageHead
           title="Bookings"
           subtitle={subtitle}
-          actions={<Tag tone="ghost">{bookings.length} shown</Tag>}
+          actions={<><Tag tone="ghost">{bookingsQuery.data?.pagination.total ?? 0} bookings</Tag><Btn loading={bookingsQuery.isFetching} loadingLabel="Refreshing" size="sm" variant="ghost" onClick={() => { void bookingsQuery.refetch(); }}>Refresh</Btn></>}
         />
 
         <div className="card card-pad mb-6 flex flex-wrap items-center gap-3">
@@ -91,7 +104,7 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
               key={item.value}
               size="sm"
               variant={tab === item.value ? "secondary" : "ghost"}
-              onClick={() => setTab(item.value)}
+              onClick={() => { setTab(item.value); setPage(1); }}
             >
               {item.label}
             </Btn>
@@ -115,13 +128,21 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
                 cancelling={updateBooking.isPending && cancelTarget?.id === booking.id}
                 onCancel={setCancelTarget}
                 onComplete={(id) => updateBooking.mutate({ action: "complete", id })}
-                onInvoice={setInvoiceTarget}
+                onInvoice={(booking) => { setInvoiceError(null); setInvoiceTarget(booking); }}
+                onInvoiceDetails={setInvoiceDetailsId}
                 onNoShow={(id) => updateBooking.mutate({ action: "no-show", id })}
                 onReview={setReviewTarget}
                 pending={updateBooking.isPending}
                 role={role}
               />
             ))}
+          </div>
+        ) : null}
+        {bookingsQuery.data && bookingsQuery.data.pagination.totalPages > 1 ? (
+          <div className="mt-5 flex items-center justify-between gap-3 text-sm">
+            <Btn disabled={page <= 1 || bookingsQuery.isFetching} size="sm" variant="ghost" onClick={() => setPage(page - 1)}>Previous</Btn>
+            <span className="text-muted">Page {page} of {bookingsQuery.data.pagination.totalPages}</span>
+            <Btn disabled={!bookingsQuery.data.pagination.hasNextPage || bookingsQuery.isFetching} size="sm" variant="ghost" onClick={() => setPage(page + 1)}>Next</Btn>
           </div>
         ) : null}
       </div>
@@ -140,6 +161,7 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
       <CreateInvoiceModal
         key={invoiceTarget?.id ?? "none"}
         booking={invoiceTarget}
+        error={invoiceError}
         loading={createInvoice.isPending}
         onClose={() => {
           if (!createInvoice.isPending) setInvoiceTarget(null);
@@ -148,6 +170,8 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
           if (invoiceTarget) createInvoice.mutate({ bookingId: invoiceTarget.id, poNumber, unitsWorked });
         }}
       />
+
+      <InvoiceDetailsModal id={invoiceDetailsId} onClose={() => setInvoiceDetailsId(null)} role={role} />
 
       <ReviewBookingModal
         booking={reviewTarget}
@@ -170,6 +194,7 @@ function BookingCard({
   onCancel,
   onComplete,
   onInvoice,
+  onInvoiceDetails,
   onNoShow,
   onReview,
   pending,
@@ -180,6 +205,7 @@ function BookingCard({
   onCancel: (booking: Booking) => void;
   onComplete: (id: string) => void;
   onInvoice: (booking: Booking) => void;
+  onInvoiceDetails: (id: string) => void;
   onNoShow: (id: string) => void;
   onReview: (booking: Booking) => void;
   pending: boolean;
@@ -218,7 +244,9 @@ function BookingCard({
 
       {booking.cancelReason ? <p className="mt-4 rounded-lg bg-danger-tint px-3 py-2 text-sm text-danger">{booking.cancelReason}</p> : null}
 
-      {booking.status === "COMPLETED" ? <InvoiceStrip booking={booking} onInvoice={onInvoice} role={role} /> : null}
+      {booking.status === "COMPLETED" ? <InvoiceStrip booking={booking} onInvoice={onInvoice} onInvoiceDetails={onInvoiceDetails} role={role} /> : (
+        booking.status === "CONFIRMED" ? <p className="mt-4 rounded-lg bg-chalk px-4 py-3 text-sm text-muted">Payment is handled through a Stripe invoice after this booking is completed.</p> : null
+      )}
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <div className="text-xs text-muted">
@@ -252,13 +280,27 @@ function BookingCard({
 }
 
 /** Payment state of a completed booking: invoice it (school), pay it, or see where it stands. */
-function InvoiceStrip({ booking, onInvoice, role }: { booking: Booking; onInvoice: (booking: Booking) => void; role: AppRole }) {
-  const invoice = booking.invoice;
+function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, role }: { booking: Booking; onInvoice: (booking: Booking) => void; onInvoiceDetails: (id: string) => void; role: AppRole }) {
+  const bookingInvoice = booking.invoice;
+  const invoiceDetail = useInvoice(bookingInvoice?.id ?? null);
+  const latestInvoice = invoiceDetail.data;
+  const invoice = bookingInvoice && latestInvoice?.id === bookingInvoice.id
+    ? {
+        ...bookingInvoice,
+        dueAt: latestInvoice.dueAt,
+        hostedInvoiceUrl: latestInvoice.hostedInvoiceUrl,
+        paidAt: latestInvoice.paidAt,
+        status: latestInvoice.status === "PAID" || latestInvoice.status === "UNCOLLECTIBLE" ? latestInvoice.status : "OPEN",
+        totalAmountPence: latestInvoice.totalAmountPence,
+      }
+    : bookingInvoice;
+  const paymentUrl = stripeInvoiceUrl(invoice?.hostedInvoiceUrl);
+  const canInvoice = ["daily", "hourly", "fixed"].includes(booking.payType ?? "") && typeof booking.payAmount === "number" && booking.payAmount > 0;
   let label: string;
   let tag: { text: string; tone: "amber" | "green" | "red" } | null = null;
 
   if (!invoice) {
-    label = role === "teacher" ? "The school will invoice this booking, then you get paid." : "Invoice this booking to pay the teacher.";
+    label = role === "teacher" ? "The school can invoice this booking once your Stripe payouts are ready." : canInvoice ? "Send an invoice to pay the teacher. Their Stripe payout setup must be complete." : "This booking needs an agreed rate and pay type before it can be invoiced.";
   } else if (invoice.status === "PAID") {
     label = `${formatPence(invoice.totalAmountPence)} paid${invoice.paidAt ? ` on ${formatDate(invoice.paidAt)}` : ""}.`;
     tag = { text: "Paid", tone: "green" };
@@ -275,36 +317,48 @@ function InvoiceStrip({ booking, onInvoice, role }: { booking: Booking; onInvoic
         {tag ? <Tag tone={tag.tone}>{tag.text}</Tag> : null}
         <span>{label}</span>
       </div>
-      {role === "institution" && !invoice ? (
+      <div className="flex flex-wrap gap-2">
+      {role === "institution" && !invoice && canInvoice ? (
         <Btn size="sm" onClick={() => onInvoice(booking)}>Create invoice</Btn>
       ) : null}
-      {role === "institution" && invoice?.status === "OPEN" && invoice.hostedInvoiceUrl ? (
-        <a className={buttonClassName({ size: "sm" })} href={invoice.hostedInvoiceUrl} rel="noopener noreferrer" target="_blank">
+      {invoice ? <Btn size="sm" variant="ghost" onClick={() => onInvoiceDetails(invoice.id)}>Invoice details</Btn> : null}
+      {invoice && invoice.status !== "PAID" ? (
+        <Btn loading={invoiceDetail.isFetching} loadingLabel="Checking" size="sm" variant="ghost" onClick={() => { void invoiceDetail.refetch(); }}>
+          Refresh payment
+        </Btn>
+      ) : null}
+      {role === "institution" && (invoice?.status === "OPEN" || invoice?.status === "UNCOLLECTIBLE") && paymentUrl ? (
+        <a className={buttonClassName({ size: "sm" })} href={paymentUrl} rel="noopener noreferrer" target="_blank">
           Pay invoice
         </a>
       ) : null}
+      </div>
     </div>
   );
 }
 
 function CreateInvoiceModal({
   booking,
+  error,
   loading,
   onClose,
   onSubmit,
 }: {
   booking: Booking | null;
+  error: string | null;
   loading: boolean;
   onClose: () => void;
   onSubmit: (unitsWorked: number | undefined, poNumber: string | undefined) => void;
 }) {
-  const payType = booking?.payType ?? "daily";
+  const payType = booking?.payType;
   const fixed = payType === "fixed";
   const unit = payType === "hourly" ? "hours" : "days";
   const [units, setUnits] = useState(() => (booking && payType === "daily" ? String(bookingDays(booking) ?? "") : ""));
   const [poNumber, setPoNumber] = useState("");
   const unitsValue = Number(units);
-  const unitsValid = fixed || (units.trim() !== "" && Number.isFinite(unitsValue) && unitsValue > 0 && /^\d+(\.\d{1,2})?$/.test(units.trim()));
+  const maxUnits = booking ? invoiceUnitsLimit(booking) : 9999.99;
+  const validPay = ["daily", "hourly", "fixed"].includes(payType ?? "") && typeof booking?.payAmount === "number" && booking.payAmount > 0;
+  const unitsValid = validPay && (fixed || (units.trim() !== "" && Number.isFinite(unitsValue) && unitsValue >= 0.01 && unitsValue <= maxUnits && /^\d+(\.\d{1,2})?$/.test(units.trim())));
   const rate = booking?.payAmount ?? 0;
   const teacherPay = fixed ? rate : unitsValid ? rate * unitsValue : 0;
 
@@ -314,14 +368,14 @@ function CreateInvoiceModal({
         className="p-6 sm:p-7"
         onSubmit={(event) => {
           event.preventDefault();
-          if (unitsValid) onSubmit(fixed ? undefined : unitsValue, poNumber.trim() || undefined);
+          if (!loading && unitsValid) onSubmit(fixed ? undefined : unitsValue, poNumber.trim() || undefined);
         }}
       >
         <Tag tone="green">Invoice</Tag>
         <h2 className="mt-4 font-serif text-2xl">Invoice {booking?.instructor.fullName ?? "this booking"}</h2>
         <p className="mt-3 text-sm leading-6 text-muted">
-          Stripe emails you the invoice with a link to pay by card, bank transfer or Direct Debit. When it is paid, the teacher
-          receives their pay and SupplyEd keeps its processing fee, which is added as a separate line.
+          Stripe sends the school an invoice with a secure payment link. The invoice includes the agreed teacher pay and
+          SupplyEd&apos;s processing fee. The teacher must finish setting up Stripe payouts before an invoice can be sent.
         </p>
 
         {fixed ? (
@@ -332,12 +386,17 @@ function CreateInvoiceModal({
             <input
               className="input mt-2 w-full"
               inputMode="decimal"
+              type="number"
+              min="0.01"
+              max={maxUnits}
+              step="0.01"
+              required
               onChange={(event) => setUnits(event.target.value)}
               placeholder={payType === "hourly" ? "e.g. 7.5" : "e.g. 5 or 4.5"}
               value={units}
             />
             <span className="mt-1 block text-xs font-normal text-muted">
-              At {formatPence(Math.round(rate * 100))} per {unit === "hours" ? "hour" : "day"}. Use halves for half days.
+              At {formatPence(Math.round(rate * 100))} per {unit === "hours" ? "hour" : "day"}. Enter 0.01–{maxUnits} {unit}, with up to two decimal places.
             </span>
           </label>
         )}
@@ -349,9 +408,11 @@ function CreateInvoiceModal({
 
         {unitsValid ? (
           <p className="mt-4 text-sm">
-            Teacher pay: <strong>{formatPence(Math.round(teacherPay * 100))}</strong> <span className="text-muted">+ SupplyEd processing fee</span>
+            Estimated teacher pay: <strong>{formatPence(Math.round(teacherPay * 100))}</strong> <span className="text-muted">+ SupplyEd processing fee. The issued invoice confirms the total.</span>
           </p>
         ) : null}
+
+        {error ? <p className="mt-4 text-sm text-danger" role="alert">{error}</p> : null}
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Btn disabled={loading} variant="ghost" onClick={onClose}>Cancel</Btn>
@@ -364,15 +425,6 @@ function CreateInvoiceModal({
 
 function isPastDue(dueAt?: string | null) {
   return Boolean(dueAt) && new Date(dueAt as string).getTime() < Date.now();
-}
-
-/** Days in the booking, counting both ends; a sensible default for "days worked". */
-function bookingDays(booking: Booking) {
-  if (!booking.startDate || !booking.endDate) return null;
-  const day = 24 * 60 * 60 * 1000;
-  const start = new Date(booking.startDate);
-  const end = new Date(booking.endDate);
-  return Math.floor((Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()) - Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())) / day) + 1;
 }
 
 function CancelBookingModal({

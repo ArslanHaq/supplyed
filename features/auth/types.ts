@@ -8,6 +8,8 @@ export type AuthUser = {
   instructorProfileId?: string;
   institutionProfileId?: string;
   name?: string | null;
+  phone?: string;
+  phoneVerified?: boolean;
   role: AppRole | null;
 };
 

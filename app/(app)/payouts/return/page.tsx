@@ -1,6 +1,10 @@
-import { redirect } from "next/navigation";
+import { PayoutCallbackPage } from "@/components/organisms/PayoutCallbackPage";
+import { noIndexMetadata } from "@/lib/seo";
 
-/** Stripe sends the teacher here after its hosted payout setup; the payments page shows the result. */
+export const dynamic = "force-dynamic";
+export const metadata = noIndexMetadata("Payout setup");
+
+/** A fresh payout-account query runs after Stripe returns to this page. */
 export default function PayoutsReturnPage() {
-  redirect("/billing?payouts=returned");
+  return <PayoutCallbackPage kind="return" />;
 }

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Country } from "country-state-city";
 
+import { useCurrentUser } from "@/features/auth/use-current-user";
+import { usePhoneVerificationPending } from "@/features/auth/use-phone-verification";
 import { filterProfileDocumentRequirements } from "@/features/onboarding/document-requirements";
 import { missingRequiredDocuments } from "@/features/onboarding/document-utils";
 import { useOnboardingDocumentRequirements, useOnboardingSnapshot } from "@/features/onboarding/use-onboarding";
@@ -91,7 +93,7 @@ function requirementErrorEntries(requirements: OnboardingDocumentRequirementSnap
   return Object.fromEntries(requirements.map((requirement) => [requirement.id, `${requirement.documentType.name} is required.`]));
 }
 
-function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined, snapshot?: OnboardingProfileSnapshot) {
+function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined, snapshot?: OnboardingProfileSnapshot, preservePhone = false) {
   if (!snapshot) return current;
 
   const next = createInitialForm(accountEmail, snapshot);
@@ -119,7 +121,7 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     keyStages: snapshotStringArray(current.keyStages, next.keyStages),
     localAuthority: snapshotString(current.localAuthority, next.localAuthority),
     maxTravelDistance: snapshotString(current.maxTravelDistance, next.maxTravelDistance),
-    phone: snapshotString(current.phone, next.phone),
+    phone: preservePhone ? current.phone : snapshotString(current.phone, next.phone),
     profileCity: snapshotString(current.profileCity, next.profileCity),
     profileCountryCode: snapshot.instructor?.countryCode || current.profileCountryCode || "GB",
     postcode: snapshotString(current.postcode, next.postcode),
@@ -211,6 +213,9 @@ export function useOnboardingForm({
   const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
   const currentStep = Math.min(steps.length, Math.max(1, step)) as SignupStep;
   const [form, setForm] = useState<SignupForm>(() => mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill));
+  const currentUserQuery = useCurrentUser();
+  const phoneVerificationPending = usePhoneVerificationPending();
+  const phoneTouchedRef = useRef(false);
   const [errors, setErrors] = useState<SignupErrors>({});
   const [documentErrors, setDocumentErrors] = useState<DocumentErrors>({});
   const [pending, setPending] = useState<OnboardingPending>(null);
@@ -280,7 +285,8 @@ export function useOnboardingForm({
     if (previousSnapshotFingerprintRef.current === initialSnapshotFingerprint) return;
 
     previousSnapshotFingerprintRef.current = initialSnapshotFingerprint;
-    setForm((current) => mergeSnapshotForm(current, accountEmail, initialSnapshot));
+    setForm((current) => mergeSnapshotForm(current, accountEmail, initialSnapshot,
+      phoneTouchedRef.current || currentUserQuery.data?.phoneVerified === true));
     if (initialSnapshot?.documentRequirements.length || !lockedDocumentStage) {
       setDocumentRequirementsSnapshot(initialSnapshot?.documentRequirements ?? []);
     }
@@ -289,7 +295,14 @@ export function useOnboardingForm({
     if (hasCreatedProfile(initialSnapshot, activeRole)) {
       setLockedDocumentStage(true);
     }
-  }, [accountEmail, activeRole, initialSnapshot, initialSnapshotFingerprint, lockedDocumentStage]);
+  }, [accountEmail, activeRole, currentUserQuery.data?.phoneVerified, initialSnapshot, initialSnapshotFingerprint, lockedDocumentStage]);
+
+  useEffect(() => {
+    const user = currentUserQuery.data;
+    if (phoneTouchedRef.current || !user?.phoneVerified || !user.phone) return;
+    // A newer server snapshot can contain a number verified in another tab.
+    setForm((current) => ({ ...current, phone: user.phone! }));
+  }, [currentUserQuery.data]);
 
   useEffect(() => {
     if (onboardingStatusQuery.data?.signatoryApproval !== undefined) {
@@ -404,6 +417,7 @@ export function useOnboardingForm({
   }, [accountEmail, activeRole, documentRequirements, form]);
 
   function updateField<FieldName extends keyof SignupForm>(field: FieldName, value: SignupForm[FieldName]) {
+    if (field === "phone") phoneTouchedRef.current = true;
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setSubmitError(undefined);
@@ -544,7 +558,8 @@ export function useOnboardingForm({
 
   function applySnapshot(snapshot?: OnboardingProfileSnapshot) {
     if (!snapshot) return;
-    setForm((current) => mergeSnapshotForm(current, accountEmail, snapshot));
+    setForm((current) => mergeSnapshotForm(current, accountEmail, snapshot,
+      phoneTouchedRef.current || currentUserQuery.data?.phoneVerified === true));
     setDocumentRequirementsSnapshot(snapshot.documentRequirements);
     setRequirementDocuments(snapshot.requirementDocuments ?? {});
     setSignatoryApproval(snapshot.signatoryApproval ?? null);
@@ -620,7 +635,7 @@ export function useOnboardingForm({
   }
 
   async function continueStep() {
-    if (lockedDocumentStage || mutationPendingRef.current) return;
+    if (lockedDocumentStage || mutationPendingRef.current || phoneVerificationPending) return;
     if (!validateStep(currentStep)) return;
 
     mutationPendingRef.current = true;
@@ -646,7 +661,7 @@ export function useOnboardingForm({
   }
 
   async function submitSignup() {
-    if (lockedDocumentStage || mutationPendingRef.current) return;
+    if (lockedDocumentStage || mutationPendingRef.current || phoneVerificationPending) return;
     for (let targetStep = 1; targetStep < steps.length; targetStep += 1) {
       if (!validateStep(targetStep as SignupStep)) {
         setStep(targetStep);
@@ -798,6 +813,9 @@ export function useOnboardingForm({
     isLastStep,
     lockedDocumentStage,
     pending,
+    phoneVerificationPending,
+    phoneVerified: currentUserQuery.data?.phoneVerified ?? initialSnapshot?.user?.phoneVerified ?? false,
+    savedPhone: currentUserQuery.data?.phone ?? initialSnapshot?.user?.phone ?? "",
     progress,
     requirementDocumentErrors,
     requirementDocuments,

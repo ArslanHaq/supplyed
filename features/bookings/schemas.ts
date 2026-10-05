@@ -50,15 +50,28 @@ function normalizeReview(review: BookingReview): BookingReview {
 
 const invoiceStatuses = new Set<BookingInvoiceSummary["status"]>(["OPEN", "PAID", "UNCOLLECTIBLE"]);
 
+function normalizeInvoiceStatus(invoice: BookingInvoiceSummary): BookingInvoiceSummary["status"] | null {
+  if (readDateIso(invoice.paidAt)) return "PAID";
+
+  const status = typeof invoice.status === "string" ? invoice.status.toUpperCase() : "";
+  return invoiceStatuses.has(status as BookingInvoiceSummary["status"])
+    ? status as BookingInvoiceSummary["status"]
+    : null;
+}
+
 function normalizeInvoiceSummary(invoice: BookingInvoiceSummary | null | undefined): BookingInvoiceSummary | null {
-  if (!invoice?.id || !invoiceStatuses.has(invoice.status)) return null;
+  if (!invoice?.id) return null;
+
+  const paidAt = readDateIso(invoice.paidAt);
+  const status = normalizeInvoiceStatus(invoice);
+  if (!status) return null;
 
   return {
     dueAt: readDateIso(invoice.dueAt),
     hostedInvoiceUrl: invoice.hostedInvoiceUrl ?? null,
     id: invoice.id,
-    paidAt: readDateIso(invoice.paidAt),
-    status: invoice.status,
+    paidAt,
+    status,
     totalAmountPence: readNumber(invoice.totalAmountPence) ?? 0,
   };
 }
@@ -131,4 +144,19 @@ export function normalizeReviewInput(input: BookingReviewInput): BookingReviewIn
     comment: input.comment?.trim() || undefined,
     rating: Math.min(5, Math.max(1, Math.round(input.rating))),
   };
+}
+
+/** Booking dates count both start and end; use UTC calendar days across DST changes. */
+export function bookingDays(booking: Pick<Booking, "startDate" | "endDate">): number | null {
+  if (!booking.startDate || !booking.endDate) return null;
+  const start = new Date(booking.startDate);
+  const end = new Date(booking.endDate);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end < start) return null;
+  const day = 24 * 60 * 60 * 1000;
+  return Math.floor((Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()) - Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())) / day) + 1;
+}
+
+export function invoiceUnitsLimit(booking: Pick<Booking, "startDate" | "endDate" | "payType">): number {
+  const days = bookingDays(booking);
+  return Math.min(9999.99, days === null ? 9999.99 : booking.payType === "hourly" ? days * 24 : days);
 }

@@ -102,7 +102,7 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
           error={errors.postcode}
           hint="Fills in the town from the postcode."
           id="institution-postcode"
-          label="Postal code"
+          label="School postal code"
           onChange={(value) => updateField("postcode", value)}
           onSelect={(selection) => {
             updateField("postcode", selection.postcode);
