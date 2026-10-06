@@ -1,17 +1,19 @@
 import { useState } from "react";
 
 import { useCreateApplication } from "@/features/applications/use-applications";
+import { isEmptyRichText, MAX_PROPOSAL_LENGTH } from "@/features/applications/rich-text";
 import { useJob } from "@/features/jobs/use-jobs";
 import { useJobMatchScore } from "@/features/matching/use-matching";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Field, Icon, Tag } from "../atoms";
-import { FormattedJobDescription, MatchScorePanel, Modal, SectionLoader } from "../molecules";
+import { FormattedJobDescription, MatchScorePanel, Modal, ProposalEditor, SectionLoader } from "../molecules";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
   const [open, setOpen] = useState(false);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const [coverLetter, setCoverLetter] = useState("");
+  const [coverLetterTextLength, setCoverLetterTextLength] = useState(0);
   const [coverLetterError, setCoverLetterError] = useState<string>();
   const jobQuery = useJob(ctx.jobId ?? "");
   const matchQuery = useJobMatchScore(ctx.jobId ?? "", role === "teacher");
@@ -26,7 +28,9 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
 
       setApplicationSubmitted(true);
       setOpen(false);
-      toast({ title: "Application submitted", msg: "Your application and cover letter were sent successfully.", tone: "success" });
+      setCoverLetter("");
+      setCoverLetterTextLength(0);
+      toast({ title: "Application submitted", msg: "Your application and proposal were sent successfully.", tone: "success" });
     },
     onError: () => {
       toast({ title: "Could not apply", msg: "Please try again.", tone: "danger" });
@@ -37,8 +41,12 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
     if (!job || role !== "teacher") return;
 
     const normalizedCoverLetter = coverLetter.trim();
-    if (!normalizedCoverLetter) {
-      setCoverLetterError("Add a cover letter before applying.");
+    if (isEmptyRichText(normalizedCoverLetter)) {
+      setCoverLetterError("Add a proposal before applying.");
+      return;
+    }
+    if (normalizedCoverLetter.length > MAX_PROPOSAL_LENGTH) {
+      setCoverLetterError("Shorten the proposal or remove some formatting, then try again.");
       return;
     }
 
@@ -107,29 +115,38 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging")}>Message school</Btn>
         </aside>
       </div>
-      <Modal open={open} onClose={closeModal}>
+      <Modal open={open} onClose={closeModal} size={role === "teacher" ? "xl" : "md"}>
         <div className="card-pad-lg">
-          <div className="mb-2 font-heading text-[26px]">{role === "teacher" ? "Apply to this role" : "Invite candidates"}</div>
+          <div className="mb-2 font-heading text-[26px]">{role === "teacher" ? "Create your proposal" : "Invite candidates"}</div>
           {role === "teacher" ? (
             <>
-              <p className="mb-5 text-sm leading-6 text-muted">Introduce yourself and explain why you are a good fit for this role.</p>
-              <Field error={coverLetterError} htmlFor="job-cover-letter" label="Cover letter" required>
-                <textarea
-                  id="job-cover-letter"
-                  className="textarea"
-                  maxLength={2000}
-                  placeholder="Share your relevant experience, availability, and suitability for this role."
+              <p className="mb-5 max-w-2xl text-sm leading-6 text-muted">Introduce yourself, connect your experience to the role, and keep the formatting clear and professional.</p>
+              <Field error={coverLetterError} htmlFor="job-proposal-editor" label="Proposal" required>
+                <ProposalEditor
+                  id="job-proposal-editor"
+                  invalid={Boolean(coverLetterError)}
+                  maxLength={MAX_PROPOSAL_LENGTH}
                   value={coverLetter}
-                  onChange={(event) => {
-                    setCoverLetter(event.target.value);
+                  onChange={(nextValue, textLength) => {
+                    setCoverLetter(nextValue);
+                    setCoverLetterTextLength(textLength);
                     if (coverLetterError) setCoverLetterError(undefined);
                   }}
                 />
               </Field>
-              <div className="-mt-2 mb-5 text-right text-xs text-muted">{coverLetter.length.toLocaleString()} / 2,000</div>
+              <div className="-mt-2 mb-5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+                <span className={coverLetter.length > MAX_PROPOSAL_LENGTH ? "font-semibold text-danger" : ""}>
+                  {coverLetter.length > MAX_PROPOSAL_LENGTH
+                    ? "The formatted proposal is too long. Shorten it or clear some formatting."
+                    : "Formatting is saved with your application."}
+                </span>
+                <span className={coverLetter.length > MAX_PROPOSAL_LENGTH ? "font-semibold text-danger" : ""}>
+                  {coverLetterTextLength.toLocaleString()} / {MAX_PROPOSAL_LENGTH.toLocaleString()} text characters
+                </span>
+              </div>
               <div className="flex items-center justify-between">
                 <Btn disabled={createApplication.isPending} variant="ghost" onClick={closeModal}>Cancel</Btn>
-                <Btn loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
+                <Btn disabled={coverLetter.length > MAX_PROPOSAL_LENGTH} loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
               </div>
             </>
           ) : (

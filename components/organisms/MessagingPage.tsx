@@ -28,7 +28,7 @@ import type { Job } from "@/features/jobs/types";
 import type { RouteProps, ToastFn } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Tag } from "../atoms";
-import { PageHead, SectionLoader } from "../molecules";
+import { PageHead, ProposalContent, SectionLoader } from "../molecules";
 import { MessageAttachmentPreview } from "./MessageAttachmentPreview";
 
 type PendingFile = {
@@ -351,10 +351,8 @@ function ConversationContextPanel({
 
         {application?.coverLetter ? (
           <section className="border-t border-border pt-5">
-            <p className="context-label">Cover letter</p>
-            <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-muted">
-              {application.coverLetter}
-            </p>
+            <p className="context-label">Proposal</p>
+            <ProposalContent className="mt-2 max-h-40 overflow-y-auto pr-1" value={application.coverLetter} />
           </section>
         ) : null}
 

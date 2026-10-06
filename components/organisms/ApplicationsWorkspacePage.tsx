@@ -11,7 +11,7 @@ import { useInstructorReviews } from "@/features/reviews/use-reviews";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Tag } from "../atoms";
-import { MatchScorePanel, Modal, PageHead, SectionLoader } from "../molecules";
+import { MatchScorePanel, Modal, PageHead, ProposalContent, SectionLoader } from "../molecules";
 import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 
 type ApplicationRow = {
@@ -236,9 +236,11 @@ function ApplicationListRow({
             {[instructor?.city, instructor?.county].filter(Boolean).join(", ") || "Location not shared"} - {instructor?.experience != null ? `${instructor.experience} years experience` : "Experience not shared"}
           </div>
           {application.coverLetter ? (
-            <p className="mt-3 max-h-[44px] overflow-hidden border-l-2 border-brand-tint-2 pl-3 text-sm leading-6 text-muted">
-              {application.coverLetter}
-            </p>
+            <ProposalContent
+              className="mt-3 line-clamp-2 border-l-2 border-brand-tint-2 pl-3"
+              preview
+              value={application.coverLetter}
+            />
           ) : null}
           <div className="mt-2 flex flex-wrap gap-1">
             {instructor?.subjects.slice(0, 3).map((subject) => <span className="pill" key={subject}>{subject}</span>)}
@@ -328,8 +330,8 @@ function ApplicationDetail({
 
               {application.coverLetter ? (
                 <div className="mt-5 rounded-xl border border-border bg-white p-5">
-                  <div className="section-title mb-2">Cover letter</div>
-                  <p className="text-sm leading-7 text-muted">{application.coverLetter}</p>
+                  <div className="section-title mb-2">Proposal</div>
+                  <ProposalContent value={application.coverLetter} />
                 </div>
               ) : null}
 

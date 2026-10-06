@@ -6,7 +6,7 @@ import { useJob } from "@/features/jobs/use-jobs";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Icon, Tag } from "../atoms";
-import { PageHead, SectionLoader } from "../molecules";
+import { PageHead, ProposalContent, SectionLoader } from "../molecules";
 
 type StatusFilter = "ALL" | JobApplicationStatus;
 
@@ -106,7 +106,7 @@ function TeacherApplicationCard({ application, go }: { application: JobApplicati
             <span className="flex items-center gap-1"><Icon name="pin" size={13} />{location}</span>
             {job?.date ? <span className="flex items-center gap-1"><Icon name="clock" size={13} />{job.date}</span> : null}
           </div>
-          {application.coverLetter ? <p className="mt-4 border-l-2 border-brand-tint-2 pl-4 text-sm leading-6 text-muted">{application.coverLetter}</p> : null}
+          {application.coverLetter ? <ProposalContent className="mt-4 border-l-2 border-brand-tint-2 pl-4" value={application.coverLetter} /> : null}
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           {job?.rate ? <div className="text-right"><div className="font-heading text-xl">GBP {job.rate}</div><div className="text-xs text-muted">per day</div></div> : null}

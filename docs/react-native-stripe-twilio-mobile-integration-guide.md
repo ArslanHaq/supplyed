@@ -1,5 +1,7 @@
 # SupplyEd React Native Stripe And Twilio Integration Guide
 
+> **Stripe source of truth:** use [Stripe Complete Verification and Mobile Handoff](./stripe-complete-verification-and-mobile-handoff.md). Keep this document for its Twilio guidance and older integration context.
+
 Last updated from frontend/backend integration work and the additional mobile API handoff: 2026-10-05
 
 This guide is for implementing the same Stripe and Twilio flows in the SupplyEd React Native app that are now wired in the web app. It combines the backend API contract with the screen placement decisions used today in the website.

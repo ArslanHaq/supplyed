@@ -6,9 +6,8 @@ import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 
 import { normalizeApplication, normalizeApplicationCreateInput } from "./schemas";
+import { isEmptyRichText, MAX_PROPOSAL_LENGTH } from "./rich-text";
 import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplication } from "./types";
-
-const MAX_COVER_LETTER_LENGTH = 2_000;
 
 export async function createApplicationAction(input: ApplicationCreateInput) {
   const normalized = normalizeApplicationCreateInput(input);
@@ -16,16 +15,16 @@ export async function createApplicationAction(input: ApplicationCreateInput) {
   if (!normalized.jobId) {
     return actionError("Choose a valid job before applying.", { code: "JOB_ID_REQUIRED" });
   }
-  if (!normalized.coverLetter) {
-    return actionError("Add a cover letter before applying.", {
+  if (isEmptyRichText(normalized.coverLetter)) {
+    return actionError("Add a proposal before applying.", {
       code: "COVER_LETTER_REQUIRED",
-      fieldErrors: { coverLetter: "Add a cover letter before applying." },
+      fieldErrors: { coverLetter: "Add a proposal before applying." },
     });
   }
-  if (normalized.coverLetter.length > MAX_COVER_LETTER_LENGTH) {
-    return actionError(`Cover letter must be ${MAX_COVER_LETTER_LENGTH.toLocaleString()} characters or fewer.`, {
+  if (normalized.coverLetter.length > MAX_PROPOSAL_LENGTH) {
+    return actionError(`The formatted proposal must be ${MAX_PROPOSAL_LENGTH.toLocaleString()} characters or fewer.`, {
       code: "COVER_LETTER_TOO_LONG",
-      fieldErrors: { coverLetter: `Use ${MAX_COVER_LETTER_LENGTH.toLocaleString()} characters or fewer.` },
+      fieldErrors: { coverLetter: "Shorten the proposal or remove some formatting, then try again." },
     });
   }
 
