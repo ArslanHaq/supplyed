@@ -6,17 +6,19 @@ import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 
 import { requirePayoutInstructor } from "./payout-auth";
-import { normalizeInvoice, normalizePayoutSummary, normalizeStripeLink } from "./schemas";
-import { isStripePayoutUrl } from "./stripe-links";
-import type { CreateInvoiceInput, Invoice, PayoutSummary, RefundInvoiceInput, StripeLink } from "./types";
+import { normalizeInvoice, normalizePayoutSummary } from "./schemas";
+import type { CreateInvoiceInput, Invoice, InvoicePaymentSession, PayoutSession, PayoutSummary, RefundInvoiceInput } from "./types";
 
-/** A fresh Stripe onboarding link for the signed-in teacher; the client redirects to it. */
-export async function createPayoutOnboardingLinkAction() {
+/**
+ * A fresh session for Stripe's embedded payout components. The client secret
+ * goes only to this teacher's browser, which hands it straight to Stripe.
+ */
+export async function createPayoutSessionAction() {
   try {
     await requirePayoutInstructor();
-    const link = await api.post<StripeLink>("/payments/payout-account/onboarding-link");
-    if (!isStripePayoutUrl(link.url)) return actionError("Stripe returned an invalid payout link. Please try again.");
-    return actionOk(normalizeStripeLink(link));
+    const session = await api.post<Partial<PayoutSession>>("/payments/payout-account/session");
+    if (!session?.clientSecret || !session.publishableKey) return actionError("Payout setup could not be started. Please try again.");
+    return actionOk<PayoutSession>({ clientSecret: session.clientSecret, publishableKey: session.publishableKey });
   } catch (error) {
     return actionError(readPaymentError(error, "Payout setup could not be started."), {
       code: errorCode(error),
@@ -25,15 +27,42 @@ export async function createPayoutOnboardingLinkAction() {
   }
 }
 
-/** A one-time login to the teacher's Stripe Express dashboard. */
-export async function createPayoutDashboardLinkAction() {
+/** Starts paying an invoice in the app: the secrets Stripe's Payment Element needs. School only. */
+export async function createInvoicePaymentSessionAction(id: string) {
+  const invoiceId = id.trim();
+  if (!isUuid(invoiceId)) return actionError("Choose a valid invoice.", { code: "INVOICE_ID_REQUIRED" });
+
   try {
-    await requirePayoutInstructor();
-    const link = await api.post<StripeLink>("/payments/payout-account/dashboard-link");
-    if (!isStripePayoutUrl(link.url)) return actionError("Stripe returned an invalid payout link. Please try again.");
-    return actionOk(normalizeStripeLink(link));
+    const session = await api.post<Partial<InvoicePaymentSession>>(`/invoices/${invoiceId}/payment-session`);
+    if (!session?.clientSecret || !session.customerSessionClientSecret || !session.publishableKey) {
+      return actionError("Payment could not be started. Please try again.");
+    }
+    return actionOk<InvoicePaymentSession>({
+      amountPence: typeof session.amountPence === "number" ? session.amountPence : 0,
+      clientSecret: session.clientSecret,
+      customerSessionClientSecret: session.customerSessionClientSecret,
+      publishableKey: session.publishableKey,
+    });
   } catch (error) {
-    return actionError(readPaymentError(error, "The payouts dashboard could not be opened."), { code: errorCode(error) });
+    return actionError(readPaymentError(error, "Payment could not be started."), {
+      code: errorCode(error),
+      requestId: error instanceof ApiError ? error.requestId : undefined,
+    });
+  }
+}
+
+/** Reads the invoice's latest status from Stripe, so a payment shows without waiting for the webhook. */
+export async function syncInvoiceAction(id: string) {
+  const invoiceId = id.trim();
+  if (!isUuid(invoiceId)) return actionError("Choose a valid invoice.", { code: "INVOICE_ID_REQUIRED" });
+
+  try {
+    const invoice = await api.post<Invoice>(`/invoices/${invoiceId}/sync`);
+    revalidateTag("invoices", "max");
+    revalidateTag("bookings", "max");
+    return actionOk(normalizeInvoice(invoice));
+  } catch (error) {
+    return actionError(readPaymentError(error, "The payment status could not be checked."), { code: errorCode(error) });
   }
 }
 

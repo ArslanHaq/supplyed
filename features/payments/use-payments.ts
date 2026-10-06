@@ -7,8 +7,6 @@ import { queryKeys } from "@/lib/query/keys";
 
 import {
   createInvoiceAction,
-  createPayoutDashboardLinkAction,
-  createPayoutOnboardingLinkAction,
   instantPayoutAction,
   refundInvoiceAction,
   resendInvoiceAction,
@@ -24,21 +22,21 @@ import type {
   PayoutBalance,
   RefundInvoiceInput,
 } from "./types";
-import { isStripePayoutUrl, openStripePayoutPage } from "./stripe-links";
 
 type MutationOptions<Result> = {
   onError?: () => void;
   onSuccess?: (result: Result) => void | Promise<void>;
 };
 
-type LinkResult = Awaited<ReturnType<typeof createPayoutOnboardingLinkAction>>;
 type InvoiceResult = Awaited<ReturnType<typeof createInvoiceAction>>;
 
+/** With pollUntilReady, re-checks every few seconds while Stripe is still verifying a started setup. */
 export function usePayoutAccount(options: { enabled?: boolean; pollUntilReady?: boolean } = {}) {
   return useQuery({
     enabled: options.enabled ?? true,
     queryFn: () => fetchJson<PayoutAccount>("/api/payments/payout-account"),
     queryKey: queryKeys.payments.payoutAccount(),
+    refetchInterval: (current) => options.pollUntilReady && current.state.data?.connected && !current.state.data.ready ? 5_000 : false,
   });
 }
 
@@ -95,31 +93,6 @@ export function useInvoice(id: string | null) {
     refetchOnMount: "always",
     refetchOnWindowFocus: "always",
     refetchInterval: (current) => current.state.data && current.state.data.status !== "VOID" ? 15_000 : false,
-  });
-}
-
-/** Opens Stripe's hosted onboarding (or the payouts dashboard) in this tab once the link is ready. */
-export function usePayoutLink(kind: "dashboard" | "onboarding", options: MutationOptions<LinkResult> = {}) {
-  return useMutation<LinkResult, Error, void>({
-    mutationFn: async () => {
-      const result = await (kind === "onboarding" ? createPayoutOnboardingLinkAction() : createPayoutDashboardLinkAction());
-      if (result.ok && !isStripePayoutUrl(result.data.url)) {
-        return { ok: false, message: "Stripe returned an invalid payout link. Please try again." };
-      }
-      return result;
-    },
-    onError: options.onError,
-    onSuccess: async (result) => {
-      if (result.ok) {
-        try {
-          openStripePayoutPage(result.data.url);
-        } catch {
-          // The component can show an explicit target="_top" link if the preview blocks automatic navigation.
-          options.onError?.();
-        }
-      }
-      await options.onSuccess?.(result);
-    },
   });
 }
 

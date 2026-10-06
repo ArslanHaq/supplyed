@@ -19,9 +19,9 @@ export async function PayoutCallbackPage({ kind }: { kind: "return" | "refresh" 
         title={kind === "return" ? "Your payout setup" : "Resume payout setup"}
         subtitle={kind === "return"
           ? "Checking your current account status with Stripe."
-          : "Your previous Stripe link expired. Opening a fresh link so you can continue."}
+          : "Your previous Stripe link expired. Continue your setup below."}
       />
-      <PayoutSettings resumeExpiredLink={kind === "refresh"} returnedFromStripe={kind === "return"} />
+      <PayoutSettings openSetup={kind === "refresh"} returnedFromStripe={kind === "return"} />
       <nav aria-label="Account pages" className="mt-5 flex flex-wrap gap-3">
         <Link className={buttonClassName({ variant: "secondary" })} href="/settings">Account settings</Link>
         <Link className={buttonClassName({ variant: "ghost" })} href="/billing">View earnings</Link>

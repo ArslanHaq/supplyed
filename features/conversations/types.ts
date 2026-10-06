@@ -52,7 +52,10 @@ export type SendMessageInput = {
   conversationId: string;
 };
 
-/** Pushed by the server as things happen. */
-export type ConversationStreamEvent =
-  | { conversationId: string; message: ChatMessage; type: "message" }
-  | { conversationId: string; readAt: string; side: ConversationSide; type: "read" };
+/** Pushed by the server over the live socket as things happen. */
+export type MessageEventPayload = { conversationId: string; message: ChatMessage };
+export type ReadEventPayload = { conversationId: string; readAt: string; side: ConversationSide };
+export type TypingEventPayload = { conversationId: string; side: ConversationSide; typing: boolean };
+
+/** Who is typing in a thread right now, as shown to the other person. */
+export type TypingState = { side: ConversationSide; typing: boolean };

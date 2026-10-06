@@ -3,12 +3,14 @@
 import { stripeInvoiceUrl } from "@/features/payments/invoice-links";
 import { formatPence } from "@/features/payments/schemas";
 import { useInvoice } from "@/features/payments/use-payments";
+import type { Invoice } from "@/features/payments/types";
 import type { AppRole } from "@/types/supplyed";
 
 import { Btn, buttonClassName, Tag } from "../atoms";
 import { Modal, SectionLoader } from "../molecules";
 
-export function InvoiceDetailsModal({ id, onClose, role }: { id: string | null; onClose: () => void; role: AppRole }) {
+/** onPay, for the school, opens the in-app payment for an unpaid invoice. */
+export function InvoiceDetailsModal({ id, onClose, onPay, role }: { id: string | null; onClose: () => void; onPay?: (invoice: Invoice) => void; role: AppRole }) {
   const query = useInvoice(id);
   const invoice = query.data;
   const paymentUrl = stripeInvoiceUrl(invoice?.hostedInvoiceUrl);
@@ -50,10 +52,11 @@ export function InvoiceDetailsModal({ id, onClose, role }: { id: string | null; 
               {invoice.amountRefundedPence > 0 ? <Row label="Refunded from invoice" value={formatPence(invoice.amountRefundedPence)} /> : null}
               {invoice.disputeStatus ? <Row label="Dispute status" value={invoice.disputeStatus.replaceAll("_", " ")} /> : null}
             </dl>
-            {unpaid ? <p className="mt-5 text-xs leading-5 text-muted">Payment status refreshes automatically. After paying in Stripe, allow a moment for the payment confirmation to arrive.</p> : null}
+            {unpaid ? <p className="mt-5 text-xs leading-5 text-muted">Payment status refreshes automatically.</p> : null}
             <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
               {pdfUrl ? <a className={buttonClassName({ size: "sm", variant: "ghost" })} href={pdfUrl} rel="noopener noreferrer" target="_blank">Download PDF</a> : null}
-              {role !== "teacher" && unpaid && paymentUrl ? <a className={buttonClassName({ size: "sm" })} href={paymentUrl} rel="noopener noreferrer" target="_blank">{role === "institution" ? "Pay in Stripe" : "Open in Stripe"}</a> : null}
+              {role === "institution" && unpaid && onPay ? <Btn size="sm" onClick={() => onPay(invoice)}>Pay now</Btn> : null}
+              {role === "admin" && unpaid && paymentUrl ? <a className={buttonClassName({ size: "sm", variant: "ghost" })} href={paymentUrl} rel="noopener noreferrer" target="_blank">Open in Stripe</a> : null}
             </div>
           </>
         ) : null}
