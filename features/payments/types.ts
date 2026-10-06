@@ -33,10 +33,26 @@ export type PayoutBalance = {
   recentPayouts: PayoutSummary[];
 };
 
-/** A single-use Stripe page (onboarding or the Express dashboard). */
-export type StripeLink = {
-  expiresAt: string | null;
-  url: string;
+/** What the teacher's browser needs to show Stripe's embedded payout setup, bank details and payouts. */
+export type PayoutSession = {
+  clientSecret: string;
+  publishableKey: string;
+};
+
+/** What the school's browser needs to pay one invoice with Stripe's Payment Element. */
+export type InvoicePaymentSession = {
+  amountPence: number;
+  clientSecret: string;
+  /** Lets the Payment Element offer the school's saved cards and save new ones. */
+  customerSessionClientSecret: string;
+  publishableKey: string;
+};
+
+/** The invoice a school is about to pay. */
+export type PayableInvoice = {
+  id: string;
+  jobTitle?: string;
+  totalAmountPence: number;
 };
 
 export type InvoiceParty = {

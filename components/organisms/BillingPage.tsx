@@ -2,18 +2,16 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
 
-import { describeRequirement, formatPence } from "@/features/payments/schemas";
+import { formatPence } from "@/features/payments/schemas";
 import { stripeInvoiceUrl } from "@/features/payments/invoice-links";
-import type { AdminInvoiceListQuery, Invoice, InvoiceStatus, PaginatedInvoices, RefundReason } from "@/features/payments/types";
+import type { AdminInvoiceListQuery, Invoice, InvoiceStatus, PaginatedInvoices, PayableInvoice, RefundReason } from "@/features/payments/types";
 import {
   useAllInvoices,
   useInstantPayout,
   useMyInvoices,
   usePayoutAccount,
   usePayoutBalance,
-  usePayoutLink,
   useRefundInvoice,
   useResendInvoice,
   useVoidInvoice,
@@ -23,6 +21,7 @@ import type { AppRole, RouteProps, ToastFn } from "@/types/supplyed";
 import { Btn, buttonClassName, Stat, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
+import { PayInvoiceModal, usePaymentReturn } from "./PayInvoiceModal";
 import { PayoutSettings } from "./PayoutSettings";
 import { AdminPayoutLookup } from "./AdminPayoutLookup";
 
@@ -53,8 +52,10 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [payTarget, setPayTarget] = useState<PayableInvoice | null>(null);
   const invoicesQuery = useMyInvoices(invoiceQuery(filter, page));
   const invoices = invoicesQuery.data?.invoices ?? [];
+  usePaymentReturn(toast);
   const resend = useResendInvoice({ onSuccess: (result) => notify(toast, result, "Invoice sent", "Could not resend invoice"), onError: () => mutationFailure(toast) });
   const outstanding = invoices.filter((invoice) => invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE");
   const paid = invoices.filter((invoice) => invoice.status === "PAID");
@@ -82,7 +83,7 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
         renderActions={(invoice) => (
           <>
             <Btn size="sm" variant="ghost" onClick={() => setDetailId(invoice.id)}>Details</Btn>
-            <PaymentLink invoice={invoice} />
+            {isUnpaid(invoice) ? <Btn size="sm" onClick={() => setPayTarget(payable(invoice))}>Pay now</Btn> : null}
             <PdfLink invoice={invoice} />
             {isUnpaid(invoice) ? (
               <Btn
@@ -100,7 +101,8 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
         )}
         role="institution"
       />
-      <InvoiceDetailsModal id={detailId} onClose={() => setDetailId(null)} role="institution" />
+      <InvoiceDetailsModal id={detailId} onClose={() => setDetailId(null)} onPay={(invoice) => { setDetailId(null); setPayTarget(payable(invoice)); }} role="institution" />
+      <PayInvoiceModal invoice={payTarget} onClose={() => setPayTarget(null)} toast={toast} />
     </div>
   );
 }
@@ -108,8 +110,6 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
 // ---- Teacher ----
 
 function TeacherEarnings({ toast }: { toast: ToastFn }) {
-  const searchParams = useSearchParams();
-  const returned = searchParams.get("payouts");
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -120,14 +120,9 @@ function TeacherEarnings({ toast }: { toast: ToastFn }) {
 
   return (
     <div className="app-page">
-      <PageHead title="Earnings" subtitle="Schools pay booking invoices through Stripe. Your earnings are sent to your connected payout account." actions={<RefreshInvoices query={invoicesQuery} />} />
+      <PageHead title="Earnings" subtitle="Schools pay your booking invoices in SupplyEd. Your pay goes straight to your bank account." actions={<RefreshInvoices query={invoicesQuery} />} />
 
-      {returned === "returned" ? (
-        <Notice tone="green">Thanks. Stripe is checking your details; this can take a minute. Refresh if your status has not updated.</Notice>
-      ) : null}
-      {returned === "error" ? <Notice tone="red">We could not reopen payout setup. Try again below.</Notice> : null}
-
-      <PayoutSetupCard toast={toast} />
+      <PayoutSettings />
       <CashOutCard toast={toast} />
 
       <div className="my-6 grid gap-4 sm:grid-cols-3">
@@ -147,69 +142,6 @@ function TeacherEarnings({ toast }: { toast: ToastFn }) {
       />
       <InvoiceDetailsModal id={detailId} onClose={() => setDetailId(null)} role="teacher" />
     </div>
-  );
-}
-
-function PayoutSetupCard({ toast }: { toast: ToastFn }) {
-  const payoutQuery = usePayoutAccount();
-  const account = payoutQuery.data;
-  const onFailure = (result: { message?: string; ok: boolean }) => {
-    if (!result.ok) toast({ msg: result.message ?? "Please try again.", title: "Could not open Stripe", tone: "danger" });
-  };
-  const onboarding = usePayoutLink("onboarding", { onSuccess: onFailure });
-  const dashboard = usePayoutLink("dashboard", { onSuccess: onFailure });
-  const missing = [...new Set((account?.requirementsDue ?? []).map(describeRequirement))];
-
-  if (payoutQuery.isLoading) return <SectionLoader rows={2} />;
-
-  if (payoutQuery.error || !account) {
-    return <Notice tone="red">Payout status is unavailable right now. Refresh the page to try again.</Notice>;
-  }
-
-  return (
-    <section className="card card-pad-lg">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-[240px] flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-serif text-2xl leading-tight">Payouts</h2>
-            {account.ready ? (
-              <Tag tone="green">Active</Tag>
-            ) : account.connected ? (
-              <Tag tone="amber">Action needed</Tag>
-            ) : (
-              <Tag tone="ghost">Not set up</Tag>
-            )}
-          </div>
-          <p className="mt-2 max-w-[560px] text-sm leading-6 text-muted">
-            {account.ready
-              ? "You're set up to be paid. Schools' payments for your bookings go straight to your bank account."
-              : account.connected
-                ? "Stripe needs a few more details before you can be paid. It only takes a couple of minutes."
-                : "Takes about 2 minutes on Stripe, our payments partner: your date of birth, your bank account, and accepting Stripe's terms. We fill in the rest from your profile, and SupplyEd never sees your bank details."}
-          </p>
-          {!account.ready && account.connected && missing.length ? (
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {missing.map((label) => (
-                <li key={label}>
-                  <Tag tone="ghost">{label}</Tag>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {account.ready ? (
-            <Btn loading={dashboard.isPending} loadingLabel="Opening" variant="secondary" onClick={() => dashboard.mutate()}>
-              Manage payouts
-            </Btn>
-          ) : (
-            <Btn loading={onboarding.isPending} loadingLabel="Opening Stripe" onClick={() => onboarding.mutate()}>
-              {account.connected ? "Continue setup" : "Set up payouts"}
-            </Btn>
-          )}
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -246,7 +178,7 @@ function CashOutCard({ toast }: { toast: ToastFn }) {
             <p className="mt-2 text-sm text-muted">
               {balance.instantDestination
                 ? `Cash out to ${balance.instantDestination.label}. It usually arrives within 30 minutes, any day.`
-                : "Your bank doesn't support instant cash-outs. Add a debit card in Manage payouts to cash out instantly."}
+                : "Your bank doesn't support instant cash-outs. Add a debit card under Bank account and payouts to cash out instantly."}
               {balance.pendingPence > 0 ? ` Otherwise ${formatPence(balance.pendingPence)} is paid to your bank automatically in a few days.` : ""}
             </p>
           </div>
@@ -621,9 +553,8 @@ function PdfLink({ invoice }: { invoice: Invoice }) {
   );
 }
 
-function PaymentLink({ invoice }: { invoice: Invoice }) {
-  const url = stripeInvoiceUrl(invoice.hostedInvoiceUrl);
-  return isUnpaid(invoice) && url ? <a className={buttonClassName({ size: "sm" })} href={url} rel="noopener noreferrer" target="_blank">Pay in Stripe</a> : null;
+function payable(invoice: Invoice): PayableInvoice {
+  return { id: invoice.id, jobTitle: invoice.booking.jobTitle, totalAmountPence: invoice.totalAmountPence - invoice.amountRefundedPence };
 }
 
 function RefreshInvoices({ query }: { query: { isFetching: boolean; refetch: () => unknown } }) {
@@ -638,16 +569,6 @@ function isUnpaid(invoice: Invoice) {
   return invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE";
 }
 
-function Notice({ children, tone }: { children: ReactNode; tone: "green" | "red" }) {
-  return (
-    <p
-      className={`mb-4 rounded-lg px-4 py-3 text-sm ${tone === "green" ? "bg-success-tint text-success" : "bg-danger-tint text-danger"}`}
-      role="status"
-    >
-      {children}
-    </p>
-  );
-}
 
 function EmptyState({ title, message }: { title: string; message: string }) {
   return (

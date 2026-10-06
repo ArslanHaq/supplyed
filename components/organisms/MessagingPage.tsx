@@ -10,6 +10,7 @@ import {
   MAX_ATTACHMENTS,
   MAX_MESSAGE_LENGTH,
 } from "@/features/conversations/schemas";
+import { emitTyping } from "@/features/conversations/socket";
 import type { ChatMessage, Conversation, MessageAttachment } from "@/features/conversations/types";
 import {
   flattenMessages,
@@ -19,6 +20,7 @@ import {
   useMarkConversationRead,
   useMessages,
   useSendMessage,
+  useTypingIndicator,
 } from "@/features/conversations/use-conversations";
 import type { RouteProps, ToastFn } from "@/types/supplyed";
 
@@ -35,7 +37,8 @@ type PendingFile = {
 
 /**
  * Conversations between a school and a teacher, one per job application.
- * New messages and read receipts arrive live (see useConversationStream in AppChrome).
+ * New messages, read receipts and typing notices arrive live over the shared
+ * socket (see useConversationStream in AppChrome).
  */
 export function MessagingPage({ ctx, role, toast }: Pick<RouteProps, "ctx" | "role" | "toast">) {
   const conversationsQuery = useConversations();
@@ -139,16 +142,31 @@ function Thread({ conversation, toast }: { conversation: Conversation; toast: To
   const markReadRef = useRef(markRead.mutate);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastMessageId = messages.at(-1)?.id;
+  const typing = useTypingIndicator(conversation.id);
+  const counterpartTyping = Boolean(typing?.typing && typing.side !== conversation.me);
 
   useEffect(() => {
     markReadRef.current = markRead.mutate;
   }, [markRead.mutate]);
 
+  // Something to mark read: the newest message is theirs, or the thread was opened with unread messages.
+  const newestFromCounterpart = messages.length > 0 && messages.at(-1)?.senderSide !== conversation.me;
+  const hasUnread = newestFromCounterpart || conversation.unreadCount > 0;
+
   // Follow the conversation: scroll to the newest message and mark it read while the tab is in view.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
-    if (lastMessageId && document.visibilityState === "visible") markReadRef.current(conversation.id);
-  }, [conversation.id, lastMessageId]);
+    if (hasUnread && document.visibilityState === "visible") markReadRef.current(conversation.id);
+  }, [conversation.id, hasUnread, lastMessageId]);
+
+  // Messages that arrived while the tab was hidden are marked read when the user comes back to it.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && hasUnread) markReadRef.current(conversation.id);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [conversation.id, hasUnread]);
 
   // The newest of my messages the other side has seen, for a single "Seen" marker.
   const seenId = useMemo(() => {
@@ -166,8 +184,12 @@ function Thread({ conversation, toast }: { conversation: Conversation; toast: To
         <Avatar name={conversation.counterpart.name} size="md" src={conversation.counterpart.imageUrl} />
         <div className="min-w-0 flex-1">
           <div className="font-semibold">{conversation.counterpart.name}</div>
-          <div className="truncate text-xs text-muted">
-            {conversation.counterpart.role === "school" ? "School" : "Teacher"} · {conversation.job.title}
+          <div className="truncate text-xs text-muted" aria-live="polite">
+            {counterpartTyping ? (
+              <span className="text-brand">{conversation.counterpart.name} is typing…</span>
+            ) : (
+              <>{conversation.counterpart.role === "school" ? "School" : "Teacher"} · {conversation.job.title}</>
+            )}
           </div>
         </div>
         <Tag tone="ghost">{conversation.applicationStatus.toLowerCase().replace(/_/g, " ")}</Tag>
@@ -210,7 +232,7 @@ function Thread({ conversation, toast }: { conversation: Conversation; toast: To
           This application was not successful, so the conversation is closed. You can still read and download what was shared.
         </p>
       ) : (
-        <Composer conversationId={conversation.id} toast={toast} />
+        <Composer key={conversation.id} conversationId={conversation.id} toast={toast} />
       )}
     </section>
   );
@@ -283,7 +305,39 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<PendingFile[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
+  const typingRef = useRef<{ lastSentAt: number; stopTimer: ReturnType<typeof setTimeout> | null }>({ lastSentAt: 0, stopTimer: null });
   const send = useSendMessage({ onError: (message) => toast({ msg: message, title: "Message not sent", tone: "danger" }) });
+
+  // Tell the other person we are typing (at most every 1.5 s) and that we stopped (3 s after the last keystroke).
+  function noteTyping(text: string) {
+    const state = typingRef.current;
+    if (state.stopTimer) clearTimeout(state.stopTimer);
+
+    if (!text.trim()) {
+      if (state.lastSentAt) emitTyping(conversationId, false);
+      state.lastSentAt = 0;
+      return;
+    }
+
+    const now = Date.now();
+    if (now - state.lastSentAt >= 1500) {
+      emitTyping(conversationId, true);
+      state.lastSentAt = now;
+    }
+
+    state.stopTimer = setTimeout(() => {
+      emitTyping(conversationId, false);
+      state.lastSentAt = 0;
+    }, 3000);
+  }
+
+  useEffect(() => {
+    const state = typingRef.current;
+    return () => {
+      if (state.stopTimer) clearTimeout(state.stopTimer);
+      if (state.lastSentAt) emitTyping(conversationId, false);
+    };
+  }, [conversationId]);
   const uploading = files.some((file) => file.status === "uploading");
   const readyIds = files.flatMap((file) => (file.status === "ready" && file.attachment ? [file.attachment.id] : []));
   const canSend = !send.isPending && !uploading && (body.trim().length > 0 || readyIds.length > 0);
@@ -330,6 +384,11 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
 
   function submit() {
     if (!canSend) return;
+
+    const state = typingRef.current;
+    if (state.stopTimer) clearTimeout(state.stopTimer);
+    if (state.lastSentAt) emitTyping(conversationId, false);
+    state.lastSentAt = 0;
 
     send.mutate(
       { attachmentIds: readyIds, body, conversationId },
@@ -385,7 +444,10 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
           aria-label="Message"
           className="input min-h-[44px] flex-1 resize-none"
           maxLength={MAX_MESSAGE_LENGTH}
-          onChange={(event) => setBody(event.target.value)}
+          onChange={(event) => {
+            setBody(event.target.value);
+            noteTyping(event.target.value);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();

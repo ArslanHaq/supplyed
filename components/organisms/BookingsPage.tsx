@@ -6,13 +6,14 @@ import type { Booking, BookingStatus } from "@/features/bookings/types";
 import { bookingDays, invoiceUnitsLimit } from "@/features/bookings/schemas";
 import { useBookings, useCreateBookingReview, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
 import { formatPence } from "@/features/payments/schemas";
-import { stripeInvoiceUrl } from "@/features/payments/invoice-links";
 import { useCreateInvoice, useInvoice } from "@/features/payments/use-payments";
+import type { Invoice, PayableInvoice } from "@/features/payments/types";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, buttonClassName, Icon, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
+import { PayInvoiceModal } from "./PayInvoiceModal";
 
 type Tab = "active" | "all" | "cancelled" | "completed" | "no-show";
 
@@ -39,6 +40,7 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const [invoiceTarget, setInvoiceTarget] = useState<Booking | null>(null);
   const [invoiceDetailsId, setInvoiceDetailsId] = useState<string | null>(null);
+  const [payTarget, setPayTarget] = useState<PayableInvoice | null>(null);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const bookingsQuery = useBookings({ limit: 20, page, status: tabStatus[tab] });
   const bookings = bookingsQuery.data?.bookings ?? [];
@@ -130,6 +132,7 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
                 onComplete={(id) => updateBooking.mutate({ action: "complete", id })}
                 onInvoice={(booking) => { setInvoiceError(null); setInvoiceTarget(booking); }}
                 onInvoiceDetails={setInvoiceDetailsId}
+                onPay={setPayTarget}
                 onNoShow={(id) => updateBooking.mutate({ action: "no-show", id })}
                 onReview={setReviewTarget}
                 pending={updateBooking.isPending}
@@ -171,7 +174,16 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
         }}
       />
 
-      <InvoiceDetailsModal id={invoiceDetailsId} onClose={() => setInvoiceDetailsId(null)} role={role} />
+      <InvoiceDetailsModal
+        id={invoiceDetailsId}
+        onClose={() => setInvoiceDetailsId(null)}
+        onPay={(invoice: Invoice) => {
+          setInvoiceDetailsId(null);
+          setPayTarget({ id: invoice.id, jobTitle: invoice.booking.jobTitle, totalAmountPence: invoice.totalAmountPence });
+        }}
+        role={role}
+      />
+      <PayInvoiceModal invoice={payTarget} onClose={() => setPayTarget(null)} toast={toast} />
 
       <ReviewBookingModal
         booking={reviewTarget}
@@ -196,6 +208,7 @@ function BookingCard({
   onInvoice,
   onInvoiceDetails,
   onNoShow,
+  onPay,
   onReview,
   pending,
   role,
@@ -207,6 +220,7 @@ function BookingCard({
   onInvoice: (booking: Booking) => void;
   onInvoiceDetails: (id: string) => void;
   onNoShow: (id: string) => void;
+  onPay: (invoice: PayableInvoice) => void;
   onReview: (booking: Booking) => void;
   pending: boolean;
   role: AppRole;
@@ -244,7 +258,7 @@ function BookingCard({
 
       {booking.cancelReason ? <p className="mt-4 rounded-lg bg-danger-tint px-3 py-2 text-sm text-danger">{booking.cancelReason}</p> : null}
 
-      {booking.status === "COMPLETED" ? <InvoiceStrip booking={booking} onInvoice={onInvoice} onInvoiceDetails={onInvoiceDetails} role={role} /> : (
+      {booking.status === "COMPLETED" ? <InvoiceStrip booking={booking} onInvoice={onInvoice} onInvoiceDetails={onInvoiceDetails} onPay={onPay} role={role} /> : (
         booking.status === "CONFIRMED" ? <p className="mt-4 rounded-lg bg-chalk px-4 py-3 text-sm text-muted">Payment is handled through a Stripe invoice after this booking is completed.</p> : null
       )}
 
@@ -280,7 +294,7 @@ function BookingCard({
 }
 
 /** Payment state of a completed booking: invoice it (school), pay it, or see where it stands. */
-function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, role }: { booking: Booking; onInvoice: (booking: Booking) => void; onInvoiceDetails: (id: string) => void; role: AppRole }) {
+function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, onPay, role }: { booking: Booking; onInvoice: (booking: Booking) => void; onInvoiceDetails: (id: string) => void; onPay: (invoice: PayableInvoice) => void; role: AppRole }) {
   const bookingInvoice = booking.invoice;
   const invoiceDetail = useInvoice(bookingInvoice?.id ?? null);
   const latestInvoice = invoiceDetail.data;
@@ -294,7 +308,6 @@ function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, role }: { booking:
         totalAmountPence: latestInvoice.totalAmountPence,
       }
     : bookingInvoice;
-  const paymentUrl = stripeInvoiceUrl(invoice?.hostedInvoiceUrl);
   const canInvoice = ["daily", "hourly", "fixed"].includes(booking.payType ?? "") && typeof booking.payAmount === "number" && booking.payAmount > 0;
   let label: string;
   let tag: { text: string; tone: "amber" | "green" | "red" } | null = null;
@@ -327,10 +340,10 @@ function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, role }: { booking:
           Refresh payment
         </Btn>
       ) : null}
-      {role === "institution" && (invoice?.status === "OPEN" || invoice?.status === "UNCOLLECTIBLE") && paymentUrl ? (
-        <a className={buttonClassName({ size: "sm" })} href={paymentUrl} rel="noopener noreferrer" target="_blank">
+      {role === "institution" && invoice && (invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE") ? (
+        <Btn size="sm" onClick={() => onPay({ id: invoice.id, jobTitle: booking.job.title, totalAmountPence: invoice.totalAmountPence })}>
           Pay invoice
-        </a>
+        </Btn>
       ) : null}
       </div>
     </div>

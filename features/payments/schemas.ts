@@ -7,7 +7,6 @@ import type {
   PayoutAccount,
   PayoutBalance,
   PayoutSummary,
-  StripeLink,
 } from "./types";
 
 export const invoiceStatuses = new Set<InvoiceStatus>(["PENDING", "OPEN", "PAID", "VOID", "UNCOLLECTIBLE"]);
@@ -63,10 +62,6 @@ export function normalizePayoutBalance(balance: Partial<PayoutBalance> | null | 
     pendingPence: readNumber(balance?.pendingPence) ?? 0,
     recentPayouts: Array.isArray(balance?.recentPayouts) ? balance.recentPayouts.map(normalizePayoutSummary) : [],
   };
-}
-
-export function normalizeStripeLink(link: Partial<StripeLink>): StripeLink {
-  return { expiresAt: readDateIso(link.expiresAt), url: link.url ?? "" };
 }
 
 export function normalizeInvoice(invoice: Invoice): Invoice {
