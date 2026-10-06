@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-import { useCreateJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
+import { useCreateJob, useJob, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
 import { isValidUkPostcode } from "@/lib/postcode";
 import type { RouteProps } from "@/types/supplyed";
@@ -63,10 +63,10 @@ const initialForm: JobFormState = {
 
 export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "role" | "toast">) {
   const isEditing = Boolean(ctx.jobId);
-  const myJobsQuery = useMyJobs();
-  const editingJob = ctx.jobId ? myJobsQuery.data?.find((job) => job.id === ctx.jobId) : undefined;
+  const editingJobQuery = useJob(ctx.jobId ?? "", true);
+  const editingJob = ctx.jobId ? editingJobQuery.data : undefined;
 
-  if (isEditing && myJobsQuery.isLoading) {
+  if (isEditing && editingJobQuery.isLoading) {
     return (
       <div className="app-page">
         <PageHead title="Loading job" subtitle="Preparing the role editor." />
@@ -75,12 +75,12 @@ export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "
     );
   }
 
-  if (ctx.jobId && !myJobsQuery.isLoading && !editingJob) {
+  if (ctx.jobId && !editingJobQuery.isLoading && !editingJob) {
     return (
       <div className="app-page">
         <PageHead title="Job not found" subtitle="This job may have been deleted or belongs to another account." />
         <div className="card card-pad-lg max-w-[1040px]">
-          <p className="text-sm leading-6 text-muted">Only jobs returned from your backend `GET /jobs/mine` can be edited here.</p>
+          <p className="text-sm leading-6 text-muted">Only jobs posted from your account can be edited here.</p>
           <Btn className="mt-5" icon="arrowLeft" onClick={() => go("dashboard")} variant="secondary">
             Back to dashboard
           </Btn>

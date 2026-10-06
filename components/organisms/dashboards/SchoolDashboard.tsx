@@ -11,10 +11,12 @@ import { JobManagementList, type JobStatusFilter } from "../JobManagementList";
 
 export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "toast" | "tweaks">) {
   const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ALL");
-  const jobsQuery = useMyJobs();
-  const jobs = jobsQuery.data ?? [];
-  const activeJobs = jobs.filter((job) => job.status === "ACTIVE");
-  const draftJobs = jobs.filter((job) => job.status === "DRAFT");
+  const [page, setPage] = useState(1);
+  const jobsQuery = useMyJobs({ limit: 20, page, status: statusFilter === "ALL" ? undefined : statusFilter });
+  const jobs = jobsQuery.data?.jobs ?? [];
+  const counts = jobsQuery.data?.statusCounts;
+  const activeCount = counts?.ACTIVE ?? 0;
+  const draftCount = counts?.DRAFT ?? 0;
   const updateJob = useUpdateJob({
     onSuccess: (result) => {
       toast({
@@ -54,7 +56,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
       {tweaks.urgentBanner ? (
         <div className="urgent-banner">
           <Icon name="zap" size={16} />
-          <strong>{activeJobs.length || draftJobs.length ? `${activeJobs.length} active roles.` : "Ready to post your first role."}</strong>
+          <strong>{activeCount || draftCount ? `${activeCount} active roles.` : "Ready to post your first role."}</strong>
           <span style={{ opacity: 0.8 }}>Approved school accounts can publish roles and review applicants from one workspace.</span>
           <div className="ml-auto flex gap-2">
             <Btn variant="danger" size="sm" onClick={() => go("post-job")}>Post urgent</Btn>
@@ -64,19 +66,20 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
       <div className="app-page">
         <PageHead
           title="School hiring workspace"
-          subtitle={`${jobs.length} posted roles - ${activeJobs.length} active - ${draftJobs.length} drafts`}
+          subtitle={`${counts?.ALL ?? 0} posted roles - ${activeCount} active - ${draftCount} drafts`}
           actions={<><Btn variant="secondary" icon="download">Export</Btn><Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn></>}
         />
         <div className="grid-4 mb-7">
-          <Stat value={activeJobs.length} label="Active jobs" delta={`${draftJobs.length} drafts`} />
-          <Stat value={jobs.length} label="Total posted" delta="Across all statuses" />
-          <Stat value={jobs.filter((job) => job.status === "CLOSED").length} label="Closed roles" delta="Kept for records" />
+          <Stat value={activeCount} label="Active jobs" delta={`${draftCount} drafts`} />
+          <Stat value={counts?.ALL ?? 0} label="Total posted" delta="Across all statuses" />
+          <Stat value={counts?.CLOSED ?? 0} label="Closed roles" delta="Kept for records" />
           <Stat value="0" label="Applicants today" delta="Live count pending" />
         </div>
         <div className="two-col">
           <div>
             <JobManagementList
               actionPending={updateJob.isPending || deleteJob.isPending}
+              counts={counts}
               emptyMessage="Create a role to start matching with approved instructors."
               filter={statusFilter}
               jobs={jobs}
@@ -86,7 +89,9 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
               onCreate={() => go("post-job")}
               onDelete={removeJob}
               onEdit={(job) => go("post-job", { jobId: job.id })}
-              onFilterChange={setStatusFilter}
+              onFilterChange={(filter) => { setStatusFilter(filter); setPage(1); }}
+              onPageChange={setPage}
+              pagination={jobsQuery.data?.pagination}
               title="Job posts"
             />
             <div className="section-title mt-7">Recent activity</div>

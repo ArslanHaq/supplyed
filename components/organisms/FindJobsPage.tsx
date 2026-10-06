@@ -12,20 +12,24 @@ import { MatchScorePanel, PageHead, SectionLoader } from "../molecules";
 export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
   const [tab, setTab] = useState<"recommended" | "all">("recommended");
   const [page, setPage] = useState(1);
+  const [allPage, setAllPage] = useState(1);
   const [minScore, setMinScore] = useState(0);
   const [urgency, setUrgency] = useState("All jobs");
   const [keyStage, setKeyStage] = useState("All stages");
   const [subject, setSubject] = useState("All subjects");
   const filters: JobListFilters = {
     keyStage: keyStage === "All stages" ? undefined : keyStage,
+    limit: 20,
+    page: allPage,
     subject: subject === "All subjects" ? undefined : subject,
     urgent: urgency === "Urgent only" ? true : undefined,
   };
   const jobsQuery = useJobs(filters);
-  const jobs = jobsQuery.data ?? [];
+  const jobs = jobsQuery.data?.jobs ?? [];
+  const allPagination = jobsQuery.data?.pagination;
   const recommendedQuery = useRecommendedJobs({ limit: 20, minScore, page });
   const recommendedJobs = recommendedQuery.data?.jobs ?? [];
-  const activeCount = tab === "recommended" ? recommendedQuery.data?.pagination.total ?? recommendedJobs.length : jobs.length;
+  const activeCount = tab === "recommended" ? recommendedQuery.data?.pagination.total ?? recommendedJobs.length : allPagination?.total ?? 0;
   const activeLoading = tab === "recommended" ? recommendedQuery.isLoading : jobsQuery.isLoading;
   const activeError = tab === "recommended" ? recommendedQuery.error : jobsQuery.error;
 
@@ -42,21 +46,21 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
           <SelectDropdown
             options={["All jobs", "Urgent only"]}
             value={urgency}
-            onChange={setUrgency}
+            onChange={(value) => { setUrgency(value); setAllPage(1); }}
           />
         </Field>
         <Field label="Key stage">
           <SelectDropdown
             options={["All stages", "KS1", "KS2", "KS3", "KS4", "KS5"]}
             value={keyStage}
-            onChange={setKeyStage}
+            onChange={(value) => { setKeyStage(value); setAllPage(1); }}
           />
         </Field>
         <Field label="Subject">
           <SelectDropdown
             options={["All subjects", "Maths", "English", "Science", "All Primary"]}
             value={subject}
-            onChange={setSubject}
+            onChange={(value) => { setSubject(value); setAllPage(1); }}
           />
         </Field>
       </div> : null}
@@ -79,6 +83,7 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
           {!activeLoading && !activeError && activeCount === 0 ? (
             <div className="card card-pad text-muted">No jobs match these filters.</div>
           ) : null}
+          {tab === "all" && allPagination && allPagination.totalPages > 1 ? <div className="flex items-center justify-between"><Btn disabled={allPage <= 1 || jobsQuery.isFetching} variant="secondary" onClick={() => setAllPage((value) => Math.max(1, value - 1))}>Previous</Btn><span className="text-sm text-muted">Page {allPagination.page} of {allPagination.totalPages}</span><Btn disabled={!allPagination.hasNextPage || jobsQuery.isFetching} variant="secondary" onClick={() => setAllPage((value) => value + 1)}>Next</Btn></div> : null}
           {tab === "recommended" && (recommendedQuery.data?.pagination.totalPages ?? 0) > 1 ? <div className="flex items-center justify-between"><Btn disabled={page <= 1} variant="secondary" onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</Btn><span className="text-sm text-muted">Page {page} of {recommendedQuery.data?.pagination.totalPages}</span><Btn disabled={!recommendedQuery.data?.pagination.hasNextPage} variant="secondary" onClick={() => setPage((value) => value + 1)}>Next</Btn></div> : null}
         </div>
         <div className="sidebar-panel card-pad">

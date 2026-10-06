@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useJobApplications } from "@/features/applications/use-applications";
-import type { Job, JobStatus } from "@/features/jobs/types";
+import type { Job, JobsPagination, JobStatus, JobStatusCounts } from "@/features/jobs/types";
 import type { Tone } from "@/types/supplyed";
 
 import { Btn, Icon, Tag } from "../atoms";
@@ -11,6 +11,8 @@ export type JobStatusFilter = "ALL" | JobStatus;
 
 type JobManagementListProps = {
   actionPending?: boolean;
+  /** Totals per status across every job, so each tab shows its full count whatever page is open. */
+  counts?: JobStatusCounts;
   emptyActionLabel?: string;
   emptyMessage: string;
   filter: JobStatusFilter;
@@ -22,6 +24,8 @@ type JobManagementListProps = {
   onDelete: (job: Job) => void;
   onEdit: (job: Job) => void;
   onFilterChange: (filter: JobStatusFilter) => void;
+  onPageChange?: (page: number) => void;
+  pagination?: JobsPagination;
   title: string;
 };
 
@@ -35,6 +39,7 @@ const statusFilters: Array<{ label: string; value: JobStatusFilter }> = [
 
 export function JobManagementList({
   actionPending,
+  counts,
   emptyActionLabel = "Post a job",
   emptyMessage,
   filter,
@@ -46,8 +51,11 @@ export function JobManagementList({
   onDelete,
   onEdit,
   onFilterChange,
+  onPageChange,
+  pagination,
   title,
 }: JobManagementListProps) {
+  // The backend already filtered by status; this only guards against a stale page during a tab switch.
   const filteredJobs = filter === "ALL" ? jobs : jobs.filter((job) => job.status === filter);
 
   return (
@@ -56,7 +64,7 @@ export function JobManagementList({
         <div className="section-title mb-0">{title}</div>
         <div className="flex flex-wrap gap-1.5">
           {statusFilters.map((statusFilter) => {
-            const count = statusFilter.value === "ALL" ? jobs.length : jobs.filter((job) => job.status === statusFilter.value).length;
+            const count = counts?.[statusFilter.value];
             return (
               <button
                 key={statusFilter.value}
@@ -67,7 +75,7 @@ export function JobManagementList({
                 onClick={() => onFilterChange(statusFilter.value)}
                 type="button"
               >
-                {statusFilter.label} {count}
+                {statusFilter.label}{count === undefined ? "" : ` ${count}`}
               </button>
             );
           })}
@@ -95,6 +103,13 @@ export function JobManagementList({
           />
         ))}
       </div>
+      {pagination && onPageChange && pagination.totalPages > 1 ? (
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+          <Btn disabled={pagination.page <= 1 || loading} size="sm" variant="ghost" onClick={() => onPageChange(pagination.page - 1)}>Previous</Btn>
+          <span className="text-muted">Page {pagination.page} of {pagination.totalPages}</span>
+          <Btn disabled={!pagination.hasNextPage || loading} size="sm" variant="ghost" onClick={() => onPageChange(pagination.page + 1)}>Next</Btn>
+        </div>
+      ) : null}
     </>
   );
 }

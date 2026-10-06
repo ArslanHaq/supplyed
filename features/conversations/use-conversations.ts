@@ -11,6 +11,7 @@ import { acquireConversationSocket, liveMessagingAvailable, releaseConversationS
 import type {
   ChatMessage,
   Conversation,
+  ConversationsPage,
   MessageAttachment,
   MessageEventPayload,
   MessagesPage,
@@ -30,13 +31,31 @@ const FALLBACK_REFETCH_MS = 30_000;
 const applicationEntries = { queryKey: [...queryKeys.conversations.all, "application"] as const };
 
 type MessagesData = InfiniteData<MessagesPage, string | undefined>;
+type ConversationsData = InfiniteData<ConversationsPage, number>;
 
+/** The thread list, a page at a time: the most recent threads first, older ones loaded on demand. */
 export function useConversations(options: { enabled?: boolean } = {}) {
-  return useQuery({
+  return useInfiniteQuery({
     enabled: options.enabled ?? true,
-    queryFn: () => fetchJson<Conversation[]>("/api/conversations"),
+    getNextPageParam: (page: ConversationsPage) => (page.pagination.hasNextPage ? page.pagination.page + 1 : undefined),
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => fetchJson<ConversationsPage>("/api/conversations", { query: { page: pageParam } }),
     queryKey: queryKeys.conversations.list(),
     refetchInterval: liveMessagingAvailable() ? false : FALLBACK_REFETCH_MS,
+  });
+}
+
+/**
+ * All loaded threads in order. Threads move to the top as messages arrive,
+ * so a later page can repeat one already shown; the first copy wins.
+ */
+export function flattenConversations(data: InfiniteData<ConversationsPage, unknown> | undefined): Conversation[] {
+  const seen = new Set<string>();
+
+  return (data?.pages ?? []).flatMap((page) => page.conversations).filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
   });
 }
 
@@ -96,7 +115,9 @@ function appendMessage(queryClient: ReturnType<typeof useQueryClient>, message: 
 
 function patchConversation(queryClient: ReturnType<typeof useQueryClient>, conversationId: string, patch: (item: Conversation) => Conversation) {
   const apply = (item: Conversation) => (item.id === conversationId ? patch(item) : item);
-  queryClient.setQueryData<Conversation[]>(queryKeys.conversations.list(), (list) => list?.map(apply));
+  queryClient.setQueryData<ConversationsData>(queryKeys.conversations.list(), (data) =>
+    data ? { ...data, pages: data.pages.map((page) => ({ ...page, conversations: page.conversations.map(apply) })) } : data,
+  );
   queryClient.setQueriesData<Conversation>(applicationEntries, (item) => (item ? apply(item) : item));
 }
 

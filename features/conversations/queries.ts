@@ -3,17 +3,26 @@ import "server-only";
 import { api } from "@/lib/server/api-client";
 
 import { normalizeConversation, normalizeMessagesPage } from "./schemas";
-import type { Conversation, MessagesPage } from "./types";
+import type { Conversation, ConversationsPage, ConversationsPagination, MessagesPage } from "./types";
 
 function backendEnabled() {
   return Boolean(process.env.API_BASE_URL);
 }
 
-export async function listMyConversations(): Promise<Conversation[]> {
-  if (!backendEnabled()) return [];
+/** One page of the signed-in user's threads, most recent activity first. */
+export async function listMyConversations(page = 1, limit = 20): Promise<ConversationsPage> {
+  const empty = { hasNextPage: false, limit, page, total: 0, totalPages: 0 };
+  if (!backendEnabled()) return { conversations: [], pagination: empty };
 
-  const conversations = await api.get<Conversation[]>("/conversations", { cache: "no-store" });
-  return (conversations ?? []).map(normalizeConversation);
+  const result = await api.get<{ conversations?: Conversation[]; pagination?: Partial<ConversationsPagination> }>("/conversations", {
+    cache: "no-store",
+    query: { limit, page },
+  });
+
+  return {
+    conversations: (result?.conversations ?? []).map(normalizeConversation),
+    pagination: { ...empty, ...result?.pagination },
+  };
 }
 
 export async function getUnreadMessageCount(): Promise<{ total: number }> {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
 
 import { fetchJson } from "@/lib/query/fetch-json";
@@ -8,7 +8,7 @@ import { queryKeys } from "@/lib/query/keys";
 import { startRouteLoading } from "@/lib/navigation-loading";
 
 import { createJobAction, deleteJobAction, updateJobAction } from "./actions";
-import type { Job, JobCreateInput, JobListFilters, JobUpdateInput } from "./types";
+import type { Job, JobCreateInput, JobListFilters, JobUpdateInput, MyJobs, PaginatedJobs } from "./types";
 
 type CreateJobResult = Awaited<ReturnType<typeof createJobAction>>;
 type UpdateJobResult = Awaited<ReturnType<typeof updateJobAction>>;
@@ -45,16 +45,20 @@ function handleSessionExpiredResult(result: CreateJobResult | DeleteJobResult | 
   return false;
 }
 
+/** One page of the job board; the previous page stays on screen while the next one loads. */
 export function useJobs(filters: JobListFilters = {}) {
   return useQuery({
-    queryFn: () => fetchJson<Job[]>("/api/jobs", { query: filters }),
+    placeholderData: keepPreviousData,
+    queryFn: () => fetchJson<PaginatedJobs>("/api/jobs", { query: filters }),
     queryKey: queryKeys.jobs.list(filters),
   });
 }
 
+/** One page of the poster's own jobs, plus how many are in each status. */
 export function useMyJobs(filters: JobListFilters = {}) {
   return useQuery({
-    queryFn: () => fetchJson<Job[]>("/api/jobs/mine", { query: filters }),
+    placeholderData: keepPreviousData,
+    queryFn: () => fetchJson<MyJobs>("/api/jobs/mine", { query: filters }),
     queryKey: queryKeys.jobs.mine(filters),
   });
 }

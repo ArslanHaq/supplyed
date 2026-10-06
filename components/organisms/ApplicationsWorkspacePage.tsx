@@ -25,10 +25,11 @@ const pipelineStatuses: Exclude<JobApplicationStatus, "REJECTED">[] = ["APPLIED"
 export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ctx" | "toast">) {
   const [hireTarget, setHireTarget] = useState<JobApplication | null>(null);
   const autoViewedApplicationIds = useRef<Set<string>>(new Set());
-  const myJobsQuery = useMyJobs();
-  const selectedJobId = ctx.jobId ?? myJobsQuery.data?.[0]?.id;
-  const publicJobQuery = useJob(selectedJobId ?? "");
-  const job = myJobsQuery.data?.find((item) => item.id === selectedJobId) ?? publicJobQuery.data ?? null;
+  // Only the newest job is needed, as the default when no job was chosen.
+  const myJobsQuery = useMyJobs({ limit: 1 });
+  const selectedJobId = ctx.jobId ?? myJobsQuery.data?.jobs[0]?.id;
+  const jobQuery = useJob(selectedJobId ?? "", true);
+  const job = jobQuery.data ?? null;
   const applicationsQuery = useJobApplications(selectedJobId, { limit: 100 });
   const rankedQuery = useRankedApplications(selectedJobId, { limit: 100, minScore: 0, page: 1 });
   const applications = applicationsQuery.data?.applications ?? [];

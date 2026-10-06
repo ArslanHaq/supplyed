@@ -35,6 +35,20 @@ export type Conversation = {
   unreadCount: number;
 };
 
+export type ConversationsPagination = {
+  hasNextPage: boolean;
+  limit: number;
+  page: number;
+  total: number;
+  totalPages: number;
+};
+
+/** One page of the thread list, most recent activity first. */
+export type ConversationsPage = {
+  conversations: Conversation[];
+  pagination: ConversationsPagination;
+};
+
 export type MessagesPage = {
   hasMore: boolean;
   /** Oldest first. */

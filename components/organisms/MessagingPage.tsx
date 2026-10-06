@@ -16,6 +16,7 @@ import type { ChatMessage, Conversation, MessageAttachment } from "@/features/co
 import {
   flattenMessages,
   uploadAttachment,
+  flattenConversations,
   useConversationForApplication,
   useConversations,
   useMarkConversationRead,
@@ -51,7 +52,7 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
 
   // A thread opened from an application may not be in the list yet.
   const conversations = useMemo(() => {
-    const list = conversationsQuery.data ?? [];
+    const list = flattenConversations(conversationsQuery.data);
     const opened = fromApplication.data;
     return opened && !list.some((item) => item.id === opened.id) ? [opened, ...list] : list;
   }, [conversationsQuery.data, fromApplication.data]);
@@ -90,7 +91,15 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
 
       {conversations.length > 0 ? (
         <div className="messaging-layout">
-          <ConversationList active={activeId} conversations={conversations} onSelect={setSelectedId} />
+          <ConversationList
+            active={activeId}
+            conversations={conversations}
+            hasMore={conversationsQuery.hasNextPage}
+            loadingMore={conversationsQuery.isFetchingNextPage}
+            onLoadMore={() => void conversationsQuery.fetchNextPage()}
+            onSelect={setSelectedId}
+            total={Math.max(conversationsQuery.data?.pages[0]?.pagination.total ?? 0, conversations.length)}
+          />
           {active ? (
             <>
               <Thread key={active.id} conversation={active} toast={toast} />
@@ -114,17 +123,26 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
 function ConversationList({
   active,
   conversations,
+  hasMore,
+  loadingMore,
+  onLoadMore,
   onSelect,
+  total,
 }: {
   active: string | null;
   conversations: Conversation[];
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
   onSelect: (id: string) => void;
+  /** Every thread the user has, not just the pages loaded so far. */
+  total: number;
 }) {
   return (
     <div className="messaging-conversations sidebar-panel flex min-h-0 flex-col overflow-hidden">
       <div className="sidebar-heading mx-4 mb-0 pt-5">
         <span className="flex items-center gap-2"><Icon name="message" size={17} /> Conversations</span>
-        <span className="rounded-md bg-chalk px-2 py-0.5 text-xs text-muted">{conversations.length}</span>
+        <span className="rounded-md bg-chalk px-2 py-0.5 text-xs text-muted">{total}</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {conversations.map((conversation) => {
@@ -156,6 +174,13 @@ function ConversationList({
             </button>
           );
         })}
+        {hasMore ? (
+          <div className="p-3">
+            <Btn className="w-full" loading={loadingMore} loadingLabel="Loading" size="sm" variant="ghost" onClick={onLoadMore}>
+              Load more conversations
+            </Btn>
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -19,10 +19,11 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
   const [minScore, setMinScore] = useState(0);
   const [page, setPage] = useState(1);
   const [hireTarget, setHireTarget] = useState<JobApplication | null>(null);
-  const myJobsQuery = useMyJobs();
-  const selectedJobId = ctx.jobId ?? myJobsQuery.data?.[0]?.id;
-  const publicJobQuery = useJob(selectedJobId ?? "");
-  const job = myJobsQuery.data?.find((item) => item.id === selectedJobId) ?? publicJobQuery.data ?? null;
+  // Only the newest job is needed, as the default when no job was chosen.
+  const myJobsQuery = useMyJobs({ limit: 1 });
+  const selectedJobId = ctx.jobId ?? myJobsQuery.data?.jobs[0]?.id;
+  const jobQuery = useJob(selectedJobId ?? "", true);
+  const job = jobQuery.data ?? null;
   const applicationsQuery = useJobApplications(selectedJobId, { limit: 100 });
   const rankedQuery = useRankedApplications(selectedJobId, { limit: 20, minScore, page });
   const instructorsQuery = useRecommendedInstructors(selectedJobId, { limit: 20, minScore, page });
