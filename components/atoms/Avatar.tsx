@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 import { cn } from "@/lib/cn";
 import type { Tone } from "@/types/supplyed";
 
@@ -25,21 +29,55 @@ export function Avatar({
   src?: string | null;
   tone?: Tone;
 }) {
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const initials = name
+    .trim()
     .split(" ")
+    .filter(Boolean)
     .map((part) => part[0])
     .join("")
-    .slice(0, 2);
+    .slice(0, 2)
+    .toUpperCase() || "?";
+
+  useEffect(() => {
+    if (!src) return;
+
+    let active = true;
+    const image = new window.Image();
+    image.onload = () => {
+      if (active) setLoadedSrc(src);
+    };
+    image.onerror = () => {
+      if (active) setLoadedSrc(null);
+    };
+    image.src = src;
+
+    return () => {
+      active = false;
+    };
+  }, [src]);
+
+  const showImage = Boolean(src && loadedSrc === src);
 
   return (
     <div
+      aria-label={`${name} profile`}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-tint font-bold text-brand",
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-tint font-bold text-brand",
         sizeClass[size],
         tone ? toneClass[tone] : null,
       )}
+      role="img"
     >
-      {src ? <span aria-hidden="true" className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${src})` }} /> : initials}
+      {showImage ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${src})` }}
+        />
+      ) : (
+        <span aria-hidden="true">{initials}</span>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ export const queryKeys = {
     all: ["applications"] as const,
     byJob: (jobId: string, filters?: Record<string, unknown>) =>
       [...queryKeys.applications.all, "job", jobId, filters ?? {}] as const,
+    detail: (applicationId: string) => [...queryKeys.applications.all, "detail", applicationId] as const,
     mine: (filters?: Record<string, unknown>) => [...queryKeys.applications.all, "mine", filters ?? {}] as const,
   },
   auth: {

@@ -3,11 +3,22 @@ import "server-only";
 import { seedApplications, seedTeachers } from "@/data/supplyed";
 import { api } from "@/lib/server/api-client";
 
-import { normalizeApplicationsQuery, normalizePaginatedApplications } from "./schemas";
+import { normalizeApplication, normalizeApplicationsQuery, normalizePaginatedApplications } from "./schemas";
 import type { JobApplication, JobApplicationsQuery, PaginatedApplications } from "./types";
 
 function backendEnabled() {
   return Boolean(process.env.API_BASE_URL);
+}
+
+export async function getApplicationById(applicationId: string): Promise<JobApplication | null> {
+  if (backendEnabled()) {
+    return normalizeApplication(await api.get<JobApplication>(`/applications/${applicationId}`, {
+      cache: "no-store",
+    }));
+  }
+
+  const application = seedApplications.find((item) => item.id === applicationId);
+  return application ? toJobApplication(application) : null;
 }
 
 export async function listApplicationsByJob(jobId: string, query: JobApplicationsQuery = {}): Promise<PaginatedApplications> {

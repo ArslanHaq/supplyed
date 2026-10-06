@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useApplication } from "@/features/applications/use-applications";
+import type { JobApplication } from "@/features/applications/types";
 import {
   ALLOWED_ATTACHMENT_TYPES,
   formatFileSize,
@@ -21,6 +23,8 @@ import {
   useSendMessage,
   useTypingIndicator,
 } from "@/features/conversations/use-conversations";
+import { useJob } from "@/features/jobs/use-jobs";
+import type { Job } from "@/features/jobs/types";
 import type { RouteProps, ToastFn } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Tag } from "../atoms";
@@ -40,7 +44,7 @@ type PendingFile = {
  * New messages, read receipts and typing notices arrive live over the shared
  * socket (see useConversationStream in AppChrome).
  */
-export function MessagingPage({ ctx, role, toast }: Pick<RouteProps, "ctx" | "role" | "toast">) {
+export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" | "go" | "role" | "toast">) {
   const conversationsQuery = useConversations();
   const fromApplication = useConversationForApplication(ctx.applicationId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -54,9 +58,11 @@ export function MessagingPage({ ctx, role, toast }: Pick<RouteProps, "ctx" | "ro
 
   const activeId = selectedId ?? fromApplication.data?.id ?? conversations[0]?.id ?? null;
   const active = conversations.find((item) => item.id === activeId) ?? null;
+  const applicationQuery = useApplication(active?.applicationId);
+  const jobQuery = useJob(active?.job.id ?? "", role === "institution");
 
   return (
-    <div className="app-page">
+    <div className="app-page messaging-page">
       <PageHead
         title="Messages"
         subtitle={
@@ -83,9 +89,22 @@ export function MessagingPage({ ctx, role, toast }: Pick<RouteProps, "ctx" | "ro
       ) : null}
 
       {conversations.length > 0 ? (
-        <div className="three-panel">
+        <div className="messaging-layout">
           <ConversationList active={activeId} conversations={conversations} onSelect={setSelectedId} />
-          {active ? <Thread key={active.id} conversation={active} toast={toast} /> : null}
+          {active ? (
+            <>
+              <Thread key={active.id} conversation={active} toast={toast} />
+              <ConversationContextPanel
+                application={applicationQuery.data ?? null}
+                conversation={active}
+                error={applicationQuery.isError || jobQuery.isError}
+                go={go}
+                job={jobQuery.data ?? null}
+                loading={applicationQuery.isLoading || jobQuery.isLoading}
+                role={role}
+              />
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -102,40 +121,42 @@ function ConversationList({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="sidebar-panel overflow-hidden">
+    <div className="messaging-conversations sidebar-panel flex min-h-0 flex-col overflow-hidden">
       <div className="sidebar-heading mx-4 mb-0 pt-5">
         <span className="flex items-center gap-2"><Icon name="message" size={17} /> Conversations</span>
         <span className="rounded-md bg-chalk px-2 py-0.5 text-xs text-muted">{conversations.length}</span>
       </div>
-      {conversations.map((conversation) => {
-        const last = conversation.lastMessage;
-        const preview = last
-          ? `${last.fromMe ? "You: " : ""}${last.body || (last.hasAttachments ? "Sent a file" : "")}`
-          : "No messages yet";
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {conversations.map((conversation) => {
+          const last = conversation.lastMessage;
+          const preview = last
+            ? `${last.fromMe ? "You: " : ""}${last.body || (last.hasAttachments ? "Sent a file" : "")}`
+            : "No messages yet";
 
-        return (
-          <button
-            key={conversation.id}
-            aria-current={active === conversation.id ? "true" : undefined}
-            className={`msg-list-item w-full text-left ${active === conversation.id ? "active" : ""}`}
-            onClick={() => onSelect(conversation.id)}
-            type="button"
-          >
-            <Avatar name={conversation.counterpart.name} size="sm" src={conversation.counterpart.imageUrl} />
-            <div className="min-w-0 flex-1">
-              <div className={`truncate ${conversation.unreadCount ? "font-bold" : "font-medium"}`}>{conversation.counterpart.name}</div>
-              <div className="truncate text-xs text-muted">{conversation.job.title}</div>
-              <div className={`truncate text-xs ${conversation.unreadCount ? "font-semibold text-ink" : "text-muted"}`}>{preview}</div>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              {last ? <span className="text-[11px] text-muted">{formatWhen(last.createdAt)}</span> : null}
-              {conversation.unreadCount ? (
-                <span className="rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">{conversation.unreadCount}</span>
-              ) : null}
-            </div>
-          </button>
-        );
-      })}
+          return (
+            <button
+              key={conversation.id}
+              aria-current={active === conversation.id ? "true" : undefined}
+              className={`msg-list-item w-full text-left ${active === conversation.id ? "active" : ""}`}
+              onClick={() => onSelect(conversation.id)}
+              type="button"
+            >
+              <Avatar name={conversation.counterpart.name} size="sm" src={conversation.counterpart.imageUrl} />
+              <div className="min-w-0 flex-1">
+                <div className={`truncate ${conversation.unreadCount ? "font-bold" : "font-medium"}`}>{conversation.counterpart.name}</div>
+                <div className="truncate text-xs text-muted">{conversation.job.title}</div>
+                <div className={`truncate text-xs ${conversation.unreadCount ? "font-semibold text-ink" : "text-muted"}`}>{preview}</div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                {last ? <span className="text-[11px] text-muted">{formatWhen(last.createdAt)}</span> : null}
+                {conversation.unreadCount ? (
+                  <span className="rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">{conversation.unreadCount}</span>
+                ) : null}
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -184,7 +205,7 @@ function Thread({ conversation, toast }: { conversation: Conversation; toast: To
   }, [conversation.counterpartLastReadAt, conversation.me, messages]);
 
   return (
-    <section className="card card-pad-lg flex min-h-[520px] flex-col">
+    <section className="messaging-thread card card-pad-lg flex min-h-[620px] flex-col overflow-hidden">
       <header className="mb-4 flex items-center gap-3 border-b border-border pb-4">
         <Avatar name={conversation.counterpart.name} size="md" src={conversation.counterpart.imageUrl} />
         <div className="min-w-0 flex-1">
@@ -200,7 +221,7 @@ function Thread({ conversation, toast }: { conversation: Conversation; toast: To
         <Tag tone="ghost">{conversation.applicationStatus.toLowerCase().replace(/_/g, " ")}</Tag>
       </header>
 
-      <div className="flex max-h-[520px] flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
         {messagesQuery.hasNextPage ? (
           <Btn
             className="self-center"
@@ -241,6 +262,182 @@ function Thread({ conversation, toast }: { conversation: Conversation; toast: To
       )}
     </section>
   );
+}
+
+function ConversationContextPanel({
+  application,
+  conversation,
+  error,
+  go,
+  job,
+  loading,
+  role,
+}: {
+  application: JobApplication | null;
+  conversation: Conversation;
+  error: boolean;
+  go: RouteProps["go"];
+  job: Job | null;
+  loading: boolean;
+  role: RouteProps["role"];
+}) {
+  const applicant = application?.instructor;
+  const status = application?.status ?? conversation.applicationStatus;
+
+  return (
+    <aside className="messaging-context sidebar-panel overflow-y-auto">
+      <div className="border-b border-border p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="context-label">Application details</p>
+            <h2 className="mt-1 font-heading text-lg font-bold text-ink">Conversation context</h2>
+          </div>
+          <Tag tone={applicationStatusTone(status)}>{formatStatus(status)}</Tag>
+        </div>
+      </div>
+
+      <div className="space-y-5 p-5">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-chalk p-3.5">
+          <Avatar
+            name={conversation.counterpart.name}
+            size="lg"
+            src={conversation.counterpart.imageUrl}
+          />
+          <div className="min-w-0">
+            <p className="truncate font-bold text-ink">{conversation.counterpart.name}</p>
+            <p className="mt-0.5 text-xs text-muted">
+              {role === "teacher" ? "Hiring school" : "Teaching applicant"}
+            </p>
+          </div>
+        </div>
+
+        {loading ? <SectionLoader rows={2} /> : null}
+
+        <section>
+          <p className="context-label">Job</p>
+          <h3 className="mt-2 text-base font-bold leading-snug text-ink">
+            {job?.title ?? conversation.job.title}
+          </h3>
+          <div className="mt-3 space-y-2.5">
+            <ContextRow icon="pin" text={formatJobLocation(job)} />
+            <ContextRow icon="calendar" text={formatJobDates(job)} />
+            <ContextRow icon="pound" text={formatJobPay(job)} />
+          </div>
+          {job?.subject || job?.keyStages?.length ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {job.subject ? <Tag tone="ghost">{job.subject}</Tag> : null}
+              {job.keyStages?.slice(0, 3).map((stage) => <Tag key={stage} tone="ghost">{stage}</Tag>)}
+            </div>
+          ) : null}
+        </section>
+
+        {role === "institution" && applicant ? (
+          <section className="border-t border-border pt-5">
+            <p className="context-label">Applicant</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <ContextStat
+                label="Experience"
+                value={typeof applicant.experience === "number" ? `${applicant.experience} years` : "Not listed"}
+              />
+              <ContextStat label="DBS" value={applicant.dbsVerified ? "Verified" : "Not verified"} />
+            </div>
+            {applicant.subjects.length ? (
+              <p className="mt-3 text-sm leading-6 text-muted">
+                <span className="font-semibold text-ink">Subjects:</span> {applicant.subjects.join(", ")}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {application?.coverLetter ? (
+          <section className="border-t border-border pt-5">
+            <p className="context-label">Cover letter</p>
+            <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-muted">
+              {application.coverLetter}
+            </p>
+          </section>
+        ) : null}
+
+        {application?.createdAt ? (
+          <p className="border-t border-border pt-4 text-xs text-muted">
+            Applied {formatDisplayDate(application.createdAt)}
+          </p>
+        ) : null}
+
+        {error ? (
+          <p className="rounded-lg bg-warning-tint p-3 text-xs text-ink">
+            Some application details are temporarily unavailable.
+          </p>
+        ) : null}
+
+        <div className="grid gap-2 border-t border-border pt-5">
+          <Btn
+            icon="arrow"
+            onClick={() => go("applications", { applicationId: conversation.applicationId, jobId: conversation.job.id })}
+          >
+            View application
+          </Btn>
+          <Btn icon="file" variant="secondary" onClick={() => go("job-detail", { jobId: conversation.job.id })}>
+            View job
+          </Btn>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function ContextRow({ icon, text }: { icon: string; text: string }) {
+  return (
+    <div className="flex items-start gap-2 text-sm text-muted">
+      <Icon className="mt-0.5 text-brand" name={icon} size={15} />
+      <span className="leading-5">{text}</span>
+    </div>
+  );
+}
+
+function ContextStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-white p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-ink">{value}</p>
+    </div>
+  );
+}
+
+function applicationStatusTone(status: string): "" | "green" | "purple" | "amber" | "red" {
+  if (status === "HIRED") return "green";
+  if (status === "INTERVIEW" || status === "SHORTLISTED") return "purple";
+  if (status === "VIEWED") return "amber";
+  if (status === "REJECTED") return "red";
+  return "";
+}
+
+function formatStatus(status: string) {
+  return status.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatJobLocation(job: Job | null) {
+  if (!job) return "Location available on the job listing";
+  return [job.city === "Location TBC" ? "" : job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC";
+}
+
+function formatJobDates(job: Job | null) {
+  if (!job?.startDate) return "Dates available on the job listing";
+  const start = formatDisplayDate(job.startDate);
+  return job.endDate ? `${start} – ${formatDisplayDate(job.endDate)}` : `Starts ${start}`;
+}
+
+function formatJobPay(job: Job | null) {
+  if (!job?.rate) return "Rate TBC";
+  if (job.payType === "hourly") return `GBP ${job.rate}/hr`;
+  if (job.payType === "fixed") return `GBP ${job.rate} fixed`;
+  return `GBP ${job.rate}/day`;
+}
+
+function formatDisplayDate(value: string) {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return "date not recorded";
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(timestamp));
 }
 
 function Bubble({

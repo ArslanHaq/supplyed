@@ -8,7 +8,7 @@ import { queryKeys } from "@/lib/query/keys";
 import { startRouteLoading } from "@/lib/navigation-loading";
 
 import { createApplicationAction, updateApplicationStatusAction } from "./actions";
-import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplicationsQuery, PaginatedApplications } from "./types";
+import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplication, JobApplicationsQuery, PaginatedApplications } from "./types";
 
 type CreateApplicationResult = Awaited<ReturnType<typeof createApplicationAction>>;
 
@@ -22,6 +22,14 @@ export function useJobApplications(jobId: string | undefined, query: JobApplicat
     enabled: Boolean(jobId),
     queryFn: () => fetchJson<PaginatedApplications>(`/api/applications/job/${jobId}`, { query }),
     queryKey: queryKeys.applications.byJob(jobId ?? "", query),
+  });
+}
+
+export function useApplication(applicationId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(applicationId),
+    queryFn: () => fetchJson<JobApplication>(`/api/applications/${applicationId}`),
+    queryKey: queryKeys.applications.detail(applicationId ?? ""),
   });
 }
 

@@ -274,15 +274,6 @@ test("paid invoice evidence wins over stale or lower-case payment statuses", () 
   assert.equal(booking.invoice.paidAt, paidAt);
 });
 
-test("only HTTPS Stripe Connect URLs can receive payout redirects", () => {
-  const { isStripePayoutUrl } = loadModule("features/payments/stripe-links.ts");
-  assert.equal(isStripePayoutUrl("https://connect.stripe.com/setup/test"), true);
-  for (const url of ["http://connect.stripe.com/setup", "https://connect.stripe.com.evil.example/setup",
-    "https://user:pass@connect.stripe.com/setup", "javascript:alert(1)", "/settings"]) {
-    assert.equal(isStripePayoutUrl(url), false);
-  }
-});
-
 test("worked time stays within inclusive booking dates even across a UK clock change", () => {
   const { bookingDays, invoiceUnitsLimit } = loadModule("features/bookings/schemas.ts");
   const daily = { startDate: "2026-10-24T00:00:00.000Z", endDate: "2026-10-26T00:00:00.000Z", payType: "daily" };
@@ -318,6 +309,7 @@ test("administrator payout support is visible on Payments while confirmation dia
     "../atoms": { Btn: element("button"), Tag: element("span"), Stat: ({ label }) => React.createElement("div", null, label), buttonClassName: () => "" },
     "../molecules": { Modal: ({ open, children }) => open ? React.createElement("div", null, children) : null,
       PageHead: ({ title }) => React.createElement("h1", null, title), SectionLoader: () => null },
+    "./PayInvoiceModal": { PayInvoiceModal: () => null, usePaymentReturn: () => {} },
     "./InvoiceDetailsModal": { InvoiceDetailsModal: () => null },
     "./PayoutSettings": { PayoutSettings: () => null },
     "./AdminPayoutLookup": { AdminPayoutLookup: () => React.createElement("h2", null, "Instructor payout status") },

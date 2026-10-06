@@ -33,7 +33,7 @@ const tabs: Array<{ label: string; value: Tab }> = [
   { label: "No-show", value: "no-show" },
 ];
 
-export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">) {
+export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role" | "toast">) {
   const [tab, setTab] = useState<Tab>("all");
   const [page, setPage] = useState(1);
   const [reviewTarget, setReviewTarget] = useState<Booking | null>(null);
@@ -132,6 +132,7 @@ export function BookingsPage({ role, toast }: Pick<RouteProps, "role" | "toast">
                 onComplete={(id) => updateBooking.mutate({ action: "complete", id })}
                 onInvoice={(booking) => { setInvoiceError(null); setInvoiceTarget(booking); }}
                 onInvoiceDetails={setInvoiceDetailsId}
+                onMessage={(selectedBooking) => go("messaging", { applicationId: selectedBooking.applicationId })}
                 onPay={setPayTarget}
                 onNoShow={(id) => updateBooking.mutate({ action: "no-show", id })}
                 onReview={setReviewTarget}
@@ -207,6 +208,7 @@ function BookingCard({
   onComplete,
   onInvoice,
   onInvoiceDetails,
+  onMessage,
   onNoShow,
   onPay,
   onReview,
@@ -219,6 +221,7 @@ function BookingCard({
   onComplete: (id: string) => void;
   onInvoice: (booking: Booking) => void;
   onInvoiceDetails: (id: string) => void;
+  onMessage: (booking: Booking) => void;
   onNoShow: (id: string) => void;
   onPay: (invoice: PayableInvoice) => void;
   onReview: (booking: Booking) => void;
@@ -273,6 +276,9 @@ function BookingCard({
               : "Booking closed"}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Btn icon="message" size="sm" variant="secondary" onClick={() => onMessage(booking)}>
+            Message {role === "teacher" ? "school" : "teacher"}
+          </Btn>
           {booking.status === "CONFIRMED" && role === "institution" ? (
             <>
               <Btn disabled={pending} size="sm" variant="secondary" onClick={() => onComplete(booking.id)}>Complete</Btn>
