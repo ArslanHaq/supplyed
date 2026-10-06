@@ -124,7 +124,7 @@ export function SignupAccessPage({
 
         <div className="relative my-12 max-w-[520px] lg:my-0">
           <div className="eyebrow mb-5 text-brand">{isFoundingSignup ? "Founding signup" : "Create account"}</div>
-          <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
+          <h1 className="font-heading text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
             Start with secure access,
             <br />
             then complete onboarding.
@@ -168,7 +168,7 @@ export function SignupAccessPage({
         <div className="w-full max-w-[720px]">
           <div className="mb-7">
             <div className="eyebrow mb-2 text-brand">Account details</div>
-            <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">Create your SupplyED account.</h2>
+            <h2 className="font-heading text-3xl leading-tight sm:text-[38px]">Create your SupplyED account.</h2>
             <p className="mt-3 text-muted">
               Already registered?{" "}
               <button className="font-semibold text-brand" onClick={onLogin} type="button">
@@ -208,7 +208,7 @@ export function SignupAccessPage({
                         <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-white text-brand shadow-sm">
                           <Icon name={icon as "building" | "user" | "heart"} size={18} />
                         </div>
-                        <div className="font-serif text-[17px] leading-snug">{title}</div>
+                        <div className="font-heading text-[17px] leading-snug">{title}</div>
                         <p className="mt-1 text-[13px] leading-5 text-muted">{copy}</p>
                       </button>
                     );

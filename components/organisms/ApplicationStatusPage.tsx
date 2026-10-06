@@ -151,7 +151,7 @@ export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: A
             <Icon name={copy.icon} size={26} />
           </div>
           <Tag>{copy.tag}</Tag>
-          <h1 className="mt-4 font-serif text-4xl leading-tight sm:text-[48px]">{copy.title}</h1>
+          <h1 className="mt-4 font-heading text-4xl leading-tight sm:text-[48px]">{copy.title}</h1>
           <p className="mt-4 max-w-[640px] text-base leading-7 text-muted">{copy.copy}</p>
 
           <div className="mt-7 grid gap-3 rounded-xl border border-border bg-chalk p-4 sm:grid-cols-3">

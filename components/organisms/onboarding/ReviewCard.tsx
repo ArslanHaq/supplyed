@@ -47,7 +47,7 @@ export function ReviewCard({
             <Icon name={group.icon} size={19} />
           </div>
           <div className="min-w-0">
-            <h3 className="font-serif text-xl leading-tight">{group.title}</h3>
+            <h3 className="font-heading text-xl leading-tight">{group.title}</h3>
             <p className="mt-1 text-sm leading-5 text-muted">{group.description}</p>
           </div>
         </div>

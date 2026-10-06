@@ -78,7 +78,7 @@ export default function PricingPage() {
           <div className="mx-auto max-w-[1180px]">
             <div className="max-w-[720px]">
               <Tag>Pricing</Tag>
-              <h1 className="mt-5 font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[64px]">
+              <h1 className="mt-5 font-heading text-4xl leading-[1.05] sm:text-5xl lg:text-[64px]">
                 Simple plans for flexible school staffing.
               </h1>
               <p className="mt-5 text-base leading-7 text-muted sm:text-lg">
@@ -99,7 +99,7 @@ export default function PricingPage() {
                   <div>
                     <Tag tone={plan.tone}>{plan.name}</Tag>
                     <div className="mt-5 flex items-end gap-1">
-                      <span className="font-serif text-4xl leading-none">{plan.price}</span>
+                      <span className="font-heading text-4xl leading-none">{plan.price}</span>
                       {plan.period ? <span className="pb-1 text-sm text-muted">{plan.period}</span> : null}
                     </div>
                   </div>
@@ -130,7 +130,7 @@ export default function PricingPage() {
             <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <div className="eyebrow">Compare</div>
-                <h2 className="mt-2 font-serif text-3xl">What each plan includes</h2>
+                <h2 className="mt-2 font-heading text-3xl">What each plan includes</h2>
               </div>
               <Link className={buttonClassName({ variant: "secondary", className: "rounded-full" })} href="/how-it-works">
                 See how it works
@@ -158,7 +158,7 @@ export default function PricingPage() {
           <div className="mx-auto grid max-w-[1180px] gap-4 md:grid-cols-3">
             {faqs.map(([question, answer]) => (
               <article key={question} className="rounded-xl border border-border bg-white p-5">
-                <h3 className="font-serif text-xl">{question}</h3>
+                <h3 className="font-heading text-xl">{question}</h3>
                 <p className="mt-3 text-sm leading-6 text-muted">{answer}</p>
               </article>
             ))}

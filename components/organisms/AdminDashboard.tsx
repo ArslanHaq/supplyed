@@ -11,7 +11,7 @@ export function AdminDashboard() {
             <Icon name="shield" size={20} />
           </div>
           <div>
-            <h2 className="font-serif text-2xl">Open the SupplyED admin panel</h2>
+            <h2 className="font-heading text-2xl">Open the SupplyED admin panel</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
               Administrative moderation and account management live in the dedicated admin panel. This marketplace app will not send an admin account through teacher or school onboarding.
             </p>

@@ -237,7 +237,7 @@ function PanelIntro({ copy, icon, title }: { copy: string; icon: string; title: 
         <Icon name={icon} size={18} />
       </span>
       <div>
-        <h3 className="font-serif text-2xl leading-tight">{title}</h3>
+        <h3 className="font-heading text-2xl leading-tight">{title}</h3>
         <p className="mt-1 text-sm leading-6 text-muted">{copy}</p>
       </div>
     </div>
@@ -481,7 +481,7 @@ export function FoundingInterestForm({ campaign, id, source, type }: FoundingInt
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="eyebrow mb-2 text-brand">{isSchool ? "Founding school" : "Founding teacher"}</div>
-            <h2 className="font-serif text-2xl leading-tight">
+            <h2 className="font-heading text-2xl leading-tight">
               {isSchool ? "Start Your School Signup" : "Start Your Teacher Signup"}
             </h2>
             <p className="mt-2 max-w-[560px] text-sm leading-6 text-muted">

@@ -64,14 +64,11 @@ const heroLaunchSignals = [
   ["Launching 2026", "Greater Manchester & Lancashire"],
 ] as const;
 
-function themedGlowStyle(color: string): CSSProperties {
+function themedCardStyle(color: string): CSSProperties {
   return {
-    borderColor: `color-mix(in srgb, ${color} 26%, var(--border))`,
-    boxShadow: [
-      `0 0 0 1px color-mix(in srgb, ${color} 18%, transparent)`,
-      `0 18px 48px color-mix(in srgb, ${color} 13%, transparent)`,
-      "0 1px 2px rgba(10, 10, 10, 0.04)",
-    ].join(", "),
+    borderColor: "var(--border)",
+    borderTop: `2px solid ${color}`,
+    boxShadow: "var(--shadow)",
   };
 }
 
@@ -90,10 +87,10 @@ export function LandingPage() {
         >
           <div className="max-w-[590px]">
             <div className="eyebrow mb-6">Compliance-first supply platform - Founding Schools now open</div>
-            <h1 className="max-w-[590px] font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[64px]">
+            <h1 className="max-w-[590px] font-heading text-4xl leading-[1.12] sm:text-5xl lg:text-[60px]">
               Connecting schools and learners
               <br />
-              with <em className="text-brand">brilliant teachers.</em>
+              with <em className="not-italic text-brand">brilliant teachers.</em>
             </h1>
             <p className="mb-8 mt-5 max-w-[540px] text-base leading-[1.65] text-white/70 sm:mb-9 sm:mt-6 sm:text-[17px]">
               The right teacher, right now. SupplyED connects UK schools, learners, and hiring accounts with vetted, DBS-checked teachers for urgent cover, planned staffing, tutoring, and learner support. We are onboarding founding schools now.
@@ -118,8 +115,8 @@ export function LandingPage() {
             <div className="grid grid-cols-2 gap-5 sm:flex sm:flex-wrap sm:gap-6">
               {heroStats.map(([value, label]) => (
                 <div key={label}>
-                  <div className="font-serif text-[28px]">{value}</div>
-                  <div className="text-xs uppercase tracking-[1px] text-white/50">{label}</div>
+                  <div className="font-heading text-[28px]">{value}</div>
+                  <div className="mt-1 text-xs font-medium text-white/50">{label}</div>
                 </div>
               ))}
             </div>
@@ -134,13 +131,13 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-xl border border-border bg-white p-5 text-ink shadow-[0_40px_80px_rgba(0,0,0,0.4)] sm:p-7">
+          <div className="relative overflow-hidden rounded-xl border border-border bg-white p-5 text-ink shadow-panel sm:p-7">
             <div className="absolute right-0 top-0 h-32 w-32 -translate-y-12 translate-x-10 rounded-full bg-brand-tint" />
             <div className="relative">
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                   <div className="label-xs text-brand">Verified marketplace</div>
-                  <h2 className="mt-2 max-w-[390px] font-serif text-3xl leading-[1.02] sm:text-[38px]">
+                  <h2 className="mt-2 max-w-[390px] font-heading text-3xl leading-[1.15] sm:text-[36px]">
                     <span className="block">The right teacher,</span>
                     <span className="mt-1.5 block">right now.</span>
                   </h2>
@@ -192,7 +189,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-[1200px]">
           <div className="mb-12 text-center">
             <div className="eyebrow">How it works</div>
-            <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">Two ways to find or fill a supply role.</h2>
+            <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">Two ways to find or fill a supply role.</h2>
             <p className="mt-2 text-muted">Post urgent cover for instant matching, or compare proposals for planned cover.</p>
           </div>
           <div className="grid gap-4 lg:grid-cols-3" style={{ gap: "clamp(14px, 1.4vw, 24px)" }}>
@@ -201,9 +198,9 @@ export function LandingPage() {
               { tag: "Freelance briefs", title: "Long-term roles, properly staffed", color: "var(--purple)", bg: "var(--purple-tint)", steps: ["Post brief", "Receive proposals", "Hire best match"] },
               { tag: "Learner support", title: "Verified teachers for learners", color: "var(--green)", bg: "var(--green-tint)", steps: ["Create a learner request", "Review verified matches", "Message from your account"] },
             ].map((card) => (
-              <div key={card.title} className="card card-pad-lg" style={themedGlowStyle(card.color)}>
+              <div key={card.title} className="card card-pad-lg" style={themedCardStyle(card.color)}>
                 <Tag className="mb-4" style={{ background: card.bg, color: card.color }}>{card.tag}</Tag>
-                <div className="mb-[18px] font-serif text-[22px]">{card.title}</div>
+                <div className="mb-[18px] font-heading text-[22px]">{card.title}</div>
                 {card.steps.map((step, index) => (
                   <div key={step} className="mb-3 flex items-center gap-3">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: card.color }}>
@@ -222,11 +219,11 @@ export function LandingPage() {
         <div className="mx-auto max-w-[1200px]">
           <div className="grid gap-4 lg:grid-cols-3" style={{ gap: "clamp(14px, 1.4vw, 24px)" }}>
             {trustCards.map((card) => (
-              <article key={card.title} className="rounded-xl border bg-white p-6 text-center sm:p-8" style={themedGlowStyle(card.color)}>
+              <article key={card.title} className="rounded-xl border bg-white p-6 text-center sm:p-8" style={themedCardStyle(card.color)}>
                 <div className={`mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-xl ${card.className}`}>
                   <Icon name={card.icon} size={26} />
                 </div>
-                <h3 className="font-serif text-2xl leading-tight">{card.title}</h3>
+                <h3 className="font-heading text-2xl leading-tight">{card.title}</h3>
                 <p className="mx-auto mt-4 max-w-[360px] text-sm leading-6 text-muted sm:text-[15px]">{card.copy}</p>
               </article>
             ))}
@@ -241,7 +238,7 @@ export function LandingPage() {
         >
           <div className="max-w-[590px]">
             <Tag className="mb-5">Founding schools programme</Tag>
-            <h2 className="font-serif text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">
+            <h2 className="font-heading text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">
               Shape the platform.
               <br />
               Lock in founding terms.
@@ -269,7 +266,7 @@ export function LandingPage() {
       <section className="border-t border-border bg-white px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-12">
         <div className="mx-auto max-w-[820px]">
           <Tag className="mb-5">Start hiring</Tag>
-          <h2 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[58px]">
+          <h2 className="font-heading text-4xl leading-[1.05] sm:text-5xl lg:text-[58px]">
             Ready to transform your staffing?
           </h2>
           <p className="mx-auto mt-5 max-w-[560px] text-base leading-7 text-muted sm:text-lg">

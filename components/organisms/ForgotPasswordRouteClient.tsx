@@ -265,7 +265,7 @@ export function ForgotPasswordRouteClient() {
 
           <div className="relative my-12 max-w-[500px] lg:my-0">
             <div className="eyebrow mb-5 text-brand">Password reset</div>
-            <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
+            <h1 className="font-heading text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
               Recover access
               <br />
               securely.
@@ -282,7 +282,7 @@ export function ForgotPasswordRouteClient() {
           <div className="w-full max-w-[520px]">
             <div className="mb-7">
               <div className="eyebrow mb-2 text-brand">Account recovery</div>
-              <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">
+              <h2 className="font-heading text-3xl leading-tight sm:text-[38px]">
                 {stage === "success" ? "Password updated" : stage === "reset" ? "Enter reset code" : "Reset your password"}
               </h2>
               <p className="mt-3 text-muted">
@@ -300,7 +300,7 @@ export function ForgotPasswordRouteClient() {
                   <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-tint text-brand">
                     <Icon name="checkCircle" size={24} />
                   </div>
-                  <div className="font-serif text-2xl">You can log in now.</div>
+                  <div className="font-heading text-2xl">You can log in now.</div>
                   <p className="mt-3 text-sm leading-6 text-muted">{message}</p>
                   <Btn className="mt-6 w-full" size="lg" onClick={goLogin} iconRight="arrow">
                     Back to login

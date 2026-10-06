@@ -12,7 +12,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
     <AccountBasicsStep {...props}>
       <div className="space-y-6 rounded-xl border border-border bg-chalk p-4 sm:p-5">
         <div>
-          <h3 className="font-serif text-2xl leading-tight">Teaching profile</h3>
+          <h3 className="font-heading text-2xl leading-tight">Teaching profile</h3>
           <p className="mt-1 text-sm leading-6 text-muted">
             These details are sent to the instructor profile endpoint and used for matching after review.
           </p>

@@ -60,7 +60,7 @@ export function AccountBasicsStep({
                   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-brand">
                     <Icon name={icon as "building" | "user" | "heart"} size={20} />
                   </div>
-                  <div className="font-serif text-xl">{title}</div>
+                  <div className="font-heading text-xl">{title}</div>
                   <p className="mt-2 text-sm leading-6 text-muted">{copy}</p>
                 </button>
               );

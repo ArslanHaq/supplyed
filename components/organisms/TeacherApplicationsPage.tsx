@@ -55,7 +55,7 @@ export function TeacherApplicationsPage({ go }: Pick<RouteProps, "go">) {
       {applicationsQuery.isLoading ? <SectionLoader rows={4} /> : null}
       {applicationsQuery.isError ? (
         <div className="card card-pad-lg text-center" role="alert">
-          <div className="font-serif text-[24px]">Applications could not be loaded</div>
+          <div className="font-heading text-[24px]">Applications could not be loaded</div>
           <p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{applicationsQuery.error.message}</p>
           <Btn className="mt-5" variant="secondary" onClick={() => void applicationsQuery.refetch()}>Try again</Btn>
         </div>
@@ -63,7 +63,7 @@ export function TeacherApplicationsPage({ go }: Pick<RouteProps, "go">) {
 
       {!applicationsQuery.isLoading && !applicationsQuery.isError && applications.length === 0 ? (
         <div className="card card-pad-lg text-center">
-          <div className="font-serif text-[24px]">No applications yet</div>
+          <div className="font-heading text-[24px]">No applications yet</div>
           <p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">Apply for a role and your application status will appear here.</p>
           <Btn className="mt-5" onClick={() => go("find-jobs")}>Find jobs</Btn>
         </div>
@@ -98,7 +98,7 @@ function TeacherApplicationCard({ application, go }: { application: JobApplicati
             {job?.status ? <Tag tone="ghost">Job {job.status.toLowerCase()}</Tag> : null}
             {application.createdAt ? <span className="text-xs text-muted">Applied {formatSubmittedAt(application.createdAt)}</span> : null}
           </div>
-          <button className="cursor-pointer text-left font-serif text-2xl hover:text-brand" onClick={() => go("job-detail", { jobId: application.jobId })} type="button">
+          <button className="cursor-pointer text-left font-heading text-2xl hover:text-brand" onClick={() => go("job-detail", { jobId: application.jobId })} type="button">
             {job?.title ?? (jobQuery.isLoading ? "Loading job..." : "Job no longer public")}
           </button>
           <div className="mt-1 flex flex-wrap gap-3 text-sm text-muted">
@@ -109,7 +109,7 @@ function TeacherApplicationCard({ application, go }: { application: JobApplicati
           {application.coverLetter ? <p className="mt-4 border-l-2 border-brand-tint-2 pl-4 text-sm leading-6 text-muted">{application.coverLetter}</p> : null}
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          {job?.rate ? <div className="text-right"><div className="font-serif text-xl">GBP {job.rate}</div><div className="text-xs text-muted">per day</div></div> : null}
+          {job?.rate ? <div className="text-right"><div className="font-heading text-xl">GBP {job.rate}</div><div className="text-xs text-muted">per day</div></div> : null}
           <Btn size="sm" icon="message" onClick={() => go("messaging", { applicationId: application.id })}>Message school</Btn>
           <Btn size="sm" variant="secondary" onClick={() => go("job-detail", { jobId: application.jobId })}>View job</Btn>
         </div>

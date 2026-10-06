@@ -60,7 +60,8 @@ export function JobManagementList({
             return (
               <button
                 key={statusFilter.value}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                aria-pressed={filter === statusFilter.value}
+                className={`min-h-9 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
                   filter === statusFilter.value ? "border-brand bg-brand-tint text-brand" : "border-border bg-white text-slate hover:bg-chalk"
                 }`}
                 onClick={() => onFilterChange(statusFilter.value)}
@@ -77,7 +78,7 @@ export function JobManagementList({
         {loading ? <div className="p-5"><SectionLoader rows={3} /></div> : null}
         {!loading && filteredJobs.length === 0 ? (
           <div className="px-5 py-8 text-center">
-            <div className="font-serif text-[22px]">No roles found</div>
+            <div className="font-heading text-[22px]">No roles found</div>
             <p className="mx-auto mt-2 max-w-[380px] text-sm leading-6 text-muted">{emptyMessage}</p>
             <Btn className="mt-4" icon="plus" onClick={onCreate}>{emptyActionLabel}</Btn>
           </div>
@@ -138,7 +139,7 @@ function JobManagementRow({
         {job.requiredSkills.length || job.minExperienceYears != null ? <div className="mt-1 flex flex-wrap gap-1">{job.requiredSkills.slice(0, 4).map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div> : null}
       </div>
       <div className="col-start-2 text-left lg:col-start-auto lg:text-center">
-        <div aria-label={applicantCount !== undefined ? `${applicantCount} applicants` : applicationsQuery.isError ? "Applicant count unavailable" : "Loading applicant count"} aria-live="polite" className="font-serif text-[22px] text-brand">
+        <div aria-label={applicantCount !== undefined ? `${applicantCount} applicants` : applicationsQuery.isError ? "Applicant count unavailable" : "Loading applicant count"} aria-live="polite" className="font-heading text-[22px] text-brand">
           {applicantCount ?? (applicationsQuery.isError ? "-" : "...")}
         </div>
         <div className="text-xs text-muted">Applicants</div>

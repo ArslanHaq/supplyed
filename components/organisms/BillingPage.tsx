@@ -171,7 +171,7 @@ function PayoutSetupCard({ toast }: { toast: ToastFn }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-[240px] flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-serif text-2xl leading-tight">Payouts</h2>
+            <h2 className="font-heading text-2xl leading-tight">Payouts</h2>
             {account.ready ? (
               <Tag tone="green">Active</Tag>
             ) : account.connected ? (
@@ -242,7 +242,7 @@ function CashOutCard({ toast }: { toast: ToastFn }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-[240px] flex-1">
             <div className="text-xs font-semibold uppercase tracking-[1px] text-muted">Available to cash out now</div>
-            <div className="mt-1 font-serif text-4xl">{formatPence(balance.instantAvailablePence)}</div>
+            <div className="mt-1 font-heading text-4xl">{formatPence(balance.instantAvailablePence)}</div>
             <p className="mt-2 text-sm text-muted">
               {balance.instantDestination
                 ? `Cash out to ${balance.instantDestination.label}. It usually arrives within 30 minutes, any day.`
@@ -279,7 +279,7 @@ function CashOutCard({ toast }: { toast: ToastFn }) {
       <Modal open={confirming} onClose={() => !cashOut.isPending && setConfirming(false)}>
         <div className="p-6 sm:p-7">
           <Tag tone="green">Cash out</Tag>
-          <h2 className="mt-4 font-serif text-2xl">Send {formatPence(balance.instantAvailablePence)} now?</h2>
+          <h2 className="mt-4 font-heading text-2xl">Send {formatPence(balance.instantAvailablePence)} now?</h2>
           <p className="mt-3 text-sm leading-6 text-muted">
             It goes to {balance.instantDestination?.label ?? "your bank"} and usually arrives within 30 minutes. The amount shown is what
             you receive.
@@ -384,7 +384,7 @@ function AdminPayments({ toast }: { toast: ToastFn }) {
       />
       <Modal open={Boolean(voidTarget)} onClose={() => { if (!voidInvoice.isPending) setVoidTarget(null); }}>
         <div className="p-6 sm:p-7">
-          <h2 className="font-serif text-2xl">Void this invoice?</h2>
+          <h2 className="font-heading text-2xl">Void this invoice?</h2>
           <p className="mt-3 text-sm leading-6 text-muted">This cancels the unpaid invoice for {voidTarget?.booking.jobTitle}. The school can issue a replacement invoice for the booking.</p>
           <div className="mt-6 flex justify-end gap-3">
             <Btn disabled={voidInvoice.isPending} variant="ghost" onClick={() => setVoidTarget(null)}>Keep invoice</Btn>
@@ -427,7 +427,7 @@ function RefundModal({
         }}
       >
         <Tag tone="red">Refund</Tag>
-        <h2 className="mt-4 font-serif text-2xl">Refund {invoice?.booking.institution.name}</h2>
+        <h2 className="mt-4 font-heading text-2xl">Refund {invoice?.booking.institution.name}</h2>
         <p className="mt-3 text-sm leading-6 text-muted">
           Up to {formatPence(refundable)} can be refunded. The teacher&apos;s share is taken back from their Stripe account and the
           SupplyEd fee is refunded in proportion.
@@ -571,7 +571,7 @@ function InvoiceRow({ actions, invoice, role }: { actions?: ReactNode; invoice: 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-[220px] flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-serif text-xl leading-tight">{invoice.booking.jobTitle}</h3>
+            <h3 className="font-heading text-xl leading-tight">{invoice.booking.jobTitle}</h3>
             <InvoiceStatusTag invoice={invoice} />
             {invoice.amountRefundedPence > 0 ? <Tag tone="ghost">Invoice refunded {formatPence(invoice.amountRefundedPence)}</Tag> : null}
             {invoice.disputeStatus ? <Tag tone="red">Dispute: {invoice.disputeStatus.replaceAll("_", " ")}</Tag> : null}
@@ -591,7 +591,7 @@ function InvoiceRow({ actions, invoice, role }: { actions?: ReactNode; invoice: 
           </div>
         </div>
         <div className="text-left sm:text-right">
-          <div className="font-serif text-2xl">{formatPence(amount)}</div>
+          <div className="font-heading text-2xl">{formatPence(amount)}</div>
           <div className="text-xs text-muted">
             {role === "teacher" ? "Your pay" : `${formatPence(invoice.teacherAmountPence)} pay + ${formatPence(invoice.feeAmountPence)} fee`}
           </div>
@@ -652,7 +652,7 @@ function Notice({ children, tone }: { children: ReactNode; tone: "green" | "red"
 function EmptyState({ title, message }: { title: string; message: string }) {
   return (
     <div className="card card-pad-lg text-center">
-      <div className="font-serif text-[24px]">{title}</div>
+      <div className="font-heading text-[24px]">{title}</div>
       <p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p>
     </div>
   );

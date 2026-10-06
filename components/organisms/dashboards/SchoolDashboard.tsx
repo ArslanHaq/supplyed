@@ -106,7 +106,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
           </div>
           <div>
             <div className="section-title">Top matches today</div>
-            <div className="card overflow-hidden">
+            <div className="sidebar-panel overflow-hidden">
               {seedTeachers.slice(0, 4).map((teacher, index) => (
                 <div key={teacher.id} className="flex cursor-pointer items-center gap-2.5 border-b px-3.5 py-3" style={{ borderBottomColor: index < 3 ? "var(--border)" : "transparent" }} onClick={() => go("teacher-profile", { teacherId: teacher.id })}>
                   <Avatar name={teacher.name} tone={teacher.tone} />
@@ -116,7 +116,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
               ))}
             </div>
             <div className="section-title mt-7">Quick actions</div>
-            <div className="card card-pad flex flex-col gap-2">
+            <div className="sidebar-panel card-pad flex flex-col gap-3">
               <Btn icon="plus" className="justify-start" onClick={() => go("post-job")}>Post a job</Btn>
               <Btn variant="secondary" icon="search" className="justify-start" onClick={() => go("find-teachers")}>Browse teachers</Btn>
               <Btn variant="secondary" icon="message" className="justify-start" onClick={() => go("messaging")}>Open messages</Btn>
@@ -125,7 +125,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
             <div className="section-title mt-7">Your plan</div>
             <div className="card card-pad border-brand bg-brand-tint">
               <Tag>Pro - Active</Tag>
-              <div className="mt-2.5 font-serif text-[22px]">£99 / month</div>
+              <div className="mt-2.5 font-heading text-[22px]">£99 / month</div>
               <div className="mt-1 text-xs text-muted">Renews 24 Apr 2026</div>
               <div className="progress mt-3.5"><div className="progress-fill" style={{ width: "58%" }} /></div>
               <Btn variant="ink" size="sm" className="mt-3.5 w-full" onClick={() => go("billing")}>Manage plan</Btn>

@@ -1,10 +1,21 @@
 import "./globals.css";
 
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import Script from "next/script";
 import type { ReactNode } from "react";
 import { RouteLoader } from "@/components/molecules/RouteLoader";
 import { seoKeywords, siteConfig } from "@/lib/seo";
+
+const inter = localFont({
+  src: [
+    { path: "./fonts/InterVariable.woff2", weight: "100 900", style: "normal" },
+    { path: "./fonts/InterVariable-Italic.woff2", weight: "100 900", style: "italic" },
+  ],
+  variable: "--font-inter",
+  display: "swap",
+  fallback: ["Arial", "sans-serif"],
+});
 
 const themeBootScript = `
 (function () {
@@ -83,8 +94,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>
+    <html className={inter.variable} lang="en" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
         <Script
           dangerouslySetInnerHTML={{ __html: themeBootScript }}
           id="supplyed-theme-boot"

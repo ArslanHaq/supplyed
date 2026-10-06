@@ -143,7 +143,7 @@ export function FoundingSchoolCohortSection() {
       <div className="mx-auto grid max-w-[1200px] items-center gap-10 lg:grid-cols-[minmax(0,520px)_minmax(420px,1fr)] lg:gap-16">
         <div>
           <Tag className="mb-5">Founding cohort</Tag>
-          <h2 className="font-serif text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">
+          <h2 className="font-heading text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">
             A cohort of 20.
             <br />
             Not a waiting list.
@@ -181,7 +181,7 @@ export function FoundingSchoolTiersSection() {
       <div className="mx-auto max-w-[1200px]">
         <div className="mb-10 text-center">
           <div className="eyebrow">Two ways to join</div>
-          <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">Choose the founding route that fits.</h2>
+          <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">Choose the founding route that fits.</h2>
           <p className="mt-2 text-muted">Both tiers are founding places within the cap of 20.</p>
         </div>
 
@@ -191,7 +191,7 @@ export function FoundingSchoolTiersSection() {
               {tier.enhanced ? (
                 <Tag className="absolute right-6 top-0 -translate-y-1/2 bg-brand text-white">Enhanced</Tag>
               ) : null}
-              <h3 className="font-serif text-2xl leading-tight">{tier.name}</h3>
+              <h3 className="font-heading text-2xl leading-tight">{tier.name}</h3>
               <p className="mt-2 text-muted">{tier.description}</p>
               <div className="mt-7 grid gap-4">
                 {tier.points.map(([title, copy]) => (
@@ -231,7 +231,7 @@ export function FoundingSchoolFaqSection() {
       <div className="mx-auto max-w-[980px]">
         <div className="mb-10 text-center">
           <div className="eyebrow">Common questions</div>
-          <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">Before your school registers.</h2>
+          <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">Before your school registers.</h2>
         </div>
         <div className="grid gap-3">
           {faqs.map((faq, index) => (

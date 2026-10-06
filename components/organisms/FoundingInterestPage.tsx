@@ -203,7 +203,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
         >
           <div className="max-w-[640px]">
             <div className="eyebrow mb-6">{content.heroEyebrow}</div>
-            <h1 className="font-serif text-4xl leading-[1.04] sm:text-5xl lg:text-[64px]">{content.heroTitle}</h1>
+            <h1 className="font-heading text-4xl leading-[1.04] sm:text-5xl lg:text-[64px]">{content.heroTitle}</h1>
             <p className="mb-8 mt-5 max-w-[590px] text-base leading-[1.7] text-white/70 sm:mb-9 sm:mt-6 sm:text-[17px]">
               {content.heroCopy}
             </p>
@@ -223,7 +223,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
               <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 sm:gap-6">
                 {content.stats.map(([value, label]) => (
                   <div key={label}>
-                    <div className="font-serif text-[28px]">{value}</div>
+                    <div className="font-heading text-[28px]">{value}</div>
                     <div className="text-xs uppercase tracking-[1px] text-white/50">{label}</div>
                   </div>
                 ))}
@@ -235,7 +235,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
             <div className="absolute right-0 top-0 h-32 w-32 -translate-y-12 translate-x-10 rounded-full bg-brand-tint" />
             <div className="relative">
               <div className="label-xs text-brand">Verified marketplace</div>
-              <h2 className="mt-2 max-w-[410px] font-serif text-3xl leading-[1.04] sm:text-[38px]">
+              <h2 className="mt-2 max-w-[410px] font-heading text-3xl leading-[1.04] sm:text-[38px]">
                 The right teacher, right now.
               </h2>
               <p className="mt-3 max-w-[440px] text-sm leading-6 text-muted">{content.rightCardCopy}</p>
@@ -288,7 +288,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
         <div className="mx-auto max-w-[1200px]">
           <div className="mb-10 text-center">
             <div className="eyebrow">{content.formBadge}</div>
-            <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">{content.programmeTitle}</h2>
+            <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">{content.programmeTitle}</h2>
             <p className="mt-2 text-muted">{content.programmeSubtitle}</p>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
@@ -297,7 +297,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-tint text-brand">
                   <Icon name={benefit.icon} size={24} />
                 </div>
-                <h3 className="font-serif text-2xl leading-tight">{benefit.title}</h3>
+                <h3 className="font-heading text-2xl leading-tight">{benefit.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-muted">{benefit.copy}</p>
               </article>
             ))}
@@ -318,7 +318,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
         <div className="mx-auto max-w-[1120px]">
           <div className="mb-10 text-center">
             <div className="eyebrow">How it works</div>
-            <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">{content.howItWorksTitle}</h2>
+            <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">{content.howItWorksTitle}</h2>
             <p className="mx-auto mt-2 max-w-[620px] text-muted">{content.howItWorksSubtitle}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
@@ -327,7 +327,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
                 <span className="mb-5 flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
                   {index + 1}
                 </span>
-                <h3 className="font-serif text-xl leading-tight">{step.title}</h3>
+                <h3 className="font-heading text-xl leading-tight">{step.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-muted">{step.copy}</p>
               </div>
             ))}
@@ -346,7 +346,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
         >
           <div className="max-w-[590px]">
             <Tag className="mb-5">{content.formBadge}</Tag>
-            <h2 className="font-serif text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">{content.ctaTitle}</h2>
+            <h2 className="font-heading text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">{content.ctaTitle}</h2>
             <p className="mt-4 max-w-[520px] text-base leading-7 text-muted">{content.ctaCopy}</p>
             <div className="mt-6 grid gap-4 text-sm leading-6 text-muted sm:text-[15px]">
               {content.formBullets.map((point) => (
@@ -367,7 +367,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
       <section className="border-t border-border bg-[#0a0a0a] px-4 py-14 text-center text-white sm:px-6 sm:py-16 lg:px-12">
         <div className="mx-auto max-w-[820px]">
           <Tag className="mb-5">QR-ready page</Tag>
-          <h2 className="font-serif text-4xl leading-[1.05] sm:text-5xl">Share this page from events, flyers, and email.</h2>
+          <h2 className="font-heading text-4xl leading-[1.05] sm:text-5xl">Share this page from events, flyers, and email.</h2>
           <p className="mx-auto mt-5 max-w-[560px] text-base leading-7 text-white/65">
             Use the page URL directly in QR codes. Add source and campaign query strings when you need attribution.
           </p>

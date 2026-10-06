@@ -23,7 +23,7 @@ export function RegisterInterestForm() {
   return (
     <form ref={formRef} action={formAction} className="rounded-xl border border-border bg-white p-5 text-left shadow-(--shadow-xs) sm:p-7" noValidate>
         <div className="mb-5">
-          <h3 className="font-serif text-2xl leading-tight">Register your school&apos;s interest</h3>
+          <h3 className="font-heading text-2xl leading-tight">Register your school&apos;s interest</h3>
           <p className="mt-2 text-sm leading-6 text-muted">Two minutes. No commitment. We&apos;ll be in touch before launch.</p>
         </div>
 

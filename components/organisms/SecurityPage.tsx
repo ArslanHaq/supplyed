@@ -237,7 +237,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-xl border border-border bg-chalk p-4">
                     <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Sign-in protection</div>
-                    <div className="mt-2 font-serif text-2xl text-ink">{status?.enabled ? "Active" : "Not active"}</div>
+                    <div className="mt-2 font-heading text-2xl text-ink">{status?.enabled ? "Active" : "Not active"}</div>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       {status?.enabled
                         ? "Login requires an authenticator code or an unused recovery code."
@@ -246,7 +246,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                   </div>
                   <div className="rounded-xl border border-border bg-chalk p-4">
                     <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Recovery codes</div>
-                    <div className="mt-2 font-serif text-2xl text-ink">{status?.recoveryCodesRemaining ?? 0}</div>
+                    <div className="mt-2 font-heading text-2xl text-ink">{status?.recoveryCodesRemaining ?? 0}</div>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       Backup codes let you regain access if your authenticator device is unavailable.
                     </p>
@@ -316,8 +316,8 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
             ) : null}
           </div>
 
-          <aside className="min-w-0 space-y-5">
-            <section className="card card-pad-lg">
+          <aside aria-label="Account recovery and security actions" className="min-w-0 space-y-5">
+            <section className="sidebar-panel card-pad-lg">
               <div className="mb-5 flex items-start gap-3">
                 <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
                   <Icon name="file" size={22} />

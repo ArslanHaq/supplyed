@@ -189,7 +189,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       }}>
         <div className="p-6 sm:p-7">
           <Tag tone="amber">Hire creates booking</Tag>
-          <h2 className="mt-4 font-serif text-2xl">Hire {hireTarget?.instructor?.fullName || "this teacher"}?</h2>
+          <h2 className="mt-4 font-heading text-2xl">Hire {hireTarget?.instructor?.fullName || "this teacher"}?</h2>
           <p className="mt-3 text-sm leading-6 text-muted">
             Hiring locks the earlier application stages and creates the booking contract from this job.
           </p>
@@ -247,7 +247,7 @@ function ApplicationListRow({
         </div>
       </div>
       <div className="rounded-lg border border-border bg-chalk px-3 py-2 text-center md:justify-self-center">
-        <div className="font-serif text-xl text-brand">{match ? `${match.score}%` : "-"}</div>
+        <div className="font-heading text-xl text-brand">{match ? `${match.score}%` : "-"}</div>
         <div className="text-xs text-muted">Match score</div>
       </div>
       <Btn className="w-full" iconRight="arrow" onClick={onOpen}>
@@ -306,7 +306,7 @@ function ApplicationDetail({
                     {instructor?.dbsVerified ? <Tag tone="green">DBS verified</Tag> : null}
                   </div>
                   <button
-                    className="truncate text-left font-serif text-3xl leading-tight hover:text-brand"
+                    className="truncate text-left font-heading text-3xl leading-tight hover:text-brand"
                     onClick={() => instructor?.id ? onOpenTeacher(instructor.id) : undefined}
                     type="button"
                   >
@@ -347,8 +347,8 @@ function ApplicationDetail({
           <JobDetailPanel job={job} />
         </div>
 
-        <aside className="space-y-5">
-          <section className="card card-pad-lg">
+        <aside aria-label="Application actions and supporting details" className="min-w-0 space-y-5">
+          <section className="sidebar-panel card-pad-lg">
             <div className="section-title mb-4">Main actions</div>
             <div className="grid gap-3">
               <Btn className="h-12 w-full" icon="message" size="lg" onClick={() => onMessage(application.id)}>
@@ -612,7 +612,7 @@ function JobDetailPanel({ job }: { job: Job | null }) {
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="section-title mb-1">Posted job details</div>
-          <h2 className="font-serif text-2xl leading-tight">{job.title}</h2>
+          <h2 className="font-heading text-2xl leading-tight">{job.title}</h2>
           <p className="mt-1 text-sm text-muted">{formatLocation(job)} - {job.date} - {formatPay(job)}</p>
         </div>
         <Tag tone={job.status === "ACTIVE" ? "green" : "ghost"}>{job.status ?? "Role"}</Tag>
@@ -711,7 +711,7 @@ function InfoLine({ label, value }: { label: string; value: string }) {
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {
-  return <div className="card card-pad-lg text-center"><div className="font-serif text-[24px]">{title}</div><p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p></div>;
+  return <div className="card card-pad-lg text-center"><div className="font-heading text-[24px]">{title}</div><p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p></div>;
 }
 
 function formatPay(job: Job) {

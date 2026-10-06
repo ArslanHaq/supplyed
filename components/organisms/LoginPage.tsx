@@ -111,7 +111,7 @@ export function LoginPage({
         <div className="w-full max-w-[460px]">
           <div className="mb-7">
             <div className="eyebrow mb-2 text-brand">Secure sign in</div>
-            <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">Log in to SupplyED</h2>
+            <h2 className="font-heading text-3xl leading-tight sm:text-[38px]">Log in to SupplyED</h2>
             <p className="mt-3 text-muted">
               New to SupplyED?{" "}
               <button className="font-semibold text-brand" onClick={onSwitchSignup} type="button">

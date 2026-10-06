@@ -237,7 +237,7 @@ function PostJobEditor({
     return (
       <div>
         <div className="eyebrow mb-2.5">{isEditing ? "Posting type" : "Step 1 - Posting type"}</div>
-        <h2 className="mb-5 font-serif text-[26px]">How do you want to staff this role?</h2>
+        <h2 className="mb-5 font-heading text-[26px]">How do you want to staff this role?</h2>
         <div className="grid-2">
           {[
             { value: "instant" as const, title: "Instant matching", desc: "Best for urgent or same-day cover.", color: "var(--se)", bg: "var(--se-tint)" },
@@ -254,7 +254,7 @@ function PostJobEditor({
               }}
               type="button"
             >
-              <div className="mb-2 font-serif text-xl">{option.title}</div>
+              <div className="mb-2 font-heading text-xl">{option.title}</div>
               <div className="text-muted">{option.desc}</div>
             </button>
           ))}
@@ -411,13 +411,13 @@ function PostJobEditor({
     return (
       <div>
         <div className="eyebrow mb-2.5">{eyebrow}</div>
-        <div className="card card-pad bg-chalk">
+        <div className="sidebar-panel card-pad bg-chalk">
           <div className="mb-2.5 flex flex-wrap gap-2">
             <Tag tone={mode === "instant" ? "" : "purple"}>{mode === "instant" ? "Instant matching" : "Open brief"}</Tag>
             <Tag tone="green">{isEditing ? "Current preview" : "Ready to publish"}</Tag>
             {form.urgent ? <Tag tone="red">Urgent</Tag> : null}
           </div>
-          <div className="font-serif text-[22px]">{form.title || "Untitled teaching role"}</div>
+          <div className="font-heading text-[22px]">{form.title || "Untitled teaching role"}</div>
           <FormattedJobDescription className="mt-2 max-w-[760px]" description={previewDescription} />
           <div className="mt-3 flex flex-wrap gap-2">
             {form.keyStages.map((stage) => <span key={stage} className="pill">{stage}</span>)}

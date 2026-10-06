@@ -34,7 +34,7 @@ export function TweaksPanel({
   return (
     <div className="tweaks-panel">
       <div className="mb-3 flex items-center justify-between">
-        <div className="font-serif text-lg">Theme</div>
+        <div className="font-heading text-lg">Theme</div>
         <Btn variant="ghost" size="sm" icon="x" onClick={() => setState((current) => ({ ...current, tweaksOpen: false }))} />
       </div>
 

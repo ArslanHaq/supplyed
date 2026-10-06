@@ -80,7 +80,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       }}>
         <div className="p-6 sm:p-7">
           <Tag tone="amber">Hire creates booking</Tag>
-          <h2 className="mt-4 font-serif text-2xl">Hire {hireTarget?.instructor?.fullName || "this teacher"} and create the booking?</h2>
+          <h2 className="mt-4 font-heading text-2xl">Hire {hireTarget?.instructor?.fullName || "this teacher"} and create the booking?</h2>
           <p className="mt-3 text-sm leading-6 text-muted">
             This confirms the teacher for the role and creates the booking contract from the job dates, pay, and school details. Both the school and teacher can then open it from Bookings.
           </p>
@@ -120,7 +120,7 @@ function ApplicationStatusTag({ status }: { status: JobApplicationStatus }) {
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {
-  return <div className="card card-pad-lg text-center"><div className="font-serif text-[24px]">{title}</div><p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p></div>;
+  return <div className="card card-pad-lg text-center"><div className="font-heading text-[24px]">{title}</div><p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p></div>;
 }
 
 function formatPay(job: Job) { if (!job.rate) return "Rate TBC"; if (job.payType === "hourly") return `£${job.rate}/hr`; if (job.payType === "fixed") return `£${job.rate} fixed`; return `£${job.rate}/day`; }

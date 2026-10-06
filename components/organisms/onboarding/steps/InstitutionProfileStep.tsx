@@ -11,7 +11,7 @@ export function InstitutionProfileStep(props: AccountStepProps) {
     <AccountBasicsStep {...props}>
       <div className="space-y-6 rounded-xl border border-border bg-chalk p-4 sm:p-5">
         <div>
-          <h3 className="font-serif text-2xl leading-tight">Institution profile</h3>
+          <h3 className="font-heading text-2xl leading-tight">Institution profile</h3>
           <p className="mt-1 text-sm leading-6 text-muted">
             These fields create the school or MAT profile in the backend before review.
           </p>

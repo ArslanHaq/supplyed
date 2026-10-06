@@ -225,7 +225,7 @@ function BookingCard({
         <Avatar name={otherParty.name} src={otherParty.imageUrl} />
         <div className="min-w-[220px] flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-serif text-2xl leading-tight">{booking.job.title}</h2>
+            <h2 className="font-heading text-2xl leading-tight">{booking.job.title}</h2>
             <BookingStatusTag status={booking.status} />
           </div>
           <div className="mt-1 text-sm text-muted">{otherParty.name} - {location}</div>
@@ -372,7 +372,7 @@ function CreateInvoiceModal({
         }}
       >
         <Tag tone="green">Invoice</Tag>
-        <h2 className="mt-4 font-serif text-2xl">Invoice {booking?.instructor.fullName ?? "this booking"}</h2>
+        <h2 className="mt-4 font-heading text-2xl">Invoice {booking?.instructor.fullName ?? "this booking"}</h2>
         <p className="mt-3 text-sm leading-6 text-muted">
           Stripe sends the school an invoice with a secure payment link. The invoice includes the agreed teacher pay and
           SupplyEd&apos;s processing fee. The teacher must finish setting up Stripe payouts before an invoice can be sent.
@@ -450,7 +450,7 @@ function CancelBookingModal({
         }}
       >
         <Tag tone="red">Cancel booking</Tag>
-        <h2 className="mt-4 font-serif text-2xl">Cancel this booking?</h2>
+        <h2 className="mt-4 font-heading text-2xl">Cancel this booking?</h2>
         <p className="mt-3 text-sm leading-6 text-muted">Add a short reason so both sides have a clear record.</p>
         <textarea
           className="input mt-4 min-h-28 w-full"
@@ -498,7 +498,7 @@ function ReviewBookingModal({
         }}
       >
         <Tag tone="green">Booking review</Tag>
-        <h2 className="mt-4 font-serif text-2xl">Review {reviewee}</h2>
+        <h2 className="mt-4 font-heading text-2xl">Review {reviewee}</h2>
         <div className="mt-5 flex flex-wrap gap-2">
           {[1, 2, 3, 4, 5].map((value) => (
             <button
@@ -537,7 +537,7 @@ function BookingStatusTag({ status }: { status: BookingStatus }) {
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {
-  return <div className="card card-pad-lg text-center"><div className="font-serif text-[24px]">{title}</div><p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p></div>;
+  return <div className="card card-pad-lg text-center"><div className="font-heading text-[24px]">{title}</div><p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p></div>;
 }
 
 function emptyMessage(tab: Tab, role: AppRole) {

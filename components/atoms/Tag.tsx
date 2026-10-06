@@ -26,7 +26,7 @@ export function Tag({
 }) {
   return (
     <span
-      className={cn("inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-[1px]", toneClass[tone], className)}
+      className={cn("inline-flex max-w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium leading-4", toneClass[tone], className)}
       style={style}
     >
       {children}

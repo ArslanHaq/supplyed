@@ -19,7 +19,7 @@ export function InvoiceDetailsModal({ id, onClose, role }: { id: string | null; 
     <Modal open={Boolean(id)} onClose={onClose}>
       <div className="max-h-[85vh] overflow-y-auto p-6 sm:p-7">
         <div className="flex items-start justify-between gap-4">
-          <h2 className="font-serif text-2xl">Invoice details</h2>
+          <h2 className="font-heading text-2xl">Invoice details</h2>
           <Btn size="sm" variant="ghost" onClick={onClose}>Close</Btn>
         </div>
         {query.isLoading ? <div className="mt-5"><SectionLoader rows={3} /></div> : null}

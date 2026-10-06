@@ -151,7 +151,7 @@ export function RoleDescriptionEditor({
   }, [value]);
 
   return (
-    <div className={"overflow-hidden rounded-lg border bg-white " + (invalid ? "border-danger" : "border-border-strong")}>
+    <div className={"role-description-editor overflow-hidden rounded-lg border bg-white focus-within:ring-2 focus-within:ring-brand/15 " + (invalid ? "border-danger" : "border-border-strong")}>
       <div ref={toolbarRef} aria-label="Role description formatting" className="border-0! border-b! border-border! bg-chalk">
         <span className="ql-formats">
           <button aria-label="Bold" className="ql-bold" type="button" />

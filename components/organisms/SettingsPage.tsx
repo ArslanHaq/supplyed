@@ -528,7 +528,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
               <Avatar name={displayName(profile)} size="lg" src={profileImageUrl} />
               <div className="min-w-0">
                 <div className="section-title mb-1">My profile</div>
-                <div className="truncate font-serif text-2xl leading-tight text-ink sm:text-3xl">{displayName(profile)}</div>
+                <div className="truncate font-heading text-2xl leading-tight text-ink sm:text-3xl">{displayName(profile)}</div>
                 <p className="mt-1 text-sm leading-6 text-muted">{profile.user.email}</p>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
 
 export default function PublicLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return children;
+  return <div className="public-page">{children}</div>;
 }

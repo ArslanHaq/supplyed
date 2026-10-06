@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { attachmentDownloadUrlAction } from "@/features/conversations/actions";
 import {
   ALLOWED_ATTACHMENT_TYPES,
   formatFileSize,
@@ -24,6 +23,7 @@ import type { RouteProps, ToastFn } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Tag } from "../atoms";
 import { PageHead, SectionLoader } from "../molecules";
+import { MessageAttachmentPreview } from "./MessageAttachmentPreview";
 
 type PendingFile = {
   attachment?: MessageAttachment;
@@ -70,7 +70,7 @@ export function MessagingPage({ ctx, role, toast }: Pick<RouteProps, "ctx" | "ro
 
       {!conversationsQuery.isLoading && !fromApplication.isLoading && conversations.length === 0 ? (
         <div className="card card-pad-lg text-center">
-          <div className="font-serif text-[24px]">No conversations yet</div>
+          <div className="font-heading text-[24px]">No conversations yet</div>
           <p className="mx-auto mt-2 max-w-[480px] text-sm leading-6 text-muted">
             {role === "teacher"
               ? "Once you apply for a job, choose Message school on the application to start a conversation."
@@ -99,7 +99,11 @@ function ConversationList({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="card self-start overflow-hidden">
+    <div className="sidebar-panel overflow-hidden">
+      <div className="sidebar-heading mx-4 mb-0 pt-5">
+        <span className="flex items-center gap-2"><Icon name="message" size={17} /> Conversations</span>
+        <span className="rounded-md bg-chalk px-2 py-0.5 text-xs text-muted">{conversations.length}</span>
+      </div>
       {conversations.map((conversation) => {
         const last = conversation.lastMessage;
         const preview = last
@@ -109,6 +113,7 @@ function ConversationList({
         return (
           <button
             key={conversation.id}
+            aria-current={active === conversation.id ? "true" : undefined}
             className={`msg-list-item w-full text-left ${active === conversation.id ? "active" : ""}`}
             onClick={() => onSelect(conversation.id)}
             type="button"
@@ -234,48 +239,12 @@ function Bubble({
       <div className={`msg-bubble ${mine ? "out" : "in"}`}>
         {message.body ? <div className="whitespace-pre-wrap break-words">{message.body}</div> : null}
         {message.attachments.map((attachment) => (
-          <AttachmentChip key={attachment.id} attachment={attachment} conversationId={conversationId} light={mine} toast={toast} />
+          <MessageAttachmentPreview key={attachment.id} attachment={attachment} conversationId={conversationId} light={mine} toast={toast} />
         ))}
         <div className="mt-1.5 text-xs opacity-70">{formatTime(message.createdAt)}</div>
       </div>
       {seen ? <span className="mt-0.5 text-[11px] text-muted">Seen</span> : null}
     </div>
-  );
-}
-
-function AttachmentChip({
-  attachment,
-  conversationId,
-  light,
-  toast,
-}: {
-  attachment: MessageAttachment;
-  conversationId: string;
-  light: boolean;
-  toast: ToastFn;
-}) {
-  const [opening, setOpening] = useState(false);
-
-  async function download() {
-    setOpening(true);
-    const result = await attachmentDownloadUrlAction(conversationId, attachment.id);
-    setOpening(false);
-    if (result.ok) window.open(result.data, "_blank", "noopener,noreferrer");
-    else toast({ msg: result.message, title: "Could not open file", tone: "danger" });
-  }
-
-  return (
-    <button
-      className={`mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs ${light ? "bg-white/15" : "bg-white"}`}
-      disabled={opening}
-      onClick={download}
-      type="button"
-    >
-      <Icon name="file" size={14} />
-      <span className="min-w-0 flex-1 truncate font-medium">{attachment.fileName}</span>
-      <span className="opacity-70">{opening ? "Opening..." : formatFileSize(attachment.sizeBytes)}</span>
-      <Icon name="download" size={13} />
-    </button>
   );
 }
 

@@ -9,6 +9,67 @@ const projectRoot = path.resolve(__dirname, "..");
 const bookingId = "4d79c36a-6df5-4ca4-96a0-431f321f2ac3";
 const invoiceId = "0d4ca099-8c9c-43f4-9a6e-7615b4d6d6bc";
 
+function attachmentPreviewFixture({ contentType = "image/png", size = 100, status = 200, denied = false } = {}) {
+  const calls = [];
+  class BackendError extends Error {
+    constructor() { super("File not found"); this.status = 404; }
+  }
+  const backend = {
+    ApiError: BackendError,
+    api: { get: async (endpoint) => {
+      calls.push(endpoint);
+      if (denied) throw new BackendError();
+      return { url: "https://storage.example/signed-file" };
+    } },
+  };
+  const route = loadModule("app/api/conversations/[id]/attachments/[attachmentId]/preview/route.ts", {
+    "@/lib/server/api-client": backend,
+    "./api-client": backend,
+  }, {
+    fetch: async (url) => {
+      calls.push(url);
+      return new Response("file bytes", { status, headers: {
+        "Content-Type": contentType, "Content-Length": String(size), "Content-Disposition": "attachment",
+      } });
+    },
+  });
+  return { calls, get: () => route.GET(new Request("http://localhost/api/preview"), {
+    params: Promise.resolve({ id: "conversation-1", attachmentId: "attachment-1" }),
+  }) };
+}
+
+test("attachment previews authorize with the backend and serve private inline bytes", async () => {
+  for (const contentType of ["image/png", "image/jpeg", "application/pdf", "text/plain"]) {
+    const fixture = attachmentPreviewFixture({ contentType });
+    const response = await fixture.get();
+    assert.equal(response.status, 200);
+    assert.deepEqual(fixture.calls, ["/conversations/conversation-1/attachments/attachment-1/download-url", "https://storage.example/signed-file"]);
+    assert.equal(response.headers.get("Content-Disposition"), "inline");
+    assert.equal(response.headers.get("Cache-Control"), "private, no-store");
+    assert.equal(response.headers.get("X-Content-Type-Options"), "nosniff");
+    assert.equal(response.headers.get("Content-Type").split(";")[0], contentType);
+    assert.equal(await response.text(), "file bytes");
+  }
+});
+
+test("attachment previews do not read storage when backend access is denied", async () => {
+  const fixture = attachmentPreviewFixture({ denied: true });
+  const response = await fixture.get();
+  assert.equal(response.status, 404);
+  assert.equal(fixture.calls.length, 1);
+});
+
+test("attachment previews reject active content and unsupported file types", async () => {
+  for (const contentType of ["text/html", "image/svg+xml", "application/msword", "application/octet-stream"]) {
+    assert.equal((await attachmentPreviewFixture({ contentType }).get()).status, 415);
+  }
+});
+
+test("attachment previews report storage failures and oversized files", async () => {
+  assert.equal((await attachmentPreviewFixture({ status: 403 }).get()).status, 502);
+  assert.equal((await attachmentPreviewFixture({ size: 10 * 1024 * 1024 + 1 }).get()).status, 413);
+});
+
 // Compile the real server modules with isolated backend/auth dependencies.
 // Tests never contact Twilio or Stripe and never use local credentials.
 function loadModule(filename, mocks = {}, globals = {}, cache = new Map()) {

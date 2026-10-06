@@ -144,7 +144,7 @@ export default function TermsPage() {
           <div className="mx-auto max-w-[1180px]">
             <div className="max-w-[720px]">
               <Tag>Legal</Tag>
-              <h1 className="mt-5 font-serif text-4xl leading-[1.05] sm:text-5xl">Terms &amp; Conditions</h1>
+              <h1 className="mt-5 font-heading text-4xl leading-[1.05] sm:text-5xl">Terms &amp; Conditions</h1>
               <p className="mt-5 text-base leading-7 text-muted">
                 The terms that apply when schools, multi-academy trusts, and supply teachers use SupplyED. Shared terms apply to
                 everyone; the school and teacher sections apply to those accounts only.
@@ -158,12 +158,12 @@ export default function TermsPage() {
 
         <section className="px-4 py-12 sm:px-6 lg:px-12">
           <div className="mx-auto grid max-w-[1180px] gap-8 lg:grid-cols-[240px_1fr]">
-            <nav aria-label="Terms sections" className="lg:sticky lg:top-6 lg:self-start">
-              <div className="eyebrow mb-3">Contents</div>
+            <nav aria-label="Terms sections" className="sidebar-panel p-5 lg:sticky lg:top-6 lg:self-start">
+              <div className="sidebar-heading">Contents</div>
               <ol className="grid gap-1 text-sm">
                 {sections.map((section, index) => (
                   <li key={section.id}>
-                    <a className="block rounded-md px-2 py-1.5 text-muted hover:bg-white hover:text-ink" href={`#${section.id}`}>
+                    <a className="block rounded-lg px-3 py-2.5 text-sm text-slate transition-colors hover:bg-chalk hover:text-ink" href={`#${section.id}`}>
                       {index + 1}. {section.title}
                     </a>
                   </li>
@@ -179,7 +179,7 @@ export default function TermsPage() {
                   id={section.id}
                 >
                   <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="font-serif text-2xl">
+                    <h2 className="font-heading text-2xl">
                       {index + 1}. {section.title}
                     </h2>
                     {section.audience ? <Tag tone={section.id === "teachers" ? "green" : ""}>{section.audience}</Tag> : null}

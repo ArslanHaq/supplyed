@@ -110,7 +110,7 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
           <Tag tone={approval?.status === "APPROVED" ? "green" : approval?.status === "DECLINED" ? "red" : "amber"}>
             Trust signatory approval
           </Tag>
-          <h1 className="mt-4 font-serif text-3xl sm:text-4xl">Review this school&apos;s trust membership.</h1>
+          <h1 className="mt-4 font-heading text-3xl sm:text-4xl">Review this school&apos;s trust membership.</h1>
 
           {!approval && !error ? <p className="mt-6 text-muted">Checking this secure approval link...</p> : null}
           {error ? <div className="mt-6 rounded-xl border border-danger bg-danger-tint p-4 text-sm font-semibold text-danger" role="alert">{error}</div> : null}
@@ -129,7 +129,7 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
               {isPending ? (
                 <>
                   <div>
-                    <h2 className="font-serif text-2xl">Approval terms</h2>
+                    <h2 className="font-heading text-2xl">Approval terms</h2>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       I confirm that I am authorised to act for {approval.trust.name}, that {approval.school.name} is part of this trust, and that the trust authorises the school to create and operate a SupplyED institution workspace. I understand SupplyED will retain this approval for audit and safeguarding purposes.
                     </p>
@@ -176,7 +176,7 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
       }}>
         <div className="p-6 sm:p-8">
           <Tag tone="amber">Final confirmation</Tag>
-          <h2 className="mt-4 font-serif text-2xl">Approve this school?</h2>
+          <h2 className="mt-4 font-heading text-2xl">Approve this school?</h2>
           <p className="mt-3 text-sm leading-6 text-muted">
             You are approving <strong className="text-ink">{approval?.school.name}</strong> as part of <strong className="text-ink">{approval?.trust.name}</strong> and authorising it to create and operate a SupplyED institution workspace.
           </p>

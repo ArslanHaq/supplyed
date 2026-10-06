@@ -53,7 +53,7 @@ export function DocumentPreviewModal({
               <Icon name={isImage ? "image" : "file"} size={19} />
             </div>
             <div className="min-w-0">
-              <h2 id="document-preview-title" className="truncate font-serif text-xl leading-tight text-ink">
+              <h2 id="document-preview-title" className="truncate font-heading text-xl leading-tight text-ink">
                 {preview.file.name}
               </h2>
               <p className="mt-1 text-xs font-medium text-muted">

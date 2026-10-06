@@ -68,21 +68,21 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
             <div key={job.id} className="card card-pad-lg flex cursor-pointer flex-wrap items-center gap-5" onClick={() => go("job-detail", { jobId: job.id })}>
               <div className="flex-1">
                 <div className="mb-1.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><span className="text-xs text-muted">Posted {job.postedAt}</span></div>
-                <div className="mb-1 font-serif text-xl">{job.title}</div>
+                <div className="mb-1 font-heading text-xl">{job.title}</div>
                 <div className="mb-3 text-[15px] text-muted">{job.school} - {[job.city, job.county, job.postalCode].filter(Boolean).join(", ")} - {job.date}</div>
                 <div className="mb-3 flex flex-wrap gap-1">{job.requiredSkills.map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div>
                 <div className="flex flex-wrap gap-4 text-xs text-muted"><div className="flex items-center gap-1"><Icon name="pound" size={12} />£{job.rate}/day</div></div>
               </div>
               <Btn size="sm">View</Btn>
             </div>
-          )) : recommendedJobs.map(({ job, match }) => <div key={job.id} className="card card-pad-lg cursor-pointer" onClick={() => go("job-detail", { jobId: job.id })}><div className="mb-4 flex flex-wrap items-start gap-4"><div className="min-w-[220px] flex-1"><div className="mb-1 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag>{job.requiredSkills.slice(0, 3).map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div><div className="font-serif text-xl">{job.title}</div><div className="text-sm text-muted">{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} · {job.date}{job.minExperienceYears != null ? ` · ${job.minExperienceYears}+ years experience` : ""}</div></div><div className="text-right"><div className="font-serif text-lg">£{job.rate}<span className="font-sans text-xs text-muted">/day</span></div><Btn className="mt-2" size="sm">View & apply</Btn></div></div><div onClick={(event) => event.stopPropagation()}><MatchScorePanel match={match} /></div></div>)}
+          )) : recommendedJobs.map(({ job, match }) => <div key={job.id} className="card card-pad-lg cursor-pointer" onClick={() => go("job-detail", { jobId: job.id })}><div className="mb-4 flex flex-wrap items-start gap-4"><div className="min-w-[220px] flex-1"><div className="mb-1 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag>{job.requiredSkills.slice(0, 3).map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div><div className="font-heading text-xl">{job.title}</div><div className="text-sm text-muted">{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} · {job.date}{job.minExperienceYears != null ? ` · ${job.minExperienceYears}+ years experience` : ""}</div></div><div className="text-right"><div className="font-heading text-lg">£{job.rate}<span className="font-sans text-xs text-muted">/day</span></div><Btn className="mt-2" size="sm">View & apply</Btn></div></div><div onClick={(event) => event.stopPropagation()}><MatchScorePanel match={match} /></div></div>)}
           {!activeLoading && !activeError && activeCount === 0 ? (
             <div className="card card-pad text-muted">No jobs match these filters.</div>
           ) : null}
           {tab === "recommended" && (recommendedQuery.data?.pagination.totalPages ?? 0) > 1 ? <div className="flex items-center justify-between"><Btn disabled={page <= 1} variant="secondary" onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</Btn><span className="text-sm text-muted">Page {page} of {recommendedQuery.data?.pagination.totalPages}</span><Btn disabled={!recommendedQuery.data?.pagination.hasNextPage} variant="secondary" onClick={() => setPage((value) => value + 1)}>Next</Btn></div> : null}
         </div>
-        <div className="card card-pad">
-          <div className="eyebrow mb-2.5">Map view</div>
+        <div className="sidebar-panel card-pad">
+          <div className="sidebar-heading"><span className="flex items-center gap-2"><Icon name="pin" size={17} /> Map view</span></div>
           <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br from-[var(--se-tint)] to-[var(--chalk)]">
             {[[30, 25], [55, 40], [40, 65], [70, 55]].map(([x, y], index) => {
               const job = jobs[index];

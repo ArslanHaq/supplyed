@@ -57,7 +57,7 @@ export function PayoutSettings({ resumeExpiredLink = false, returnedFromStripe =
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-[220px] flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-serif text-2xl leading-tight" id="payout-settings-heading">Payouts</h2>
+            <h2 className="font-heading text-2xl leading-tight" id="payout-settings-heading">Payouts</h2>
             {account ? <Tag tone={account.ready ? "green" : account.connected ? "amber" : "ghost"}>
               {account.ready ? "Ready to receive payments" : account.connected ? "Setup in progress" : "Not set up"}
             </Tag> : null}

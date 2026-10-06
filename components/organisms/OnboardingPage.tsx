@@ -164,7 +164,7 @@ export function OnboardingPage({
           <div className="relative flex h-full flex-col">
             <div>
               <div className="eyebrow mb-5 text-brand">Join SupplyED</div>
-              <h1 className="font-serif text-3xl leading-[1.08] sm:text-[40px]">
+              <h1 className="font-heading text-3xl leading-[1.08] sm:text-[40px]">
                 {roleSelected ? signupHeroTitle(activeRole) : "Choose your SupplyED path."}
               </h1>
               <p className="mt-5 text-sm leading-7 text-white/65 sm:text-[15px]">
@@ -194,8 +194,9 @@ export function OnboardingPage({
                 return (
                   <button
                     key={item.label}
+                    aria-current={active ? "step" : undefined}
                     disabled={Boolean(pending) || phoneVerificationPending}
-                    className="flex w-full gap-3 text-left"
+                    className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${active ? "border-white/20 bg-white/10" : "border-transparent hover:bg-white/5"}`}
                     onClick={() => {
                       if (!lockedDocumentStage && itemStep < currentStep) setStep(itemStep);
                     }}
@@ -233,7 +234,7 @@ export function OnboardingPage({
 
             <div className="mt-auto hidden rounded-lg border border-white/10 bg-white/5 p-4 lg:block">
               <div className="text-xs uppercase tracking-[1px] text-white/45">Current path</div>
-              <div className="mt-1 font-serif text-2xl">{lockedDocumentStage ? "Document review" : roleSelected ? roleLabel(activeRole) : "Role selection"}</div>
+              <div className="mt-1 font-heading text-2xl">{lockedDocumentStage ? "Document review" : roleSelected ? roleLabel(activeRole) : "Role selection"}</div>
               <p className="mt-1 text-sm text-white/55">
                 {lockedDocumentStage ? "Profile details are locked. Upload the required documents to continue." : "You can change this in the account step before submitting."}
               </p>
@@ -245,7 +246,7 @@ export function OnboardingPage({
           <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
             <div>
               <Tag>{lockedDocumentStage ? "Required documents" : `Step ${currentStep} of ${steps.length}`}</Tag>
-              <h2 className="mt-3 font-serif text-3xl leading-tight sm:text-[36px]">
+              <h2 className="mt-3 font-heading text-3xl leading-tight sm:text-[36px]">
                 {pageTitle}
               </h2>
               <p className="mt-2 max-w-[760px] text-muted">{pageDescription}</p>
@@ -319,7 +320,7 @@ export function OnboardingPage({
               <Icon name="checkCircle" size={20} />
             </div>
             <div>
-              <div className="font-serif text-2xl leading-tight">Create this profile?</div>
+              <div className="font-heading text-2xl leading-tight">Create this profile?</div>
               <p className="mt-2 text-sm leading-6 text-muted">
                 Once you continue, this profile will be created and you will not be able to return to earlier onboarding steps. If documents are required by admin, you will upload them on the next screen before the profile is sent for review.
               </p>
@@ -385,7 +386,7 @@ function MatApplicationWaitingPage({
       <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1040px] items-center px-4 py-10 sm:px-6 lg:px-8">
         <section className="w-full rounded-xl border border-border bg-white p-6 shadow-(--shadow-xs) sm:p-9">
           <Tag tone={trustApproved ? "green" : "amber"}>Profile status pending</Tag>
-          <h1 className="mt-4 font-serif text-4xl leading-tight sm:text-[48px]">Your school is not ready for workspace access yet.</h1>
+          <h1 className="mt-4 font-heading text-4xl leading-tight sm:text-[48px]">Your school is not ready for workspace access yet.</h1>
           <p className="mt-4 max-w-[760px] text-base leading-7 text-muted">
             Your documents are ready. SupplyED will submit the school for application review as soon as the trust signatory approval is confirmed. The workspace stays locked until both checks are complete and the school profile is active.
           </p>
@@ -393,7 +394,7 @@ function MatApplicationWaitingPage({
           <div className="mt-7 grid gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-border bg-chalk p-5">
               <div className="label-xs">Application review</div>
-              <div className="mt-2 font-serif text-xl">{trustApproved ? "Ready to submit" : "Waiting for trust approval"}</div>
+              <div className="mt-2 font-heading text-xl">{trustApproved ? "Ready to submit" : "Waiting for trust approval"}</div>
               <p className="mt-2 text-sm leading-6 text-muted">
                 {trustApproved ? "Check the application now to submit it to SupplyED for review." : "The backend cannot accept the review submission until the trust has approved the school."}
               </p>
@@ -404,7 +405,7 @@ function MatApplicationWaitingPage({
 
             <div className="rounded-xl border border-border bg-chalk p-5">
               <div className="label-xs">Trust signatory approval</div>
-              <div className="mt-2 font-serif text-xl capitalize">{signatoryLabel}</div>
+              <div className="mt-2 font-heading text-xl capitalize">{signatoryLabel}</div>
               <p className="mt-2 text-sm leading-6 text-muted">
                 {trustApproved
                   ? "The trust has approved this school. Check the application to continue."

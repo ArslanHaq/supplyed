@@ -168,7 +168,7 @@ export function FoundingTeacherRolesSection() {
     <section className="border-b border-border bg-chalk px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
       <div className="mx-auto max-w-[1320px] text-center">
         <Tag className="mb-5">Who can join</Tag>
-        <h2 className="font-serif text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">
+        <h2 className="font-heading text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">
           If you cover classrooms, you belong here.
         </h2>
         <p className="mx-auto mt-4 max-w-[620px] text-base leading-7 text-muted">
@@ -208,7 +208,7 @@ export function FoundingTeacherRegionsSection() {
       <div className="mx-auto max-w-[980px]">
         <div className="mb-10 text-center">
           <div className="eyebrow">Launch regions</div>
-          <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">Our focus is the North.</h2>
+          <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">Our focus is the North.</h2>
           <p className="mx-auto mt-2 max-w-[640px] text-muted">
             We launch where we can guarantee schools on the other side of the marketplace.
           </p>
@@ -226,7 +226,7 @@ export function FoundingTeacherRegionsSection() {
                   <Icon name="pin" size={21} />
                 </span>
                 <div>
-                  <h3 className="font-serif text-xl leading-tight text-ink">{region.name}</h3>
+                  <h3 className="font-heading text-xl leading-tight text-ink">{region.name}</h3>
                   <p className="mt-1 text-sm leading-6 text-muted">{region.note}</p>
                 </div>
               </div>
@@ -253,7 +253,7 @@ export function FoundingTeacherFaqSection() {
       <div className="mx-auto max-w-[980px]">
         <div className="mb-10 text-center">
           <div className="eyebrow">Common questions</div>
-          <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">Before teachers register.</h2>
+          <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">Before teachers register.</h2>
         </div>
         <div className="grid gap-3">
           {faqs.map((faq, index) => (

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { useConversationStream, useUnreadMessages } from "@/features/conversations/use-conversations";
 import { getDisplayName } from "@/lib/user-display";
+import { useMounted } from "@/lib/use-mounted";
 import type { AppPage, RouteProps } from "@/types/supplyed";
 
 import { Icon, Logo } from "../atoms";
@@ -57,17 +58,20 @@ export function AppChrome({
   // Teachers and schools message each other; one live connection keeps every screen up to date.
   const messagingEnabled = state.role === "teacher" || state.role === "institution";
   useConversationStream(messagingEnabled);
-  const unread = useUnreadMessages({ enabled: messagingEnabled }).data?.total ?? 0;
+  const unreadQuery = useUnreadMessages({ enabled: messagingEnabled });
+  const isClient = useMounted();
+  // The browser cache can already contain data while the server renders zero unread.
+  const unread = isClient && messagingEnabled ? unreadQuery.data?.total ?? 0 : 0;
 
   return (
     <div className="workspace-shell">
       <div className="app-nav">
-        <Logo size={17} onClick={() => go("dashboard")} />
+        <Logo size={21} onClick={() => go("dashboard")} />
         <nav aria-label={`${userSub} workspace navigation`} className="app-nav-links">
           {navItems.map((item) => (
-            <button key={item.id} className={`app-nav-link ${state.page === item.id ? "active" : ""}`} onClick={() => go(item.id)} type="button">
-              <span className="flex items-center gap-1.5">
-                <Icon name={item.icon} size={13} /> {item.label}
+            <button key={item.id} aria-current={state.page === item.id ? "page" : undefined} className={`app-nav-link ${state.page === item.id ? "active" : ""}`} onClick={() => go(item.id)} type="button">
+              <span className="flex items-center gap-2">
+                <Icon name={item.icon} size={16} /> {item.label}
                 {item.id === "messaging" && unread > 0 ? (
                   <span aria-label={`${unread} unread`} className="rounded-full bg-brand px-1.5 text-[11px] font-bold leading-[18px] text-white">
                     {unread > 99 ? "99+" : unread}
@@ -78,7 +82,7 @@ export function AppChrome({
           ))}
         </nav>
         <div className="app-nav-right">
-          <div className="flex items-center gap-1.5 rounded-lg bg-chalk px-3 py-1.5"><Icon name="search" size={13} /><input placeholder={searchPlaceholder} className="w-[140px] border-0 bg-transparent outline-none" /></div>
+          <div className="app-search"><Icon name="search" size={16} /><input aria-label={searchPlaceholder.replace("...", "")} placeholder={searchPlaceholder} className="border-0 bg-transparent" /></div>
           <button aria-label="Open messages" className="notif-btn" onClick={() => go("messaging")} type="button"><Icon name="bell" size={16} />{unread > 0 ? <div className="notif-dot" /> : null}</button>
           <button aria-label="Open help" className="notif-btn" type="button"><Icon name="help" size={16} /></button>
           <AppAccountMenu
