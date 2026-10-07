@@ -1,5 +1,6 @@
 import type {
   Booking,
+  BookingInvoiceFilter,
   BookingInvoiceSummary,
   BookingListQuery,
   BookingReview,
@@ -10,6 +11,7 @@ import type {
 } from "./types";
 
 const bookingStatuses = new Set<BookingStatus>(["CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"]);
+const bookingInvoiceFilters = new Set<BookingInvoiceFilter>(["none", "unpaid", "paid"]);
 const reviewerTypes = new Set<ReviewerType>(["INSTITUTION", "INSTRUCTOR"]);
 
 function readDateIso(value: unknown): string | null {
@@ -132,10 +134,19 @@ export function normalizePaginatedBookings(payload: PaginatedBookings): Paginate
 
 export function normalizeBookingsQuery(query: BookingListQuery = {}): BookingListQuery {
   return {
+    from: normalizeQueryText(query.from),
+    invoice: query.invoice && bookingInvoiceFilters.has(query.invoice) ? query.invoice : undefined,
+    jobId: normalizeQueryText(query.jobId),
     limit: query.limit && Number.isFinite(query.limit) ? Math.min(100, Math.max(1, query.limit)) : 20,
     page: query.page && Number.isFinite(query.page) ? Math.max(1, query.page) : 1,
+    search: normalizeQueryText(query.search)?.slice(0, 100),
     status: query.status && bookingStatuses.has(query.status) ? query.status : undefined,
+    to: normalizeQueryText(query.to),
   };
+}
+
+function normalizeQueryText(value: string | undefined) {
+  return value?.trim() || undefined;
 }
 
 export function normalizeReviewInput(input: BookingReviewInput): BookingReviewInput {

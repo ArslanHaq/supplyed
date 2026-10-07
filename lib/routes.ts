@@ -9,6 +9,7 @@ export const appPathByPage: Record<AppPage, string> = {
   "find-jobs": "/find-jobs",
   "job-detail": "/job-detail",
   "teacher-profile": "/teacher-profile",
+  "institution-profile": "/institution-profile",
   messaging: "/messaging",
   calendar: "/calendar",
   settings: "/settings",
@@ -20,6 +21,7 @@ export function buildAppHref(page: AppPage, ctx: RouteContext = {}) {
   const params = new URLSearchParams();
 
   if (ctx.applicationId) params.set("applicationId", ctx.applicationId);
+  if (ctx.institutionId) params.set("institutionId", ctx.institutionId);
   if (ctx.jobId) params.set("jobId", ctx.jobId);
   if (ctx.teacherId) params.set("teacherId", ctx.teacherId);
 

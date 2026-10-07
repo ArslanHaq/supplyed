@@ -24,6 +24,7 @@ import { CalendarPage } from "./CalendarPage";
 import { FindJobsPage } from "./FindJobsPage";
 import { FindTeachersPage } from "./FindTeachersPage";
 import { InstitutionDashboard } from "./InstitutionDashboard";
+import { InstitutionProfilePage } from "./InstitutionProfilePage";
 import { JobDetailPage } from "./JobDetailPage";
 import { MessagingPage } from "./MessagingPage";
 import { PostJobPage } from "./PostJobPage";
@@ -31,12 +32,13 @@ import { SecurityPage } from "./SecurityPage";
 import { SettingsPage } from "./SettingsPage";
 import { TeacherDashboard } from "./TeacherDashboard";
 import { TeacherApplicationsPage } from "./TeacherApplicationsPage";
-import { TeacherProfilePage } from "./TeacherProfilePage";
+import { PublicTeacherProfilePage as TeacherProfilePage } from "./PublicTeacherProfilePage";
 import { TweaksPanel } from "./TweaksPanel";
 
 function readContext(searchParams: URLSearchParams) {
   return {
     applicationId: searchParams.get("applicationId") || undefined,
+    institutionId: searchParams.get("institutionId") || undefined,
     jobId: searchParams.get("jobId") || undefined,
     teacherId: searchParams.get("teacherId") || undefined,
   };
@@ -147,6 +149,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "bookings") content = <BookingsPage {...routeProps} />;
     else if (activePage === "find-teachers") content = <FindTeachersPage {...routeProps} />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
+    else if (activePage === "institution-profile") content = <InstitutionProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
     else if (activePage === "security") content = <SecurityPage {...routeProps} />;
     else if (activePage === "billing") content = <BillingPage {...routeProps} />;
@@ -160,6 +163,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
     else if (activePage === "calendar") content = <CalendarPage />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
+    else if (activePage === "institution-profile") content = <InstitutionProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
     else if (activePage === "security") content = <SecurityPage {...routeProps} />;
     else if (activePage === "billing") content = <BillingPage {...routeProps} />;

@@ -1,4 +1,5 @@
 export type BookingStatus = "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+export type BookingInvoiceFilter = "none" | "paid" | "unpaid";
 export type ReviewerType = "INSTITUTION" | "INSTRUCTOR";
 
 export type BookingReview = {
@@ -78,9 +79,14 @@ export type PaginatedBookings = {
 };
 
 export type BookingListQuery = {
+  from?: string;
+  invoice?: BookingInvoiceFilter;
+  jobId?: string;
   limit?: number;
   page?: number;
+  search?: string;
   status?: BookingStatus;
+  to?: string;
 };
 
 export type BookingStatusAction = "cancel" | "complete" | "no-show";

@@ -1,8 +1,9 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 
-import type { Booking, BookingStatus } from "@/features/bookings/types";
+import type { Booking, BookingInvoiceFilter, BookingListQuery, BookingStatus } from "@/features/bookings/types";
 import { bookingDays, invoiceUnitsLimit } from "@/features/bookings/schemas";
 import { useBookings, useCreateBookingReview, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
 import { formatPence } from "@/features/payments/schemas";
@@ -33,16 +34,23 @@ const tabs: Array<{ label: string; value: Tab }> = [
   { label: "No-show", value: "no-show" },
 ];
 
+type BookingFilters = Pick<BookingListQuery, "from" | "invoice" | "search" | "to">;
+
+const emptyFilters: BookingFilters = { from: "", invoice: undefined, search: "", to: "" };
+
 export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role" | "toast">) {
   const [tab, setTab] = useState<Tab>("all");
   const [page, setPage] = useState(1);
+  const [filterDraft, setFilterDraft] = useState<BookingFilters>(emptyFilters);
+  const [filters, setFilters] = useState<BookingFilters>(emptyFilters);
+  const [filterError, setFilterError] = useState<string | null>(null);
   const [reviewTarget, setReviewTarget] = useState<Booking | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const [invoiceTarget, setInvoiceTarget] = useState<Booking | null>(null);
   const [invoiceDetailsId, setInvoiceDetailsId] = useState<string | null>(null);
   const [payTarget, setPayTarget] = useState<PayableInvoice | null>(null);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
-  const bookingsQuery = useBookings({ limit: 20, page, status: tabStatus[tab] });
+  const bookingsQuery = useBookings({ limit: 20, page, status: tabStatus[tab], ...filters });
   const bookings = bookingsQuery.data?.bookings ?? [];
   const updateBooking = useUpdateBookingStatus({
     onSuccess: (result) => {
@@ -91,6 +99,30 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
     ? "Your active and completed placements with schools."
     : "Your school bookings, confirmations, and completed placements.";
 
+  function applyFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (filterDraft.from && filterDraft.to && filterDraft.from > filterDraft.to) {
+      setFilterError("The start date must be on or before the end date.");
+      return;
+    }
+
+    setFilterError(null);
+    setFilters({
+      from: filterDraft.from || undefined,
+      invoice: filterDraft.invoice,
+      search: filterDraft.search?.trim() || undefined,
+      to: filterDraft.to || undefined,
+    });
+    setPage(1);
+  }
+
+  function clearFilters() {
+    setFilterDraft(emptyFilters);
+    setFilters(emptyFilters);
+    setFilterError(null);
+    setPage(1);
+  }
+
   return (
     <>
       <div className="app-page">
@@ -113,6 +145,44 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
           ))}
         </div>
 
+        <form className="card card-pad mb-6" onSubmit={applyFilters}>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <label className="block text-xs font-semibold text-graphite">
+              Search
+              <input
+                className="input mt-2"
+                maxLength={100}
+                placeholder="Job, teacher, or school"
+                type="search"
+                value={filterDraft.search ?? ""}
+                onChange={(event) => setFilterDraft((current) => ({ ...current, search: event.target.value }))}
+              />
+            </label>
+            <label className="block text-xs font-semibold text-graphite">
+              From
+              <input className="input mt-2" type="date" value={filterDraft.from ?? ""} onChange={(event) => setFilterDraft((current) => ({ ...current, from: event.target.value }))} />
+            </label>
+            <label className="block text-xs font-semibold text-graphite">
+              To
+              <input className="input mt-2" min={filterDraft.from || undefined} type="date" value={filterDraft.to ?? ""} onChange={(event) => setFilterDraft((current) => ({ ...current, to: event.target.value }))} />
+            </label>
+            <label className="block text-xs font-semibold text-graphite">
+              Invoice
+              <select className="select mt-2" value={filterDraft.invoice ?? ""} onChange={(event) => setFilterDraft((current) => ({ ...current, invoice: (event.target.value || undefined) as BookingInvoiceFilter | undefined }))}>
+                <option value="">Any invoice state</option>
+                <option value="none">No invoice</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="paid">Paid</option>
+              </select>
+            </label>
+          </div>
+          {filterError ? <p className="mt-3 text-sm font-medium text-danger" role="alert">{filterError}</p> : null}
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <Btn size="sm" variant="ghost" onClick={clearFilters}>Clear filters</Btn>
+            <Btn size="sm" type="submit">Apply filters</Btn>
+          </div>
+        </form>
+
         {bookingsQuery.isLoading ? <SectionLoader rows={4} /> : null}
         {bookingsQuery.error && !bookingsQuery.isLoading ? (
           <EmptyState title="Bookings unavailable" message={bookingsQuery.error.message || "Refresh the page and try again."} />
@@ -133,6 +203,9 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
                 onInvoice={(booking) => { setInvoiceError(null); setInvoiceTarget(booking); }}
                 onInvoiceDetails={setInvoiceDetailsId}
                 onMessage={(selectedBooking) => go("messaging", { applicationId: selectedBooking.applicationId })}
+                onOpenProfile={(selectedBooking) => role === "teacher"
+                  ? go("institution-profile", { institutionId: selectedBooking.institution.id })
+                  : go("teacher-profile", { teacherId: selectedBooking.instructor.id })}
                 onPay={setPayTarget}
                 onNoShow={(id) => updateBooking.mutate({ action: "no-show", id })}
                 onReview={setReviewTarget}
@@ -210,6 +283,7 @@ function BookingCard({
   onInvoiceDetails,
   onMessage,
   onNoShow,
+  onOpenProfile,
   onPay,
   onReview,
   pending,
@@ -223,14 +297,15 @@ function BookingCard({
   onInvoiceDetails: (id: string) => void;
   onMessage: (booking: Booking) => void;
   onNoShow: (id: string) => void;
+  onOpenProfile: (booking: Booking) => void;
   onPay: (invoice: PayableInvoice) => void;
   onReview: (booking: Booking) => void;
   pending: boolean;
   role: AppRole;
 }) {
   const otherParty = role === "teacher"
-    ? { imageUrl: booking.institution.imageUrl, name: booking.institution.name ?? "School" }
-    : { imageUrl: booking.instructor.imageUrl, name: booking.instructor.fullName ?? "Teacher" };
+    ? { id: booking.institution.id, imageUrl: booking.institution.imageUrl, name: booking.institution.name ?? "School" }
+    : { id: booking.instructor.id, imageUrl: booking.instructor.imageUrl, name: booking.instructor.fullName ?? "Teacher" };
   const ownReview = booking.reviews.find((review) => review.reviewerType === reviewerType(role));
   const reviewable = isReviewableBookingStatus(booking.status);
   const canReview = reviewable && !ownReview;
@@ -245,7 +320,12 @@ function BookingCard({
             <h2 className="font-heading text-2xl leading-tight">{booking.job.title}</h2>
             <BookingStatusTag status={booking.status} />
           </div>
-          <div className="mt-1 text-sm text-muted">{otherParty.name} - {location}</div>
+          <div className="mt-1 text-sm text-muted">
+            <button className="font-semibold text-ink hover:text-brand hover:underline disabled:cursor-default disabled:text-muted disabled:no-underline" disabled={!otherParty.id} onClick={() => onOpenProfile(booking)} type="button">
+              {otherParty.name}
+            </button>
+            {` - ${location}`}
+          </div>
         </div>
         <div className="text-left text-sm sm:text-right">
           <div className="font-semibold">{formatDateRange(booking.startDate, booking.endDate)}</div>
@@ -275,6 +355,7 @@ function BookingCard({
               ? "Active booking contract"
               : "Booking closed"}
         </div>
+
         <div className="flex flex-wrap gap-2">
           <Btn icon="message" size="sm" variant="secondary" onClick={() => onMessage(booking)}>
             Message {role === "teacher" ? "school" : "teacher"}

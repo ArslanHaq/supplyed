@@ -34,13 +34,14 @@ type MessagesData = InfiniteData<MessagesPage, string | undefined>;
 type ConversationsData = InfiniteData<ConversationsPage, number>;
 
 /** The thread list, a page at a time: the most recent threads first, older ones loaded on demand. */
-export function useConversations(options: { enabled?: boolean } = {}) {
+export function useConversations(options: { enabled?: boolean; limit?: number } = {}) {
+  const limit = options.limit ?? 100;
   return useInfiniteQuery({
     enabled: options.enabled ?? true,
     getNextPageParam: (page: ConversationsPage) => (page.pagination.hasNextPage ? page.pagination.page + 1 : undefined),
     initialPageParam: 1,
-    queryFn: ({ pageParam }) => fetchJson<ConversationsPage>("/api/conversations", { query: { page: pageParam } }),
-    queryKey: queryKeys.conversations.list(),
+    queryFn: ({ pageParam }) => fetchJson<ConversationsPage>("/api/conversations", { query: { page: pageParam, limit } }),
+    queryKey: limit === 100 ? queryKeys.conversations.list() : [...queryKeys.conversations.list(), { limit }],
     refetchInterval: liveMessagingAvailable() ? false : FALLBACK_REFETCH_MS,
   });
 }
@@ -115,7 +116,7 @@ function appendMessage(queryClient: ReturnType<typeof useQueryClient>, message: 
 
 function patchConversation(queryClient: ReturnType<typeof useQueryClient>, conversationId: string, patch: (item: Conversation) => Conversation) {
   const apply = (item: Conversation) => (item.id === conversationId ? patch(item) : item);
-  queryClient.setQueryData<ConversationsData>(queryKeys.conversations.list(), (data) =>
+  queryClient.setQueriesData<ConversationsData>({ queryKey: queryKeys.conversations.list() }, (data) =>
     data ? { ...data, pages: data.pages.map((page) => ({ ...page, conversations: page.conversations.map(apply) })) } : data,
   );
   queryClient.setQueriesData<Conversation>(applicationEntries, (item) => (item ? apply(item) : item));

@@ -1,10 +1,10 @@
-import { seedMessages } from "@/data/supplyed";
 import { useRecommendedJobs } from "@/features/matching/use-matching";
 import { getFirstName } from "@/lib/user-display";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, Icon, Stat, Tag } from "../../atoms";
+import { Btn, Icon, Stat, Tag } from "../../atoms";
 import { MatchScorePanel, PageHead, SectionLoader } from "../../molecules";
+import { DashboardMessages } from "../DashboardMessages";
 
 export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">) {
   const firstName = getFirstName(state.accountName, state.signupEmail);
@@ -68,15 +68,7 @@ export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">
             ))}
           </div>
           <div className="section-title mt-7">Messages</div>
-          <div className="sidebar-panel overflow-hidden">
-            {seedMessages.map((message, index) => (
-              <div key={message.id} className="msg-list-item" style={{ borderBottom: index < seedMessages.length - 1 ? "0.5px solid var(--border)" : "none" }} onClick={() => go("messaging")}>
-                <Avatar name={message.with} size="sm" tone={message.tone} />
-                <div className="flex-1"><div className="font-medium">{message.with}</div><div className="text-xs text-muted">{message.lastMsg}</div></div>
-                {message.unread ? <Tag>{message.unread}</Tag> : null}
-              </div>
-            ))}
-          </div>
+          <DashboardMessages go={go} />
         </div>
       </div>
     </div>

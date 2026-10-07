@@ -48,7 +48,12 @@ type PendingFile = {
 export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" | "go" | "role" | "toast">) {
   const conversationsQuery = useConversations();
   const fromApplication = useConversationForApplication(ctx.applicationId);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // undefined follows a direct application link, null explicitly returns to the inbox.
+  const [selectedId, setSelectedId] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    setSelectedId(undefined);
+  }, [ctx.applicationId]);
 
   // A thread opened from an application may not be in the list yet.
   const conversations = useMemo(() => {
@@ -57,10 +62,32 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
     return opened && !list.some((item) => item.id === opened.id) ? [opened, ...list] : list;
   }, [conversationsQuery.data, fromApplication.data]);
 
-  const activeId = selectedId ?? fromApplication.data?.id ?? conversations[0]?.id ?? null;
+  // Fill the inbox without making the user page through older conversations.
+  useEffect(() => {
+    if (
+      conversationsQuery.hasNextPage &&
+      !conversationsQuery.isFetchingNextPage &&
+      !conversationsQuery.isFetchNextPageError
+    ) {
+      void conversationsQuery.fetchNextPage();
+    }
+  }, [
+    conversationsQuery.fetchNextPage,
+    conversationsQuery.hasNextPage,
+    conversationsQuery.isFetchNextPageError,
+    conversationsQuery.isFetchingNextPage,
+  ]);
+
+  const activeId = selectedId === undefined ? fromApplication.data?.id ?? null : selectedId;
   const active = conversations.find((item) => item.id === activeId) ?? null;
   const applicationQuery = useApplication(active?.applicationId);
   const jobQuery = useJob(active?.job.id ?? "", role === "institution");
+  const total = Math.max(conversationsQuery.data?.pages[0]?.pagination.total ?? 0, conversations.length);
+  const unread = conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0);
+
+  function returnToInbox() {
+    setSelectedId(null);
+  }
 
   return (
     <div className="app-page messaging-page">
@@ -90,19 +117,20 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
       ) : null}
 
       {conversations.length > 0 ? (
-        <div className="messaging-layout">
+        <div className={active ? "messaging-layout has-active" : "messaging-inbox-layout"}>
           <ConversationList
             active={activeId}
             conversations={conversations}
+            expanded={!active}
             hasMore={conversationsQuery.hasNextPage}
             loadingMore={conversationsQuery.isFetchingNextPage}
             onLoadMore={() => void conversationsQuery.fetchNextPage()}
             onSelect={setSelectedId}
-            total={Math.max(conversationsQuery.data?.pages[0]?.pagination.total ?? 0, conversations.length)}
+            total={total}
           />
           {active ? (
             <>
-              <Thread key={active.id} conversation={active} toast={toast} />
+              <Thread key={active.id} conversation={active} onBack={returnToInbox} toast={toast} />
               <ConversationContextPanel
                 application={applicationQuery.data ?? null}
                 conversation={active}
@@ -113,7 +141,9 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
                 role={role}
               />
             </>
-          ) : null}
+          ) : (
+            <InboxOverview conversations={total} role={role} unread={unread} />
+          )}
         </div>
       ) : null}
     </div>
@@ -123,6 +153,7 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
 function ConversationList({
   active,
   conversations,
+  expanded,
   hasMore,
   loadingMore,
   onLoadMore,
@@ -131,6 +162,7 @@ function ConversationList({
 }: {
   active: string | null;
   conversations: Conversation[];
+  expanded: boolean;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
@@ -139,9 +171,9 @@ function ConversationList({
   total: number;
 }) {
   return (
-    <div className="messaging-conversations sidebar-panel flex min-h-0 flex-col overflow-hidden">
+    <div className={`messaging-conversations sidebar-panel flex min-h-0 flex-col overflow-hidden ${expanded ? "is-inbox" : ""}`}>
       <div className="sidebar-heading mx-4 mb-0 pt-5">
-        <span className="flex items-center gap-2"><Icon name="message" size={17} /> Conversations</span>
+        <span className="flex items-center gap-2"><Icon name="message" size={17} /> Inbox</span>
         <span className="rounded-md bg-chalk px-2 py-0.5 text-xs text-muted">{total}</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -186,7 +218,32 @@ function ConversationList({
   );
 }
 
-function Thread({ conversation, toast }: { conversation: Conversation; toast: ToastFn }) {
+function InboxOverview({ conversations, role, unread }: { conversations: number; role: RouteProps["role"]; unread: number }) {
+  return (
+    <section className="messaging-inbox-overview card" aria-labelledby="inbox-overview-title">
+      <div className="messaging-inbox-illustration" aria-hidden="true">
+        <Icon name="message" size={30} />
+      </div>
+      <p className="context-label">Your messages</p>
+      <h2 className="mt-2 font-heading text-2xl font-bold text-ink" id="inbox-overview-title">Select a conversation</h2>
+      <p className="mt-2 max-w-[540px] text-sm leading-6 text-muted">
+        Choose a {role === "teacher" ? "school" : "teacher"} from your inbox to open the full conversation and see the related application and job details.
+      </p>
+      <div className="mt-6 grid w-full max-w-[520px] grid-cols-2 gap-3">
+        <div className="rounded-xl border border-border bg-chalk p-4">
+          <div className="text-2xl font-bold text-ink">{conversations}</div>
+          <div className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Conversations</div>
+        </div>
+        <div className="rounded-xl border border-border bg-chalk p-4">
+          <div className="text-2xl font-bold text-ink">{unread}</div>
+          <div className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Unread messages</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Thread({ conversation, onBack, toast }: { conversation: Conversation; onBack: () => void; toast: ToastFn }) {
   const messagesQuery = useMessages(conversation.id);
   const messages = useMemo(() => flattenMessages(messagesQuery.data), [messagesQuery.data]);
   const markRead = useMarkConversationRead();
@@ -232,6 +289,7 @@ function Thread({ conversation, toast }: { conversation: Conversation; toast: To
   return (
     <section className="messaging-thread card card-pad-lg flex min-h-[620px] flex-col overflow-hidden">
       <header className="mb-4 flex items-center gap-3 border-b border-border pb-4">
+        <Btn className="messaging-back-button" size="sm" variant="ghost" onClick={onBack}>Inbox</Btn>
         <Avatar name={conversation.counterpart.name} size="md" src={conversation.counterpart.imageUrl} />
         <div className="min-w-0 flex-1">
           <div className="font-semibold">{conversation.counterpart.name}</div>
@@ -329,7 +387,16 @@ function ConversationContextPanel({
             src={conversation.counterpart.imageUrl}
           />
           <div className="min-w-0">
-            <p className="truncate font-bold text-ink">{conversation.counterpart.name}</p>
+            <button
+              className="block max-w-full truncate text-left font-bold text-ink hover:text-brand hover:underline disabled:cursor-default disabled:no-underline"
+              disabled={!conversation.counterpart.id}
+              onClick={() => conversation.counterpart.role === "school"
+                ? go("institution-profile", { institutionId: conversation.counterpart.id ?? undefined })
+                : go("teacher-profile", { teacherId: conversation.counterpart.id ?? undefined })}
+              type="button"
+            >
+              {conversation.counterpart.name}
+            </button>
             <p className="mt-0.5 text-xs text-muted">
               {role === "teacher" ? "Hiring school" : "Teaching applicant"}
             </p>

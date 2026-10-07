@@ -47,6 +47,11 @@ export const queryKeys = {
     myInvoices: (filters?: Record<string, unknown>) => [...queryKeys.payments.all, "invoices", "mine", filters ?? {}] as const,
     payoutAccount: () => [...queryKeys.payments.all, "payout-account"] as const,
   },
+  publicProfiles: {
+    all: ["public-profiles"] as const,
+    institution: (id: string) => [...queryKeys.publicProfiles.all, "institution", id] as const,
+    instructor: (id: string) => [...queryKeys.publicProfiles.all, "instructor", id] as const,
+  },
   reviews: {
     all: ["reviews"] as const,
     institution: (institutionId: string) => [...queryKeys.reviews.all, "institution", institutionId] as const,

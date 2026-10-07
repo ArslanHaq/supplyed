@@ -1773,15 +1773,54 @@ button.card:hover {
   align-items: stretch;
 }
 
+.messaging-inbox-layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 460px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
 .messaging-conversations,
 .messaging-thread,
-.messaging-context {
+.messaging-context,
+.messaging-inbox-overview {
   height: clamp(620px, calc(100dvh - 190px), 900px);
 }
 
 .messaging-conversations,
 .messaging-context {
   align-self: stretch;
+}
+
+.messaging-conversations.is-inbox .msg-list-item {
+  padding-block: 16px;
+}
+
+.messaging-inbox-overview {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(32px, 6vw, 72px);
+  text-align: center;
+}
+
+.messaging-inbox-illustration {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 22px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--chalk);
+  color: var(--brand);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+.messaging-back-button {
+  display: none;
 }
 
 .context-label {
@@ -1798,11 +1837,20 @@ button.card:hover {
     grid-template-columns: 250px minmax(420px, 1fr) 300px;
     gap: 16px;
   }
+
+  .messaging-inbox-layout {
+    grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+    gap: 16px;
+  }
 }
 
 @media (max-width: 1050px) {
   .messaging-layout {
     grid-template-columns: 260px minmax(0, 1fr);
+  }
+
+  .messaging-inbox-layout {
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
   }
 
   .messaging-context {
@@ -1831,13 +1879,22 @@ button.card:hover {
 }
 
 @media (max-width: 720px) {
-  .messaging-layout {
+  .messaging-layout,
+  .messaging-inbox-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .messaging-inbox-overview {
+    display: none;
+  }
+
   .messaging-conversations {
-    height: auto;
-    max-height: 320px;
+    height: min(720px, calc(100dvh - 155px));
+    max-height: none;
+  }
+
+  .messaging-layout.has-active .messaging-conversations {
+    display: none;
   }
 
   .messaging-thread {
@@ -1847,6 +1904,10 @@ button.card:hover {
 
   .messaging-context {
     grid-column: auto;
+  }
+
+  .messaging-back-button {
+    display: inline-flex;
   }
 
   .card-grid-loader {

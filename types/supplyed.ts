@@ -18,6 +18,7 @@ export type AppPage =
   | "find-jobs"
   | "job-detail"
   | "teacher-profile"
+  | "institution-profile"
   | "messaging"
   | "calendar"
   | "settings"
@@ -100,6 +101,7 @@ export type Message = {
 
 export type RouteContext = {
   applicationId?: string;
+  institutionId?: string;
   jobId?: string;
   teacherId?: string;
 };
