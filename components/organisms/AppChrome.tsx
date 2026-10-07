@@ -7,6 +7,7 @@ import type { AppPage, RouteProps } from "@/types/supplyed";
 
 import { Icon, Logo } from "../atoms";
 import { AppAccountMenu } from "../molecules";
+import { NotificationBell } from "./NotificationBell";
 
 type NavItem = {
   id: AppPage;
@@ -83,7 +84,7 @@ export function AppChrome({
         </nav>
         <div className="app-nav-right">
           <div className="app-search"><Icon name="search" size={16} /><input aria-label={searchPlaceholder.replace("...", "")} placeholder={searchPlaceholder} className="border-0 bg-transparent" /></div>
-          <button aria-label="Open messages" className="notif-btn" onClick={() => go("messaging")} type="button"><Icon name="bell" size={16} />{unread > 0 ? <div className="notif-dot" /> : null}</button>
+          <NotificationBell live={messagingEnabled} onSettings={onSettings} />
           <button aria-label="Open help" className="notif-btn" type="button"><Icon name="help" size={16} /></button>
           <AppAccountMenu
             verified={verified}

@@ -16,6 +16,7 @@ import type { AppRole, ApplicationStatus, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Checkbox, Field, Icon, Tag } from "../atoms";
 import { PageHead, PostcodeLookup, SectionLoader } from "../molecules";
+import { NotificationSettings } from "./NotificationSettings";
 import { PayoutSettings } from "./PayoutSettings";
 import { PhoneVerification } from "../molecules/PhoneVerification";
 
@@ -792,6 +793,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
         </section>
 
         {role === "teacher" && profile.instructor?.id ? <div className="mt-6"><PayoutSettings /></div> : null}
+        {role === "teacher" || role === "institution" ? <div className="mt-6"><NotificationSettings role={role} toast={toast} /></div> : null}
 
         {submitError ? (
           <div className="mt-5 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">

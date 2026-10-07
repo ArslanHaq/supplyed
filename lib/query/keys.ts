@@ -35,6 +35,12 @@ export const queryKeys = {
     recommendedJobs: (query?: Record<string, unknown>) => [...queryKeys.matching.all, "recommended-jobs", query ?? {}] as const,
     score: (jobId: string) => [...queryKeys.matching.all, "score", jobId] as const,
   },
+  notifications: {
+    all: ["notifications"] as const,
+    list: () => [...queryKeys.notifications.all, "list"] as const,
+    preferences: () => [...queryKeys.notifications.all, "preferences"] as const,
+    unread: () => [...queryKeys.notifications.all, "unread"] as const,
+  },
   onboarding: {
     all: ["onboarding"] as const,
     current: () => [...queryKeys.onboarding.all, "current"] as const,
