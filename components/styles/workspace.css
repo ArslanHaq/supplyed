@@ -10,6 +10,47 @@
   text-transform: uppercase;
 }
 
+/* Messaging must stay inside the workspace viewport beside the fixed navigation. */
+.workspace-frame {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
+.workspace-main,
+.workspace-content,
+.messaging-page,
+.messaging-layout,
+.messaging-inbox-layout,
+.messaging-conversations,
+.messaging-thread,
+.messaging-context {
+  min-width: 0;
+}
+
+.messaging-page {
+  width: 100%;
+  max-width: none;
+  overflow-x: clip;
+}
+
+.messaging-layout {
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 2fr) minmax(260px, 0.9fr);
+}
+
+@media (max-width: 1050px) {
+  .messaging-layout {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .messaging-layout,
+  .messaging-inbox-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .workspace-callout {
   display: flex;
   align-items: center;

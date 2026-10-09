@@ -132,7 +132,7 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
               <ConversationContextPanel
                 application={applicationQuery.data ?? null}
                 conversation={active}
-                error={applicationQuery.isError || jobQuery.isError}
+                applicationError={applicationQuery.isError}
                 go={go}
                 job={jobQuery.data ?? null}
                 loading={applicationQuery.isLoading || jobQuery.isLoading}
@@ -347,16 +347,16 @@ function Thread({ conversation, onBack, toast }: { conversation: Conversation; o
 
 function ConversationContextPanel({
   application,
+  applicationError,
   conversation,
-  error,
   go,
   job,
   loading,
   role,
 }: {
   application: JobApplication | null;
+  applicationError: boolean;
   conversation: Conversation;
-  error: boolean;
   go: RouteProps["go"];
   job: Job | null;
   loading: boolean;
@@ -467,9 +467,9 @@ function ConversationContextPanel({
           </p>
         ) : null}
 
-        {error ? (
+        {applicationError ? (
           <p className="rounded-lg bg-warning-tint p-3 text-xs text-ink">
-            Some application details are temporarily unavailable.
+            The proposal and applicant details could not be loaded. The conversation is still available.
           </p>
         ) : null}
 
