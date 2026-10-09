@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { Icon, Tag } from "@/components/atoms";
 
@@ -124,17 +124,6 @@ const faqs = [
   },
 ];
 
-function themedGlowStyle(color = "var(--se)"): CSSProperties {
-  return {
-    borderColor: `color-mix(in srgb, ${color} 24%, var(--border))`,
-    boxShadow: [
-      `0 0 0 1px color-mix(in srgb, ${color} 12%, transparent)`,
-      `0 18px 44px color-mix(in srgb, ${color} 9%, transparent)`,
-      "0 1px 2px rgba(10, 10, 10, 0.04)",
-    ].join(", "),
-  };
-}
-
 function roleChipClassName(highlighted: boolean) {
   return highlighted
     ? "rounded-full border border-brand/25 bg-brand-tint px-4 py-2 text-sm font-semibold text-brand-dark"
@@ -143,7 +132,7 @@ function roleChipClassName(highlighted: boolean) {
 
 export function FoundingTeacherTrustStrip() {
   return (
-    <section className="border-b border-border bg-chalk px-4 py-8 sm:px-6 lg:px-12">
+    <section className="marketing-trust-strip border-b border-border bg-chalk px-4 py-8 sm:px-6 lg:px-12">
       <div className="mx-auto grid max-w-[1200px] gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0">
         {trustSignals.map((signal, index) => (
           <div
@@ -214,12 +203,11 @@ export function FoundingTeacherRegionsSection() {
           </p>
         </div>
 
-        <div className="grid gap-3">
+        <div className="marketing-region-list grid">
           {regions.map((region) => (
             <article
               className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
               key={region.name}
-              style={region.tone === "priority" ? themedGlowStyle() : undefined}
             >
               <div className="flex gap-4">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-tint text-brand">
@@ -250,24 +238,24 @@ export function FoundingTeacherRegionsSection() {
 export function FoundingTeacherFaqSection() {
   return (
     <section className="border-b border-border bg-chalk px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
-      <div className="mx-auto max-w-[980px]">
-        <div className="mb-10 text-center">
+      <div className="marketing-faq-layout mx-auto">
+        <div>
           <div className="eyebrow">Common questions</div>
           <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">Before teachers register.</h2>
         </div>
         <div className="grid gap-3">
           {faqs.map((faq, index) => (
             <details
-              className="group rounded-xl border border-border bg-white shadow-(--shadow-xs) open:border-brand/70"
+              className="group"
               key={faq.question}
               open={index === 0}
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-semibold text-ink sm:px-6 sm:text-lg">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink">
                 {faq.question}
                 <span className="text-2xl leading-none text-brand group-open:hidden">+</span>
                 <span className="hidden text-2xl leading-none text-brand group-open:block">-</span>
               </summary>
-              <div className="border-t border-border px-5 py-4 text-sm leading-7 text-muted sm:px-6 sm:text-base">
+              <div className="text-muted">
                 {faq.answer}
               </div>
             </details>

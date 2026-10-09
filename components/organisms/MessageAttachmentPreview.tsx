@@ -8,6 +8,7 @@ import type { MessageAttachment } from "@/features/conversations/types";
 import type { ToastFn } from "@/types/supplyed";
 
 import { Btn, Icon } from "../atoms";
+import { InlineLoader } from "../molecules/Loaders";
 
 export function MessageAttachmentPreview({
   attachment,
@@ -119,7 +120,7 @@ export function MessageAttachmentPreview({
         ref={cardRef}
         aria-label={`Preview ${attachment.fileName}`}
         aria-haspopup="dialog"
-        className={`mt-2 block w-60 max-w-full overflow-hidden rounded-xl border text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${light ? "border-white/25 bg-white/15" : "border-border bg-white"}`}
+        className={`attachment-preview-card mt-2 block w-60 max-w-full overflow-hidden rounded-xl border text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${light ? "border-white/25 bg-white/15" : "border-border bg-white"}`}
         onClick={() => { setVisible(true); setOpen(true); }}
         type="button"
       >
@@ -149,7 +150,7 @@ export function MessageAttachmentPreview({
         <dialog
           ref={dialogRef}
           aria-labelledby={titleId}
-          className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-hidden rounded-2xl border border-border bg-white p-0 text-ink shadow-2xl backdrop:bg-black/60"
+          className="attachment-preview-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-hidden rounded-xl border border-border bg-white p-0 text-ink shadow-panel backdrop:bg-black/45 backdrop:backdrop-blur-sm"
           onCancel={() => setOpen(false)}
           onClose={() => setOpen(false)}
           onClick={(event) => {
@@ -175,7 +176,7 @@ export function MessageAttachmentPreview({
                 {error ? <Btn size="sm" variant="secondary" onClick={() => { setPreview(null); setError(""); setAttempt((value) => value + 1); }}>Retry preview</Btn> : null}
               </div>
             ) : !preview ? (
-              <p className="text-sm text-muted" role="status">Loading preview...</p>
+              <InlineLoader label="Loading preview..." />
             ) : isImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img alt={attachment.fileName} className="h-full w-full object-contain" onError={() => setError("Preview unavailable. You can still download the file.")} src={preview.url} />

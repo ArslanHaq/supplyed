@@ -47,9 +47,9 @@ function PaymentSession({ invoice, onBusy, onClose, toast }: { invoice: PayableI
   const amount = formatPence(session.data?.amountPence || invoice.totalAmountPence);
 
   return (
-    <div className="max-h-[90vh] overflow-y-auto p-6 sm:p-7">
+    <div className="invoice-payment-modal max-h-[90vh] overflow-y-auto p-6 sm:p-7">
       <Tag tone="amber">Pay invoice</Tag>
-      <h2 className="mt-4 font-serif text-2xl">Pay {amount}</h2>
+      <h2 className="invoice-payment-amount mt-4 font-serif text-2xl">Pay {amount}</h2>
       {invoice.jobTitle ? <p className="mt-1 text-sm text-muted">{invoice.jobTitle}</p> : null}
 
       {session.isLoading ? <div className="mt-5"><SectionLoader rows={3} /></div> : null}

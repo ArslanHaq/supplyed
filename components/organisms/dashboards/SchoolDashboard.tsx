@@ -1,3 +1,4 @@
+import { WorkspaceCallout } from "../WorkspacePanels";
 import { useState } from "react";
 
 import { seedTeachers } from "@/data/supplyed";
@@ -63,13 +64,15 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
           </div>
         </div>
       ) : null}
-      <div className="app-page">
+      <div className="app-page dashboard-page school-dashboard">
         <PageHead
           title="School hiring workspace"
           subtitle={`${counts?.ALL ?? 0} posted roles - ${activeCount} active - ${draftCount} drafts`}
-          actions={<><Btn variant="secondary" icon="download">Export</Btn><Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn></>}
         />
-        <div className="grid-4 mb-7">
+        <WorkspaceCallout eyebrow="Your hiring workspace" icon="users" title="The right teacher. Ready for your classroom." action={<Btn variant="secondary" iconRight="arrowRight" onClick={() => go("find-teachers")}>Explore teachers</Btn>}>
+          Manage your roles, review promising applicants, and keep your school moving.
+        </WorkspaceCallout>
+        <div className="dashboard-metrics grid-4 mb-7">
           <Stat value={activeCount} label="Active jobs" delta={`${draftCount} drafts`} />
           <Stat value={counts?.ALL ?? 0} label="Total posted" delta="Across all statuses" />
           <Stat value={counts?.CLOSED ?? 0} label="Closed roles" delta="Kept for records" />
@@ -92,6 +95,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
               onFilterChange={(filter) => { setStatusFilter(filter); setPage(1); }}
               onPageChange={setPage}
               pagination={jobsQuery.data?.pagination}
+              refreshing={jobsQuery.isFetching}
               title="Job posts"
             />
             <div className="section-title mt-7">Recent activity</div>
@@ -121,7 +125,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
               ))}
             </div>
             <div className="section-title mt-7">Quick actions</div>
-            <div className="sidebar-panel card-pad flex flex-col gap-3">
+            <div className="dashboard-quick-actions sidebar-panel card-pad flex flex-col gap-3">
               <Btn icon="plus" className="justify-start" onClick={() => go("post-job")}>Post a job</Btn>
               <Btn variant="secondary" icon="search" className="justify-start" onClick={() => go("find-teachers")}>Browse teachers</Btn>
               <Btn variant="secondary" icon="message" className="justify-start" onClick={() => go("messaging")}>Open messages</Btn>

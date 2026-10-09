@@ -3,7 +3,7 @@ import { PageHead } from "../molecules";
 
 export function AdminDashboard() {
   return (
-    <div className="app-page">
+    <div className="app-page admin-dashboard">
       <PageHead title="Administrator account" subtitle="Your admin role was recognised from the backend session." />
       <div className="card card-pad-lg max-w-3xl">
         <div className="flex items-start gap-3">

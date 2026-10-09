@@ -8,10 +8,10 @@ export function TeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ctx" | "
   const isIndividual = false;
 
   return (
-    <div className="app-page">
+    <div className="app-page profile-page">
       <div className="two-col">
         <div>
-          <div className="card card-pad-lg mb-5">
+          <div className="legacy-profile-intro card card-pad-lg mb-5">
             <div className="flex flex-wrap items-center gap-4">
               <Avatar name={teacher.name} size="lg" tone={teacher.tone} />
               <div className="flex-1">

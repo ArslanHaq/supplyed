@@ -509,7 +509,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   }
 
   return (
-    <form className="app-page" noValidate onSubmit={saveSettings}>
+    <form className="app-page account-settings-page" noValidate onSubmit={saveSettings}>
       <PageHead
         title="Settings"
         subtitle={`Manage the account and ${roleLabel(role).toLowerCase()} profile details for ${profile.user.email}.`}
@@ -522,9 +522,21 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
         }
       />
 
-      <div className="max-w-[1120px]">
-        <section className="card card-pad-lg">
-          <div className="mb-6 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="settings-layout">
+        <aside className="settings-navigation">
+          <div className="settings-navigation-label">Your account</div>
+          <nav aria-label="Settings sections">
+            <a href="#settings-profile"><Icon name="user" size={17} /> My profile</a>
+            {role === "teacher" || role === "institution" ? <a href="#settings-details"><Icon name={role === "teacher" ? "award" : "building"} size={17} /> {role === "teacher" ? "Teaching details" : "School details"}</a> : null}
+            {role === "teacher" && profile.instructor?.id ? <a href="#payout-settings"><Icon name="pound" size={17} /> Payouts</a> : null}
+            {role === "teacher" || role === "institution" ? <a href="#notification-settings"><Icon name="bell" size={17} /> Notifications</a> : null}
+            <button type="button" onClick={() => go("security")}><Icon name="shield" size={17} /> Security <Icon name="arrow" size={14} /></button>
+          </nav>
+          <div className="settings-navigation-note"><Icon name="shield" size={18} /><p>Keep your profile up to date to get the most from your SupplyED workspace.</p></div>
+        </aside>
+        <div className="settings-content">
+        <section className="card card-pad-lg settings-profile" id="settings-profile">
+          <div className="settings-profile-header mb-6 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
               <Avatar name={displayName(profile)} size="lg" src={profileImageUrl} />
               <div className="min-w-0">
@@ -539,6 +551,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
           </div>
 
           <div className="grid-2">
+            <div className="settings-section-heading"><span>01</span><div><h2>Account details</h2><p>Your identity and contact information.</p></div></div>
             <ProfileImageField
               disabled={!canSave}
               error={profileImageError}
@@ -572,6 +585,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
 
             {role === "teacher" ? (
               <>
+                <div className="settings-section-heading" id="settings-details"><span>02</span><div><h2>Teaching profile</h2><p>Your location, experience and preferences.</p></div></div>
                 <Field error={errors.fullName} label="Full name" required>
                   <input
                     className="input"
@@ -606,6 +620,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstructor("city", value)}
                   onCountryChange={updateInstructorCountry}
                 />
+                <div className="settings-section-heading settings-section-heading-small"><span>03</span><div><h2>Work preferences</h2><p>Experience, travel and your preferred rates.</p></div></div>
                 <Field label="Currency">
                   <input
                     className="input"
@@ -649,6 +664,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.instructor.dailyRate}
                   />
                 </Field>
+                <div className="settings-section-heading settings-section-heading-small"><span>04</span><div><h2>About your teaching</h2><p>Help schools understand your expertise.</p></div></div>
                 <div className="sm:col-span-2">
                   <Field label="Bio">
                     <textarea
@@ -683,6 +699,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
 
             {role === "institution" ? (
               <>
+                <div className="settings-section-heading" id="settings-details"><span>02</span><div><h2>School details</h2><p>Your organisation and where you are based.</p></div></div>
                 <Field error={errors.schoolName} label="School or organisation" required>
                   <input
                     className="input"
@@ -733,6 +750,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstitution("city", value)}
                   onCountryChange={updateInstitutionCountry}
                 />
+                <div className="settings-section-heading settings-section-heading-small"><span>03</span><div><h2>Staffing and compliance</h2><p>Your team, hiring needs and safeguarding contacts.</p></div></div>
                 <Field label="Your role">
                   <input
                     className="input"
@@ -801,13 +819,14 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
           </div>
         ) : null}
 
-        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="settings-save-bar mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Btn onClick={() => go("dashboard")} variant="ghost">
             Cancel
           </Btn>
           <Btn disabled={!canSave || phoneVerificationPending} iconRight="check" loading={updateSettings.isPending} loadingLabel="Saving" size="lg" type="submit">
             Save settings
           </Btn>
+        </div>
         </div>
       </div>
     </form>

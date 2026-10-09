@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { PublicThemeControls } from "@/components/molecules";
 import { PublicHeader } from "@/components/organisms/PublicHeader";
 import { Tag } from "@/components/atoms";
 import { siteConfig } from "@/lib/seo";
@@ -136,11 +135,11 @@ const sections: TermsSection[] = [
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-chalk">
+    <div className="marketing-page marketing-terms min-h-screen bg-chalk">
       <PublicHeader />
 
       <main>
-        <section className="bg-white px-4 py-14 sm:px-6 lg:px-12 lg:py-16">
+        <section className="marketing-info-hero px-4 sm:px-6 lg:px-12">
           <div className="mx-auto max-w-[1180px]">
             <div className="max-w-[720px]">
               <Tag>Legal</Tag>
@@ -157,8 +156,8 @@ export default function TermsPage() {
         </section>
 
         <section className="px-4 py-12 sm:px-6 lg:px-12">
-          <div className="mx-auto grid max-w-[1180px] gap-8 lg:grid-cols-[240px_1fr]">
-            <nav aria-label="Terms sections" className="sidebar-panel p-5 lg:sticky lg:top-6 lg:self-start">
+          <div className="marketing-legal-layout mx-auto grid max-w-[1180px] gap-8 lg:grid-cols-[240px_1fr]">
+            <nav aria-label="Terms sections" className="marketing-legal-nav">
               <div className="sidebar-heading">Contents</div>
               <ol className="grid gap-1 text-sm">
                 {sections.map((section, index) => (
@@ -171,11 +170,10 @@ export default function TermsPage() {
               </ol>
             </nav>
 
-            <div className="grid gap-4">
+            <div className="marketing-legal-content grid">
               {sections.map((section, index) => (
                 <article
                   key={section.id}
-                  className="scroll-mt-6 rounded-xl border border-border bg-white p-5 sm:p-7"
                   id={section.id}
                 >
                   <div className="flex flex-wrap items-center gap-3">
@@ -184,7 +182,7 @@ export default function TermsPage() {
                     </h2>
                     {section.audience ? <Tag tone={section.id === "teachers" ? "green" : ""}>{section.audience}</Tag> : null}
                   </div>
-                  <ol className="mt-4 grid gap-3 text-sm leading-6 text-slate">
+                  <ol className="mt-4 grid text-slate">
                     {section.clauses.map((clause, clauseIndex) => (
                       <li key={clause} className="flex gap-3">
                         <span className="shrink-0 font-semibold text-muted">
@@ -197,7 +195,7 @@ export default function TermsPage() {
                 </article>
               ))}
 
-              <div className="rounded-xl border border-border bg-white p-5 text-sm leading-6 text-muted sm:p-7">
+              <div className="py-6 leading-6 text-muted">
                 Questions about these terms? Email{" "}
                 <a className="font-semibold text-brand underline underline-offset-2" href={`mailto:${siteConfig.contactEmail}`}>
                   {siteConfig.contactEmail}
@@ -213,7 +211,6 @@ export default function TermsPage() {
         </section>
       </main>
 
-      <PublicThemeControls />
     </div>
   );
 }

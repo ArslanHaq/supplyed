@@ -29,7 +29,7 @@ export function DashboardMessages({ go }: Pick<RouteProps, "go">) {
   }, [conversations.length, hasNextPage, isFetching, isError, fetchNextPage]);
 
   return (
-    <div className="sidebar-panel overflow-hidden">
+    <div className="dashboard-messages sidebar-panel overflow-hidden">
       {query.isLoading ? <div className="card-pad" role="status" aria-label="Loading messages"><SectionLoader rows={3} /></div> : null}
       {conversations.map((conversation, index) => (
         <button

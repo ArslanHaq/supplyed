@@ -1,5 +1,7 @@
 "use client";
 
+import { WorkspaceEmptyState } from "./WorkspacePanels";
+
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 
@@ -39,7 +41,7 @@ type BookingFilters = Pick<BookingListQuery, "from" | "invoice" | "search" | "to
 const emptyFilters: BookingFilters = { from: "", invoice: undefined, search: "", to: "" };
 
 export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role" | "toast">) {
-  const [tab, setTab] = useState<Tab>("all");
+  const [tab, setTab] = useState<Tab>("active");
   const [page, setPage] = useState(1);
   const [filterDraft, setFilterDraft] = useState<BookingFilters>(emptyFilters);
   const [filters, setFilters] = useState<BookingFilters>(emptyFilters);
@@ -125,17 +127,18 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
 
   return (
     <>
-      <div className="app-page">
+      <div className="app-page bookings-page">
         <PageHead
           title="Bookings"
           subtitle={subtitle}
           actions={<><Tag tone="ghost">{bookingsQuery.data?.pagination.total ?? 0} bookings</Tag><Btn loading={bookingsQuery.isFetching} loadingLabel="Refreshing" size="sm" variant="ghost" onClick={() => { void bookingsQuery.refetch(); }}>Refresh</Btn></>}
         />
 
-        <div className="card card-pad mb-6 flex flex-wrap items-center gap-3">
+        <div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center gap-3">
           {tabs.map((item) => (
             <Btn
               key={item.value}
+              aria-pressed={tab === item.value}
               size="sm"
               variant={tab === item.value ? "secondary" : "ghost"}
               onClick={() => { setTab(item.value); setPage(1); }}
@@ -145,7 +148,7 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
           ))}
         </div>
 
-        <form className="card card-pad mb-6" onSubmit={applyFilters}>
+        <form className="workspace-filter-panel card card-pad mb-6" onSubmit={applyFilters}>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <label className="block text-xs font-semibold text-graphite">
               Search
@@ -312,10 +315,10 @@ function BookingCard({
   const location = [booking.job.city, booking.job.county, booking.job.postalCode].filter(Boolean).join(", ") || "Location TBC";
 
   return (
-    <article className="card card-pad-lg">
+    <article className="booking-card card card-pad-lg">
       <div className="flex flex-wrap items-start gap-4">
         <Avatar name={otherParty.name} src={otherParty.imageUrl} />
-        <div className="min-w-[220px] flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-heading text-2xl leading-tight">{booking.job.title}</h2>
             <BookingStatusTag status={booking.status} />
@@ -333,7 +336,7 @@ function BookingCard({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+      <div className="booking-facts mt-5 grid gap-3 text-sm sm:grid-cols-3">
         <Detail icon="calendar" label="Dates" value={formatDateRange(booking.startDate, booking.endDate)} />
         <Detail icon="pound" label="Pay" value={formatPay(booking.payAmount, booking.payType)} />
         <Detail icon="pin" label="Arrival" value={booking.job.parkingInfo || "Shared by the school"} />
@@ -345,7 +348,7 @@ function BookingCard({
         booking.status === "CONFIRMED" ? <p className="mt-4 rounded-lg bg-chalk px-4 py-3 text-sm text-muted">Payment is handled through a Stripe invoice after this booking is completed.</p> : null
       )}
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+      <div className="booking-actions mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <div className="text-xs text-muted">
           {reviewable
             ? ownReview
@@ -637,7 +640,7 @@ function BookingStatusTag({ status }: { status: BookingStatus }) {
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {
-  return <div className="card card-pad-lg text-center"><div className="font-heading text-[24px]">{title}</div><p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p></div>;
+  return <WorkspaceEmptyState icon="calendar" message={message} title={title} />;
 }
 
 function emptyMessage(tab: Tab, role: AppRole) {

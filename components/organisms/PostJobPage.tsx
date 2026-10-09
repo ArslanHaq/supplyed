@@ -68,7 +68,7 @@ export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "
 
   if (isEditing && editingJobQuery.isLoading) {
     return (
-      <div className="app-page">
+      <div className="app-page post-job-page">
         <PageHead title="Loading job" subtitle="Preparing the role editor." />
         <div className="card card-pad-lg max-w-[1040px] text-sm text-muted">Loading your job draft...</div>
       </div>
@@ -77,9 +77,9 @@ export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "
 
   if (ctx.jobId && !editingJobQuery.isLoading && !editingJob) {
     return (
-      <div className="app-page">
+      <div className="app-page post-job-page">
         <PageHead title="Job not found" subtitle="This job may have been deleted or belongs to another account." />
-        <div className="card card-pad-lg max-w-[1040px]">
+        <div className="job-editor-card card card-pad-lg max-w-[1040px]">
           <p className="text-sm leading-6 text-muted">Only jobs posted from your account can be edited here.</p>
           <Btn className="mt-5" icon="arrowLeft" onClick={() => go("dashboard")} variant="secondary">
             Back to dashboard
@@ -245,7 +245,7 @@ function PostJobEditor({
           ].map((option) => (
             <button
               key={option.value}
-              className="cursor-pointer rounded-xl border p-5 text-left transition"
+              className="posting-type-choice cursor-pointer rounded-xl border p-5 text-left transition"
               onClick={() => setMode(option.value)}
               style={{
                 background: mode === option.value ? option.bg : "#fff",
@@ -436,13 +436,13 @@ function PostJobEditor({
 
   if (isEditing) {
     return (
-      <div className="app-page">
+      <div className="app-page post-job-page">
         <PageHead
           title="Edit job post"
           subtitle="Update the complete role in one place, save it as a draft, or publish the latest version."
         />
 
-        <div className="card card-pad-lg max-w-[1280px]">
+        <div className="job-editor-card card card-pad-lg max-w-[1280px]">
           <div className="grid gap-10 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
             <div className="space-y-10">
               {renderPostingTypeSection()}
@@ -494,14 +494,14 @@ function PostJobEditor({
   }
 
   return (
-    <div className="app-page">
+    <div className="app-page post-job-page">
       <PageHead
         title={isEditing ? "Edit job post" : "Post a new role"}
         subtitle={isEditing ? "Update the role, keep it as draft, or publish the latest version." : "Create the role once, publish it to active listings, then review applications from the same workspace."}
       />
-      <div className="mb-7 flex flex-wrap gap-2.5">
+      <div aria-label="Posting progress" className="job-posting-progress mb-7">
         {["Type", "Details", "Requirements", "Review"].map((label, index) => (
-          <div key={label} className="flex items-center gap-2">
+          <div aria-current={index + 1 === step ? "step" : undefined} key={label} className="job-posting-step flex items-center gap-2">
             <div className={`step ${index + 1 < step ? "done" : index + 1 === step ? "active" : ""}`}>{index + 1}</div>
             <span className={index + 1 === step ? "font-semibold" : "text-muted"}>{label}</span>
             {index < 3 ? <div className={`step-bar ${index + 1 < step ? "done" : ""}`} /> : null}
@@ -509,7 +509,7 @@ function PostJobEditor({
         ))}
       </div>
 
-      <div className="card card-pad-lg max-w-[1040px]">
+      <div className="job-editor-card card card-pad-lg max-w-[1040px]">
         {step === 1 ? renderPostingTypeSection() : null}
 
         {step === 2 ? renderDetailsFields() : null}
@@ -518,7 +518,7 @@ function PostJobEditor({
 
         {step === 4 ? renderReviewSummary() : null}
 
-        <div className="mt-8 flex items-center justify-between">
+        <div className="job-editor-actions mt-8 flex items-center justify-between">
           <Btn variant="ghost" onClick={() => (step > 1 ? setStep(step - 1) : go("dashboard"))}>
             {step > 1 ? "Back" : "Cancel"}
           </Btn>

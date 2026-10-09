@@ -44,6 +44,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
   const [draft, setDraft] = useState<DirectoryForm>(() => ({ ...emptyFilters, search: ctx.search ?? "" }));
   const [applied, setApplied] = useState<DirectoryForm>(() => ({ ...emptyFilters, search: ctx.search ?? "" }));
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const filters = useMemo<TeacherDirectoryFilters>(() => ({
     availableToday: applied.availableToday || undefined,
     city: applied.city || undefined,
@@ -81,15 +82,19 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
   }
 
   return (
-    <div className="app-page">
+    <div className="app-page discovery-page teacher-discovery">
       <PageHead
         title="Find teachers"
         subtitle="Browse active teacher profiles and filter by qualifications, experience, availability, location and rates."
         actions={<Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn>}
       />
 
-      <div className="three-panel">
-        <aside aria-label="Teacher filters" className="sidebar-panel card-pad self-start">
+      <button aria-controls="teacher-directory-filters" aria-expanded={filtersOpen} className="directory-filter-toggle" onClick={() => setFiltersOpen((current) => !current)} type="button">
+        <Icon name="filter" size={17} /> Refine your search
+        <span>{filtersOpen ? "Hide filters" : "Show filters"}</span>
+      </button>
+      <div className="directory-layout three-panel">
+        <aside aria-label="Teacher filters" className="directory-filters sidebar-panel card-pad self-start" data-open={filtersOpen} id="teacher-directory-filters">
           <div className="sidebar-heading">
             <span className="flex items-center gap-2"><Icon name="filter" size={17} /> Filters</span>
             <button
@@ -148,7 +153,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
 
         <div className="min-w-0">
           <form
-            className="mb-5 flex flex-wrap items-center gap-3"
+            className="directory-search mb-5 flex flex-wrap items-center gap-3"
             onSubmit={(event) => { event.preventDefault(); applyFilters(); }}
           >
             <label className="flex min-w-[240px] flex-1 items-center gap-2 rounded-lg border border-border-strong bg-white px-3.5 py-2.5">
@@ -225,9 +230,9 @@ function TeacherDirectoryCard({ teacher, onOpen }: { teacher: TeacherDirectoryIt
   const tags = [...teacher.subjects, ...teacher.keyStages, ...teacher.skills].slice(0, 6);
 
   return (
-    <button className="card card-pad flex w-full flex-wrap items-start gap-4 text-left transition hover:border-brand hover:shadow-card" onClick={onOpen} type="button">
+    <button className="teacher-directory-card card card-pad flex w-full flex-wrap items-start gap-4 text-left transition hover:border-brand hover:shadow-card" onClick={onOpen} type="button">
       <Avatar name={teacher.fullName} size="lg" src={teacher.imageUrl} />
-      <span className="min-w-[220px] flex-1">
+      <span className="teacher-directory-copy min-w-0 flex-1">
         <span className="mb-1 flex flex-wrap items-center gap-2">
           <span className="font-heading text-lg">{teacher.fullName}</span>
           {teacher.dbsVerified ? <VerifyBadge /> : null}
@@ -242,7 +247,7 @@ function TeacherDirectoryCard({ teacher, onOpen }: { teacher: TeacherDirectoryIt
         </span>
         {tags.length ? <span className="mt-3 flex flex-wrap gap-1.5">{tags.map((tag) => <Tag key={tag} tone="ghost">{tag}</Tag>)}</span> : null}
       </span>
-      <span className="min-w-[120px] text-right">
+      <span className="teacher-directory-rate">
         {teacher.dailyRate !== null ? <span className="block"><span className="font-heading text-lg">{formatMoney(teacher.dailyRate, teacher.currency)}</span><span className="block text-xs text-muted">per day</span></span> : null}
         {teacher.hourlyRate !== null ? <span className="mt-2 block text-sm font-semibold">{formatMoney(teacher.hourlyRate, teacher.currency)}<span className="font-normal text-muted"> / hour</span></span> : null}
         <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand">View profile <Icon name="arrowRight" size={13} /></span>

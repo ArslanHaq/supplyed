@@ -88,7 +88,11 @@ function loadModule(filename, mocks = {}, globals = {}, cache = new Map()) {
       const dependencyPath = specifier.startsWith("@/")
         ? path.resolve(projectRoot, specifier.slice(2))
         : path.resolve(path.dirname(absolutePath), specifier);
-      return loadModule(`${dependencyPath}.ts`, mocks, globals, cache);
+      const resolvedPath = [dependencyPath, `${dependencyPath}.ts`, `${dependencyPath}.tsx`,
+        path.join(dependencyPath, "index.ts"), path.join(dependencyPath, "index.tsx")]
+        .find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
+      if (!resolvedPath) throw new Error(`Cannot resolve ${specifier} imported by ${absolutePath}`);
+      return loadModule(resolvedPath, mocks, globals, cache);
     }
     return require(specifier);
   };
@@ -381,7 +385,8 @@ test("administrator payout support is visible on Payments while confirmation dia
       useAllInvoices: () => emptyQuery, useMyInvoices: () => emptyQuery,
       useResendInvoice: () => ({}), useRefundInvoice: () => ({}), useVoidInvoice: () => ({}),
     },
-    "../atoms": { Btn: element("button"), Tag: element("span"), Stat: ({ label }) => React.createElement("div", null, label), buttonClassName: () => "" },
+    "../atoms": { Btn: element("button"), Tag: element("span"), Icon: () => React.createElement("svg", { "aria-hidden": true }),
+      Stat: ({ label }) => React.createElement("div", null, label), buttonClassName: () => "" },
     "../molecules": { Modal: ({ open, children }) => open ? React.createElement("div", null, children) : null,
       PageHead: ({ title }) => React.createElement("h1", null, title), SectionLoader: () => null },
     "./PayInvoiceModal": { PayInvoiceModal: () => null, usePaymentReturn: () => {} },

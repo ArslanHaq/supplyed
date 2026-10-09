@@ -23,7 +23,7 @@ export function AccountBasicsStep({
   const { activeRole, clearFieldError, errors, form, updateField } = controller;
 
   return (
-    <div className="space-y-6">
+    <div className="onboarding-step-content space-y-6">
       <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
@@ -46,7 +46,7 @@ export function AccountBasicsStep({
                 <button
                   key={value}
                   aria-pressed={selected}
-                  className="rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint sm:p-5"
+                  className="account-role-option rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint sm:p-5"
                   onClick={() => {
                     setRole(value);
                     clearFieldError("accountRole");
@@ -57,6 +57,7 @@ export function AccountBasicsStep({
                   }}
                   type="button"
                 >
+                  <span className="account-role-check" aria-hidden="true">{selected ? <Icon name="check" size={12} /> : null}</span>
                   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-brand">
                     <Icon name={icon as "building" | "user" | "heart"} size={20} />
                   </div>
@@ -70,6 +71,7 @@ export function AccountBasicsStep({
       ) : null}
 
       <div className="grid gap-x-4 sm:grid-cols-2">
+        <div className="onboarding-field-heading"><h3>Your contact details</h3><p>The information we will use to contact you.</p></div>
         <Field label="Full name" htmlFor="signup-name" error={errors.fullName} required>
           <input
             id="signup-name"

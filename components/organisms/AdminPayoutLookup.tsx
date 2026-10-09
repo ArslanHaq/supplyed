@@ -38,7 +38,7 @@ export function AdminPayoutLookup() {
   }
 
   return (
-    <section aria-labelledby="admin-payout-heading" className="card card-pad-lg mb-6">
+    <section aria-labelledby="admin-payout-heading" className="admin-payout-lookup card card-pad-lg mb-6">
       <h2 className="font-heading text-2xl" id="admin-payout-heading">Instructor payout status</h2>
       <p className="mt-2 text-sm leading-6 text-muted">Check whether an instructor can receive Stripe payments before issuing an invoice or helping with payout setup.</p>
       <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start" noValidate onSubmit={lookup}>

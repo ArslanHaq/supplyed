@@ -132,7 +132,7 @@ export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: A
   }, [canRefreshStatus, checkStatus]);
 
   return (
-    <div className="min-h-screen bg-chalk">
+    <div className="account-status-shell min-h-screen bg-chalk">
       <header className="flex min-h-[76px] items-center justify-between border-b border-border bg-white px-4 py-3 sm:px-6 lg:px-12">
         <Logo size={20} onClick={onLanding} />
         <div className="flex items-center gap-2">
@@ -146,22 +146,30 @@ export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: A
       </header>
 
       <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[960px] items-center px-4 py-10 sm:px-6 lg:px-8">
-        <section className="w-full rounded-xl border border-border bg-white p-6 shadow-(--shadow-xs) sm:p-9">
+        <section className="account-status-card w-full border border-border bg-white">
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-brand-tint text-brand">
             <Icon name={copy.icon} size={26} />
           </div>
-          <Tag>{copy.tag}</Tag>
-          <h1 className="mt-4 font-heading text-4xl leading-tight sm:text-[48px]">{copy.title}</h1>
+          <Tag tone={state.applicationStatus === "rejected" || state.applicationStatus === "suspended" ? "red" : "amber"}>{copy.tag}</Tag>
+          <h1 className="mt-4 font-heading">{copy.title}</h1>
           <p className="mt-4 max-w-[640px] text-base leading-7 text-muted">{copy.copy}</p>
 
-          <div className="mt-7 grid gap-3 rounded-xl border border-border bg-chalk p-4 sm:grid-cols-3">
+          {canRefreshStatus ? (
+            <ol className="application-checkpoints" aria-label="Application progress">
+              <li data-complete="true"><span><Icon name="check" size={16} /></span><div><strong>Profile submitted</strong><p>Your details have been received</p></div></li>
+              <li aria-current="step"><span><Icon name="clock" size={16} /></span><div><strong>Application review</strong><p>Our team is checking your details</p></div></li>
+              <li><span><Icon name="lock" size={16} /></span><div><strong>Workspace access</strong><p>Available after approval</p></div></li>
+            </ol>
+          ) : null}
+
+          <div className="account-status-details mt-7 grid gap-5 rounded-xl border border-border bg-chalk p-5 sm:grid-cols-3">
             <div>
               <div className="label-xs">Application</div>
               <div className="mt-1 font-semibold">{roleLabel}</div>
             </div>
             <div>
               <div className="label-xs">Email</div>
-              <div className="mt-1 truncate font-semibold">{state.signupEmail || "Verified"}</div>
+              <div className="mt-1 break-words font-semibold">{state.signupEmail || "Verified"}</div>
             </div>
             <div>
               <div className="label-xs">Status</div>
@@ -170,7 +178,7 @@ export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: A
           </div>
 
           {statusMessage ? (
-            <div className="mt-6 rounded-xl border border-border bg-chalk px-4 py-3 text-sm font-semibold text-muted">
+            <div role="status" className="mt-6 rounded-xl border border-border bg-chalk px-4 py-3 text-sm font-semibold text-muted">
               {statusMessage}
             </div>
           ) : null}

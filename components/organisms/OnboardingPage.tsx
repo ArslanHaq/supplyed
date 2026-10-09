@@ -149,8 +149,8 @@ export function OnboardingPage({
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-chalk">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white px-4 py-4 sm:px-6 lg:px-8">
+    <div className="onboarding-shell min-h-screen bg-chalk">
+      <header className="onboarding-header flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white px-4 py-4 sm:px-6 lg:px-8">
         <Logo size={21} onClick={onLanding} />
         <div className="flex items-center gap-3">
           <span className="hidden text-sm text-muted sm:inline">{headerPrompt}</span>
@@ -158,16 +158,15 @@ export function OnboardingPage({
         </div>
       </header>
 
-      <main className="mx-auto grid min-h-[calc(100vh-73px)] w-full max-w-[1720px] grid-cols-1 px-4 py-5 sm:px-6 sm:py-8 lg:grid-cols-[420px_minmax(0,1fr)] lg:items-stretch lg:px-10 xl:grid-cols-[440px_minmax(0,1fr)] 2xl:max-w-[1780px]">
-        <aside className="relative overflow-hidden rounded-t-xl bg-[#0a0a0a] p-6 text-white shadow-panel sm:p-8 lg:rounded-l-xl lg:rounded-r-none">
-          <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:48px_48px]" />
-          <div className="relative flex h-full flex-col">
+      <main className="onboarding-layout">
+        <aside className="onboarding-rail">
+          <div className="onboarding-rail-inner">
             <div>
               <div className="eyebrow mb-5 text-brand">Join SupplyED</div>
-              <h1 className="font-heading text-3xl leading-[1.08] sm:text-[40px]">
+              <h1 className="font-heading">
                 {roleSelected ? signupHeroTitle(activeRole) : "Choose your SupplyED path."}
               </h1>
-              <p className="mt-5 text-sm leading-7 text-white/65 sm:text-[15px]">
+              <p className="onboarding-rail-description">
                 {roleSelected
                   ? signupHeroCopy(activeRole)
                   : "Your email is verified. Now choose whether you are hiring talent, joining as a teacher, or setting up a school workspace."}
@@ -175,17 +174,17 @@ export function OnboardingPage({
             </div>
 
             {foundingType ? (
-              <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
-                <div className="font-semibold text-white">
+              <div className="mt-6 rounded-lg border border-border bg-white p-4">
+                <div className="font-semibold text-muted">
                   Founding {foundingType === "teacher" ? "teacher" : "school"} interest received
                 </div>
-                <p className="mt-1 text-sm leading-6 text-white/55">
+                <p className="mt-1 text-sm leading-6 text-muted">
                   We have carried across the details you already shared.
                 </p>
               </div>
             ) : null}
 
-            <div className="mt-8 space-y-4">
+            <div className="onboarding-steps">
               {(lockedDocumentStage ? [] : steps).map((item, index) => {
                 const itemStep = index + 1;
                 const active = !lockedDocumentStage && itemStep === currentStep;
@@ -196,25 +195,22 @@ export function OnboardingPage({
                     key={item.label}
                     aria-current={active ? "step" : undefined}
                     disabled={Boolean(pending) || phoneVerificationPending}
-                    className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${active ? "border-white/20 bg-white/10" : "border-transparent hover:bg-white/5"}`}
+                    className="onboarding-step"
+                    data-active={active}
+                    data-complete={complete}
                     onClick={() => {
                       if (!lockedDocumentStage && itemStep < currentStep) setStep(itemStep);
                     }}
                     type="button"
                   >
                     <span
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold"
-                      style={{
-                        background: complete ? "var(--se)" : active ? "#fff" : "transparent",
-                        borderColor: complete || active ? "var(--se)" : "rgba(255,255,255,0.25)",
-                        color: complete ? "#fff" : active ? "var(--ink)" : "rgba(255,255,255,0.55)",
-                      }}
+                      className="onboarding-step-number"
                     >
                       {complete ? <Icon name="check" size={14} /> : itemStep}
                     </span>
                     <span>
-                      <span className={active ? "block font-semibold text-white" : "block font-medium text-white/70"}>{item.label}</span>
-                      <span className="block text-xs text-white/45">{item.description}</span>
+                      <span className="onboarding-step-label">{item.label}</span>
+                      <span className="onboarding-step-description">{item.description}</span>
                     </span>
                   </button>
                 );
@@ -225,38 +221,38 @@ export function OnboardingPage({
                     <Icon name="file" size={14} />
                   </span>
                   <span>
-                    <span className="block font-semibold text-white">Required documents</span>
-                    <span className="block text-xs text-white/45">Upload documents and send for review</span>
+                    <span className="onboarding-step-label">Required documents</span>
+                    <span className="onboarding-step-description">Upload documents and send for review</span>
                   </span>
                 </div>
               ) : null}
             </div>
 
-            <div className="mt-auto hidden rounded-lg border border-white/10 bg-white/5 p-4 lg:block">
-              <div className="text-xs uppercase tracking-[1px] text-white/45">Current path</div>
-              <div className="mt-1 font-heading text-2xl">{lockedDocumentStage ? "Document review" : roleSelected ? roleLabel(activeRole) : "Role selection"}</div>
-              <p className="mt-1 text-sm text-white/55">
+            <div className="onboarding-path-note">
+              <div className="text-xs uppercase tracking-[1px] text-muted">Current path</div>
+              <div className="mt-1 font-heading">{lockedDocumentStage ? "Document review" : roleSelected ? roleLabel(activeRole) : "Role selection"}</div>
+              <p className="text-muted">
                 {lockedDocumentStage ? "Profile details are locked. Upload the required documents to continue." : "You can change this in the account step before submitting."}
               </p>
             </div>
           </div>
         </aside>
 
-        <section className="flex min-h-[720px] flex-col rounded-b-xl border border-t-0 border-border bg-white p-5 shadow-(--shadow-xs) sm:p-8 lg:rounded-l-none lg:rounded-r-xl lg:border-l-0 lg:border-t xl:p-10 2xl:p-12">
-          <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
+        <section className="onboarding-canvas">
+          <div className="onboarding-canvas-heading">
             <div>
               <Tag>{lockedDocumentStage ? "Required documents" : `Step ${currentStep} of ${steps.length}`}</Tag>
-              <h2 className="mt-3 font-heading text-3xl leading-tight sm:text-[36px]">
+              <h2 className="mt-3 font-heading">
                 {pageTitle}
               </h2>
               <p className="mt-2 max-w-[760px] text-muted">{pageDescription}</p>
             </div>
-            <div className="w-full sm:w-[210px]">
+            <div className="onboarding-progress-summary">
               <div className="mb-2 flex justify-between text-xs font-semibold uppercase tracking-[1px] text-muted">
                 <span>Progress</span>
                 <span>{displayProgress}%</span>
               </div>
-              <div className="progress">
+              <div className="progress" role="progressbar" aria-label="Profile setup progress" aria-valuenow={displayProgress} aria-valuemin={0} aria-valuemax={100}>
                 <div className="progress-fill" style={{ width: `${displayProgress}%` }} />
               </div>
             </div>
@@ -289,7 +285,7 @@ export function OnboardingPage({
             </div>
           ) : null}
 
-          <div className="mt-8 flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="onboarding-actions mt-8 flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
             {lockedDocumentStage ? (
               <span className="text-sm font-semibold text-muted">Profile created. Previous onboarding steps are locked.</span>
             ) : (
@@ -374,7 +370,7 @@ function MatApplicationWaitingPage({
   const signatoryLabel = approval?.status ? approval.status.toLowerCase().replace("_", " ") : "not requested";
 
   return (
-    <div className="min-h-screen bg-chalk">
+    <div className="account-status-shell min-h-screen bg-chalk">
       <header className="flex min-h-[76px] items-center justify-between border-b border-border bg-white px-4 py-3 sm:px-6 lg:px-12">
         <Logo size={20} onClick={onLanding} />
         <div className="flex items-center gap-2">
@@ -384,9 +380,9 @@ function MatApplicationWaitingPage({
       </header>
 
       <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1040px] items-center px-4 py-10 sm:px-6 lg:px-8">
-        <section className="w-full rounded-xl border border-border bg-white p-6 shadow-(--shadow-xs) sm:p-9">
+        <section className="account-status-card w-full border border-border bg-white">
           <Tag tone={trustApproved ? "green" : "amber"}>Profile status pending</Tag>
-          <h1 className="mt-4 font-heading text-4xl leading-tight sm:text-[48px]">Your school is not ready for workspace access yet.</h1>
+          <h1 className="mt-4 font-heading">Your school is not ready for workspace access yet.</h1>
           <p className="mt-4 max-w-[760px] text-base leading-7 text-muted">
             Your documents are ready. SupplyED will submit the school for application review as soon as the trust signatory approval is confirmed. The workspace stays locked until both checks are complete and the school profile is active.
           </p>

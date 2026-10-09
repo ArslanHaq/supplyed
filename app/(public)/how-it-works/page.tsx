@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { PublicThemeControls } from "@/components/molecules";
 import { PublicHeader } from "@/components/organisms/PublicHeader";
 import { buttonClassName, Icon, Tag } from "@/components/atoms";
 
@@ -49,13 +48,13 @@ export default function HowItWorksPage() {
   const actionHref = "/signup";
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-chalk">
+    <div className="marketing-page marketing-how-it-works min-h-screen bg-chalk">
       <PublicHeader active="how-it-works" />
 
       <main>
-        <section className="bg-[#0a0a0a] px-4 py-16 text-white sm:px-6 lg:px-12 lg:py-20">
+        <section className="marketing-hero marketing-founding-hero px-4 text-white sm:px-6 lg:px-12">
           <div className="mx-auto grid max-w-[1180px] gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-            <div>
+            <div className="marketing-hero-copy">
               <Tag>How it works</Tag>
               <h1 className="mt-5 font-heading text-4xl leading-[1.05] sm:text-5xl lg:text-[64px]">
                 One workflow for cover, compliance, and confidence.
@@ -77,7 +76,7 @@ export default function HowItWorksPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="marketing-process-metrics grid grid-cols-2 gap-3">
               {metrics.map(([value, label]) => (
                 <div key={label} className="rounded-xl border border-white/10 bg-white/5 p-5">
                   <div className="font-heading text-3xl">{value}</div>
@@ -95,9 +94,9 @@ export default function HowItWorksPage() {
               <h2 className="mt-2 font-heading text-3xl">The core journey</h2>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="marketing-workflow-grid">
               {workflow.map((item, index) => (
-                <article key={item.label} className="relative rounded-xl border border-border bg-white p-5">
+                <article key={item.label} className="relative bg-white">
                   <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-brand-tint text-brand">
                     <Icon name={item.icon} size={20} />
                   </div>
@@ -112,7 +111,7 @@ export default function HowItWorksPage() {
 
         <section className="bg-white px-4 py-14 sm:px-6 lg:px-12">
           <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-3">
-            <article className="rounded-xl border border-border p-6">
+            <article className="marketing-journey-card">
               <Tag>For schools</Tag>
               <h2 className="mt-4 font-heading text-3xl">Fill cover without agency complexity.</h2>
               <div className="mt-6 space-y-5">
@@ -128,7 +127,7 @@ export default function HowItWorksPage() {
               </div>
             </article>
 
-            <article className="rounded-xl border border-border p-6">
+            <article className="marketing-journey-card">
               <Tag tone="purple">For teachers</Tag>
               <h2 className="mt-4 font-heading text-3xl">Turn one profile into matched opportunities.</h2>
               <div className="mt-6 space-y-5">
@@ -144,7 +143,7 @@ export default function HowItWorksPage() {
               </div>
             </article>
 
-            <article className="rounded-xl border border-border p-6">
+            <article className="marketing-journey-card">
               <Tag tone="green">For MAT schools</Tag>
               <h2 className="mt-4 font-heading text-3xl">Join through your trust with recorded approval.</h2>
               <div className="mt-6 space-y-5">
@@ -163,7 +162,7 @@ export default function HowItWorksPage() {
         </section>
 
         <section className="px-4 py-14 sm:px-6 lg:px-12">
-          <div className="mx-auto flex max-w-[1180px] flex-col gap-5 rounded-xl border border-border bg-white p-6 md:flex-row md:items-center md:justify-between">
+          <div className="marketing-next-step mx-auto flex max-w-[1180px] flex-col gap-5 bg-white md:flex-row md:items-center md:justify-between">
             <div>
               <div className="eyebrow">Next step</div>
               <h2 className="mt-2 font-heading text-3xl">Create a workspace and test the full flow.</h2>
@@ -175,7 +174,6 @@ export default function HowItWorksPage() {
         </section>
       </main>
 
-      <PublicThemeControls />
     </div>
   );
 }

@@ -9,7 +9,7 @@ export function InstitutionProfileStep(props: AccountStepProps) {
 
   return (
     <AccountBasicsStep {...props}>
-      <div className="space-y-6 rounded-xl border border-border bg-chalk p-4 sm:p-5">
+      <div className="onboarding-field-section space-y-6">
         <div>
           <h3 className="font-heading text-2xl leading-tight">Institution profile</h3>
           <p className="mt-1 text-sm leading-6 text-muted">

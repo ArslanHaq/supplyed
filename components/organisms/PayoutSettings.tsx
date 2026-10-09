@@ -7,7 +7,7 @@ import { describeRequirement } from "@/features/payments/schemas";
 import { usePayoutAccount } from "@/features/payments/use-payments";
 import { queryKeys } from "@/lib/query/keys";
 
-import { Btn, Tag } from "../atoms";
+import { Btn, Icon, Tag } from "../atoms";
 import { SectionLoader } from "../molecules";
 import { StripePayoutComponents } from "./StripePayoutComponents";
 
@@ -38,11 +38,12 @@ export function PayoutSettings({ openSetup = false, returnedFromStripe = false }
   }
 
   return (
-    <section aria-labelledby="payout-settings-heading" className="card card-pad-lg">
+    <section aria-labelledby="payout-settings-heading" className="card card-pad-lg account-payouts" id="payout-settings">
+      <div className="account-section-icon"><Icon name="pound" size={20} /></div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-[220px] flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-serif text-2xl leading-tight" id="payout-settings-heading">Payouts</h2>
+            <h2 className="font-heading text-2xl leading-tight" id="payout-settings-heading">Payouts</h2>
             {account ? (
               <Tag tone={account.ready ? "green" : account.connected ? "amber" : "ghost"}>
                 {account.ready ? "Ready to receive payments" : account.connected ? "Setup in progress" : "Not set up"}
@@ -94,7 +95,7 @@ export function PayoutSettings({ openSetup = false, returnedFromStripe = false }
             </p>
           ) : null}
           {account.connected ? (
-            <div className="mt-5 grid gap-3 rounded-lg border border-border bg-chalk p-4 sm:grid-cols-3">
+            <div className="payout-checkpoints mt-5 grid gap-3 sm:grid-cols-3">
               <PayoutStatus label="Account details" complete={account.detailsSubmitted} completeLabel="Submitted" />
               <PayoutStatus label="Payments" complete={account.chargesEnabled} completeLabel="Enabled" />
               <PayoutStatus label="Bank payouts" complete={account.payoutsEnabled} completeLabel="Enabled" />
@@ -133,8 +134,9 @@ export function PayoutSettings({ openSetup = false, returnedFromStripe = false }
 }
 
 function PayoutStatus({ complete, completeLabel, label }: { complete: boolean; completeLabel: string; label: string }) {
-  return <div>
-    <div className="mb-1 text-xs text-muted">{label}</div>
-    <Tag tone={complete ? "green" : "amber"}>{complete ? completeLabel : "Pending"}</Tag>
+  return <div className="payout-checkpoint" data-complete={complete}>
+    <span className="payout-checkpoint-icon"><Icon name={complete ? "check" : "clock"} size={15} /></span>
+    <div><div className="mb-2 text-xs font-medium text-muted">{label}</div>
+    <Tag tone={complete ? "green" : "amber"}>{complete ? completeLabel : "Pending"}</Tag></div>
   </div>;
 }

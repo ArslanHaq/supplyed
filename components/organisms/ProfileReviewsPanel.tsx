@@ -6,7 +6,7 @@ import { SectionLoader } from "../molecules";
 export function ProfileReviewsPanel({ data, error, loading }: { data?: ProfileReviews; error: Error | null; loading: boolean }) {
   if (loading) {
     return (
-      <section className="card mt-6 overflow-hidden">
+      <section className="profile-reviews-panel card mt-6 overflow-hidden">
         <div className="border-b border-border px-5 py-5 sm:px-7"><SectionHeading /></div>
         <div className="p-5 sm:p-7"><SectionLoader rows={2} /></div>
       </section>
@@ -19,7 +19,7 @@ export function ProfileReviewsPanel({ data, error, loading }: { data?: ProfileRe
   const distribution = [5, 4, 3, 2, 1].map((rating) => ({ count: reviews.filter((review) => Math.round(review.rating) === rating).length, rating }));
 
   return (
-    <section className="card mt-6 overflow-hidden">
+    <section className="profile-reviews-panel card mt-6 overflow-hidden">
       <div className="border-b border-border bg-surface-subtle px-5 py-5 sm:px-7"><SectionHeading /></div>
       {error ? (
         <div className="p-5 sm:p-7"><div className="flex items-center gap-3 rounded-xl border border-border bg-chalk p-4 text-sm text-muted"><Icon name="help" size={19} />Reviews could not be loaded right now.</div></div>

@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { useConversationStream, useUnreadMessages } from "@/features/conversations/use-conversations";
 import { getDisplayName } from "@/lib/user-display";
@@ -17,7 +17,6 @@ type NavItem = {
 
 const institutionNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
-  { id: "post-job", label: "Post job", icon: "plus" },
   { id: "find-teachers", label: "Teachers", icon: "search" },
   { id: "applications", label: "Applications", icon: "users" },
   { id: "bookings", label: "Bookings", icon: "file" },
@@ -57,6 +56,13 @@ export function AppChrome({
   const userSub = state.role === "admin" ? "Administrator" : state.role === "institution" ? "School account" : "Instructor";
   const searchPlaceholder = state.role === "admin" ? "Search admin panel..." : state.role === "teacher" ? "Search jobs..." : "Search teachers...";
   const [navSearch, setNavSearch] = useState("");
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const navigationRef = useRef<HTMLElement>(null);
+  const activeLabel = navItems.find((item) => item.id === state.page)?.label
+    ?? ({ settings: "Settings", security: "Security", "post-job": "Post job", "job-detail": "Job details", "institution-profile": "School profile", "teacher-profile": "Teacher profile" } as Partial<Record<AppPage, string>>)[state.page]
+    ?? "Workspace";
   // Teachers and schools message each other; one live connection keeps every screen up to date.
   const messagingEnabled = state.role === "teacher" || state.role === "institution";
   useConversationStream(messagingEnabled);
@@ -65,6 +71,10 @@ export function AppChrome({
   // The browser cache can already contain data while the server renders zero unread.
   const unread = isClient && messagingEnabled ? unreadQuery.data?.total ?? 0 : 0;
 
+  useEffect(() => {
+    if (navigationOpen) navigationRef.current?.querySelector<HTMLButtonElement>('.workspace-quick-action, .workspace-nav-item')?.focus();
+  }, [navigationOpen]);
+
   function submitNavSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (state.role !== "institution") return;
@@ -72,25 +82,62 @@ export function AppChrome({
     go("find-teachers", search ? { search } : undefined);
   }
 
+  function navigate(page: AppPage) {
+    setNavigationOpen(false);
+    go(page);
+  }
+
   return (
-    <div className="workspace-shell">
-      <div className="app-nav">
-        <Logo size={21} onClick={() => go("dashboard")} />
-        <nav aria-label={`${userSub} workspace navigation`} className="app-nav-links">
+    <div className={`workspace-shell workspace-frame ${collapsed ? "is-collapsed" : ""}`}>
+      <a className="skip-link" href="#workspace-content">Skip to content</a>
+      <aside ref={navigationRef} className={`workspace-sidebar ${navigationOpen ? "is-open" : ""}`} id="workspace-navigation" onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setNavigationOpen(false);
+          menuButton.current?.focus();
+        }
+      }}>
+        <div className="workspace-brand">
+          <span className="workspace-brand-full"><Logo size={25} onClick={() => navigate("dashboard")} /></span>
+          <button aria-label="SupplyED dashboard" className="workspace-brand-short" onClick={() => navigate("dashboard")} type="button">S<span>ED</span></button>
+        </div>
+        <div className={`workspace-role ${state.role === "institution" ? "has-quick-action" : ""}`}><span className="workspace-role-mark"><Icon name={state.role === "institution" ? "building" : state.role === "admin" ? "shield" : "user"} size={18} /></span><span className="workspace-nav-copy"><strong>{userSub}</strong><span>Your SupplyED workspace</span></span></div>
+        {state.role === "institution" ? (
+          <button
+            aria-label="Post a job"
+            className="workspace-quick-action"
+            onClick={() => navigate("post-job")}
+            title={collapsed ? "Post a job" : undefined}
+            type="button"
+          >
+            <Icon name="plus" size={19} />
+            <span className="workspace-nav-copy">Post a job</span>
+          </button>
+        ) : null}
+        <p className="workspace-nav-label">Workspace</p>
+        <nav aria-label={`${userSub} workspace navigation`} className="workspace-navigation">
           {navItems.map((item) => (
-            <button key={item.id} aria-current={state.page === item.id ? "page" : undefined} className={`app-nav-link ${state.page === item.id ? "active" : ""}`} onClick={() => go(item.id)} type="button">
-              <span className="flex items-center gap-2">
-                <Icon name={item.icon} size={16} /> {item.label}
+            <button key={item.id} aria-label={item.label} title={collapsed ? item.label : undefined} aria-current={state.page === item.id ? "page" : undefined} className={`workspace-nav-item ${state.page === item.id ? "active" : ""}`} onClick={() => navigate(item.id)} type="button">
+                <Icon name={item.icon} size={19} /><span className="workspace-nav-copy">{item.label}</span>
                 {item.id === "messaging" && unread > 0 ? (
-                  <span aria-label={`${unread} unread`} className="rounded-full bg-brand px-1.5 text-[11px] font-bold leading-[18px] text-white">
+                  <span aria-label={`${unread} unread`} className="workspace-nav-count">
                     {unread > 99 ? "99+" : unread}
                   </span>
                 ) : null}
-              </span>
             </button>
           ))}
         </nav>
-        <div className="app-nav-right">
+        <div className="workspace-sidebar-bottom">
+          <button aria-label="Settings" title={collapsed ? "Settings" : undefined} className={`workspace-nav-item ${state.page === "settings" ? "active" : ""}`} aria-current={state.page === "settings" ? "page" : undefined} onClick={() => { setNavigationOpen(false); onSettings(); }} type="button"><Icon name="settings" size={19} /><span className="workspace-nav-copy">Settings</span></button>
+          <button aria-label="View public home" title={collapsed ? "View public home" : undefined} className="workspace-nav-item" onClick={onLanding} type="button"><Icon name="arrowLeft" size={19} /><span className="workspace-nav-copy">View public home</span></button>
+          <button aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} className="workspace-collapse workspace-nav-item" onClick={() => setCollapsed((value) => !value)} type="button"><Icon name={collapsed ? "chevronRight" : "arrowLeft"} size={18} /><span className="workspace-nav-copy">Collapse sidebar</span></button>
+        </div>
+      </aside>
+      <div className="workspace-main">
+        <header className="workspace-topbar">
+          <button ref={menuButton} aria-label={navigationOpen ? "Close navigation" : "Open navigation"} aria-controls="workspace-navigation" aria-expanded={navigationOpen} className="workspace-menu-button" onClick={() => setNavigationOpen((value) => !value)} type="button"><Icon name={navigationOpen ? "x" : "list"} size={22} /></button>
+          <span className="workspace-mobile-brand"><Logo size={22} onClick={() => navigate("dashboard")} /></span>
+          <div className="workspace-breadcrumb"><span>Workspace</span><Icon name="chevronRight" size={14} /><strong>{activeLabel}</strong></div>
+          <div className="workspace-topbar-actions">
           <form className="app-search" onSubmit={submitNavSearch}>
             <Icon name="search" size={16} />
             <input
@@ -112,9 +159,10 @@ export function AppChrome({
             onSettings={onSettings}
             roleLabel={userSub}
           />
+          </div>
+        </header>
+        <main id="workspace-content" tabIndex={-1} className="workspace-content">{children}</main>
         </div>
-      </div>
-      {children}
     </div>
   );
 }

@@ -302,7 +302,7 @@ function Thread({ conversation, onBack, toast }: { conversation: Conversation; o
         <Tag tone="ghost">{conversation.applicationStatus.toLowerCase().replace(/_/g, " ")}</Tag>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
+      <div className="message-timeline flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
         {messagesQuery.hasNextPage ? (
           <Btn
             className="self-center"
@@ -455,7 +455,7 @@ function ConversationContextPanel({
                 </div>
               </div>
               <Btn className="mt-4 w-full" icon="eye" size="sm" variant="secondary" onClick={() => setProposalOpen(true)}>
-                View full proposal
+                View Proposal
               </Btn>
             </div>
           </section>
@@ -699,7 +699,7 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
   }
 
   return (
-    <div className="mt-4 border-t border-border pt-4">
+    <div className="message-composer border-t border-border">
       {files.length ? (
         <ul className="mb-3 flex flex-wrap gap-2">
           {files.map((item) => (
@@ -725,7 +725,7 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
         </ul>
       ) : null}
 
-      <div className="flex items-end gap-2">
+      <div className="message-composer-controls">
         <input
           ref={fileInput}
           accept={ALLOWED_ATTACHMENT_TYPES.join(",")}
@@ -751,7 +751,7 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
               submit();
             }
           }}
-          placeholder="Write a message... (Enter to send, Shift+Enter for a new line)"
+          placeholder="Write a message..."
           rows={1}
           value={body}
         />
@@ -759,6 +759,7 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
           Send
         </Btn>
       </div>
+      <p className="message-composer-hint">Enter to send · Shift+Enter for a new line</p>
     </div>
   );
 }

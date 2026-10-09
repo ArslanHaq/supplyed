@@ -1,6 +1,7 @@
 import { filterProfileDocumentRequirements } from "@/features/onboarding/document-requirements";
 
 import { Btn, Icon } from "../../../atoms";
+import { CardGridLoader } from "../../../molecules/Loaders";
 import { acceptAttribute, describeAllowedMimes, formatByteLimit, isDocumentReadyForReview } from "@/features/onboarding/document-utils";
 import type { StepComponentProps } from "../step-types";
 import { UploadCard } from "../UploadCard";
@@ -29,7 +30,7 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
       <Btn variant="secondary" onClick={retryDocumentRequirements}>Retry</Btn>
     </div>
   );
-  if (documentRequirementsLoading) return <p role="status" className="text-muted">Checking document requirements...</p>;
+  if (documentRequirementsLoading) return <div role="status" aria-label="Checking document requirements"><CardGridLoader cards={2} className="xl:grid-cols-2" /></div>;
 
   return (
     <div className="space-y-4">

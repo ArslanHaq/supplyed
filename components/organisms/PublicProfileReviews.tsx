@@ -3,10 +3,10 @@ import type { ProfileReviews } from "@/features/reviews/types";
 import { SectionLoader } from "../molecules";
 
 export function PublicProfileReviews({ data, error, loading }: { data?: ProfileReviews; error: Error | null; loading: boolean }) {
-  if (loading) return <section className="card card-pad-lg mt-5"><div className="section-title">Reviews</div><SectionLoader rows={2} /></section>;
+  if (loading) return <section className="profile-reviews-panel card card-pad-lg mt-5"><div className="section-title">Reviews</div><SectionLoader rows={2} /></section>;
 
   return (
-    <section className="card card-pad-lg mt-5">
+    <section className="profile-reviews-panel card card-pad-lg mt-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="section-title mb-0">Reviews</div>
         <div className="text-sm font-semibold text-ink">

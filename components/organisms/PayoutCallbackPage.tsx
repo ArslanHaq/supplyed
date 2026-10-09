@@ -14,7 +14,8 @@ export async function PayoutCallbackPage({ kind }: { kind: "return" | "refresh" 
   if (session.user.role !== "teacher") redirect("/dashboard");
 
   return (
-    <main className="mx-auto w-full max-w-[920px] px-5 py-10 sm:px-8">
+    <main className="payout-callback mx-auto w-full max-w-[920px] px-5 py-10 sm:px-8">
+      <Link className="account-back-link" href="/settings">← Back to account settings</Link>
       <PageHead
         title={kind === "return" ? "Your payout setup" : "Resume payout setup"}
         subtitle={kind === "return"

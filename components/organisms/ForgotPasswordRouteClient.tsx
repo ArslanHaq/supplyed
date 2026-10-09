@@ -253,9 +253,9 @@ export function ForgotPasswordRouteClient() {
 
   return (
     <>
-      <div className="min-h-screen overflow-x-hidden bg-chalk lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <aside className="relative flex min-h-[330px] flex-col justify-between overflow-hidden bg-[#0a0a0a] px-5 py-7 text-white sm:px-8 sm:py-10 lg:min-h-screen lg:px-14 lg:py-16">
-          <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:54px_54px]" />
+      <div className="auth-shell">
+        <aside className="auth-aside">
+          <div className="auth-aside-rule" aria-hidden="true" />
           <div className="relative flex items-center justify-between gap-4">
             <Logo size={22} className="text-white" onClick={goLanding} />
             <Btn className="border-white/15 text-white hover:bg-white/10 hover:text-white" variant="ghost" size="sm" onClick={goLogin}>
@@ -263,26 +263,27 @@ export function ForgotPasswordRouteClient() {
             </Btn>
           </div>
 
-          <div className="relative my-12 max-w-[500px] lg:my-0">
-            <div className="eyebrow mb-5 text-brand">Password reset</div>
-            <h1 className="font-heading text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
+          <div className="auth-story">
+            <div className="eyebrow">Password reset</div>
+            <h1 className="font-heading text-white">
               Recover access
-              <br />
+              <br />{" "}
               securely.
             </h1>
-            <p className="mt-5 text-base leading-7 text-white/65">
+            <p className="auth-story-description">
               SupplyED sends a short-lived reset code to your email. Enter the code here to choose a new password.
             </p>
           </div>
 
-          <div className="relative text-xs text-white/40">Account recovery</div>
+          <div className="auth-aside-footer">Account recovery</div>
         </aside>
 
-        <section className="flex min-h-[calc(100vh-330px)] items-center justify-center px-4 py-8 sm:px-6 lg:min-h-screen lg:px-12 lg:py-16">
-          <div className="w-full max-w-[520px]">
-            <div className="mb-7">
+        <section className="auth-main">
+          <div className="auth-main-inner">
+            <div className="auth-security-badge"><Icon name="shield" size={18} /> Account recovery</div>
+            <div className="auth-form-heading">
               <div className="eyebrow mb-2 text-brand">Account recovery</div>
-              <h2 className="font-heading text-3xl leading-tight sm:text-[38px]">
+              <h2 className="font-heading">
                 {stage === "success" ? "Password updated" : stage === "reset" ? "Enter reset code" : "Reset your password"}
               </h2>
               <p className="mt-3 text-muted">
@@ -294,7 +295,7 @@ export function ForgotPasswordRouteClient() {
               </p>
             </div>
 
-            <div className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7">
+            <div className="auth-form">
               {stage === "success" ? (
                 <div>
                   <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-tint text-brand">
@@ -317,7 +318,7 @@ export function ForgotPasswordRouteClient() {
                   </div>
 
                   <Field label="Reset code" error={errors.code} required>
-                    <div className="grid grid-cols-6 gap-2 sm:gap-3">
+                    <div className="auth-code-grid">
                       {code.map((digit, index) => (
                         <input
                           key={index}
@@ -325,7 +326,7 @@ export function ForgotPasswordRouteClient() {
                             codeRefs.current[index] = node;
                           }}
                           aria-label={`Reset code digit ${index + 1}`}
-                          className="input h-12 p-0 text-center text-lg font-semibold sm:h-14 sm:text-xl"
+                          className="input auth-code-input"
                           disabled={Boolean(pending)}
                           inputMode="numeric"
                           maxLength={1}

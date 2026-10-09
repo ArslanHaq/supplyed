@@ -1,3 +1,4 @@
+import { WorkspaceEmptyState } from "./WorkspacePanels";
 import { useState } from "react";
 import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 
@@ -37,7 +38,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
   } });
 
   if (!selectedJobId && !myJobsQuery.isLoading) {
-    return <div className="app-page"><PageHead title="Applications" subtitle="Post a role first, then applicants will appear here." actions={<Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn>} /><EmptyState title="No posted roles yet" message="Create an active role to start receiving and matching teacher applications." /></div>;
+    return <div className="app-page applications-workspace"><PageHead title="Applications" subtitle="Post a role first, then applicants will appear here." actions={<Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn>} /><EmptyState title="No posted roles yet" message="Create an active role to start receiving and matching teacher applications." /></div>;
   }
 
   const pagination = tab === "best" ? rankedQuery.data?.pagination : tab === "recommended" ? instructorsQuery.data?.pagination : undefined;
@@ -46,14 +47,14 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
 
   return (
     <>
-      <div className="app-page">
+      <div className="app-page applications-workspace">
       <PageHead
         title={job?.title ?? "Applications"}
         subtitle={`${job ? `${formatLocation(job)} - ${job.date} - ${formatPay(job)} - ` : ""}${applicationsQuery.data?.pagination.total ?? applications.length} applications`}
         actions={<><Btn icon="plus" size="sm" onClick={() => go("post-job")}>Post Another Role</Btn>{selectedJobId ? <Btn variant="secondary" size="sm" icon="edit" onClick={() => go("post-job", { jobId: selectedJobId })}>Edit role</Btn> : null}{job?.status === "ACTIVE" || job?.status === "DRAFT" ? <Btn disabled={updateJob.isPending} loading={updateJob.isPending} loadingLabel="Closing" size="sm" variant="ghost" onClick={() => updateJob.mutate({ id: job.id, status: "CLOSED" })}>Close role</Btn> : null}</>}
       />
 
-      <div className="card card-pad mb-6 flex flex-wrap items-center gap-3">
+      <div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center gap-3">
         {([['best', 'Best match'], ['pipeline', 'All applications'], ['recommended', 'Recommended teachers']] as const).map(([value, label]) => <Btn key={value} size="sm" variant={tab === value ? "secondary" : "ghost"} onClick={() => { setTab(value); setPage(1); }}>{label}</Btn>)}
         {tab !== "pipeline" ? <label className="ml-auto flex items-center gap-2 text-xs font-semibold">Minimum score<input aria-label="Minimum match score" className="input w-24" min={0} max={100} type="number" value={minScore} onChange={(event) => { setMinScore(Math.min(100, Math.max(0, Number(event.target.value) || 0))); setPage(1); }} /></label> : null}
       </div>
@@ -62,14 +63,14 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       {activeError && !activeLoading ? <EmptyState title="Matches unavailable" message={activeError.message || "You may not have permission to view matches for this job."} /> : null}
 
       {!activeLoading && !activeError && tab === "best" ? <div className="space-y-4">
-        {(rankedQuery.data?.applications ?? []).map(({ application, instructor, match }) => <div key={application.id} className="card card-pad-lg"><CandidateHeader instructor={instructor} status={application.status} onOpen={() => go("teacher-profile", { teacherId: instructor.id })} />{application.coverLetter ? <ProposalContent className="my-4 line-clamp-3 border-l-2 border-brand-tint-2 pl-4" preview value={application.coverLetter} /> : null}<MatchScorePanel match={match} /><StatusActions application={application} onOpen={(target) => selectedJobId ? go("applications", { applicationId: target.id, jobId: selectedJobId }) : undefined} pending={updateStatus.isPending} onHire={setHireTarget} onUpdate={(status) => updateStatus.mutate({ id: application.id, status })} /></div>)}
+        {(rankedQuery.data?.applications ?? []).map(({ application, instructor, match }) => <div key={application.id} className="application-detail-card card card-pad-lg"><CandidateHeader instructor={instructor} status={application.status} onOpen={() => go("teacher-profile", { teacherId: instructor.id })} />{application.coverLetter ? <ProposalContent className="my-4 line-clamp-3 border-l-2 border-brand-tint-2 pl-4" preview value={application.coverLetter} /> : null}<MatchScorePanel match={match} /><StatusActions application={application} onOpen={(target) => selectedJobId ? go("applications", { applicationId: target.id, jobId: selectedJobId }) : undefined} pending={updateStatus.isPending} onHire={setHireTarget} onUpdate={(status) => updateStatus.mutate({ id: application.id, status })} /></div>)}
         {rankedQuery.data?.applications.length === 0 ? <EmptyState title="No matching applications" message="No applications meet the selected minimum score." /> : null}
       </div> : null}
 
       {!activeLoading && !activeError && tab === "pipeline" ? <div className="card overflow-hidden">{applications.length ? <div className="divide-y divide-border">{applications.map((application) => <div key={application.id} className="p-5"><CandidateHeader instructor={application.instructor} status={application.status} onOpen={() => go("teacher-profile", { teacherId: application.instructor?.id })} />{application.coverLetter ? <ProposalContent className="mt-3 line-clamp-3" preview value={application.coverLetter} /> : null}<StatusActions application={application} onOpen={(target) => selectedJobId ? go("applications", { applicationId: target.id, jobId: selectedJobId }) : undefined} pending={updateStatus.isPending} onHire={setHireTarget} onUpdate={(status) => updateStatus.mutate({ id: application.id, status })} /></div>)}</div> : <EmptyState title="No applications yet" message="Applications will appear here when instructors apply." />}</div> : null}
 
       {!activeLoading && !activeError && tab === "recommended" ? <div className="space-y-4">
-        {(instructorsQuery.data?.instructors ?? []).map(({ instructor, match }) => <div key={instructor.id} className="card card-pad-lg"><CandidateHeader instructor={instructor} onOpen={() => go("teacher-profile", { teacherId: instructor.id })} /><div className="mt-4"><MatchScorePanel match={match} /></div></div>)}
+        {(instructorsQuery.data?.instructors ?? []).map(({ instructor, match }) => <div key={instructor.id} className="application-detail-card card card-pad-lg"><CandidateHeader instructor={instructor} onOpen={() => go("teacher-profile", { teacherId: instructor.id })} /><div className="mt-4"><MatchScorePanel match={match} /></div></div>)}
         {instructorsQuery.data?.instructors.length === 0 ? <EmptyState title="No recommended teachers" message="No eligible instructors meet the selected minimum score." /> : null}
       </div> : null}
 
@@ -121,7 +122,7 @@ function ApplicationStatusTag({ status }: { status: JobApplicationStatus }) {
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {
-  return <div className="card card-pad-lg text-center"><div className="font-heading text-[24px]">{title}</div><p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p></div>;
+  return <WorkspaceEmptyState icon="users" message={message} title={title} />;
 }
 
 function formatPay(job: Job) { if (!job.rate) return "Rate TBC"; if (job.payType === "hourly") return `£${job.rate}/hr`; if (job.payType === "fixed") return `£${job.rate} fixed`; return `£${job.rate}/day`; }

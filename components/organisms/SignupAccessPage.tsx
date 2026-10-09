@@ -13,6 +13,7 @@ import {
   SocialAuthButtons,
 } from "../molecules";
 import { PasswordInput } from "../atoms/PasswordInput";
+import { AuthProgress } from "./AuthProgress";
 
 type AccessErrors = Partial<Record<"role" | "email" | "password" | "confirmPassword" | "termsAccepted", string>>;
 type AccessResult = { ok: true } | { fieldErrors?: AccessErrors; message: string; ok: false };
@@ -112,9 +113,9 @@ export function SignupAccessPage({
     confirmPasswordMismatch || errors.confirmPassword === passwordMismatchMessage ? undefined : errors.confirmPassword;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-chalk lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-      <aside className="relative flex min-h-[330px] flex-col justify-between overflow-hidden bg-[#0a0a0a] px-5 py-7 text-white sm:px-8 sm:py-10 lg:min-h-screen lg:px-14 lg:py-16">
-        <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:54px_54px]" />
+    <div className="auth-shell auth-shell-signup">
+      <aside className="auth-aside">
+        <div className="auth-aside-rule" aria-hidden="true" />
         <div className="relative flex items-center justify-between gap-4">
           <Logo size={22} className="text-white" onClick={onLanding} />
           <Btn className="border-white/15 text-white hover:bg-white/10 hover:text-white" variant="ghost" size="sm" onClick={onLogin}>
@@ -122,20 +123,20 @@ export function SignupAccessPage({
           </Btn>
         </div>
 
-        <div className="relative my-12 max-w-[520px] lg:my-0">
-          <div className="eyebrow mb-5 text-brand">{isFoundingSignup ? "Founding signup" : "Create account"}</div>
-          <h1 className="font-heading text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
+        <div className="auth-story">
+          <div className="eyebrow">{isFoundingSignup ? "Founding signup" : "Create account"}</div>
+          <h1 className="font-heading text-white">
             Start with secure access,
-            <br />
+            <br />{" "}
             then complete onboarding.
           </h1>
-          <p className="mt-5 text-base leading-7 text-white/65">
+          <p className="auth-story-description">
             {isFoundingSignup
               ? "Your interest details are saved. Create your login with the same email, then continue the right onboarding path."
               : "Create your login first. After email verification, SupplyED signs you in and checks whether your role and application status are complete."}
           </p>
 
-          <div className="mt-8 grid gap-3">
+          <div className="auth-journey">
             {[
               ["Account", "Email and password are created first."],
               ["Verify", "The email must be verified before onboarding."],
@@ -148,27 +149,28 @@ export function SignupAccessPage({
                   : "Onboarding for your selected role starts after verification.",
               ],
             ].map(([title, copy], index) => (
-              <div key={title} className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-brand">
+              <div key={title} className="auth-journey-item">
+                <div className="flex shrink-0 items-center justify-center rounded-full font-bold">
                   {index + 1}
                 </div>
                 <div>
                   <div className="font-semibold">{title}</div>
-                  <div className="text-sm leading-6 text-white/55">{copy}</div>
+                  <div className="auth-journey-copy">{copy}</div>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="relative text-xs text-white/40">Step 1 of 3 - Account</div>
+        <div className="auth-aside-footer">Step 1 of 3 - Account</div>
       </aside>
 
-      <section className="flex min-h-[calc(100vh-330px)] items-center justify-center px-4 py-8 sm:px-6 lg:min-h-screen lg:px-12 lg:py-16">
-        <div className="w-full max-w-[720px]">
-          <div className="mb-7">
+      <section className="auth-main">
+        <div className="auth-main-inner auth-main-inner-wide">
+          <AuthProgress current={1} />
+          <div className="auth-form-heading">
             <div className="eyebrow mb-2 text-brand">Account details</div>
-            <h2 className="font-heading text-3xl leading-tight sm:text-[38px]">Create your SupplyED account.</h2>
+            <h2 className="font-heading">Create your SupplyED account.</h2>
             <p className="mt-3 text-muted">
               Already registered?{" "}
               <button className="font-semibold text-brand" onClick={onLogin} type="button">
@@ -183,7 +185,7 @@ export function SignupAccessPage({
             </div>
           ) : null}
 
-          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" method="post" noValidate onSubmit={handleSubmit}>
+          <form className="auth-form" method="post" noValidate onSubmit={handleSubmit}>
             <div className="mb-6">
               <Field label="Choose account type" error={errors.role} required>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -194,7 +196,7 @@ export function SignupAccessPage({
                       <button
                         key={value}
                         aria-pressed={selected}
-                        className="rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint"
+                        className="account-role-option rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint"
                         onClick={() => {
                           setRole(value);
                           setErrors((current) => ({ ...current, role: undefined }));
@@ -205,6 +207,7 @@ export function SignupAccessPage({
                         }}
                         type="button"
                       >
+                        <span className="account-role-check" aria-hidden="true">{selected ? <Icon name="check" size={12} /> : null}</span>
                         <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-white text-brand shadow-sm">
                           <Icon name={icon as "building" | "user" | "heart"} size={18} />
                         </div>
@@ -225,7 +228,7 @@ export function SignupAccessPage({
               onMicrosoft={() => startSocialSignup(onMicrosoftAuth)}
             />
 
-            <div className="grid gap-x-4 sm:grid-cols-2">
+            <div className="signup-credentials grid gap-x-4 sm:grid-cols-2">
               <Field label="Email address" htmlFor="signup-access-email" error={errors.email} required>
                 <input
                   autoComplete="email"

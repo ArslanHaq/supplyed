@@ -104,20 +104,17 @@ const faqs = [
   },
 ];
 
-function themedGlowStyle(color = "var(--se)"): CSSProperties {
+function themedCardStyle(color = "var(--se)"): CSSProperties {
   return {
-    borderColor: `color-mix(in srgb, ${color} 26%, var(--border))`,
-    boxShadow: [
-      `0 0 0 1px color-mix(in srgb, ${color} 14%, transparent)`,
-      `0 18px 48px color-mix(in srgb, ${color} 10%, transparent)`,
-      "0 1px 2px rgba(10, 10, 10, 0.04)",
-    ].join(", "),
+    borderColor: color,
+    background: "var(--surface)",
+    boxShadow: "none",
   };
 }
 
 export function FoundingSchoolTrustStrip() {
   return (
-    <section className="border-b border-border bg-chalk px-4 py-8 sm:px-6 lg:px-12">
+    <section className="marketing-trust-strip border-b border-border bg-chalk px-4 py-8 sm:px-6 lg:px-12">
       <div className="mx-auto grid max-w-[1200px] gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0">
         {trustSignals.map((signal, index) => (
           <div
@@ -140,7 +137,7 @@ export function FoundingSchoolTrustStrip() {
 export function FoundingSchoolCohortSection() {
   return (
     <section className="border-b border-border bg-chalk px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
-      <div className="mx-auto grid max-w-[1200px] items-center gap-10 lg:grid-cols-[minmax(0,520px)_minmax(420px,1fr)] lg:gap-16">
+      <div className="marketing-cohort-layout mx-auto max-w-[1200px]">
         <div>
           <Tag className="mb-5">Founding cohort</Tag>
           <h2 className="font-heading text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">
@@ -155,7 +152,7 @@ export function FoundingSchoolCohortSection() {
           </p>
         </div>
 
-        <div>
+        <div className="marketing-cohort-places">
           <div aria-hidden="true" className="grid grid-cols-5 gap-2.5 sm:grid-cols-10">
             {foundingPlaces.map((place) => (
               <div
@@ -187,7 +184,7 @@ export function FoundingSchoolTiersSection() {
 
         <div className="grid gap-5 lg:grid-cols-2">
           {tiers.map((tier) => (
-            <article className="card card-pad-lg relative" key={tier.name} style={tier.enhanced ? themedGlowStyle() : undefined}>
+            <article className="marketing-benefit-card card card-pad-lg relative" key={tier.name} style={tier.enhanced ? themedCardStyle() : undefined}>
               {tier.enhanced ? (
                 <Tag className="absolute right-6 top-0 -translate-y-1/2 bg-brand text-white">Enhanced</Tag>
               ) : null}
@@ -228,24 +225,24 @@ export function FoundingSchoolTiersSection() {
 export function FoundingSchoolFaqSection() {
   return (
     <section className="border-b border-border bg-chalk px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
-      <div className="mx-auto max-w-[980px]">
-        <div className="mb-10 text-center">
+      <div className="marketing-faq-layout mx-auto">
+        <div>
           <div className="eyebrow">Common questions</div>
           <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">Before your school registers.</h2>
         </div>
         <div className="grid gap-3">
           {faqs.map((faq, index) => (
             <details
-              className="group rounded-xl border border-border bg-white shadow-(--shadow-xs) open:border-brand/70"
+              className="group"
               key={faq.question}
               open={index === 0}
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-semibold text-ink sm:px-6 sm:text-lg">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink">
                 {faq.question}
                 <span className="text-2xl leading-none text-brand group-open:hidden">+</span>
                 <span className="hidden text-2xl leading-none text-brand group-open:block">-</span>
               </summary>
-              <div className="border-t border-border px-5 py-4 text-sm leading-7 text-muted sm:px-6 sm:text-base">
+              <div className="text-muted">
                 {faq.answer}
               </div>
             </details>

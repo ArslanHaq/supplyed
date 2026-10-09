@@ -6,7 +6,9 @@ import { useJob } from "@/features/jobs/use-jobs";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Icon, Tag } from "../atoms";
-import { PageHead, ProposalContent, SectionLoader } from "../molecules";
+import { PageHead, SectionLoader } from "../molecules";
+import { ProposalPreview } from "../molecules/ProposalPreviewModal";
+import { WorkspaceEmptyState } from "./WorkspacePanels";
 
 type StatusFilter = "ALL" | JobApplicationStatus;
 
@@ -29,17 +31,18 @@ export function TeacherApplicationsPage({ go }: Pick<RouteProps, "go">) {
   const total = pagination?.total ?? applications.length;
 
   return (
-    <div className="app-page">
+    <div className="app-page teacher-applications-page">
       <PageHead
         title="My applications"
         subtitle={`${total} ${total === 1 ? "application" : "applications"} tracked across your job searches`}
         actions={<Btn icon="search" onClick={() => go("find-jobs")}>Find jobs</Btn>}
       />
 
-      <div className="card card-pad mb-6 flex flex-wrap items-center gap-2">
+      <div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center gap-2">
         {STATUS_FILTERS.map((item) => (
           <Btn
             key={item.value}
+            aria-pressed={status === item.value}
             size="sm"
             variant={status === item.value ? "secondary" : "ghost"}
             onClick={() => {
@@ -62,11 +65,7 @@ export function TeacherApplicationsPage({ go }: Pick<RouteProps, "go">) {
       ) : null}
 
       {!applicationsQuery.isLoading && !applicationsQuery.isError && applications.length === 0 ? (
-        <div className="card card-pad-lg text-center">
-          <div className="font-heading text-[24px]">No applications yet</div>
-          <p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">Apply for a role and your application status will appear here.</p>
-          <Btn className="mt-5" onClick={() => go("find-jobs")}>Find jobs</Btn>
-        </div>
+        <WorkspaceEmptyState icon="file" title="No applications yet" message="Apply for a role and your application status will appear here." action={<Btn icon="search" onClick={() => go("find-jobs")}>Find jobs</Btn>} />
       ) : null}
 
       <div className="space-y-4">
@@ -90,9 +89,9 @@ function TeacherApplicationCard({ application, go }: { application: JobApplicati
   const location = job ? [job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC" : "Job details unavailable";
 
   return (
-    <div className="card card-pad-lg">
+    <div className="teacher-application-card card card-pad-lg">
       <div className="flex flex-wrap items-start gap-4">
-        <div className="min-w-[240px] flex-1">
+        <div className="min-w-0 flex-1">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <ApplicationStatusTag status={application.status} />
             {job?.status ? <Tag tone="ghost">Job {job.status.toLowerCase()}</Tag> : null}
@@ -106,9 +105,9 @@ function TeacherApplicationCard({ application, go }: { application: JobApplicati
             <span className="flex items-center gap-1"><Icon name="pin" size={13} />{location}</span>
             {job?.date ? <span className="flex items-center gap-1"><Icon name="clock" size={13} />{job.date}</span> : null}
           </div>
-          {application.coverLetter ? <ProposalContent className="mt-4 border-l-2 border-brand-tint-2 pl-4" value={application.coverLetter} /> : null}
+          {application.coverLetter ? <ProposalPreview applicantImage={application.instructor?.imageUrl} applicantName={application.instructor?.fullName ?? "You"} jobTitle={job?.title} schoolName={job?.school} submittedAt={application.createdAt} title="Your proposal" value={application.coverLetter} /> : null}
         </div>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+        <div className="teacher-application-actions">
           {job?.rate ? <div className="text-right"><div className="font-heading text-xl">GBP {job.rate}</div><div className="text-xs text-muted">per day</div></div> : null}
           <Btn size="sm" icon="message" onClick={() => go("messaging", { applicationId: application.id })}>Message school</Btn>
           <Btn size="sm" variant="secondary" onClick={() => go("job-detail", { jobId: application.jobId })}>View job</Btn>

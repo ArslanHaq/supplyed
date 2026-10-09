@@ -76,6 +76,7 @@ export function ProposalEditor({
   const quillRef = useRef<QuillType | null>(null);
   const onChangeRef = useRef(onChange);
   const valueRef = useRef(value);
+  const invalidRef = useRef(invalid);
   const lastEmittedValueRef = useRef<string | undefined>(undefined);
   const [linkEditor, setLinkEditor] = useState<LinkEditorState | null>(null);
   const [linkError, setLinkError] = useState<string>();
@@ -87,6 +88,11 @@ export function ProposalEditor({
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
+
+  useEffect(() => {
+    invalidRef.current = invalid;
+    quillRef.current?.root.setAttribute("aria-invalid", String(invalid));
+  }, [invalid]);
 
   const openLinkEditor = useCallback(() => {
     const quill = quillRef.current;
@@ -134,9 +140,15 @@ export function ProposalEditor({
       });
 
       quill.root.id = id;
+      quill.root.setAttribute("role", "textbox");
       quill.root.setAttribute("aria-label", "Application proposal");
       quill.root.setAttribute("aria-multiline", "true");
+      quill.root.setAttribute("aria-required", "true");
+      quill.root.setAttribute("aria-invalid", String(invalidRef.current));
       quill.root.style.fontSize = "16px";
+      for (const [format, label] of [["font", "Font family"], ["size", "Font size"], ["color", "Text color"]]) {
+        toolbarElement.querySelector(`.ql-${format} .ql-picker-label`)?.setAttribute("aria-label", label);
+      }
       quill.clipboard.dangerouslyPasteHTML(proposalToHtml(valueRef.current), "silent");
       quillRef.current = quill;
       onChangeRef.current(valueRef.current, editorTextLength(quill));
@@ -217,18 +229,9 @@ export function ProposalEditor({
   }
 
   return (
-    <div className={"proposal-editor overflow-hidden rounded-xl border bg-white shadow-sm focus-within:ring-2 focus-within:ring-brand/15 " + (invalid ? "border-danger" : "border-border-strong")}>
-      <div ref={toolbarRef} aria-label="Proposal formatting" className="border-0! border-b! border-border! bg-chalk">
-        <span className="ql-formats">
-          <button aria-label="Bold" className="ql-bold" title="Bold" type="button" />
-          <button aria-label="Italic" className="ql-italic" title="Italic" type="button" />
-          <button aria-label="Underline" className="ql-underline" title="Underline" type="button" />
-        </span>
-        <span className="ql-formats">
-          <button aria-label="Bullet list" className="ql-list" title="Bullet list" type="button" value="bullet" />
-          <button aria-label="Numbered list" className="ql-list" title="Numbered list" type="button" value="ordered" />
-        </span>
-        <span className="ql-formats">
+    <div className="proposal-editor" data-invalid={invalid}>
+      <div ref={toolbarRef} aria-label="Proposal formatting" role="toolbar">
+        <span aria-label="Font and size" className="ql-formats proposal-font-controls" role="group">
           <select aria-label="Font family" className="ql-font" defaultValue="" title="Font family">
             <option value="">SupplyEd Sans</option>
             <option value="Arial">Arial</option>
@@ -244,7 +247,16 @@ export function ProposalEditor({
             <option value="24px">24</option>
           </select>
         </span>
-        <span className="ql-formats">
+        <span aria-label="Text style" className="ql-formats" role="group">
+          <button aria-label="Bold" className="ql-bold" title="Bold" type="button" />
+          <button aria-label="Italic" className="ql-italic" title="Italic" type="button" />
+          <button aria-label="Underline" className="ql-underline" title="Underline" type="button" />
+        </span>
+        <span aria-label="Lists" className="ql-formats" role="group">
+          <button aria-label="Bullet list" className="ql-list" title="Bullet list" type="button" value="bullet" />
+          <button aria-label="Numbered list" className="ql-list" title="Numbered list" type="button" value="ordered" />
+        </span>
+        <span aria-label="Color, links and formatting" className="ql-formats" role="group">
           <select aria-label="Text color" className="ql-color" defaultValue="" title="Text color">
             <option value="" />
             <option value="#17211c" />
@@ -259,7 +271,14 @@ export function ProposalEditor({
       </div>
 
       {linkEditor ? (
-        <div className="border-b border-border bg-white p-3 sm:p-4">
+        <div className="proposal-link-panel" onKeyDownCapture={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            closeLinkEditor();
+          }
+        }}>
+          <h3 className="proposal-link-title">Add a link</h3>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-end">
             <label className="grid gap-1 text-xs font-semibold text-ink">
               Link text
@@ -280,12 +299,11 @@ export function ProposalEditor({
                   setLinkEditor((current) => current ? { ...current, url: event.target.value } : current);
                   if (linkError) setLinkError(undefined);
                 }}
-                onKeyDown={(event) => {
+                onKeyDownCapture={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
                     applyLink();
                   }
-                  if (event.key === "Escape") closeLinkEditor();
                 }}
                 placeholder="https://example.com"
                 value={linkEditor.url}
@@ -297,11 +315,11 @@ export function ProposalEditor({
               <button className="editor-link-action editor-link-action-primary" onClick={applyLink} type="button">Apply</button>
             </div>
           </div>
-          {linkError ? <p className="mt-2 text-xs text-danger">{linkError}</p> : null}
+          {linkError ? <p className="mt-2 text-xs text-danger" role="alert">{linkError}</p> : null}
         </div>
       ) : null}
 
-      <div ref={editorRef} className="min-h-[250px] border-0! text-base" />
+      <div ref={editorRef} className="proposal-editor-surface" />
     </div>
   );
 }

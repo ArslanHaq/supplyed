@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Btn, Checkbox, Logo, Tag } from "../atoms";
+import { Btn, Checkbox, Icon, Logo, Tag } from "../atoms";
 import { Modal } from "../molecules";
 
 type ApprovalStatus = "APPROVED" | "DECLINED" | "EXPIRED" | "PENDING" | "REVOKED";
@@ -103,21 +103,21 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
 
   return (
     <>
-      <main className="min-h-screen bg-chalk px-4 py-8 sm:px-6 sm:py-12">
+      <main className="marketing-approval min-h-screen px-4 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <Logo size={20} />
-        <div className="mt-8 rounded-2xl border border-border bg-white p-6 shadow-(--shadow-xs) sm:p-9">
+        <div className="marketing-approval-header"><Logo href="/" size={24} /><span><Icon name="lock" size={14} /> Secure approval link</span></div>
+        <div className="marketing-approval-card mt-8 border border-border bg-white p-6 sm:p-9">
           <Tag tone={approval?.status === "APPROVED" ? "green" : approval?.status === "DECLINED" ? "red" : "amber"}>
             Trust signatory approval
           </Tag>
           <h1 className="mt-4 font-heading text-3xl sm:text-4xl">Review this school&apos;s trust membership.</h1>
 
-          {!approval && !error ? <p className="mt-6 text-muted">Checking this secure approval link...</p> : null}
+          {!approval && !error ? <div role="status"><p className="mt-6 text-sm text-muted">Checking this secure approval link...</p><div className="marketing-approval-loading" aria-hidden="true"><span /><span /><span /></div></div> : null}
           {error ? <div className="mt-6 rounded-xl border border-danger bg-danger-tint p-4 text-sm font-semibold text-danger" role="alert">{error}</div> : null}
 
           {approval ? (
             <div className="mt-7 space-y-6">
-              <div className="grid gap-4 rounded-xl border border-border bg-chalk p-5 sm:grid-cols-2">
+              <div className="marketing-approval-details grid rounded-xl border border-border sm:grid-cols-2">
                 <Detail label="School" value={approval.school.name} />
                 <Detail label="Trust" value={approval.trust.name} />
                 <Detail label="School domain" value={approval.school.domain} />
@@ -141,7 +141,7 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
                       <textarea className="textarea mt-2" maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />
                     </label>
                   ) : null}
-                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <div className="marketing-approval-actions flex flex-col gap-3 sm:flex-row sm:justify-end">
                     {declining ? (
                       <>
                         <Btn variant="ghost" disabled={pending} onClick={() => setDeclining(false)}>Cancel</Btn>
@@ -160,7 +160,7 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
                   </div>
                 </>
               ) : (
-                <div className="rounded-xl border border-border bg-chalk p-5">
+                <div className="rounded-xl border border-border bg-chalk p-5" role="status">
                   <div className="font-semibold">This request is {approval.status.toLowerCase()}.</div>
                   <p className="mt-1 text-sm text-muted">{decidedRequestCopy(approval.status)}</p>
                 </div>

@@ -62,7 +62,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
 
   if (!ctx.jobId) {
     return (
-      <div className="app-page">
+      <div className="app-page job-detail-page">
         <div className="card card-pad-lg text-center">
           <div className="font-heading text-[26px]">Choose a job</div>
           <p className="mx-auto mt-2 max-w-[420px] text-sm leading-6 text-muted">Open a job from your dashboard or the jobs list to view details.</p>
@@ -73,12 +73,12 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   }
 
   if (jobQuery.isLoading) {
-    return <div className="app-page"><SectionLoader rows={5} /></div>;
+    return <div className="app-page job-detail-page"><SectionLoader rows={5} /></div>;
   }
 
   if (!job) {
     return (
-      <div className="app-page">
+      <div className="app-page job-detail-page">
         <div className="card card-pad-lg text-center">
           <div className="font-heading text-[26px]">Job not available</div>
           <p className="mx-auto mt-2 max-w-[420px] text-sm leading-6 text-muted">This role may be closed, expired, or no longer visible.</p>
@@ -89,7 +89,8 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   }
 
   return (
-    <div className="app-page">
+    <div className="app-page job-detail-page">
+      <nav aria-label="Job navigation" className="job-detail-navigation"><Btn icon="arrowLeft" size="sm" variant="ghost" onClick={() => go(role === "teacher" ? "find-jobs" : "dashboard")}>Back to jobs</Btn><span>Role details</span></nav>
       <div className="two-col">
         <div>
           <div className="mb-3.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent - act fast</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant matching" : "Open brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div>
@@ -158,11 +159,20 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
         </aside>
       </div>
       <Modal open={open} onClose={closeModal} size={role === "teacher" ? "xl" : "md"}>
-        <div className="card-pad-lg">
-          <div className="mb-2 font-heading text-[26px]">{role === "teacher" ? "Create your proposal" : "Invite candidates"}</div>
           {role === "teacher" ? (
-            <>
-              <p className="mb-5 max-w-2xl text-sm leading-6 text-muted">Introduce yourself, connect your experience to the role, and keep the formatting clear and professional.</p>
+            <article className="proposal-dialog">
+              <header className="proposal-dialog-header">
+                <span aria-hidden="true" className="proposal-heading-icon"><Icon name="file" size={23} /></span>
+                <div className="proposal-heading-copy"><p className="proposal-eyebrow">Your application</p><h2>Create your proposal</h2></div>
+                <button aria-label="Close proposal" className="proposal-close" disabled={createApplication.isPending} onClick={closeModal} type="button"><Icon name="x" size={18} /></button>
+              </header>
+              <div className="proposal-role-context">
+                <span aria-hidden="true" className="proposal-role-icon"><Icon name="building" size={19} /></span>
+                <div><strong>{job.title}</strong><small>{job.institution?.name || job.school}{job.date ? ` · ${job.date}` : ""}</small></div>
+                {job.keyStage ? <Tag tone="ghost">{job.keyStage}</Tag> : null}
+              </div>
+              <div className="proposal-dialog-body">
+              <p className="proposal-intro">Introduce yourself, connect your experience to the role, and keep the formatting clear and professional.</p>
               <Field error={coverLetterError} htmlFor="job-proposal-editor" label="Proposal" required>
                 <ProposalEditor
                   id="job-proposal-editor"
@@ -176,28 +186,32 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
                   }}
                 />
               </Field>
-              <div className="-mt-2 mb-5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-                <span className={coverLetter.length > MAX_PROPOSAL_LENGTH ? "font-semibold text-danger" : ""}>
+              <div className="proposal-editor-footer">
+                <p className={`proposal-format-note${coverLetter.length > MAX_PROPOSAL_LENGTH ? " is-error" : ""}`}>
                   {coverLetter.length > MAX_PROPOSAL_LENGTH
                     ? "The formatted proposal is too long. Shorten it or clear some formatting."
                     : "Formatting is saved with your application."}
-                </span>
-                <span className={coverLetter.length > MAX_PROPOSAL_LENGTH ? "font-semibold text-danger" : ""}>
-                  {coverLetterTextLength.toLocaleString()} / {MAX_PROPOSAL_LENGTH.toLocaleString()} text characters
+                </p>
+                <span className={`proposal-character-count${coverLetter.length > MAX_PROPOSAL_LENGTH ? " is-error" : ""}`}>
+                  <strong>{coverLetterTextLength.toLocaleString()}</strong> / {MAX_PROPOSAL_LENGTH.toLocaleString()} text characters
                 </span>
               </div>
-              <div className="flex items-center justify-between">
+              </div>
+              <footer className="proposal-dialog-actions">
+                <p className="proposal-submit-note"><Icon name="file" size={16} /><span>Your proposal will be shared with {job.institution?.name || job.school}.</span></p>
+                <div className="proposal-action-buttons">
                 <Btn disabled={createApplication.isPending} variant="ghost" onClick={closeModal}>Cancel</Btn>
-                <Btn disabled={coverLetter.length > MAX_PROPOSAL_LENGTH} loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
-              </div>
-            </>
+                <Btn disabled={coverLetter.length > MAX_PROPOSAL_LENGTH} iconRight="arrowRight" loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
+                </div>
+              </footer>
+            </article>
           ) : (
-            <>
+            <div className="card-pad-lg">
+              <h2 className="mb-2 font-heading text-[26px]">Invite candidates</h2>
               <Field label="Message"><textarea className="textarea" defaultValue="Please review this role and let us know if you are interested." /></Field>
               <div className="flex items-center justify-between"><Btn variant="ghost" onClick={closeModal}>Cancel</Btn><Btn onClick={() => { setOpen(false); toast({ title: "Success", msg: "Top candidates invited." }); }}>Confirm</Btn></div>
-            </>
+            </div>
           )}
-        </div>
       </Modal>
     </div>
   );

@@ -19,7 +19,7 @@ export function InvoiceDetailsModal({ id, onClose, onPay, role }: { id: string |
 
   return (
     <Modal open={Boolean(id)} onClose={onClose}>
-      <div className="max-h-[85vh] overflow-y-auto p-6 sm:p-7">
+      <div className="invoice-detail-modal max-h-[85vh] overflow-y-auto p-6 sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <h2 className="font-heading text-2xl">Invoice details</h2>
           <Btn size="sm" variant="ghost" onClick={onClose}>Close</Btn>
@@ -34,7 +34,8 @@ export function InvoiceDetailsModal({ id, onClose, onPay, role }: { id: string |
             </div>
             <h3 className="mt-4 font-semibold">{invoice.booking.jobTitle}</h3>
             <p className="mt-1 text-sm text-muted">{invoice.booking.institution.name} · {invoice.booking.instructor.name}</p>
-            <dl className="mt-5 space-y-3 text-sm">
+            <div className="invoice-total"><span>Total invoice</span><strong>{formatPence(invoice.totalAmountPence)}</strong></div>
+            <dl className="invoice-breakdown mt-5 space-y-3 text-sm">
               <Row label="Teacher pay" value={formatPence(invoice.teacherAmountPence)} />
               <Row label="SupplyEd processing fee" value={formatPence(invoice.feeAmountPence)} />
               <Row label="Total invoice" value={formatPence(invoice.totalAmountPence)} />
@@ -69,7 +70,7 @@ export function InvoiceDetailsModal({ id, onClose, onPay, role }: { id: string |
 }
 
 function Row({ label, value }: { label: string; value: string }) {
-  return <div className="flex justify-between gap-4"><dt className="text-muted">{label}</dt><dd className="min-w-0 break-words text-right font-semibold">{value}</dd></div>;
+  return <div className="invoice-breakdown-row flex justify-between gap-4"><dt className="text-muted">{label}</dt><dd className="min-w-0 break-words text-right font-semibold">{value}</dd></div>;
 }
 
 function date(value: string) {

@@ -105,11 +105,11 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
       {open ? (
         <div
           aria-label="Notifications"
-          className="absolute right-0 top-12 z-50 flex max-h-[70vh] w-[min(380px,calc(100vw-32px))] flex-col overflow-hidden rounded-xl border border-border bg-white shadow-panel"
+          className="notification-panel absolute right-0 top-12 z-50 flex max-h-[70vh] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-xl border border-border bg-white shadow-panel"
           role="dialog"
         >
-          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <div className="font-semibold">Notifications</div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
+            <div><div className="font-semibold">Notifications</div><p className="mt-0.5 text-xs text-muted">Your latest workspace updates</p></div>
             <div className="flex items-center gap-1">
               {unread > 0 ? (
                 <Btn disabled={markAllRead.isPending} size="sm" variant="ghost" onClick={() => markAllRead.mutate()}>
@@ -133,6 +133,7 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
             {listQuery.error ? <p className="p-4 text-sm text-danger" role="alert">{listQuery.error.message}</p> : null}
             {!listQuery.isLoading && !listQuery.error && notifications.length === 0 ? (
               <div className="px-4 py-10 text-center">
+                <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-chalk text-brand-dark"><Icon name="bell" size={21} /></span>
                 <div className="font-semibold">You&apos;re all caught up</div>
                 <p className="mt-1 text-sm text-muted">Job matches, application updates and bookings will show here.</p>
               </div>
@@ -140,7 +141,7 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
             {notifications.map((notification) => (
               <button
                 key={notification.id}
-                className={`flex w-full gap-3 border-b border-border px-4 py-3 text-left transition hover:bg-chalk ${notification.readAt ? "" : "bg-brand-tint/40"}`}
+                className={`flex w-full gap-3 border-b border-border px-5 py-4 text-left transition hover:bg-chalk ${notification.readAt ? "" : "bg-brand-tint/40"}`}
                 onClick={() => select(notification)}
                 type="button"
               >

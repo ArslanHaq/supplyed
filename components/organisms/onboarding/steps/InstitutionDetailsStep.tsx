@@ -62,6 +62,7 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
       ) : null}
 
       <div className="grid gap-x-4 sm:grid-cols-2">
+        <div className="onboarding-field-heading"><h3>About your school</h3><p>Your organisation and location details.</p></div>
         <Field label="School name" htmlFor="school-name" error={errors.schoolName} required>
           <input
             id="school-name"

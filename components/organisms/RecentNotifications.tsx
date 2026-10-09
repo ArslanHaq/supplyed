@@ -33,9 +33,9 @@ export function RecentNotifications() {
   }
 
   return (
-    <section aria-labelledby="recent-activity-heading" className="mt-7">
-      <div className="section-title" id="recent-activity-heading">Recent activity</div>
-      <div className="card overflow-hidden">
+    <section aria-labelledby="recent-activity-heading" className="dashboard-activity card">
+      <header className="hiring-panel-heading"><div><h2 id="recent-activity-heading">Recent activity</h2><p>Your latest hiring and booking updates.</p></div><span aria-hidden="true" className="hiring-panel-icon"><Icon name="bell" size={18} /></span></header>
+      <div className="dashboard-activity-list">
         {notificationsQuery.isLoading ? <div className="card-pad"><SectionLoader rows={4} /></div> : null}
         {notificationsQuery.isError ? (
           <div className="card-pad text-center" role="alert">

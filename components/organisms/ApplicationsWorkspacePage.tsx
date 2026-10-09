@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 
 import type { ApplicantSummary, JobApplication, JobApplicationStatus } from "@/features/applications/types";
 import { useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
+import { applicationPipeline, canTransitionApplication } from "@/features/applications/workflow";
 import type { Job } from "@/features/jobs/types";
-import { useJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
+import { useJob, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { MatchedInstructor, MatchResult } from "@/features/matching/types";
 import { useRankedApplications } from "@/features/matching/use-matching";
 import type { ProfileReview } from "@/features/reviews/types";
@@ -13,6 +14,9 @@ import type { RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, Icon, Tag } from "../atoms";
 import { MatchScorePanel, Modal, PageHead, ProposalContent, SectionLoader } from "../molecules";
 import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
+import { ProposalPreview } from "../molecules/ProposalPreviewModal";
+import { ApplicationsJobList } from "./ApplicationsJobList";
+import { WorkspaceEmptyState, WorkspaceSummary } from "./WorkspacePanels";
 
 type ApplicationRow = {
   application: JobApplication;
@@ -20,14 +24,11 @@ type ApplicationRow = {
   match?: MatchResult;
 };
 
-const pipelineStatuses: Exclude<JobApplicationStatus, "REJECTED">[] = ["APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEW", "HIRED"];
-
 export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ctx" | "toast">) {
+  const [jobsPage, setJobsPage] = useState(1);
   const [hireTarget, setHireTarget] = useState<JobApplication | null>(null);
   const autoViewedApplicationIds = useRef<Set<string>>(new Set());
-  // Only the newest job is needed, as the default when no job was chosen.
-  const myJobsQuery = useMyJobs({ limit: 1 });
-  const selectedJobId = ctx.jobId ?? myJobsQuery.data?.jobs[0]?.id;
+  const selectedJobId = ctx.jobId;
   const jobQuery = useJob(selectedJobId ?? "", true);
   const job = jobQuery.data ?? null;
   const applicationsQuery = useJobApplications(selectedJobId, { limit: 100 });
@@ -35,6 +36,8 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
   const applications = applicationsQuery.data?.applications ?? [];
   const rows = toApplicationRows(applications, rankedQuery.data?.applications ?? []);
   const selectedRow = ctx.applicationId ? rows.find((row) => row.application.id === ctx.applicationId) : undefined;
+  const currentHireTarget = hireTarget ? applications.find((application) => application.id === hireTarget.id) : undefined;
+  const canConfirmHire = Boolean(currentHireTarget && canTransitionApplication(currentHireTarget.status, "HIRED"));
 
   const updateJob = useUpdateJob({
     onSuccess: (result) => {
@@ -83,40 +86,50 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
   }
 
   function changeStatus(application: JobApplication, status: JobApplicationStatus) {
+    const current = applications.find((item) => item.id === application.id);
+    if (updateStatus.isPending || !current || !canTransitionApplication(current.status, status)) return;
     if (status === "HIRED") {
-      setHireTarget(application);
+      setHireTarget(current);
       return;
     }
-    updateStatus.mutate({ id: application.id, status });
+    updateStatus.mutate({ id: current.id, status });
   }
 
-  if (!selectedJobId && !myJobsQuery.isLoading) {
+  function confirmHire() {
+    if (updateStatus.isPending || !currentHireTarget || !canTransitionApplication(currentHireTarget.status, "HIRED")) return;
+    updateStatus.mutate({ id: currentHireTarget.id, status: "HIRED" });
+  }
+
+  if (!selectedJobId) {
     return (
-      <div className="app-page">
+      <div className="app-page applications-workspace">
         <PageHead
           title="Applications"
-          subtitle="Post a role first, then applicants will appear here."
+          subtitle="Choose an active job to review its applications and manage each teacher's progress."
           actions={<Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn>}
         />
-        <EmptyState title="No posted roles yet" message="Create an active role to start receiving teacher applications." />
+        <ApplicationsJobList
+          onOpenJob={(jobId) => go("applications", { jobId })}
+          onPageChange={setJobsPage}
+          page={jobsPage}
+        />
       </div>
     );
   }
 
-  const loading = myJobsQuery.isLoading || applicationsQuery.isLoading;
-  const error = applicationsQuery.error;
+  const loading = jobQuery.isLoading || applicationsQuery.isLoading;
+  const error = applicationsQuery.error ?? jobQuery.error;
 
   return (
     <>
-      <div className="app-page">
+      <div className="app-page applications-workspace">
         {selectedRow ? (
           <ApplicationDetail
             applicationRow={selectedRow}
             job={job}
             loadingScore={rankedQuery.isLoading}
             onBack={closeApplication}
-            onBookInterview={(application) => changeStatus(application, "INTERVIEW")}
-            onHire={setHireTarget}
+            onHire={(application) => changeStatus(application, "HIRED")}
             onMessage={(applicationId) => go("messaging", { applicationId })}
             onOpenTeacher={(teacherId) => go("teacher-profile", { teacherId })}
             onStatusChange={changeStatus}
@@ -129,6 +142,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
               subtitle={`${job ? `${formatLocation(job)} - ${job.date} - ${formatPay(job)} - ` : ""}${applicationsQuery.data?.pagination.total ?? applications.length} applications`}
               actions={
                 <>
+                  <Btn variant="secondary" size="sm" icon="arrowLeft" onClick={() => go("applications")}>Back to active jobs</Btn>
                   <Btn variant="secondary" size="sm" onClick={() => go("post-job")}>Post another role</Btn>
                   {selectedJobId ? <Btn variant="secondary" size="sm" icon="edit" onClick={() => go("post-job", { jobId: selectedJobId })}>Edit role</Btn> : null}
                   {job?.status === "ACTIVE" || job?.status === "DRAFT" ? (
@@ -147,7 +161,13 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
               }
             />
 
-            <div className="card card-pad mb-6 flex flex-wrap items-center justify-between gap-3">
+            {!loading && !error ? <WorkspaceSummary label="Current applications" items={[
+              { label: "To review", value: rows.filter(({ application }) => application.status === "APPLIED" || application.status === "VIEWED").length },
+              { label: "Shortlisted", value: rows.filter(({ application }) => application.status === "SHORTLISTED").length },
+              { label: "Interview", value: rows.filter(({ application }) => application.status === "INTERVIEW").length },
+              { label: "Hired", value: rows.filter(({ application }) => application.status === "HIRED").length },
+            ]} /> : null}
+            <div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="section-title mb-1">Applications</div>
                 <p className="text-sm leading-6 text-muted">Open an application to review the teacher, score, job fit, and hiring progress.</p>
@@ -197,9 +217,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
           <BookingPaymentNotice job={job} />
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Btn variant="ghost" disabled={updateStatus.isPending} onClick={() => setHireTarget(null)}>Cancel</Btn>
-            <Btn loading={updateStatus.isPending} onClick={() => {
-              if (hireTarget) updateStatus.mutate({ id: hireTarget.id, status: "HIRED" });
-            }}>Hire & create booking</Btn>
+            <Btn disabled={!canConfirmHire} loading={updateStatus.isPending} onClick={confirmHire}>Hire & create booking</Btn>
           </div>
         </div>
       </Modal>
@@ -219,7 +237,7 @@ function ApplicationListRow({
   const { application, instructor, match } = row;
 
   return (
-    <article className="grid gap-4 p-5 md:grid-cols-[minmax(0,1fr)_120px_170px] md:items-center">
+    <article className="application-list-row grid gap-4 p-5 md:grid-cols-[minmax(0,1fr)_120px_170px] md:items-center">
       <div className="flex min-w-0 items-start gap-3">
         <Avatar name={instructor?.fullName ?? "Teacher"} src={instructor?.imageUrl ?? undefined} />
         <div className="min-w-0">
@@ -265,7 +283,6 @@ function ApplicationDetail({
   job,
   loadingScore,
   onBack,
-  onBookInterview,
   onHire,
   onMessage,
   onOpenTeacher,
@@ -276,7 +293,6 @@ function ApplicationDetail({
   job: Job | null;
   loadingScore: boolean;
   onBack: () => void;
-  onBookInterview: (application: JobApplication) => void;
   onHire: (application: JobApplication) => void;
   onMessage: (applicationId: string) => void;
   onOpenTeacher: (teacherId: string) => void;
@@ -284,9 +300,7 @@ function ApplicationDetail({
   pending: boolean;
 }) {
   const { application, instructor, match } = applicationRow;
-  const canBookInterview = application.status === "SHORTLISTED";
-  const interviewLocked = application.status === "HIRED" || application.status === "REJECTED" || application.status === "INTERVIEW";
-  const canHire = application.status !== "HIRED" && application.status !== "REJECTED";
+  const canHire = canTransitionApplication(application.status, "HIRED");
   const reviewsQuery = useInstructorReviews(instructor?.id);
 
   return (
@@ -297,7 +311,7 @@ function ApplicationDetail({
         actions={<Btn icon="arrowLeft" variant="secondary" onClick={onBack}>Back to applications</Btn>}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="application-detail-grid grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <section className="card overflow-hidden">
             <div className="border-b border-border bg-[linear-gradient(135deg,#fff_0%,#f6fbf8_55%,rgb(var(--se-rgb)/0.10)_100%)] px-5 py-5 sm:px-7">
@@ -330,10 +344,15 @@ function ApplicationDetail({
               </div>
 
               {application.coverLetter ? (
-                <div className="mt-5 rounded-xl border border-border bg-white p-5">
-                  <div className="section-title mb-2">Proposal</div>
-                  <ProposalContent value={application.coverLetter} />
-                </div>
+                <ProposalPreview
+                  key={application.id}
+                  applicantImage={instructor?.imageUrl}
+                  applicantName={instructor?.fullName ?? "Teacher"}
+                  jobTitle={job?.title}
+                  schoolName={job?.school}
+                  submittedAt={application.createdAt}
+                  value={application.coverLetter}
+                />
               ) : null}
 
               <div className="mt-5">
@@ -362,13 +381,6 @@ function ApplicationDetail({
               <Btn className="h-12 w-full" icon="message" size="lg" onClick={() => onMessage(application.id)}>
                 Message teacher
               </Btn>
-              <InterviewButton
-                application={application}
-                canBookInterview={canBookInterview}
-                interviewLocked={interviewLocked}
-                onBookInterview={onBookInterview}
-                pending={pending}
-              />
               <Btn
                 className="h-12 w-full"
                 disabled={!canHire || pending}
@@ -489,35 +501,6 @@ function RatingStars({ rating }: { rating: number }) {
   );
 }
 
-function InterviewButton({
-  application,
-  canBookInterview,
-  interviewLocked,
-  onBookInterview,
-  pending,
-}: {
-  application: JobApplication;
-  canBookInterview: boolean;
-  interviewLocked: boolean;
-  onBookInterview: (application: JobApplication) => void;
-  pending: boolean;
-}) {
-  return (
-    <Btn
-      className="h-12 w-full"
-      disabled={!canBookInterview || pending}
-      icon="calendar"
-      loading={pending && canBookInterview}
-      loadingLabel="Booking"
-      size="lg"
-      variant="secondary"
-      onClick={() => onBookInterview(application)}
-    >
-      {application.status === "INTERVIEW" ? "Interview selected" : interviewLocked ? "Interview locked" : "Book interview"}
-    </Btn>
-  );
-}
-
 function StatusWorkflow({
   application,
   onHire,
@@ -531,38 +514,37 @@ function StatusWorkflow({
 }) {
   const [draggingStatus, setDraggingStatus] = useState<JobApplicationStatus | null>(null);
   const currentIndex = workflowIndex(application.status);
-  const nextStatus = nextWorkflowStatus(application.status);
   const rejected = application.status === "REJECTED";
 
   function moveTo(status: JobApplicationStatus) {
-    if (!canMoveTo(application.status, status) || pending) return;
+    if (!canTransitionApplication(application.status, status) || pending) return;
     if (status === "HIRED") onHire(application);
     else onStatusChange(application, status);
   }
 
   return (
-    <section className="card card-pad-lg">
+    <section aria-busy={pending} className="card card-pad-lg">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="section-title mb-1">Application progress</div>
-          <p className="text-sm leading-6 text-muted">Previous stages stay locked once the application moves forward.</p>
+          <p className="text-sm leading-6 text-muted">{rejected ? "This application was rejected. Its stages are locked." : application.status === "HIRED" ? "This teacher has been hired. Earlier stages are locked." : "Choose any later stage, or drag the current stage forward. You can skip stages; earlier stages stay locked."}</p>
         </div>
-        <Btn disabled={application.status === "HIRED" || rejected || pending} size="sm" variant="danger" onClick={() => onStatusChange(application, "REJECTED")}>
+        <Btn disabled={!canTransitionApplication(application.status, "REJECTED") || pending} size="sm" variant="danger" onClick={() => moveTo("REJECTED")}>
           Reject application
         </Btn>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-5">
-        {pipelineStatuses.map((status, index) => {
+      <div className="grid grid-cols-2 gap-3 2xl:grid-cols-5">
+        {applicationPipeline.map((status, index) => {
           const active = application.status === status;
           const complete = currentIndex > index || application.status === "HIRED";
-          const available = canMoveTo(application.status, status);
-          const dropActive = draggingStatus !== null && available;
+          const available = canTransitionApplication(application.status, status) && !pending;
+          const dropActive = draggingStatus === application.status && available;
 
           return (
             <div
               key={status}
-              className={`min-h-[132px] rounded-xl border p-4 transition ${
+              className={`flex min-h-[132px] min-w-0 flex-col overflow-hidden rounded-xl border transition last:col-span-2 2xl:last:col-span-1 ${
                 active
                   ? "border-brand bg-brand-tint"
                   : dropActive
@@ -572,35 +554,44 @@ function StatusWorkflow({
                       : "border-border bg-white"
               }`}
               onDragOver={(event) => {
-                if (available) event.preventDefault();
+                if (dropActive) event.preventDefault();
               }}
               onDrop={(event) => {
                 event.preventDefault();
+                const validDrop = draggingStatus === application.status && available;
                 setDraggingStatus(null);
-                moveTo(status);
+                if (validDrop) moveTo(status);
               }}
             >
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="text-xs font-bold uppercase tracking-[1px]">{formatStatus(status)}</div>
-                {complete && !active ? <Icon name="lock" size={14} /> : null}
-                {active ? <Icon name="checkCircle" size={15} /> : null}
-              </div>
+              <button
+                aria-current={active ? "step" : undefined}
+                aria-label={active ? `${formatStatus(status)}, current stage` : available ? `Move application to ${formatStatus(status)}` : `${formatStatus(status)}, locked`}
+                className="flex w-full flex-1 flex-col p-4 text-left transition hover:enabled:bg-brand-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand disabled:cursor-default"
+                disabled={!available}
+                onClick={() => moveTo(status)}
+                type="button"
+              >
+                <span className="mb-3 flex w-full flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-bold uppercase tracking-[1px]">{formatStatus(status)}</span>
+                  {(complete && !active) || rejected ? <Icon name="lock" size={14} /> : null}
+                  {active ? <Icon name="checkCircle" size={15} /> : null}
+                  {available ? <Icon name="arrow" size={14} className="text-brand" /> : null}
+                </span>
+                {!active ? <span className="text-sm leading-6 text-muted">{statusHelp(status)}</span> : null}
+              </button>
               {active ? (
                 <div
-                  className="rounded-lg border border-brand bg-white px-3 py-2 text-sm font-semibold text-ink shadow-(--shadow-xs)"
+                  className="mx-4 mb-4 rounded-lg border border-brand bg-white px-3 py-2 text-sm font-semibold text-ink shadow-(--shadow-xs)"
                   draggable={!pending && application.status !== "HIRED"}
                   onDragEnd={() => setDraggingStatus(null)}
-                  onDragStart={() => setDraggingStatus(application.status)}
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", application.id);
+                    setDraggingStatus(application.status);
+                  }}
                 >
                   Current stage
                 </div>
-              ) : (
-                <div className="text-sm leading-6 text-muted">{statusHelp(status)}</div>
-              )}
-              {available && status === nextStatus ? (
-                <Btn className="mt-3 w-full" disabled={pending} loading={pending} loadingLabel="Moving" size="sm" variant="secondary" onClick={() => moveTo(status)}>
-                  Move here
-                </Btn>
               ) : null}
             </div>
           );
@@ -666,24 +657,9 @@ function toApplicationRows(
   });
 }
 
-function canMoveTo(current: JobApplicationStatus, target: JobApplicationStatus) {
-  if (current === "HIRED" || current === "REJECTED") return false;
-  if (target === "REJECTED") return true;
-  if (target === "HIRED") return true;
-  return nextWorkflowStatus(current) === target;
-}
-
-function nextWorkflowStatus(status: JobApplicationStatus): JobApplicationStatus | undefined {
-  if (status === "APPLIED") return "VIEWED";
-  if (status === "VIEWED") return "SHORTLISTED";
-  if (status === "SHORTLISTED") return "INTERVIEW";
-  if (status === "INTERVIEW") return "HIRED";
-  return undefined;
-}
-
 function workflowIndex(status: JobApplicationStatus) {
   if (status === "REJECTED") return -1;
-  return pipelineStatuses.indexOf(status);
+  return applicationPipeline.indexOf(status);
 }
 
 function statusHelp(status: JobApplicationStatus) {
@@ -702,7 +678,7 @@ function ApplicationStatusTag({ status }: { status: JobApplicationStatus }) {
 
 function InfoTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-chalk p-4">
+    <div className="application-info-tile rounded-xl border border-border bg-chalk p-4">
       <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{label}</div>
       <div className="mt-2 break-words text-sm font-semibold text-ink">{value}</div>
     </div>
@@ -719,7 +695,7 @@ function InfoLine({ label, value }: { label: string; value: string }) {
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {
-  return <div className="card card-pad-lg text-center"><div className="font-heading text-[24px]">{title}</div><p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p></div>;
+  return <WorkspaceEmptyState icon="users" message={message} title={title} />;
 }
 
 function formatPay(job: Job) {

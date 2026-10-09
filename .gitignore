@@ -1,5 +1,6 @@
 .next
 node_modules
+/tmp/
 tsconfig.tsbuildinfo
 .DS_Store
 npm-debug.log*

@@ -1,4 +1,10 @@
 import "./globals.css";
+import "@/components/styles/foundation.css";
+import "@/components/styles/account.css";
+import "@/components/styles/workspace.css";
+import "@/components/styles/proposal.css";
+import "@/components/styles/proposal-preview.css";
+import "@/components/styles/public.css";
 
 import type { Metadata } from "next";
 import localFont from "next/font/local";

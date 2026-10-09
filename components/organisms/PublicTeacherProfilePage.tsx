@@ -14,16 +14,16 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
   const profile = profileQuery.data;
 
   if (!ctx.teacherId) return <ProfileState title="Choose a teacher" message="Open a teacher from an application or booking to view their profile." onBack={() => go("applications")} />;
-  if (profileQuery.isLoading) return <div className="app-page"><SectionLoader rows={5} /></div>;
+  if (profileQuery.isLoading) return <div className="app-page profile-page teacher-public-profile"><SectionLoader rows={5} /></div>;
   if (!profile) return <ProfileState title="Teacher profile unavailable" message={profileQuery.error?.message || "This profile may be inactive or you may not have permission to view it."} onBack={() => go("applications")} onRetry={() => void profileQuery.refetch()} />;
 
   const location = [profile.city, profile.county].filter(Boolean).join(", ") || "Location not shared";
 
   return (
-    <div className="app-page">
+    <div className="app-page profile-page teacher-public-profile">
       <PageHead title="Teacher profile" subtitle="Experience, credentials and verified booking feedback" actions={<Btn icon="arrowLeft" variant="secondary" onClick={() => go("applications")}>Back to applications</Btn>} />
 
-      <section className="relative mb-6 overflow-hidden rounded-[22px] border border-brand-tint-2 bg-[linear-gradient(135deg,#eef9fd_0%,#ffffff_52%,#f8fafc_100%)] shadow-(--shadow)">
+      <section className="profile-hero relative mb-6 overflow-hidden border">
         <div aria-hidden="true" className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-brand/10 blur-3xl" />
         <div className="relative px-5 py-7 sm:px-8 sm:py-9">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
@@ -57,7 +57,7 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
         </div>
       </section>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="profile-detail-grid grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
           <ProfileSection description="A professional introduction from the teacher" icon="user" title="About this teacher">
             <p className="whitespace-pre-line text-[15px] leading-7 text-slate">{profile.bio || "This teacher has not added a public introduction yet. Their verified experience and teaching preferences are shown below."}</p>
@@ -75,8 +75,8 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
           <ProfileReviewsPanel data={reviewsQuery.data} error={reviewsQuery.error} loading={reviewsQuery.isLoading} />
         </main>
 
-        <aside className="sidebar-panel overflow-hidden xl:sticky xl:top-6">
-          <div className="border-b border-border bg-ink px-6 py-5 text-white">
+        <aside className="profile-overview sidebar-panel overflow-hidden xl:sticky xl:top-6">
+          <div className="border-b border-border px-6 py-5 text-white">
             <div className="flex items-center gap-2 text-base font-semibold"><Icon name="file" size={18} />Profile overview</div>
             <p className="mt-1 text-xs leading-5 text-white/65">Key information for your hiring decision</p>
           </div>
@@ -117,7 +117,7 @@ function ProfileFact({ icon, label, tone, value }: { icon: string; label: string
 }
 
 function ProfileState({ title, message, onBack, onRetry }: { title: string; message: string; onBack: () => void; onRetry?: () => void }) {
-  return <div className="app-page"><div className="card card-pad-lg text-center" role="status"><h1 className="font-heading text-[26px]">{title}</h1><p className="mx-auto mt-2 max-w-[520px] text-sm leading-6 text-muted">{message}</p><div className="mt-5 flex justify-center gap-2">{onRetry ? <Btn variant="secondary" onClick={onRetry}>Try again</Btn> : null}<Btn onClick={onBack}>Back</Btn></div></div></div>;
+  return <div className="app-page profile-page teacher-public-profile"><div className="card card-pad-lg text-center" role="status"><h1 className="font-heading text-[26px]">{title}</h1><p className="mx-auto mt-2 max-w-[520px] text-sm leading-6 text-muted">{message}</p><div className="mt-5 flex justify-center gap-2">{onRetry ? <Btn variant="secondary" onClick={onRetry}>Try again</Btn> : null}<Btn onClick={onBack}>Back</Btn></div></div></div>;
 }
 
 function formatMonth(value: string) {

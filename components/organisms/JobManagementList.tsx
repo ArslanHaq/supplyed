@@ -26,6 +26,7 @@ type JobManagementListProps = {
   onFilterChange: (filter: JobStatusFilter) => void;
   onPageChange?: (page: number) => void;
   pagination?: JobsPagination;
+  refreshing?: boolean;
   title: string;
 };
 
@@ -53,16 +54,23 @@ export function JobManagementList({
   onFilterChange,
   onPageChange,
   pagination,
+  refreshing = false,
   title,
 }: JobManagementListProps) {
   // The backend already filtered by status; this only guards against a stale page during a tab switch.
   const filteredJobs = filter === "ALL" ? jobs : jobs.filter((job) => job.status === filter);
 
+  const resultOffset = pagination ? (pagination.page - 1) * pagination.limit : 0;
+  const resultStart = pagination && filteredJobs.length ? Math.min(pagination.total, resultOffset + 1) : 0;
+  const resultEnd = pagination ? Math.min(pagination.total, resultOffset + filteredJobs.length) : filteredJobs.length;
+
   return (
-    <>
-      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="section-title mb-0">{title}</div>
-        <div className="flex flex-wrap gap-1.5">
+    <section aria-busy={loading || refreshing || undefined} className="job-management-workspace card">
+      <header className="job-management-heading">
+        <div><h2>{title}</h2><p>Manage your roles and find your next great teacher.</p></div>
+        <Btn icon="plus" size="sm" variant="secondary" onClick={onCreate}>New role</Btn>
+      </header>
+        <div aria-label="Filter roles by status" className="workspace-status-filters job-status-toolbar">
           {statusFilters.map((statusFilter) => {
             const count = counts?.[statusFilter.value];
             return (
@@ -75,14 +83,13 @@ export function JobManagementList({
                 onClick={() => onFilterChange(statusFilter.value)}
                 type="button"
               >
-                {statusFilter.label}{count === undefined ? "" : ` ${count}`}
+                <span>{statusFilter.label}</span>{count === undefined ? null : <span className="job-status-count">{count}</span>}
               </button>
             );
           })}
         </div>
-      </div>
 
-      <div className="card overflow-visible">
+      <div className="job-management-list">
         {loading ? <div className="p-5"><SectionLoader rows={3} /></div> : null}
         {!loading && filteredJobs.length === 0 ? (
           <div className="px-5 py-8 text-center">
@@ -103,10 +110,12 @@ export function JobManagementList({
           />
         ))}
       </div>
-      {pagination && onPageChange && pagination.totalPages > 1 ? (
-        <nav aria-label="Job pages" className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
-          <Btn disabled={pagination.page <= 1 || loading} size="sm" variant="ghost" onClick={() => onPageChange(pagination.page - 1)}>Previous</Btn>
-          {pageItems(pagination.page, pagination.totalPages).map((item, index) =>
+      {pagination && onPageChange ? (
+        <footer className="job-pagination">
+          <p aria-live="polite" className="job-pagination-summary">{loading || refreshing ? "Loading roles…" : pagination.total > 0 ? `Showing ${resultStart}–${resultEnd} of ${pagination.total} ${pagination.total === 1 ? "role" : "roles"}` : "No roles to show"}</p>
+          <nav aria-label="Job pages" className="job-pagination-controls">
+          <Btn disabled={pagination.page <= 1 || loading || refreshing} size="sm" variant="ghost" onClick={() => onPageChange(pagination.page - 1)}>Previous</Btn>
+          {pageItems(pagination.page, Math.max(1, pagination.totalPages)).map((item, index) =>
             typeof item === "number" ? (
               <button
                 key={item}
@@ -117,7 +126,7 @@ export function JobManagementList({
                     ? "border-brand bg-brand text-white"
                     : "border-border bg-white text-slate hover:border-brand hover:bg-brand-tint hover:text-brand"
                 }`}
-                disabled={loading}
+                disabled={loading || refreshing}
                 onClick={() => onPageChange(item)}
                 type="button"
               >
@@ -127,10 +136,11 @@ export function JobManagementList({
               <span key={`${item}-${index}`} aria-hidden="true" className="px-1 text-muted">…</span>
             ),
           )}
-          <Btn disabled={!pagination.hasNextPage || loading} size="sm" variant="ghost" onClick={() => onPageChange(pagination.page + 1)}>Next</Btn>
-        </nav>
+          <Btn disabled={!pagination.hasNextPage || loading || refreshing} size="sm" variant="ghost" onClick={() => onPageChange(pagination.page + 1)}>Next</Btn>
+          </nav>
+        </footer>
       ) : null}
-    </>
+    </section>
   );
 }
 
@@ -170,30 +180,21 @@ function JobManagementRow({
 
   return (
     <div
-      className="grid cursor-pointer grid-cols-[40px_minmax(0,1fr)_44px] gap-4 border-b border-border px-5 py-4 transition hover:bg-chalk/60 last:border-b-0 lg:grid-cols-[40px_minmax(0,1fr)_92px_44px] lg:items-center"
+      className="job-management-row"
       onClick={() => onApplications(job)}
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-tint text-brand">
-        <Icon name={job.status === "ACTIVE" ? "checkCircle" : job.status === "DRAFT" ? "edit" : "file"} size={18} />
+      <div aria-hidden="true" className="job-management-icon"><Icon name={job.status === "ACTIVE" ? "file" : job.status === "DRAFT" ? "edit" : "checkCircle"} size={22} /></div>
+      <div className="job-management-copy">
+        <div className="job-management-status"><Tag tone={statusTone(job.status)}>{formatJobStatus(job.status)}</Tag>{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<span>Posted {job.postedAt}</span></div>
+        <button className="job-management-title" onClick={(event) => { event.stopPropagation(); onApplications(job); }} type="button">{job.title}</button>
+        <div className="job-management-meta"><span><Icon name="pin" size={13} />{[job.city === "Location TBC" ? "" : job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"}</span><span><Icon name="calendar" size={13} />{job.date}</span><span><Icon name="pound" size={13} />{formatPay(job)}</span></div>
+        <div className="job-management-skills"><Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag>{job.requiredSkills.slice(0, 4).map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div>
       </div>
-      <div className="min-w-0">
-        <div className="mb-1 flex flex-wrap items-center gap-2">
-          {job.urgent ? <Tag tone="red">Urgent</Tag> : null}
-          <Tag tone={statusTone(job.status)}>{formatJobStatus(job.status)}</Tag>
-          <Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag>
-          <span className="text-xs text-muted">{job.postedAt}</span>
-        </div>
-        <div className="break-words text-[15px] font-semibold leading-5">{job.title}</div>
-        <div className="mt-0.5 break-words text-xs leading-5 text-muted">{[job.city === "Location TBC" ? "" : job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} - {job.date} - {formatPay(job)}</div>
-        {job.requiredSkills.length || job.minExperienceYears != null ? <div className="mt-1 flex flex-wrap gap-1">{job.requiredSkills.slice(0, 4).map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div> : null}
-      </div>
-      <div className="col-start-2 text-left lg:col-start-auto lg:text-center">
-        <div aria-label={applicantCount !== undefined ? `${applicantCount} applicants` : applicationsQuery.isError ? "Applicant count unavailable" : "Loading applicant count"} aria-live="polite" className="font-heading text-[22px] text-brand">
-          {applicantCount ?? (applicationsQuery.isError ? "-" : "...")}
-        </div>
-        <div className="text-xs text-muted">Applicants</div>
-      </div>
-      <div className="relative col-start-3 row-start-1 self-start justify-self-end lg:col-start-auto lg:row-auto lg:self-center" onClick={(event) => event.stopPropagation()}>
+      <button className="job-applicant-action" onClick={(event) => { event.stopPropagation(); onApplications(job); }} type="button">
+        <span aria-label={applicantCount !== undefined ? `${applicantCount} applicants` : applicationsQuery.isError ? "Applicant count unavailable" : "Loading applicant count"} aria-live="polite"><strong>{applicantCount ?? (applicationsQuery.isError ? "-" : "...")}</strong><span>{applicantCount === 1 ? "applicant" : "applicants"}</span></span>
+        <span>Review <Icon name="arrowRight" size={13} /></span>
+      </button>
+      <div className="job-management-menu" onClick={(event) => event.stopPropagation()}>
         <button
           aria-expanded={menuOpen}
           aria-label={`Options for ${job.title}`}

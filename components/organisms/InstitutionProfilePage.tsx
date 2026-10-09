@@ -16,7 +16,7 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
   const goBack = () => ctx.jobId ? go("job-detail", { jobId: ctx.jobId }) : go("bookings");
 
   if (!ctx.institutionId) return <ProfileState title="Choose a school" message="Open a school from a job, booking, or message to view its profile." onBack={goBack} />;
-  if (profileQuery.isLoading) return <div className="app-page"><SectionLoader rows={5} /></div>;
+  if (profileQuery.isLoading) return <div className="app-page profile-page institution-public-profile"><SectionLoader rows={5} /></div>;
   if (!profile) return <ProfileState title="School profile unavailable" message={profileQuery.error?.message || "This profile may be inactive or you may not have permission to view it."} onBack={goBack} onRetry={() => void profileQuery.refetch()} />;
 
   const location = [profile.address, profile.city, profile.county, profile.postalCode].filter(Boolean).join(", ");
@@ -25,10 +25,10 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
   const reviewCount = reviewsQuery.data?.total ?? 0;
 
   return (
-    <div className="app-page">
+    <div className="app-page profile-page institution-public-profile">
       <PageHead title="School profile" subtitle="School information, staffing preferences and verified feedback" actions={<Btn icon="arrowLeft" variant="secondary" onClick={goBack}>{ctx.jobId ? "Back to job" : "Back to bookings"}</Btn>} />
 
-      <section className="relative mb-6 overflow-hidden rounded-[22px] border border-brand-tint-2 bg-[linear-gradient(135deg,#eef9fd_0%,#ffffff_52%,#f8fafc_100%)] shadow-(--shadow)">
+      <section className="profile-hero relative mb-6 overflow-hidden border">
         <div aria-hidden="true" className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-brand/10 blur-3xl" />
         <div className="relative px-5 py-7 sm:px-8 sm:py-9">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
@@ -62,7 +62,7 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
         </div>
       </section>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="profile-detail-grid grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
           <ProfileSection description="What this school looks for when hiring" icon="search" title="Staffing needs">
             <p className="whitespace-pre-line text-[15px] leading-7 text-slate">{profile.staffingNeeds || "This school has not added a public staffing summary yet. School details and preferred cover types are shown below."}</p>
@@ -80,8 +80,8 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
           <ProfileReviewsPanel data={reviewsQuery.data} error={reviewsQuery.error} loading={reviewsQuery.isLoading} />
         </main>
 
-        <aside className="sidebar-panel overflow-hidden xl:sticky xl:top-6">
-          <div className="border-b border-border bg-ink px-6 py-5 text-white">
+        <aside className="profile-overview sidebar-panel overflow-hidden xl:sticky xl:top-6">
+          <div className="border-b border-border px-6 py-5 text-white">
             <div className="flex items-center gap-2 text-base font-semibold"><Icon name="building" size={18} />School overview</div>
             <p className="mt-1 text-xs leading-5 text-white/65">Details to help teachers book with confidence</p>
           </div>
@@ -119,7 +119,7 @@ function ProfileFact({ icon, label, tone, value }: { icon: string; label: string
 }
 
 function ProfileState({ title, message, onBack, onRetry }: { title: string; message: string; onBack: () => void; onRetry?: () => void }) {
-  return <div className="app-page"><div className="card card-pad-lg text-center" role="status"><h1 className="font-heading text-[26px]">{title}</h1><p className="mx-auto mt-2 max-w-[520px] text-sm leading-6 text-muted">{message}</p><div className="mt-5 flex justify-center gap-2">{onRetry ? <Btn variant="secondary" onClick={onRetry}>Try again</Btn> : null}<Btn onClick={onBack}>Back</Btn></div></div></div>;
+  return <div className="app-page profile-page institution-public-profile"><div className="card card-pad-lg text-center" role="status"><h1 className="font-heading text-[26px]">{title}</h1><p className="mx-auto mt-2 max-w-[520px] text-sm leading-6 text-muted">{message}</p><div className="mt-5 flex justify-center gap-2">{onRetry ? <Btn variant="secondary" onClick={onRetry}>Try again</Btn> : null}<Btn onClick={onBack}>Back</Btn></div></div></div>;
 }
 
 function formatMonth(value: string) {

@@ -1,5 +1,7 @@
 "use client";
 
+import { WorkspaceEmptyState } from "./WorkspacePanels";
+
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -61,14 +63,14 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
   const paid = invoices.filter((invoice) => invoice.status === "PAID");
 
   return (
-    <div className="app-page">
+    <div className="app-page billing-page">
       <PageHead
         title="Billing"
         subtitle="Invoices for completed bookings. Each one covers the teacher's pay plus the SupplyEd processing fee."
         actions={<RefreshInvoices query={invoicesQuery} />}
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="billing-metrics mb-6 grid gap-4 sm:grid-cols-3">
         <Stat value={formatPence(sum(outstanding, "totalAmountPence"))} label="Outstanding on this page" />
         <Stat value={outstanding.filter(isOverdue).length} label="Overdue on this page" />
         <Stat value={formatPence(sum(paid, "totalAmountPence"))} label="Paid invoice totals on this page" />
@@ -119,13 +121,13 @@ function TeacherEarnings({ toast }: { toast: ToastFn }) {
   const awaiting = invoices.filter((invoice) => invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE");
 
   return (
-    <div className="app-page">
+    <div className="app-page billing-page">
       <PageHead title="Earnings" subtitle="Schools pay your booking invoices in SupplyEd. Your pay goes straight to your bank account." actions={<RefreshInvoices query={invoicesQuery} />} />
 
       <PayoutSettings />
       <CashOutCard toast={toast} />
 
-      <div className="my-6 grid gap-4 sm:grid-cols-3">
+      <div className="billing-metrics my-6 grid gap-4 sm:grid-cols-3">
         <Stat value={formatPence(sum(paid, "teacherAmountPence"))} label="Pay on paid invoices on this page" />
         <Stat value={formatPence(sum(awaiting, "teacherAmountPence"))} label="Awaiting payment on this page" />
         <Stat value={paid.length} label="Paid bookings on this page" />
@@ -170,9 +172,9 @@ function CashOutCard({ toast }: { toast: ToastFn }) {
 
   return (
     <>
-      <section className="card card-pad-lg mt-4">
+      <section className="cashout-card card card-pad-lg mt-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-[240px] flex-1">
+          <div className="min-w-0 flex-1">
             <div className="text-xs font-semibold uppercase tracking-[1px] text-muted">Available to cash out now</div>
             <div className="mt-1 font-heading text-4xl">{formatPence(balance.instantAvailablePence)}</div>
             <p className="mt-2 text-sm text-muted">
@@ -256,13 +258,13 @@ function AdminPayments({ toast }: { toast: ToastFn }) {
 
   return (
     <>
-      <div className="app-page">
+      <div className="app-page billing-page">
         <PageHead title="Payments" subtitle="Every invoice on the platform. Void unpaid invoices to reissue them; refund paid ones." actions={<RefreshInvoices query={invoicesQuery} />} />
 
         <AdminInvoiceFilters onApply={(value) => { setProfileFilters(value); setPage(1); }} />
         <AdminPayoutLookup />
 
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <div className="billing-metrics mb-6 grid gap-4 sm:grid-cols-3">
           <Stat value={formatPence(sum(paid, "totalAmountPence"))} label="Paid invoice totals on this page" />
           <Stat value={formatPence(sum(paid, "feeAmountPence"))} label="Fees on paid invoices on this page" />
           <Stat value={invoices.filter(isUnpaid).length} label="Unpaid invoices on this page" />
@@ -411,7 +413,7 @@ function AdminInvoiceFilters({ onApply }: { onApply: (filters: ProfileInvoiceFil
   ] as const;
 
   return (
-    <details className="card card-pad mb-4">
+    <details className="invoice-filters card card-pad mb-4">
       <summary className="cursor-pointer text-sm font-semibold">Filter invoices by booking or profile</summary>
       <form className="mt-4" onSubmit={(event) => {
         event.preventDefault();
@@ -457,7 +459,7 @@ function InvoiceList({
 
   return (
     <>
-      <div className="card card-pad mb-4 flex flex-wrap items-center gap-3">
+      <div className="workspace-toolbar card card-pad mb-4 flex flex-wrap items-center gap-3">
         {filters.filter((item) => role === "admin" || item.value !== "pending").map((item) => (
           <Btn key={item.value} size="sm" variant={filter === item.value ? "secondary" : "ghost"} onClick={() => onFilter(item.value)}>
             {item.label}
@@ -499,9 +501,9 @@ function InvoiceRow({ actions, invoice, role }: { actions?: ReactNode; invoice: 
   const amount = role === "teacher" ? invoice.teacherAmountPence : invoice.totalAmountPence;
 
   return (
-    <article className="card card-pad-lg">
+    <article className="invoice-card card card-pad-lg">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-[220px] flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-heading text-xl leading-tight">{invoice.booking.jobTitle}</h3>
             <InvoiceStatusTag invoice={invoice} />
@@ -571,12 +573,7 @@ function isUnpaid(invoice: Invoice) {
 
 
 function EmptyState({ title, message }: { title: string; message: string }) {
-  return (
-    <div className="card card-pad-lg text-center">
-      <div className="font-heading text-[24px]">{title}</div>
-      <p className="mx-auto mt-2 max-w-[460px] text-sm leading-6 text-muted">{message}</p>
-    </div>
-  );
+  return <WorkspaceEmptyState icon="file" message={message} title={title} />;
 }
 
 function notify(toast: ToastFn, result: { message?: string; ok: boolean; requestId?: string }, success: string, failure: string) {

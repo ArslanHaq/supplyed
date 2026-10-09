@@ -23,7 +23,7 @@ type ButtonStyleOptions = {
 };
 
 const variantClass: Record<ButtonVariant, string> = {
-  primary: "border-transparent bg-brand text-white shadow-(--shadow-xs) hover:bg-brand-dark",
+  primary: "border-transparent bg-brand-dark text-white shadow-(--shadow-xs) hover:bg-brand-dark/90",
   secondary: "border-border-strong bg-white text-ink shadow-(--shadow-xs) hover:bg-chalk",
   ghost: "border-transparent bg-transparent text-slate hover:bg-chalk hover:text-ink",
   ink: "border-transparent bg-ink text-white hover:bg-black",
@@ -39,7 +39,7 @@ const sizeClass: Record<ButtonSize, string> = {
 
 export function buttonClassName({ variant = "primary", size = "", className }: ButtonStyleOptions = {}) {
   return cn(
-    "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border text-center font-semibold leading-5 transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+    "ui-button inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border text-center font-semibold leading-5 transition-[background-color,border-color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
     variantClass[variant],
     sizeClass[size],
     className,

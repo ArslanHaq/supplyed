@@ -203,7 +203,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
   }
 
   return (
-    <div className="app-page">
+    <div className="app-page account-security-page">
       <PageHead
         title="Security"
         subtitle={`Protect ${state.signupEmail || "your account"} with an authenticator app and one-time recovery codes.`}
@@ -213,10 +213,10 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
       {pending === "load" ? <SectionLoader rows={4} /> : null}
 
       {pending !== "load" ? (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="security-layout grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-5">
             <section className="card overflow-hidden">
-              <div className="border-b border-border bg-[linear-gradient(135deg,#fff_0%,#f6fbf8_55%,rgb(var(--se-rgb)/0.10)_100%)] px-5 py-5 sm:px-7">
+              <div className="security-card-header border-b border-border px-5 py-5 sm:px-7">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-start gap-3">
                     <span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-tint text-brand">
@@ -234,19 +234,19 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
               </div>
 
               <div className="card-pad-lg">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-border bg-chalk p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Sign-in protection</div>
-                    <div className="mt-2 font-heading text-2xl text-ink">{status?.enabled ? "Active" : "Not active"}</div>
+                <div className="security-metrics grid gap-4 md:grid-cols-2">
+                  <div className="security-metric">
+                    <div className="font-semibold uppercase text-muted">Sign-in protection</div>
+                    <div className="mt-2 font-heading text-ink">{status?.enabled ? "Active" : "Not active"}</div>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       {status?.enabled
                         ? "Login requires an authenticator code or an unused recovery code."
                         : "Start setup, scan the QR code, then confirm the first authenticator code."}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border bg-chalk p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Recovery codes</div>
-                    <div className="mt-2 font-heading text-2xl text-ink">{status?.recoveryCodesRemaining ?? 0}</div>
+                  <div className="security-metric">
+                    <div className="font-semibold uppercase text-muted">Recovery codes</div>
+                    <div className="mt-2 font-heading text-ink">{status?.recoveryCodesRemaining ?? 0}</div>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       Backup codes let you regain access if your authenticator device is unavailable.
                     </p>
