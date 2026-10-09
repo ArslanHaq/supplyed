@@ -1,0 +1,138 @@
+@layer components {
+  .proposal-dialog { display: flex; min-width: 0; max-height: min(calc(90dvh - 2px), 880px); flex-direction: column; overflow: hidden; border-radius: inherit; background: var(--surface); }
+  .proposal-dialog-header { display: flex; flex-shrink: 0; align-items: flex-start; gap: 16px; padding: 28px 32px 24px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .proposal-heading-icon { display: grid; width: 47px; height: 47px; flex: 0 0 auto; place-items: center; border: 1px solid var(--se-tint-2); border-radius: 13px; background: var(--se-tint); color: var(--se-dark); }
+  .proposal-heading-copy { min-width: 0; flex: 1; }
+  .proposal-eyebrow { margin: 0 0 5px; color: var(--se-dark); font-size: 10px; font-weight: 700; letter-spacing: .12em; line-height: 1.4; text-transform: uppercase; }
+  .proposal-heading-copy h2 { margin: 0; color: var(--ink); font-size: 28px; font-weight: 650; letter-spacing: -.045em; line-height: 1.25; }
+  .proposal-close { display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; border: 1px solid var(--border); border-radius: 9px; background: #fff; color: var(--muted); transition: background-color 150ms ease, color 150ms ease; }
+  .proposal-close:hover { background: var(--chalk); color: var(--ink); }
+  .proposal-close:disabled { opacity: .5; cursor: not-allowed; }
+  .proposal-role-context { display: flex; flex-shrink: 0; align-items: center; gap: 13px; padding: 18px 32px; border-bottom: 1px solid var(--border); }
+  .proposal-role-icon { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border: 1px solid var(--border); border-radius: 9px; background: var(--chalk); color: var(--slate); }
+  .proposal-role-context > div { min-width: 0; flex: 1; }
+  .proposal-role-context strong { display: block; color: var(--ink); font-size: 15px; font-weight: 650; line-height: 1.5; overflow-wrap: anywhere; }
+  .proposal-role-context small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  .proposal-dialog-body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 25px 32px 23px; scrollbar-gutter: stable; }
+  .proposal-intro { max-width: 650px; margin: 0 0 22px; color: var(--slate); font-size: 14px; line-height: 1.7; }
+  .proposal-dialog-body .field { margin-bottom: 0; }
+  .proposal-dialog-body .field-label { margin-bottom: 10px; color: var(--graphite); font-size: 13px; font-weight: 650; }
+  .proposal-editor-surface { min-height: 220px; }
+  .proposal-editor-footer { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-top: 12px; }
+  .proposal-format-note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .proposal-format-note.is-error { color: var(--red); font-weight: 550; }
+  .proposal-character-count { flex-shrink: 0; padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--chalk); color: var(--muted); font-size: 11px; line-height: 1.6; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .proposal-character-count strong { color: var(--graphite); font-weight: 650; }
+  .proposal-character-count.is-error { border-color: var(--red); background: var(--red-tint); color: var(--red); }
+  .proposal-dialog-actions { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 24px; padding: 21px 32px; border-top: 1px solid var(--border); background: var(--surface-2); }
+  .proposal-submit-note { display: flex; max-width: 360px; align-items: flex-start; gap: 9px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .proposal-submit-note > svg { flex: 0 0 auto; margin-top: 2px; color: var(--se-dark); }
+  .proposal-action-buttons { display: flex; flex-shrink: 0; gap: 10px; }
+  .proposal-link-panel { padding: 17px 20px; border-bottom: 1px solid var(--border); background: var(--se-tint); }
+  .proposal-link-title { margin: 0 0 12px; color: var(--ink); font-size: 13px; font-weight: 650; }
+  .proposal-link-panel .editor-link-action { height: 40px; background: #fff; font-weight: 600; }
+  .proposal-link-panel .editor-link-action-primary { background: var(--se-dark); color: #fff; }
+
+  @media (max-width: 640px) {
+    .proposal-dialog-header { gap: 12px; padding: 19px 20px 17px; }
+    .proposal-heading-icon { display: none; }
+    .proposal-heading-copy h2 { font-size: clamp(20px, 5.6vw, 23px); }
+    .proposal-eyebrow { font-size: 9px; }
+    .proposal-close { width: 32px; height: 32px; }
+    .proposal-role-context { gap: 11px; padding: 13px 20px; }
+    .proposal-role-context > .tag { display: none; }
+    .proposal-role-context strong { font-size: 14px; }
+    .proposal-role-context small { font-size: 11px; }
+    .proposal-dialog-body { padding: 20px; }
+    .proposal-intro { margin-bottom: 20px; font-size: 13px; line-height: 1.65; }
+    .proposal-editor-footer { flex-wrap: wrap; align-items: center; gap: 8px; }
+    .proposal-format-note { flex-basis: 100%; font-size: 11px; }
+    .proposal-character-count { margin-left: auto; }
+    .proposal-dialog-actions { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 20px; }
+    .proposal-submit-note { max-width: none; font-size: 11px; }
+    .proposal-action-buttons { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
+    .proposal-action-buttons .ui-button { min-width: 0; padding-inline: 12px; white-space: normal; }
+    .proposal-action-buttons .ui-button > span { white-space: normal; }
+    .proposal-link-panel { padding: 16px; }
+  }
+}
+
+/* Quill ships unlayered Snow rules. These narrowly scoped overrides deliberately
+   sit outside a layer so native picker dimensions cannot win by import order. */
+.proposal-editor {
+  min-width: 0;
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  background: #fff;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.proposal-editor:focus-within { border-color: var(--se); box-shadow: 0 0 0 3px rgb(var(--se-rgb) / .1); }
+.proposal-editor[data-invalid="true"] { border-color: var(--red); }
+.proposal-editor > [role="toolbar"] { min-height: 55px; }
+.proposal-editor .ql-toolbar.ql-snow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 0;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 11px 11px 0 0;
+  background: var(--surface-2);
+  font-family: var(--sans);
+}
+.proposal-editor .ql-toolbar.ql-snow::after, .proposal-editor .ql-formats::after { display: none; }
+.proposal-editor .ql-toolbar.ql-snow .ql-formats { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 2px; margin: 0; padding: 0 9px; border-right: 1px solid var(--border); }
+.proposal-editor .ql-toolbar.ql-snow .ql-formats:first-child { padding-left: 0; }
+.proposal-editor .ql-toolbar.ql-snow .ql-formats:last-child { padding-right: 0; border-right: 0; }
+.proposal-editor .ql-toolbar.ql-snow button { display: grid; float: none; width: 34px; height: 34px; padding: 8px; place-items: center; border-radius: 6px; }
+.proposal-editor .ql-toolbar.ql-snow button > svg { float: none; width: 18px; height: 18px; }
+.proposal-editor .ql-toolbar.ql-snow button:hover, .proposal-editor .ql-toolbar.ql-snow button.ql-active { background: var(--se-tint); color: var(--se-dark); }
+.proposal-editor .ql-toolbar.ql-snow button.ql-active .ql-stroke, .proposal-editor .ql-toolbar.ql-snow button:hover .ql-stroke { stroke: var(--se-dark); }
+.proposal-editor .ql-toolbar.ql-snow button.ql-active .ql-fill, .proposal-editor .ql-toolbar.ql-snow button:hover .ql-fill { fill: var(--se-dark); }
+.proposal-editor .ql-toolbar.ql-snow button:focus-visible, .proposal-editor .ql-picker-label:focus-visible, .proposal-editor .ql-picker-item:focus-visible { outline: 2px solid var(--se); outline-offset: 2px; }
+.proposal-editor .ql-snow .ql-picker { flex: 0 0 auto; float: none; height: 34px; color: var(--graphite); font-family: var(--sans); font-size: 12px; font-weight: 550; line-height: 1; }
+.proposal-editor .ql-snow .ql-picker.ql-font { width: 159px; }
+.proposal-editor .ql-snow .ql-picker.ql-size { width: 62px; }
+.proposal-editor .ql-snow .ql-picker.ql-color { width: 34px; }
+.proposal-editor .ql-snow .ql-picker-label { display: flex; align-items: center; width: 100%; padding: 0 25px 0 10px; border: 1px solid transparent; border-radius: 6px; white-space: nowrap; }
+.proposal-editor .ql-snow .ql-picker.ql-font .ql-picker-label, .proposal-editor .ql-snow .ql-picker.ql-size .ql-picker-label { border-color: var(--border); background: #fff; }
+.proposal-editor .ql-snow .ql-picker-label::before { display: block; overflow: hidden; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.proposal-editor .ql-snow .ql-picker.ql-color .ql-picker-label { justify-content: center; padding: 7px; }
+.proposal-editor .ql-snow .ql-picker.ql-color .ql-picker-label svg { width: 19px; height: 19px; }
+.proposal-editor .ql-snow .ql-picker:not(.ql-color-picker):not(.ql-icon-picker) svg { right: 6px; width: 16px; margin-top: -8px; }
+.proposal-editor .ql-snow .ql-picker.ql-expanded .ql-picker-label { border-color: var(--se); color: var(--se-dark); }
+.proposal-editor .ql-snow .ql-picker-options { padding: 7px; border: 1px solid var(--border); border-radius: 9px; background: #fff; box-shadow: 0 9px 28px rgb(20 40 60 / .12); }
+.proposal-editor .ql-snow .ql-picker.ql-expanded .ql-picker-options { z-index: 5; margin-top: 6px; border-color: var(--border); }
+.proposal-editor .ql-snow .ql-picker-options .ql-picker-item { padding: 9px 10px; border-radius: 5px; color: var(--slate); font-size: 12px; line-height: 1.4; }
+.proposal-editor .ql-snow .ql-picker-options .ql-picker-item:hover, .proposal-editor .ql-snow .ql-picker-options .ql-picker-item.ql-selected { background: var(--se-tint); color: var(--se-dark); }
+.proposal-editor .ql-snow .ql-color-picker .ql-picker-options { right: 0; width: 158px; padding: 7px; }
+.proposal-editor .ql-snow .ql-color-picker .ql-picker-item { width: 21px; height: 21px; margin: 3px; padding: 0; border-radius: 4px; }
+.proposal-editor .ql-container.ql-snow { height: auto; min-height: 220px; border: 0; border-radius: 0 0 11px 11px; font-family: var(--sans); font-size: 16px; }
+.proposal-editor .ql-container .ql-editor { min-height: 220px; max-height: 330px; padding: 22px 24px; color: var(--ink); line-height: 1.75; overflow-wrap: anywhere; }
+.proposal-editor .ql-editor.ql-blank::before { left: 24px; right: 24px; color: var(--muted); font-size: 14px; font-style: normal; line-height: 1.8; }
+.proposal-editor .ql-editor p, .proposal-editor .ql-editor ul, .proposal-editor .ql-editor ol { margin-bottom: .65rem; }
+.proposal-editor .ql-editor p:last-child, .proposal-editor .ql-editor ul:last-child, .proposal-editor .ql-editor ol:last-child { margin-bottom: 0; }
+.proposal-editor .ql-editor a { color: var(--se-dark); text-decoration: underline; text-underline-offset: 2px; }
+.proposal-editor .ql-snow .ql-font .ql-picker-label::before, .proposal-editor .ql-snow .ql-font .ql-picker-item::before { content: "SupplyEd Sans"; }
+.proposal-editor .ql-snow .ql-font [data-value="Arial"]::before { content: "Arial"; font-family: Arial, sans-serif; }
+.proposal-editor .ql-snow .ql-font [data-value="Georgia"]::before { content: "Georgia"; font-family: Georgia, serif; }
+.proposal-editor .ql-snow .ql-font [data-value="Times New Roman"]::before { content: "Times New Roman"; font-family: "Times New Roman", serif; }
+
+@media (max-width: 640px) {
+  .proposal-editor .ql-toolbar.ql-snow { gap: 7px 0; padding: 9px 8px; }
+  .proposal-editor .ql-toolbar.ql-snow .ql-formats { padding: 0 6px; }
+  .proposal-editor .ql-toolbar.ql-snow .proposal-font-controls { flex-basis: 100%; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .proposal-editor .ql-snow .ql-picker.ql-font { width: 154px; }
+  .proposal-editor .ql-toolbar.ql-snow .ql-formats:nth-child(2) { padding-left: 0; }
+  .proposal-editor .ql-toolbar.ql-snow button { width: 30px; height: 34px; padding: 6px; }
+  .proposal-editor .ql-toolbar.ql-snow .ql-formats:last-child { padding-right: 0; }
+  .proposal-editor .ql-snow .ql-picker.ql-color { width: 30px; }
+  .proposal-editor .ql-container.ql-snow { min-height: 210px; }
+  .proposal-editor .ql-container .ql-editor { min-height: 210px; max-height: 300px; padding: 18px; }
+  .proposal-editor .ql-editor.ql-blank::before { left: 18px; right: 18px; font-size: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proposal-editor, .proposal-close { transition: none; }
+}

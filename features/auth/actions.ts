@@ -85,7 +85,7 @@ async function readProfileApplicationStatus(role: AppRole | null, accessToken?: 
   if (!accessToken) return "none";
 
   const profilePath =
-    role === "teacher" ? "/instructors/me" : role === "institution" ? "/institutions/me" : role === "individual" ? "/recruiters/me" : null;
+    role === "teacher" ? "/instructors/me" : role === "institution" ? "/institutions/me" : null;
 
   if (!profilePath) return "none";
 
@@ -258,6 +258,12 @@ export async function verifyTwoFactorLoginAction(_previousState: unknown, formDa
 
 export async function signupWithEmailAction(_previousState: unknown, formData: FormData) {
   const input = parseSignupForm(formData);
+
+  if (input.role !== "teacher" && input.role !== "institution") {
+    return actionError("Choose whether you are signing up as a teacher or a school.", {
+      fieldErrors: { role: "Choose an account type." },
+    });
+  }
 
   if (!validateEmail(input.email)) {
     return actionError("Use a valid email address.", {

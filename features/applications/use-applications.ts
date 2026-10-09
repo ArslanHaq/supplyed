@@ -8,7 +8,7 @@ import { queryKeys } from "@/lib/query/keys";
 import { startRouteLoading } from "@/lib/navigation-loading";
 
 import { createApplicationAction, updateApplicationStatusAction } from "./actions";
-import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplicationsQuery, PaginatedApplications } from "./types";
+import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplication, JobApplicationsQuery, PaginatedApplications } from "./types";
 
 type CreateApplicationResult = Awaited<ReturnType<typeof createApplicationAction>>;
 
@@ -25,6 +25,28 @@ export function useJobApplications(jobId: string | undefined, query: JobApplicat
   });
 }
 
+export function useApplication(applicationId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(applicationId),
+    queryFn: () => fetchJson<JobApplication>(`/api/applications/${applicationId}`),
+    queryKey: queryKeys.applications.detail(applicationId ?? ""),
+  });
+}
+
+export function useMyApplications(query: JobApplicationsQuery = {}) {
+  return useQuery({
+    queryFn: () => fetchJson<PaginatedApplications>("/api/applications/me", { query }),
+    queryKey: queryKeys.applications.mine(query),
+  });
+}
+
+export function useActiveJobApplicantCount() {
+  return useQuery({
+    queryFn: () => fetchJson<{ total: number }>("/api/applications/active-jobs/count"),
+    queryKey: queryKeys.applications.activeJobCount(),
+  });
+}
+
 export function useUpdateApplicationStatus(options: UseCreateApplicationOptions = {}) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -35,6 +57,10 @@ export function useUpdateApplicationStatus(options: UseCreateApplicationOptions 
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
+          ...(result.data.status === "HIRED" ? [
+            queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.payments.all }),
+          ] : []),
         ]);
       }
       await options.onSuccess?.(result);

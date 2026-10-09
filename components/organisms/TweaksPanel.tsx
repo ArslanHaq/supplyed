@@ -32,10 +32,10 @@ export function TweaksPanel({
   }
 
   return (
-    <div className="tweaks-panel">
+    <div aria-label="Theme settings" className="tweaks-panel" role="region">
       <div className="mb-3 flex items-center justify-between">
-        <div className="font-serif text-lg">Theme</div>
-        <Btn variant="ghost" size="sm" icon="x" onClick={() => setState((current) => ({ ...current, tweaksOpen: false }))} />
+        <div className="font-heading text-lg">Theme</div>
+        <Btn aria-label="Close theme settings" variant="ghost" size="sm" icon="x" onClick={() => setState((current) => ({ ...current, tweaksOpen: false }))} />
       </div>
 
       <div className="flex items-center gap-2.5">
@@ -68,6 +68,7 @@ export function TweaksPanel({
           title="Custom color"
         >
           <input
+            aria-label="Custom accent color"
             className="absolute inset-0 cursor-pointer opacity-0"
             onChange={(event) => setTweaks((current) => ({ ...current, accent: event.target.value }))}
             type="color"

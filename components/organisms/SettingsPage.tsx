@@ -3,24 +3,26 @@
 import { useMemo, useState } from "react";
 import { City, Country, type ICity } from "country-state-city";
 
+import { usePhoneVerificationPending } from "@/features/auth/use-phone-verification";
 import { useSettingsProfile, useUpdateSettings, useUploadSettingsProfileImage } from "@/features/settings/use-settings";
 import type {
   SettingsInstitutionUpdateInput,
   SettingsInstructorUpdateInput,
   SettingsProfileSnapshot,
-  SettingsRecruiterUpdateInput,
   SettingsUpdateInput,
   SettingsUserUpdateInput,
 } from "@/features/settings/types";
 import type { AppRole, ApplicationStatus, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Checkbox, Field, Icon, Tag } from "../atoms";
-import { PageHead, SectionLoader } from "../molecules";
+import { PageHead, PostcodeLookup, SectionLoader } from "../molecules";
+import { NotificationSettings } from "./NotificationSettings";
+import { PayoutSettings } from "./PayoutSettings";
+import { PhoneVerification } from "../molecules/PhoneVerification";
 
 type SettingsForm = {
   institution: SettingsInstitutionUpdateInput;
   instructor: SettingsInstructorUpdateInput;
-  recruiter: SettingsRecruiterUpdateInput;
   user: SettingsUserUpdateInput;
 };
 
@@ -56,7 +58,7 @@ function profileImageValidationError(file: File) {
 function profileImageUrlForRole(form: SettingsForm, role: AppRole | null | undefined) {
   if (role === "teacher") return form.instructor.imageUrl;
   if (role === "institution") return form.institution.imageUrl;
-  if (role === "individual") return form.recruiter.imageUrl;
+
   return "";
 }
 const countryOptions = Country.getAllCountries().sort((first, second) => first.name.localeCompare(second.name));
@@ -101,18 +103,6 @@ const emptyInstitution: SettingsInstitutionUpdateInput = {
   userRole: "",
 };
 
-const emptyRecruiter: SettingsRecruiterUpdateInput = {
-  address: "",
-  bio: "",
-  city: "",
-  countryCode: "GB",
-  county: "",
-  displayName: "",
-  id: "",
-  imageUrl: "",
-  postalCode: "",
-};
-
 function arrayToText(values: string[]) {
   return values.join(", ");
 }
@@ -137,7 +127,7 @@ function uniqueCities(cities: ICity[]) {
 function roleLabel(role: AppRole | null | undefined) {
   if (role === "teacher") return "Teacher";
   if (role === "institution") return "Institution";
-  if (role === "individual") return "Individual";
+
   return "Account";
 }
 
@@ -156,23 +146,10 @@ function statusTone(status: ApplicationStatus): "green" | "amber" | "red" | "gho
   return "ghost";
 }
 
-function formatDate(value: string | null) {
-  if (!value) return "Not recorded";
-
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return "Not recorded";
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(parsed));
-}
-
 function displayName(snapshot: SettingsProfileSnapshot) {
   if (snapshot.role === "institution") return snapshot.institution?.name || snapshot.user.name;
   if (snapshot.role === "teacher") return snapshot.instructor?.fullName || snapshot.user.name;
-  if (snapshot.role === "individual") return snapshot.recruiter?.displayName || snapshot.user.name;
+
   return snapshot.user.name || snapshot.user.email;
 }
 
@@ -226,22 +203,6 @@ function createForm(snapshot?: SettingsProfileSnapshot): SettingsForm {
           }
         : {}),
     },
-    recruiter: {
-      ...emptyRecruiter,
-      ...(snapshot?.recruiter
-        ? {
-            address: snapshot.recruiter.address,
-            bio: snapshot.recruiter.bio,
-            city: snapshot.recruiter.city,
-            countryCode: snapshot.recruiter.countryCode,
-            county: snapshot.recruiter.county,
-            displayName: snapshot.recruiter.displayName,
-            id: snapshot.recruiter.id,
-            imageUrl: snapshot.recruiter.imageUrl,
-            postalCode: snapshot.recruiter.postalCode,
-          }
-        : {}),
-    },
     user: {
       name: snapshot?.user.name ?? "",
       phone: snapshot?.user.phone ?? "",
@@ -252,16 +213,7 @@ function createForm(snapshot?: SettingsProfileSnapshot): SettingsForm {
 function profileExists(snapshot: SettingsProfileSnapshot, role: AppRole) {
   if (role === "teacher") return Boolean(snapshot.instructor?.id);
   if (role === "institution") return Boolean(snapshot.institution?.id);
-  return Boolean(snapshot.recruiter?.id);
-}
-
-function ReadOnlyLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-chalk px-3 py-2.5">
-      <div className="text-[10px] font-bold uppercase tracking-[1px] text-muted">{label}</div>
-      <div className="mt-1 truncate text-sm font-semibold text-ink">{value}</div>
-    </div>
-  );
+  return false;
 }
 
 function ArrayField({
@@ -388,8 +340,14 @@ function CountryCityFields({
 
 export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "go" | "state" | "toast"> & { verified: boolean }) {
   const profileQuery = useSettingsProfile();
+  const phoneVerificationPending = usePhoneVerificationPending();
   const profile = profileQuery.data;
-  const snapshotKey = JSON.stringify(profile ?? null);
+  const snapshotKey = JSON.stringify(profile ? {
+    ...profile,
+    institution: profile.institution ? { ...profile.institution, imageUrl: undefined } : undefined,
+    instructor: profile.instructor ? { ...profile.instructor, imageUrl: undefined } : undefined,
+    user: { ...profile.user, phone: undefined, phoneVerified: undefined, updatedAt: undefined },
+  } : null);
   const [formCache, setFormCache] = useState<SettingsFormCache>(() => ({
     form: createForm(profile),
     snapshotKey,
@@ -481,28 +439,13 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
     setSubmitError(undefined);
   }
 
-  function updateRecruiter<Field extends keyof SettingsRecruiterUpdateInput>(
-    field: Field,
-    value: SettingsRecruiterUpdateInput[Field],
-  ) {
-    setForm((current) => ({ ...current, recruiter: { ...current.recruiter, [field]: value } }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
-    setSubmitError(undefined);
-  }
-
-  function updateRecruiterCountry(countryCode: string) {
-    setForm((current) => ({ ...current, recruiter: { ...current.recruiter, city: "", countryCode } }));
-    setErrors((current) => ({ ...current, city: undefined, countryCode: undefined }));
-    setSubmitError(undefined);
-  }
-
   function setProfileImageUrl(imageUrl: string | null) {
     const value = imageUrl ?? "";
 
     setForm((current) => {
       if (role === "teacher") return { ...current, instructor: { ...current.instructor, imageUrl: value } };
       if (role === "institution") return { ...current, institution: { ...current.institution, imageUrl: value } };
-      if (role === "individual") return { ...current, recruiter: { ...current.recruiter, imageUrl: value } };
+
       return current;
     });
   }
@@ -521,6 +464,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   }
   function saveSettings(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (phoneVerificationPending) return;
 
     if (!profile || !role) {
       setSubmitError("Profile settings are not ready yet.");
@@ -530,9 +474,10 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
     const payload: SettingsUpdateInput = {
       institution: role === "institution" ? form.institution : undefined,
       instructor: role === "teacher" ? form.instructor : undefined,
-      recruiter: role === "individual" ? form.recruiter : undefined,
+
       role,
-      user: form.user,
+      // Phone changes are committed only by successful SMS verification.
+      user: { ...form.user, phone: profile.user.phone },
     };
 
     updateSettings.mutate(payload);
@@ -564,7 +509,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   }
 
   return (
-    <form className="app-page" noValidate onSubmit={saveSettings}>
+    <form className="app-page account-settings-page" noValidate onSubmit={saveSettings}>
       <PageHead
         title="Settings"
         subtitle={`Manage the account and ${roleLabel(role).toLowerCase()} profile details for ${profile.user.email}.`}
@@ -577,68 +522,95 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
         }
       />
 
-      <div className="two-col">
-        <div className="flex flex-col gap-5">
-          <section className="card card-pad-lg">
-            <div className="mb-5 flex items-start gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
-                <Icon name="user" size={22} />
-              </span>
-              <div>
-                <div className="section-title mb-1">Account</div>
-                <p className="text-sm leading-6 text-muted">Core identity stored on your SupplyED user account.</p>
+      <div className="settings-layout">
+        <aside className="settings-navigation">
+          <div className="settings-navigation-label">Your account</div>
+          <nav aria-label="Settings sections">
+            <a href="#settings-profile"><Icon name="user" size={17} /> My profile</a>
+            {role === "teacher" || role === "institution" ? <a href="#settings-details"><Icon name={role === "teacher" ? "award" : "building"} size={17} /> {role === "teacher" ? "Teaching details" : "School details"}</a> : null}
+            {role === "teacher" && profile.instructor?.id ? <a href="#payout-settings"><Icon name="pound" size={17} /> Payouts</a> : null}
+            {role === "teacher" || role === "institution" ? <a href="#notification-settings"><Icon name="bell" size={17} /> Notifications</a> : null}
+            <button type="button" onClick={() => go("security")}><Icon name="shield" size={17} /> Security <Icon name="arrow" size={14} /></button>
+          </nav>
+          <div className="settings-navigation-note"><Icon name="shield" size={18} /><p>Keep your profile up to date to get the most from your SupplyED workspace.</p></div>
+        </aside>
+        <div className="settings-content">
+        <section className="card card-pad-lg settings-profile" id="settings-profile">
+          <div className="settings-profile-header mb-6 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <Avatar name={displayName(profile)} size="lg" src={profileImageUrl} />
+              <div className="min-w-0">
+                <div className="section-title mb-1">My profile</div>
+                <div className="truncate font-heading text-2xl leading-tight text-ink sm:text-3xl">{displayName(profile)}</div>
+                <p className="mt-1 text-sm leading-6 text-muted">{profile.user.email}</p>
               </div>
             </div>
+            <Btn icon="shield" onClick={() => go("security")} variant="secondary">
+              Manage security
+            </Btn>
+          </div>
 
-            <div className="grid-2">
-              <Field error={errors.name} label="Display name" required>
-                <input
-                  className="input"
-                  onChange={(event) => updateUser("name", event.target.value)}
-                  placeholder="Abdul Waheed"
-                  value={form.user.name}
-                />
-              </Field>
-              <Field label="Email">
-                <input className="input bg-chalk text-muted" readOnly value={profile.user.email} />
-              </Field>
-              <Field error={errors.phone} label="Phone">
-                <input
-                  className="input"
-                  inputMode="tel"
-                  onChange={(event) => updateUser("phone", event.target.value)}
-                  placeholder="+44 7700 000000"
-                  value={form.user.phone}
-                />
-              </Field>
+          <div className="grid-2">
+            <div className="settings-section-heading"><span>01</span><div><h2>Account details</h2><p>Your identity and contact information.</p></div></div>
+            <ProfileImageField
+              disabled={!canSave}
+              error={profileImageError}
+              imageUrl={profileImageUrl}
+              name={displayName(profile)}
+              onFile={uploadProfileImageFile}
+              pending={uploadProfileImage.isPending}
+            />
+            <Field error={errors.name} label="Display name" required>
+              <input
+                className="input"
+                onChange={(event) => updateUser("name", event.target.value)}
+                placeholder="Abdul Waheed"
+                value={form.user.name}
+              />
+            </Field>
+            <Field label="Email">
+              <input className="input bg-chalk text-muted" readOnly value={profile.user.email} />
+            </Field>
+            <div className="sm:col-span-2">
+              <PhoneVerification
+                disabled={updateSettings.isPending}
+                error={errors.phone}
+                onChange={(phone) => updateUser("phone", phone)}
+                phone={form.user.phone}
+                savedPhone={profile.user.phone}
+                verified={profile.user.phoneVerified}
+              />
+              <p className="mb-4 text-xs text-muted">Phone changes take effect after you confirm the SMS code.</p>
             </div>
-          </section>
 
-          {role === "teacher" ? (
-            <section className="card card-pad-lg">
-              <div className="mb-5 flex items-start gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
-                  <Icon name="award" size={22} />
-                </span>
-                <div>
-                  <div className="section-title mb-1">Teacher profile</div>
-                  <p className="text-sm leading-6 text-muted">Teaching, location, rate, and public profile details.</p>
-                </div>
-              </div>
-
-              <div className="grid-2">
+            {role === "teacher" ? (
+              <>
+                <div className="settings-section-heading" id="settings-details"><span>02</span><div><h2>Teaching profile</h2><p>Your location, experience and preferences.</p></div></div>
                 <Field error={errors.fullName} label="Full name" required>
-                  <input className="input" value={form.instructor.fullName} onChange={(event) => updateInstructor("fullName", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstructor("fullName", event.target.value)}
+                    value={form.instructor.fullName}
+                  />
                 </Field>
-                <ProfileImageField
-                  disabled={!canSave}
-                  error={profileImageError}
-                  imageUrl={form.instructor.imageUrl}
-                  name={form.instructor.fullName || displayName(profile)}
-                  onFile={uploadProfileImageFile}
-                  pending={uploadProfileImage.isPending}
-                />                <Field label="Address">
-                  <input className="input" value={form.instructor.address} onChange={(event) => updateInstructor("address", event.target.value)} />
+                <PostcodeLookup
+                  id="settings-instructor-postcode"
+                  label="Postal code"
+                  onChange={(value) => updateInstructor("postalCode", value)}
+                  onSelect={(selection) => {
+                    updateInstructorCountry("GB");
+                    updateInstructor("postalCode", selection.postcode);
+                    if (selection.city) updateInstructor("city", selection.city);
+                    if (selection.county) updateInstructor("county", selection.county);
+                  }}
+                  value={form.instructor.postalCode}
+                />
+                <Field label="Address">
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstructor("address", event.target.value)}
+                    value={form.instructor.address}
+                  />
                 </Field>
                 <CountryCityFields
                   city={form.instructor.city}
@@ -648,70 +620,125 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstructor("city", value)}
                   onCountryChange={updateInstructorCountry}
                 />
-
-                <Field label="Postal code">
-                  <input className="input" value={form.instructor.postalCode} onChange={(event) => updateInstructor("postalCode", event.target.value)} />
-                </Field>
-
+                <div className="settings-section-heading settings-section-heading-small"><span>03</span><div><h2>Work preferences</h2><p>Experience, travel and your preferred rates.</p></div></div>
                 <Field label="Currency">
-                  <input className="input" value={form.instructor.currency} onChange={(event) => updateInstructor("currency", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstructor("currency", event.target.value)}
+                    value={form.instructor.currency}
+                  />
                 </Field>
                 <Field label="Experience">
-                  <input className="input" min={0} type="number" value={form.instructor.experience} onChange={(event) => updateInstructor("experience", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstructor("experience", event.target.value)}
+                    type="number"
+                    value={form.instructor.experience}
+                  />
                 </Field>
                 <Field label="Max travel distance">
-                  <input className="input" min={0} type="number" value={form.instructor.maxTravelDistance} onChange={(event) => updateInstructor("maxTravelDistance", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstructor("maxTravelDistance", event.target.value)}
+                    type="number"
+                    value={form.instructor.maxTravelDistance}
+                  />
                 </Field>
                 <Field label="Hourly rate">
-                  <input className="input" min={0} type="number" value={form.instructor.hourlyRate} onChange={(event) => updateInstructor("hourlyRate", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstructor("hourlyRate", event.target.value)}
+                    type="number"
+                    value={form.instructor.hourlyRate}
+                  />
                 </Field>
                 <Field label="Daily rate">
-                  <input className="input" min={0} type="number" value={form.instructor.dailyRate} onChange={(event) => updateInstructor("dailyRate", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstructor("dailyRate", event.target.value)}
+                    type="number"
+                    value={form.instructor.dailyRate}
+                  />
                 </Field>
-              </div>
-
-              <Field label="Bio">
-                <textarea className="textarea" value={form.instructor.bio} onChange={(event) => updateInstructor("bio", event.target.value)} />
-              </Field>
-              <div className="grid-2">
-                <ArrayField label="Subjects" onChange={(value) => updateInstructor("subjects", value)} placeholder="Mathematics, Physics" value={form.instructor.subjects} />
-                <ArrayField label="Key stages" onChange={(value) => updateInstructor("keyStages", value)} placeholder="KS2, KS3" value={form.instructor.keyStages} />
-                <ArrayField label="Skills" onChange={(value) => updateInstructor("skills", value)} placeholder="Classroom management, SEN" value={form.instructor.skills} />
-              </div>
-            </section>
-          ) : null}
-
-          {role === "institution" ? (
-            <section className="card card-pad-lg">
-              <div className="mb-5 flex items-start gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
-                  <Icon name="building" size={22} />
-                </span>
-                <div>
-                  <div className="section-title mb-1">Institution profile</div>
-                  <p className="text-sm leading-6 text-muted">Organisation, staffing, and safeguarding profile details.</p>
+                <div className="settings-section-heading settings-section-heading-small"><span>04</span><div><h2>About your teaching</h2><p>Help schools understand your expertise.</p></div></div>
+                <div className="sm:col-span-2">
+                  <Field label="Bio">
+                    <textarea
+                      className="textarea"
+                      onChange={(event) => updateInstructor("bio", event.target.value)}
+                      value={form.instructor.bio}
+                    />
+                  </Field>
                 </div>
-              </div>
+                <ArrayField
+                  label="Subjects"
+                  onChange={(value) => updateInstructor("subjects", value)}
+                  placeholder="Mathematics, Physics"
+                  value={form.instructor.subjects}
+                />
+                <ArrayField
+                  label="Key stages"
+                  onChange={(value) => updateInstructor("keyStages", value)}
+                  placeholder="KS2, KS3"
+                  value={form.instructor.keyStages}
+                />
+                <div className="sm:col-span-2">
+                  <ArrayField
+                    label="Skills"
+                    onChange={(value) => updateInstructor("skills", value)}
+                    placeholder="Classroom management, SEN"
+                    value={form.instructor.skills}
+                  />
+                </div>
+              </>
+            ) : null}
 
-              <div className="grid-2">
+            {role === "institution" ? (
+              <>
+                <div className="settings-section-heading" id="settings-details"><span>02</span><div><h2>School details</h2><p>Your organisation and where you are based.</p></div></div>
                 <Field error={errors.schoolName} label="School or organisation" required>
-                  <input className="input" value={form.institution.name} onChange={(event) => updateInstitution("name", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("name", event.target.value)}
+                    value={form.institution.name}
+                  />
                 </Field>
-                <ProfileImageField
-                  disabled={!canSave}
-                  error={profileImageError}
-                  imageUrl={form.institution.imageUrl}
-                  name={form.institution.name || displayName(profile)}
-                  onFile={uploadProfileImageFile}
-                  pending={uploadProfileImage.isPending}
-                />                <Field label="Registration ID">
-                  <input className="input" value={form.institution.registrationId} onChange={(event) => updateInstitution("registrationId", event.target.value)} />
+                <Field label="Registration ID">
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("registrationId", event.target.value)}
+                    value={form.institution.registrationId}
+                  />
                 </Field>
                 <Field error={errors.domain} label="Domain" required>
-                  <input className="input" value={form.institution.domain} onChange={(event) => updateInstitution("domain", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("domain", event.target.value)}
+                    value={form.institution.domain}
+                  />
                 </Field>
+                <PostcodeLookup
+                  id="settings-institution-postcode"
+                  label="Postal code"
+                  onChange={(value) => updateInstitution("postalCode", value)}
+                  onSelect={(selection) => {
+                    updateInstitutionCountry("GB");
+                    updateInstitution("postalCode", selection.postcode);
+                    if (selection.city) updateInstitution("city", selection.city);
+                    if (selection.county) updateInstitution("county", selection.county);
+                  }}
+                  value={form.institution.postalCode}
+                />
                 <Field error={errors.address} label="Address" required>
-                  <input className="input" value={form.institution.address} onChange={(event) => updateInstitution("address", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("address", event.target.value)}
+                    value={form.institution.address}
+                  />
                 </Field>
                 <CountryCityFields
                   city={form.institution.city}
@@ -723,153 +750,84 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstitution("city", value)}
                   onCountryChange={updateInstitutionCountry}
                 />
-
-                <Field label="Postal code">
-                  <input className="input" value={form.institution.postalCode} onChange={(event) => updateInstitution("postalCode", event.target.value)} />
-                </Field>
-
+                <div className="settings-section-heading settings-section-heading-small"><span>03</span><div><h2>Staffing and compliance</h2><p>Your team, hiring needs and safeguarding contacts.</p></div></div>
                 <Field label="Your role">
-                  <input className="input" value={form.institution.userRole} onChange={(event) => updateInstitution("userRole", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("userRole", event.target.value)}
+                    value={form.institution.userRole}
+                  />
                 </Field>
                 <Field label="Typical pupil count">
-                  <input className="input" min={0} type="number" value={form.institution.typicalPupilCount} onChange={(event) => updateInstitution("typicalPupilCount", event.target.value)} />
+                  <input
+                    className="input"
+                    min={0}
+                    onChange={(event) => updateInstitution("typicalPupilCount", event.target.value)}
+                    type="number"
+                    value={form.institution.typicalPupilCount}
+                  />
                 </Field>
                 <Field label="Compliance contact">
-                  <input className="input" value={form.institution.complianceContact} onChange={(event) => updateInstitution("complianceContact", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("complianceContact", event.target.value)}
+                    value={form.institution.complianceContact}
+                  />
                 </Field>
                 <Field error={errors.complianceEmail} label="Compliance email">
-                  <input className="input" value={form.institution.complianceEmail} onChange={(event) => updateInstitution("complianceEmail", event.target.value)} />
+                  <input
+                    className="input"
+                    onChange={(event) => updateInstitution("complianceEmail", event.target.value)}
+                    value={form.institution.complianceEmail}
+                  />
                 </Field>
-              </div>
-
-              <Field label="Staffing needs">
-                <textarea className="textarea" value={form.institution.staffingNeeds} onChange={(event) => updateInstitution("staffingNeeds", event.target.value)} />
-              </Field>
-              <ArrayField label="Cover types" onChange={(value) => updateInstitution("coverTypes", value)} placeholder="Same-day cover, Long-term roles" value={form.institution.coverTypes} />
-              <Checkbox
-                checked={form.institution.safeguardingConfirmed}
-                label="Safeguarding responsibility confirmed"
-                onChange={(value) => updateInstitution("safeguardingConfirmed", value)}
-              />
-            </section>
-          ) : null}
-
-          {role === "individual" ? (
-            <section className="card card-pad-lg">
-              <div className="mb-5 flex items-start gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-tint text-brand">
-                  <Icon name="heart" size={22} />
-                </span>
-                <div>
-                  <div className="section-title mb-1">Individual profile</div>
-                  <p className="text-sm leading-6 text-muted">Hiring profile, public name, and location details.</p>
+                <div className="sm:col-span-2">
+                  <Field label="Staffing needs">
+                    <textarea
+                      className="textarea"
+                      onChange={(event) => updateInstitution("staffingNeeds", event.target.value)}
+                      value={form.institution.staffingNeeds}
+                    />
+                  </Field>
                 </div>
-              </div>
-
-              <div className="grid-2">
-                <Field error={errors.displayName} label="Display name" required>
-                  <input className="input" value={form.recruiter.displayName} onChange={(event) => updateRecruiter("displayName", event.target.value)} />
-                </Field>
-                <ProfileImageField
-                  disabled={!canSave}
-                  error={profileImageError}
-                  imageUrl={form.recruiter.imageUrl}
-                  name={form.recruiter.displayName || displayName(profile)}
-                  onFile={uploadProfileImageFile}
-                  pending={uploadProfileImage.isPending}
-                />                <Field label="Address">
-                  <input className="input" value={form.recruiter.address} onChange={(event) => updateRecruiter("address", event.target.value)} />
-                </Field>
-                <CountryCityFields
-                  city={form.recruiter.city}
-                  cityError={errors.city}
-                  countryCode={form.recruiter.countryCode}
-                  countryError={errors.countryCode}
-                  onCityChange={(value) => updateRecruiter("city", value)}
-                  onCountryChange={updateRecruiterCountry}
-                />
-
-                <Field label="Postal code">
-                  <input className="input" value={form.recruiter.postalCode} onChange={(event) => updateRecruiter("postalCode", event.target.value)} />
-                </Field>
-
-              </div>
-
-              <Field label="Bio">
-                <textarea className="textarea" value={form.recruiter.bio} onChange={(event) => updateRecruiter("bio", event.target.value)} />
-              </Field>
-            </section>
-          ) : null}
-
-          {submitError ? (
-            <div className="rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
-              {submitError}
-            </div>
-          ) : null}
-
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Btn onClick={() => go("dashboard")} variant="ghost">
-              Cancel
-            </Btn>
-            <Btn disabled={!canSave} iconRight="check" loading={updateSettings.isPending} loadingLabel="Saving" size="lg" type="submit">
-              Save settings
-            </Btn>
+                <div className="sm:col-span-2">
+                  <ArrayField
+                    label="Cover types"
+                    onChange={(value) => updateInstitution("coverTypes", value)}
+                    placeholder="Same-day cover, Long-term roles"
+                    value={form.institution.coverTypes}
+                  />
+                </div>
+                <div className="sm:col-span-2 rounded-lg border border-border bg-chalk px-4 py-3">
+                  <Checkbox
+                    checked={form.institution.safeguardingConfirmed}
+                    label="Safeguarding responsibility confirmed"
+                    onChange={(value) => updateInstitution("safeguardingConfirmed", value)}
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
+        </section>
+
+        {role === "teacher" && profile.instructor?.id ? <div className="mt-6"><PayoutSettings /></div> : null}
+        {role === "teacher" || role === "institution" ? <div className="mt-6"><NotificationSettings role={role} toast={toast} /></div> : null}
+
+        {submitError ? (
+          <div className="mt-5 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
+            {submitError}
+          </div>
+        ) : null}
+
+        <div className="settings-save-bar mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Btn onClick={() => go("dashboard")} variant="ghost">
+            Cancel
+          </Btn>
+          <Btn disabled={!canSave || phoneVerificationPending} iconRight="check" loading={updateSettings.isPending} loadingLabel="Saving" size="lg" type="submit">
+            Save settings
+          </Btn>
         </div>
-
-        <aside className="flex flex-col gap-5">
-          <section className="card card-pad-lg">
-            <div className="flex items-start gap-3">
-              <Avatar name={displayName(profile)} src={profileImageUrl} />
-              <div className="min-w-0">
-                <div className="truncate font-serif text-2xl leading-tight">{displayName(profile)}</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Tag tone="ghost">{roleLabel(role)}</Tag>
-                  <Tag tone={statusTone(profile.applicationStatus)}>{statusLabel(profile.applicationStatus)}</Tag>
-                  {verified ? <Tag tone="green">Verified</Tag> : null}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-3">
-              <ReadOnlyLine label="Email status" value={profile.user.emailVerified ? "Verified" : "Not verified"} />
-              <ReadOnlyLine label="Phone status" value={profile.user.phoneVerified ? "Verified" : "Not verified"} />
-              <ReadOnlyLine label="Two-factor" value={profile.user.twoFactorEnabled ? "Enabled" : "Disabled"} />
-              <ReadOnlyLine label="Last login" value={formatDate(profile.user.lastLogin)} />
-              <ReadOnlyLine label="Updated" value={formatDate(profile.user.updatedAt)} />
-            </div>
-
-            <Btn className="mt-5 w-full" icon="shield" onClick={() => go("security")} variant="secondary">
-              Manage two-factor
-            </Btn>
-          </section>
-
-          <section className="card card-pad-lg">
-            <div className="section-title mb-4">Profile record</div>
-            <div className="grid gap-3">
-              {role === "teacher" ? (
-                <>
-                  <ReadOnlyLine label="DBS verified" value={profile.instructor?.dbsVerified ? "Yes" : "No"} />
-                  <ReadOnlyLine label="Rating" value={profile.instructor?.ratingAverage ? `${profile.instructor.ratingAverage} from ${profile.instructor.ratingCount} reviews` : "No rating"} />
-                </>
-              ) : null}
-
-              {role === "institution" ? (
-                <>
-                  <ReadOnlyLine label="Verified" value={profile.institution?.verified ? "Yes" : "No"} />
-                  <ReadOnlyLine label="Created" value={formatDate(profile.institution?.createdAt ?? null)} />
-                </>
-              ) : null}
-
-              {role === "individual" ? (
-                <>
-                  <ReadOnlyLine label="Created" value={formatDate(profile.recruiter?.createdAt ?? null)} />
-                  <ReadOnlyLine label="Updated" value={formatDate(profile.recruiter?.updatedAt ?? null)} />
-                </>
-              ) : null}
-            </div>
-          </section>
-        </aside>
+        </div>
       </div>
     </form>
   );

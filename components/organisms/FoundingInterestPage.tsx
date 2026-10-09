@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 import { buttonClassName, Icon, Tag } from "@/components/atoms";
-import { PublicThemeControls } from "@/components/molecules";
 
 import { FoundingInterestForm } from "./FoundingInterestForm";
 import {
@@ -165,7 +164,7 @@ const teacherContent: PageContent = {
   ],
   secondaryCta: "See founding benefits",
   steps: [
-    { title: "Register your interest", copy: "Tell us your role, location, phase, and availability." },
+    { title: "Register your interest", copy: "Share your contact details, role, and teaching phase. No account is needed." },
     { title: "Get verified, on us", copy: "Before launch, founding members complete the full safer-recruitment check set." },
     { title: "Go live at launch", copy: "Your verified profile is live from day one with founding benefits noted." },
   ],
@@ -175,14 +174,10 @@ function contentFor(type: FoundingInterestType) {
   return type === "TEACHER" ? teacherContent : schoolContent;
 }
 
-function themedGlowStyle(color: string): CSSProperties {
+function themedCardStyle(color: string): CSSProperties {
   return {
-    borderColor: `color-mix(in srgb, ${color} 24%, var(--border))`,
-    boxShadow: [
-      `0 0 0 1px color-mix(in srgb, ${color} 14%, transparent)`,
-      `0 18px 44px color-mix(in srgb, ${color} 10%, transparent)`,
-      "0 1px 2px rgba(10, 10, 10, 0.04)",
-    ].join(", "),
+    borderColor: "var(--border)",
+    borderTop: `3px solid ${color}`,
   };
 }
 
@@ -192,38 +187,36 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
   const registrationFormId = `${registrationAnchorId}-form`;
 
   return (
-    <div className="overflow-x-hidden bg-white">
+    <div className="marketing-page marketing-founding bg-white">
       <PublicHeader active={type === "SCHOOL" ? "founding-schools" : "founding-teachers"} />
 
-      <section className="relative overflow-hidden bg-[#0a0a0a] px-4 py-14 text-white sm:px-6 sm:py-16 lg:px-12 lg:py-20">
-        <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.06)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.06)_1px,transparent_1px)] bg-[length:56px_56px]" />
+      <main>
+      <section className="marketing-hero marketing-founding-hero">
         <div
-          className="relative mx-auto grid max-w-[1440px] grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,640px)_minmax(440px,1fr)]"
-          style={{ columnGap: "clamp(72px, 7vw, 150px)" }}
+          className="supplyed-content-wrap marketing-hero-grid"
         >
-          <div className="max-w-[640px]">
-            <div className="eyebrow mb-6">{content.heroEyebrow}</div>
-            <h1 className="font-serif text-4xl leading-[1.04] sm:text-5xl lg:text-[64px]">{content.heroTitle}</h1>
+          <div className="marketing-hero-copy">
+            <div className="marketing-announcement"><span aria-hidden="true" />{content.heroEyebrow}</div>
+            <h1>{content.heroTitle}</h1>
             <p className="mb-8 mt-5 max-w-[590px] text-base leading-[1.7] text-white/70 sm:mb-9 sm:mt-6 sm:text-[17px]">
               {content.heroCopy}
             </p>
-            <div className="mb-12 flex flex-wrap gap-3">
+            <div className="marketing-hero-actions">
               <Link className={buttonClassName({ size: "xl" })} href={`#${registrationAnchorId}`}>
                 {content.primaryCta}
               </Link>
               <Link
-                className={buttonClassName({ variant: "secondary", size: "xl" })}
+                className={buttonClassName({ variant: "secondary", size: "xl", className: "marketing-button-light" })}
                 href="#programme"
-                style={{ background: "transparent", borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
               >
                 {content.secondaryCta}
               </Link>
             </div>
             {content.stats ? (
-              <div className="grid grid-cols-2 gap-5 sm:grid-cols-4 sm:gap-6">
+              <div className="marketing-founding-stats">
                 {content.stats.map(([value, label]) => (
                   <div key={label}>
-                    <div className="font-serif text-[28px]">{value}</div>
+                    <div className="font-heading text-[28px]">{value}</div>
                     <div className="text-xs uppercase tracking-[1px] text-white/50">{label}</div>
                   </div>
                 ))}
@@ -231,18 +224,17 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
             ) : null}
           </div>
 
-          <aside className="relative overflow-hidden rounded-xl border border-border bg-white p-5 text-ink shadow-[0_40px_80px_rgba(0,0,0,0.4)] sm:p-7">
-            <div className="absolute right-0 top-0 h-32 w-32 -translate-y-12 translate-x-10 rounded-full bg-brand-tint" />
+          <aside className="marketing-founding-aside">
             <div className="relative">
-              <div className="label-xs text-brand">Verified marketplace</div>
-              <h2 className="mt-2 max-w-[410px] font-serif text-3xl leading-[1.04] sm:text-[38px]">
+              <div className="marketing-aside-label"><Icon name="shield" size={18} /> Verified marketplace</div>
+              <h2 className="mt-2 max-w-[410px] font-heading text-3xl leading-[1.04] sm:text-[38px]">
                 The right teacher, right now.
               </h2>
               <p className="mt-3 max-w-[440px] text-sm leading-6 text-muted">{content.rightCardCopy}</p>
 
               <div className="mt-6 grid gap-3">
                 {content.rightCardRows.map((row, index) => (
-                  <div key={row.title} className="grid grid-cols-[auto_1fr] items-start gap-3 border-b border-border pb-3 last:border-b-0 last:pb-0">
+                  <div key={row.title} className="marketing-founding-row grid grid-cols-[auto_1fr] items-start gap-3 border-b border-border pb-3 last:border-b-0 last:pb-0">
                     <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-chalk text-brand">
                       <Icon name={row.icon} size={21} />
                     </span>
@@ -284,20 +276,20 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
 
       {type === "TEACHER" ? <FoundingTeacherTrustStrip /> : null}
 
-      <section id="programme" className="bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
+      <section id="programme" className="marketing-section bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
         <div className="mx-auto max-w-[1200px]">
-          <div className="mb-10 text-center">
+          <div className="marketing-section-intro mb-10">
             <div className="eyebrow">{content.formBadge}</div>
-            <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">{content.programmeTitle}</h2>
+            <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">{content.programmeTitle}</h2>
             <p className="mt-2 text-muted">{content.programmeSubtitle}</p>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             {content.benefits.map((benefit) => (
-              <article key={benefit.title} className="card card-pad-lg" style={themedGlowStyle(content.accent)}>
+              <article key={benefit.title} className="marketing-benefit-card card card-pad-lg" style={themedCardStyle(content.accent)}>
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-tint text-brand">
                   <Icon name={benefit.icon} size={24} />
                 </div>
-                <h3 className="font-serif text-2xl leading-tight">{benefit.title}</h3>
+                <h3 className="font-heading text-2xl leading-tight">{benefit.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-muted">{benefit.copy}</p>
               </article>
             ))}
@@ -314,20 +306,20 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
         </>
       ) : null}
 
-      <section className="border-y border-border bg-chalk px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
+      <section className="marketing-steps-section border-y border-border bg-chalk px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
         <div className="mx-auto max-w-[1120px]">
           <div className="mb-10 text-center">
             <div className="eyebrow">How it works</div>
-            <h2 className="mt-2.5 font-serif text-3xl sm:text-4xl">{content.howItWorksTitle}</h2>
+            <h2 className="mt-2.5 font-heading text-3xl sm:text-4xl">{content.howItWorksTitle}</h2>
             <p className="mx-auto mt-2 max-w-[620px] text-muted">{content.howItWorksSubtitle}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {content.steps.map((step, index) => (
-              <div key={step.title} className="rounded-xl border border-border bg-white p-6 shadow-(--shadow-xs)">
-                <span className="mb-5 flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
-                  {index + 1}
+              <div key={step.title} className="marketing-step-card">
+                <span className="marketing-step-number">
+                  0{index + 1}
                 </span>
-                <h3 className="font-serif text-xl leading-tight">{step.title}</h3>
+                <h3 className="font-heading text-xl leading-tight">{step.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-muted">{step.copy}</p>
               </div>
             ))}
@@ -339,14 +331,13 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
       {type === "TEACHER" ? <FoundingTeacherFaqSection /> : null}
 
       <div id="register" className="h-0 scroll-mt-24" aria-hidden="true" />
-      <section id={registrationAnchorId} className="scroll-mt-24 bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
+      <section id={registrationAnchorId} className="marketing-registration marketing-section scroll-mt-24 bg-white">
         <div
-          className="mx-auto grid max-w-[1440px] items-center gap-8 lg:grid-cols-[minmax(0,590px)_minmax(460px,1fr)]"
-          style={{ columnGap: "clamp(72px, 7vw, 160px)" }}
+          className="supplyed-content-wrap marketing-registration-grid marketing-registration-grid-long"
         >
           <div className="max-w-[590px]">
             <Tag className="mb-5">{content.formBadge}</Tag>
-            <h2 className="font-serif text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">{content.ctaTitle}</h2>
+            <h2 className="font-heading text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">{content.ctaTitle}</h2>
             <p className="mt-4 max-w-[520px] text-base leading-7 text-muted">{content.ctaCopy}</p>
             <div className="mt-6 grid gap-4 text-sm leading-6 text-muted sm:text-[15px]">
               {content.formBullets.map((point) => (
@@ -360,15 +351,15 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
             </div>
           </div>
 
-          <FoundingInterestForm campaign={campaign} id={registrationFormId} source={source} type={type} />
+          <FoundingInterestForm campaign={campaign} id={registrationFormId} key={type} source={source} type={type} />
         </div>
       </section>
 
-      <section className="border-t border-border bg-[#0a0a0a] px-4 py-14 text-center text-white sm:px-6 sm:py-16 lg:px-12">
+      <section className="marketing-share-section border-t border-border px-4 py-14 sm:px-6 sm:py-16 lg:px-12">
         <div className="mx-auto max-w-[820px]">
           <Tag className="mb-5">QR-ready page</Tag>
-          <h2 className="font-serif text-4xl leading-[1.05] sm:text-5xl">Share this page from events, flyers, and email.</h2>
-          <p className="mx-auto mt-5 max-w-[560px] text-base leading-7 text-white/65">
+          <h2 className="font-heading text-4xl leading-[1.05] sm:text-5xl">Share this page from events, flyers, and email.</h2>
+          <p className="mx-auto mt-5 max-w-[560px] text-base leading-7 text-muted">
             Use the page URL directly in QR codes. Add source and campaign query strings when you need attribution.
           </p>
           <div className="mt-8">
@@ -379,7 +370,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
         </div>
       </section>
 
-      <PublicThemeControls />
+      </main>
     </div>
   );
 }

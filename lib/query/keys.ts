@@ -1,16 +1,27 @@
 export const queryKeys = {
   applications: {
     all: ["applications"] as const,
+    activeJobCount: () => [...queryKeys.applications.all, "active-job-count"] as const,
     byJob: (jobId: string, filters?: Record<string, unknown>) =>
       [...queryKeys.applications.all, "job", jobId, filters ?? {}] as const,
+    detail: (applicationId: string) => [...queryKeys.applications.all, "detail", applicationId] as const,
+    mine: (filters?: Record<string, unknown>) => [...queryKeys.applications.all, "mine", filters ?? {}] as const,
   },
   auth: {
     all: ["auth"] as const,
     me: () => [...queryKeys.auth.all, "me"] as const,
   },
-  documentRequirements: {
-    all: ["document-requirements"] as const,
-    application: () => [...queryKeys.documentRequirements.all, "application"] as const,
+  bookings: {
+    all: ["bookings"] as const,
+    mine: (filters?: Record<string, unknown>) => [...queryKeys.bookings.all, "mine", filters ?? {}] as const,
+  },
+  conversations: {
+    all: ["conversations"] as const,
+    forApplication: (applicationId: string) => [...queryKeys.conversations.all, "application", applicationId] as const,
+    list: () => [...queryKeys.conversations.all, "list"] as const,
+    messages: (conversationId: string) => [...queryKeys.conversations.all, "messages", conversationId] as const,
+    typing: (conversationId: string) => [...queryKeys.conversations.all, "typing", conversationId] as const,
+    unread: () => [...queryKeys.conversations.all, "unread"] as const,
   },
   jobs: {
     all: ["jobs"] as const,
@@ -25,10 +36,34 @@ export const queryKeys = {
     recommendedJobs: (query?: Record<string, unknown>) => [...queryKeys.matching.all, "recommended-jobs", query ?? {}] as const,
     score: (jobId: string) => [...queryKeys.matching.all, "score", jobId] as const,
   },
+  notifications: {
+    all: ["notifications"] as const,
+    list: () => [...queryKeys.notifications.all, "list"] as const,
+    preferences: () => [...queryKeys.notifications.all, "preferences"] as const,
+    recent: (limit?: number) => [...queryKeys.notifications.all, "recent", ...(limit ? [limit] : [])] as const,
+    unread: () => [...queryKeys.notifications.all, "unread"] as const,
+  },
   onboarding: {
     all: ["onboarding"] as const,
     current: () => [...queryKeys.onboarding.all, "current"] as const,
     documentRequirements: (role: string) => [...queryKeys.onboarding.all, "document-requirements", role] as const,
+  },
+  payments: {
+    all: ["payments"] as const,
+    balance: () => [...queryKeys.payments.all, "balance"] as const,
+    allInvoices: (filters?: Record<string, unknown>) => [...queryKeys.payments.all, "invoices", "all", filters ?? {}] as const,
+    myInvoices: (filters?: Record<string, unknown>) => [...queryKeys.payments.all, "invoices", "mine", filters ?? {}] as const,
+    payoutAccount: () => [...queryKeys.payments.all, "payout-account"] as const,
+  },
+  publicProfiles: {
+    all: ["public-profiles"] as const,
+    institution: (id: string) => [...queryKeys.publicProfiles.all, "institution", id] as const,
+    instructor: (id: string) => [...queryKeys.publicProfiles.all, "instructor", id] as const,
+  },
+  reviews: {
+    all: ["reviews"] as const,
+    institution: (institutionId: string) => [...queryKeys.reviews.all, "institution", institutionId] as const,
+    instructor: (instructorId: string) => [...queryKeys.reviews.all, "instructor", instructorId] as const,
   },
   settings: {
     all: ["settings"] as const,
@@ -37,6 +72,7 @@ export const queryKeys = {
   teachers: {
     all: ["teachers"] as const,
     detail: (id: string) => [...queryKeys.teachers.all, "detail", id] as const,
+    directory: (filters?: Record<string, unknown>) => [...queryKeys.teachers.all, "directory", filters ?? {}] as const,
     list: (filters?: Record<string, unknown>) => [...queryKeys.teachers.all, "list", filters ?? {}] as const,
   },
 };

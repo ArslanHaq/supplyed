@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
+import { formatCodeResendCountdown, secondsUntilCodeResend } from "@/lib/code-resend-cooldown";
+
 import { Btn, Field, Icon, Logo } from "../atoms";
+import { AuthProgress } from "./AuthProgress";
 
 type VerifyErrors = Partial<Record<"code", string>>;
 type VerifyPending = "verify" | "resend" | null;
@@ -40,7 +43,7 @@ export function SignupVerifyPage({
         return;
       }
 
-      setResendRemainingSeconds(Math.max(0, Math.ceil((resendAvailableAt - Date.now()) / 1000)));
+      setResendRemainingSeconds(secondsUntilCodeResend(resendAvailableAt));
     }
 
     syncResendTimer();
@@ -50,12 +53,6 @@ export function SignupVerifyPage({
 
     return () => window.clearInterval(timer);
   }, [resendAvailableAt]);
-
-  function formatCountdown(seconds: number) {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-  }
 
   function validate() {
     if (codeValue.length !== 6) {
@@ -129,9 +126,9 @@ export function SignupVerifyPage({
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-chalk lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-      <aside className="relative flex min-h-[330px] flex-col justify-between overflow-hidden bg-[#0a0a0a] px-5 py-7 text-white sm:px-8 sm:py-10 lg:min-h-screen lg:px-14 lg:py-16">
-        <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:54px_54px]" />
+    <div className="auth-shell">
+      <aside className="auth-aside">
+        <div className="auth-aside-rule" aria-hidden="true" />
         <div className="relative flex items-center justify-between gap-4">
           <Logo size={22} className="text-white" onClick={onLanding} />
           <Btn className="border-white/15 text-white hover:bg-white/10 hover:text-white" variant="ghost" size="sm" onClick={onLogin}>
@@ -139,32 +136,33 @@ export function SignupVerifyPage({
           </Btn>
         </div>
 
-        <div className="relative my-12 max-w-[500px] lg:my-0">
-          <div className="eyebrow mb-5 text-brand">Verify email</div>
-          <h1 className="font-serif text-4xl leading-[1.05] sm:text-5xl lg:text-[54px]">
+        <div className="auth-story">
+          <div className="eyebrow">Verify email</div>
+          <h1 className="font-heading text-white">
             Confirm the email,
-            <br />
+            <br />{" "}
             then continue setup.
           </h1>
-          <p className="mt-5 text-base leading-7 text-white/65">
+          <p className="auth-story-description">
             Verification protects the account before profile, learner, or compliance details are collected.
           </p>
         </div>
 
-        <div className="relative text-xs text-white/40">Step 2 of 3 - Verification</div>
+        <div className="auth-aside-footer">Step 2 of 3 - Verification</div>
       </aside>
 
-      <section className="flex min-h-[calc(100vh-330px)] items-center justify-center px-4 py-8 sm:px-6 lg:min-h-screen lg:px-12 lg:py-16">
-        <div className="w-full max-w-[460px]">
-          <div className="mb-7">
+      <section className="auth-main">
+        <div className="auth-main-inner">
+          <AuthProgress current={2} />
+          <div className="auth-form-heading">
             <div className="eyebrow mb-2 text-brand">Email code</div>
-            <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">Enter your 6-digit code.</h2>
+            <h2 className="font-heading">Enter your 6-digit code.</h2>
             <p className="mt-3 text-muted">
               We sent a verification code to <span className="font-semibold text-ink">{email || "your email"}</span>.
             </p>
           </div>
 
-          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
+          <form className="auth-form" method="post" noValidate onSubmit={handleSubmit}>
             {notice ? (
               <div className="mb-5 rounded-lg border border-warning/30 bg-warning-tint p-4 text-sm leading-6 text-warning">
                 {notice}
@@ -172,7 +170,7 @@ export function SignupVerifyPage({
             ) : null}
 
             <Field label="Verification code" error={errors.code} required>
-              <div className="grid grid-cols-6 gap-2 sm:gap-3">
+              <div className="auth-code-grid">
                 {code.map((digit, index) => (
                   <input
                     key={index}
@@ -180,7 +178,9 @@ export function SignupVerifyPage({
                       codeRefs.current[index] = node;
                     }}
                     aria-label={`Verification digit ${index + 1}`}
-                    className="input h-12 p-0 text-center text-lg font-semibold sm:h-14 sm:text-xl"
+                    aria-invalid={Boolean(errors.code)}
+                    autoComplete={index === 0 ? "one-time-code" : "off"}
+                    className="input auth-code-input"
                     disabled={Boolean(pending)}
                     inputMode="numeric"
                     maxLength={1}
@@ -194,7 +194,7 @@ export function SignupVerifyPage({
             </Field>
 
             <div className="mb-6 rounded-lg bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
-              Codes are validated by SupplyED before your workspace session is created. Request a new code after the current one expires.
+              Codes are validated by SupplyED before your workspace session is created. You can request another code every 60 seconds.
             </div>
 
             <Btn className="w-full" loading={pending === "verify"} loadingLabel="Verifying email" size="lg" type="submit" iconRight="arrow">
@@ -212,13 +212,13 @@ export function SignupVerifyPage({
                 variant="secondary"
                 onClick={resendCode}
               >
-                {resendLocked ? `Resend in ${formatCountdown(resendRemainingSeconds)}` : "Resend code"}
+                {resendLocked ? `Resend in ${formatCodeResendCountdown(resendRemainingSeconds)}` : "Resend code"}
               </Btn>
             </div>
 
             {resendLocked ? (
               <p className="mt-3 text-center text-xs text-muted" aria-live="polite">
-                You can request a new code when this one expires.
+                The resend option becomes available again after 60 seconds.
               </p>
             ) : null}
 

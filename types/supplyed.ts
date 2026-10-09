@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 export type Tone = "" | "purple" | "amber" | "green";
 export type ApplicationStage = "applied" | "shortlisted" | "interview" | "hired";
 export type MessageAuthor = "me" | "them";
-export type AppRole = "institution" | "teacher" | "individual";
+export type AppRole = "admin" | "institution" | "teacher";
 export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
 export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
 export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED";
@@ -13,10 +13,12 @@ export type AppPage =
   | "dashboard"
   | "post-job"
   | "applications"
+  | "bookings"
   | "find-teachers"
   | "find-jobs"
   | "job-detail"
   | "teacher-profile"
+  | "institution-profile"
   | "messaging"
   | "calendar"
   | "settings"
@@ -44,6 +46,7 @@ export type Teacher = {
 
 export type Job = {
   id: string;
+  institution?: { id: string; imageUrl: string | null; name: string } | null;
   title: string;
   postedByUserId?: string;
   description?: string;
@@ -98,7 +101,10 @@ export type Message = {
 };
 
 export type RouteContext = {
+  applicationId?: string;
+  institutionId?: string;
   jobId?: string;
+  search?: string;
   teacherId?: string;
 };
 

@@ -29,7 +29,7 @@ import type {
   OnboardingInstitutionSnapshot,
   OnboardingProfileSnapshot,
   OnboardingProgressResult,
-  OnboardingRecruiterSnapshot,
+  SignatoryApprovalSnapshot,
   OnboardingSubmitResult,
   OnboardingUserSnapshot,
 } from "./types";
@@ -76,20 +76,18 @@ type InstitutionProfilePayload = {
   coverTypes?: string[];
   county?: string;
   domain: string;
+  institutionType: "MAT_SCHOOL" | "SINGLE_SCHOOL";
   name: string;
   postalCode?: string;
   registrationId?: string;
   safeguardingConfirmed?: boolean;
   staffingNeeds?: string;
   typicalPupilCount?: number;
+  trust?: {
+    companyNumber?: string;
+    name: string;
+  };
   userRole?: string;
-};
-
-type RecruiterProfilePayload = {
-  city?: string;
-  countryCode?: string;
-  displayName: string;
-  postalCode?: string;
 };
 
 type BackendDocumentType = "ADDRESS_PROOF" | "DBS" | "ID" | "QUALIFICATION";
@@ -139,6 +137,7 @@ type BackendInstitutionProfile = {
   county?: string;
   domain?: string;
   id?: string;
+  institutionType?: "MAT_SCHOOL" | "SINGLE_SCHOOL";
   name?: string;
   postalCode?: string | null;
   registrationId?: string | null;
@@ -146,21 +145,13 @@ type BackendInstitutionProfile = {
   status?: unknown;
   staffingNeeds?: string | null;
   typicalPupilCount?: unknown;
+  trust?: {
+    companyNumber?: string | null;
+    id?: string;
+    name?: string;
+  } | null;
   userRole?: string | null;
   verified?: boolean;
-};
-
-type BackendRecruiterProfile = {
-  address?: string | null;
-  bio?: string | null;
-  city?: string | null;
-  countryCode?: string;
-  county?: string | null;
-  displayName?: string;
-  id?: string;
-  imageUrl?: string | null;
-  postalCode?: string | null;
-  status?: unknown;
 };
 
 type DocumentSnapshotData = {
@@ -223,36 +214,19 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
     county: profile.county || "",
     domain: profile.domain || "",
     id: profile.id,
+    institutionType: profile.institutionType === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL",
     name: profile.name || "",
     postalCode: profile.postalCode || "",
     registrationId: profile.registrationId || "",
     safeguardingConfirmed: Boolean(profile.safeguardingConfirmed),
     status: normalizeStatus(profile.status),
     staffingNeeds: profile.staffingNeeds || "",
+    trust: profile.trust?.id && profile.trust.name
+      ? { companyNumber: profile.trust.companyNumber ?? null, id: profile.trust.id, name: profile.trust.name }
+      : null,
     typicalPupilCount: numberString(profile.typicalPupilCount),
     userRole: profile.userRole || "",
     verified: Boolean(profile.verified),
-  };
-}
-
-function normalizeRecruiterProfileStatus(profile: { id?: string; status?: unknown }) {
-  return normalizeStatus(profile.status);
-}
-
-function normalizeRecruiterSnapshot(profile: BackendRecruiterProfile): OnboardingRecruiterSnapshot | undefined {
-  if (!profile.id) return undefined;
-
-  return {
-    address: profile.address || "",
-    bio: profile.bio || "",
-    city: profile.city || "",
-    countryCode: profile.countryCode || "GB",
-    county: profile.county || "",
-    displayName: profile.displayName || "",
-    id: profile.id,
-    imageUrl: profile.imageUrl || "",
-    postalCode: profile.postalCode || "",
-    status: normalizeRecruiterProfileStatus(profile),
   };
 }
 
@@ -366,6 +340,10 @@ function normalizeDomain(value: string) {
 }
 
 function buildInstitutionProfilePayload(formData: FormData): InstitutionProfilePayload {
+  const institutionType = readFormString(formData, "institutionType") === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL";
+  const trustName = readFormString(formData, "trustName");
+  const trustCompanyNumber = readFormString(formData, "trustCompanyNumber").replace(/\s+/g, "").toUpperCase();
+
   return {
     address: readFormString(formData, "institutionAddress"),
     city: readFormString(formData, "institutionCity"),
@@ -375,22 +353,17 @@ function buildInstitutionProfilePayload(formData: FormData): InstitutionProfileP
     coverTypes: readFormStringArray(formData, "coverTypes"),
     county: readFormString(formData, "localAuthority") || undefined,
     domain: normalizeDomain(readFormString(formData, "institutionDomain")),
+    institutionType,
     name: readFormString(formData, "schoolName"),
     postalCode: readFormString(formData, "postcode") || undefined,
     registrationId: readFormString(formData, "institutionRegistrationId") || undefined,
     safeguardingConfirmed: readFormBoolean(formData, "safeguardingConfirmed"),
     staffingNeeds: readFormString(formData, "staffingNeeds") || undefined,
     typicalPupilCount: readFormNumber(formData, "typicalPupilCount"),
+    trust: institutionType === "MAT_SCHOOL"
+      ? { name: trustName, ...(trustCompanyNumber ? { companyNumber: trustCompanyNumber } : {}) }
+      : undefined,
     userRole: readFormString(formData, "contactRole") || undefined,
-  };
-}
-
-function buildRecruiterProfilePayload(formData: FormData): RecruiterProfilePayload {
-  return {
-    city: readFormString(formData, "profileCity") || undefined,
-    countryCode: readFormString(formData, "profileCountryCode") || "GB",
-    displayName: readFormString(formData, "fullName"),
-    postalCode: readFormString(formData, "postcode") || undefined,
   };
 }
 
@@ -448,21 +421,37 @@ async function getInstitutionSnapshot(accessToken?: string) {
   }
 }
 
-async function getRecruiterSnapshot(accessToken?: string) {
-  try {
-    return normalizeRecruiterSnapshot(
-      await api.get<BackendRecruiterProfile>(
-        "/recruiters/me",
-        {
-          cache: "no-store",
-          ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
-        },
-      ),
-    );
-  } catch (error) {
-    if (notFoundOrForbidden(error)) return undefined;
-    throw error;
+
+async function getSignatoryApproval(accessToken?: string): Promise<SignatoryApprovalSnapshot | null> {
+  return api.get<SignatoryApprovalSnapshot | null>("/institutions/me/signatory-approval", {
+    cache: "no-store",
+    ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
+  });
+}
+
+async function ensureSignatoryApproval(formData: FormData, accessToken: string, forceResend = false) {
+  const requested = {
+    signatoryEmail: readFormString(formData, "signatoryEmail").toLowerCase(),
+    signatoryJobTitle: readFormString(formData, "signatoryJobTitle"),
+    signatoryName: readFormString(formData, "signatoryName"),
+  };
+  const current = await getSignatoryApproval(accessToken);
+
+  if (current?.status === "APPROVED") return current;
+  if (
+    !forceResend &&
+    current?.status === "PENDING" &&
+    current.signatoryEmail.toLowerCase() === requested.signatoryEmail &&
+    current.signatoryJobTitle === requested.signatoryJobTitle &&
+    current.signatoryName === requested.signatoryName
+  ) {
+    return current;
   }
+
+  return api.post<SignatoryApprovalSnapshot>("/institutions/me/signatory-approval", requested, {
+    auth: false,
+    headers: buildBearerHeaders(accessToken),
+  });
 }
 
 async function getDocumentSnapshotData(accessToken?: string): Promise<DocumentSnapshotData> {
@@ -533,16 +522,12 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
     if (role === "institution") {
       snapshot.institution = await getInstitutionSnapshot();
       snapshot.applicationStatus = snapshot.institution?.status ?? "none";
+      snapshot.signatoryApproval = snapshot.institution?.institutionType === "MAT_SCHOOL"
+        ? await getSignatoryApproval()
+        : null;
     }
 
-    if (role === "individual") {
-      snapshot.recruiter = await getRecruiterSnapshot();
-      snapshot.applicationStatus = snapshot.recruiter?.status ?? "none";
-    }
 
-    if (role && !hasCreatedRoleProfile(snapshot)) {
-      throw new Error("Your existing profile could not be loaded. Retry before continuing.");
-    }
     return snapshot;
   }
 }
@@ -552,7 +537,6 @@ function createSessionResponse({
   auth,
   instructorProfileId,
   institutionProfileId,
-  recruiterProfileId,
   name,
   role,
 }: {
@@ -560,7 +544,6 @@ function createSessionResponse({
   auth: BackendAuthResponse;
   instructorProfileId?: string;
   institutionProfileId?: string;
-  recruiterProfileId?: string;
   name?: string;
   role: AppRole;
 }): BackendAuthResponse {
@@ -571,7 +554,6 @@ function createSessionResponse({
       applicationStatus,
       instructorProfileId: instructorProfileId ?? auth.user.instructorProfileId,
       institutionProfileId: institutionProfileId ?? auth.user.institutionProfileId,
-      recruiterProfileId: recruiterProfileId ?? auth.user.recruiterProfileId,
       name: auth.user.name ?? name ?? null,
       role,
     },
@@ -600,9 +582,13 @@ async function getOnboardingAuth(): Promise<BackendAuthResponse & { accessToken:
 }
 
 async function saveUserBasics(formData: FormData, postcodeFallback = "") {
+  let currentPhone = "";
+  let currentPhoneVerified = false;
   if (backendEnabled()) {
     const current = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
     if (normalizeRole(current.role)) return normalizeUserSnapshot(current, current.email, postcodeFallback);
+    currentPhone = current.phone?.trim() ?? "";
+    currentPhoneVerified = current.phoneVerified === true;
   }
   if (!backendEnabled()) {
     return normalizeUserSnapshot(
@@ -619,10 +605,14 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   const name = readFormString(formData, "fullName");
   const phone = readFormString(formData, "phone");
 
+  if (currentPhoneVerified && phone !== currentPhone) {
+    throw new Error("Verify your new phone number before creating this profile.");
+  }
+
   if (name || phone) {
     await api.patch("/users/me", {
       name: name || undefined,
-      phone: phone || undefined,
+      phone: phone && phone !== currentPhone ? phone : undefined,
     });
   }
 
@@ -670,23 +660,6 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string) {
   } catch (error) {
     // A previous attempt may have saved the profile before its response was lost.
     const saved = await getInstitutionSnapshot(accessToken);
-    if (saved) return saved;
-    throw error;
-  }
-}
-
-async function saveRecruiterProfile(formData: FormData, accessToken: string) {
-  const existing = await getRecruiterSnapshot(accessToken);
-  if (existing) return existing;
-
-  try {
-    return normalizeRecruiterSnapshot(await api.post<BackendRecruiterProfile>("/recruiters", buildRecruiterProfilePayload(formData), {
-      auth: false,
-      headers: buildBearerHeaders(accessToken),
-    }));
-  } catch (error) {
-    // A previous attempt may have saved the profile before its response was lost.
-    const saved = await getRecruiterSnapshot(accessToken);
     if (saved) return saved;
     throw error;
   }
@@ -832,6 +805,12 @@ export async function saveOnboardingStepAction(formData: FormData) {
   }
 
   try {
+    const savedUser = await getCurrentUserSnapshot(postcode);
+    const stepUser = {
+      ...user,
+      emailVerified: savedUser?.emailVerified === true,
+      phoneVerified: savedUser?.phoneVerified === true && savedUser.phone === user.phone,
+    };
     const documentState = normalizeRole(authContext.role)
       ? await getDocumentState(role)
       : {
@@ -849,7 +828,7 @@ export async function saveOnboardingStepAction(formData: FormData) {
           documents: documentState.documents,
           requirementDocuments: documentState.requirementDocuments,
           role,
-          user,
+          user: stepUser,
         },
       },
       "Step saved.",
@@ -878,6 +857,64 @@ async function submitInstructorOnboarding(formData: FormData) {
   }
 
   try {
+    if (readFormString(formData, "intent") === "review") {
+      const sessionAuth = await getOnboardingAuth();
+      const [instructor, documentState] = await Promise.all([
+        getCurrentInstructorSnapshot(sessionAuth.accessToken),
+        getDocumentState("teacher", sessionAuth.accessToken),
+      ]);
+      if (!instructor) throw new Error("Create your teacher profile before sending it for review.");
+
+      const user = normalizeUserSnapshot(sessionAuth.user, sessionAuth.user.email, readFormString(formData, "postcode"));
+      const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
+      if (missingDocuments.length > 0) {
+        return actionOk<OnboardingProgressResult>(
+          {
+            applicationStatus: "none",
+            savedStep: Number(readFormString(formData, "step")) || 2,
+            snapshot: {
+              ...documentState,
+              applicationStatus: "none",
+              instructor,
+              role: "teacher",
+              user,
+            },
+          },
+          `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
+        );
+      }
+
+      const submittedInstructor = await submitInstructorProfileForReview(sessionAuth.accessToken, instructor);
+      if (!submittedInstructor || submittedInstructor.status === "none") {
+        throw new Error("The backend did not mark your teacher profile as pending review.");
+      }
+
+      revalidateTag("onboarding", "max");
+      return actionOk<OnboardingProgressResult>(
+        {
+          applicationStatus: submittedInstructor.status,
+          savedStep: Number(readFormString(formData, "step")) || 2,
+          snapshot: {
+            ...documentState,
+            applicationStatus: submittedInstructor.status,
+            instructor: submittedInstructor,
+            role: "teacher",
+            user,
+          },
+          ticket: createVerifiedEmailSessionTicket(
+            createSessionResponse({
+              applicationStatus: submittedInstructor.status,
+              auth: sessionAuth,
+              instructorProfileId: submittedInstructor.id,
+              name: submittedInstructor.fullName,
+              role: "teacher",
+            }),
+          ),
+        },
+        "Your teacher profile was submitted for review.",
+      );
+    }
+
     const postcode = readFormString(formData, "postcode");
     const user = await saveUserBasics(formData, postcode);
     const sessionAuth = await getOnboardingAuth();
@@ -898,9 +935,7 @@ async function submitInstructorOnboarding(formData: FormData) {
       }),
     );
     const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
-    const profileOnly = readFormString(formData, "intent") === "profile";
-
-    if (profileOnly || missingDocuments.length > 0) {
+    if (missingDocuments.length > 0) {
       revalidateTag("onboarding", "max");
       return actionOk<OnboardingProgressResult>(
         {
@@ -917,9 +952,7 @@ async function submitInstructorOnboarding(formData: FormData) {
           },
           ticket,
         },
-        profileOnly && missingDocuments.length === 0
-          ? "Profile created. Upload required documents before sending for review."
-          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
+        `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
       );
     }
 
@@ -979,6 +1012,69 @@ async function submitInstitutionOnboarding(formData: FormData) {
   }
 
   try {
+    if (readFormString(formData, "intent") === "review") {
+      const sessionAuth = await getOnboardingAuth();
+      const [institution, documentState, signatoryApproval] = await Promise.all([
+        getInstitutionSnapshot(sessionAuth.accessToken),
+        getDocumentState("institution", sessionAuth.accessToken),
+        getSignatoryApproval(sessionAuth.accessToken),
+      ]);
+      if (!institution) throw new Error("Create your school profile before sending it for review.");
+
+      const user = normalizeUserSnapshot(sessionAuth.user, sessionAuth.user.email, readFormString(formData, "postcode"));
+      const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
+      if (missingDocuments.length > 0 || (institution.institutionType === "MAT_SCHOOL" && signatoryApproval?.status !== "APPROVED")) {
+        return actionOk<OnboardingProgressResult>(
+          {
+            applicationStatus: "none",
+            savedStep: Number(readFormString(formData, "step")) || 4,
+            snapshot: {
+              ...documentState,
+              applicationStatus: "none",
+              institution,
+              role: "institution",
+              signatoryApproval,
+              user,
+            },
+          },
+          missingDocuments.length > 0
+            ? `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`
+            : "Waiting for the trust signatory to approve this school before it can be submitted for review.",
+        );
+      }
+
+      const submittedInstitution = await submitInstitutionProfileForReview(sessionAuth.accessToken, institution);
+      if (!submittedInstitution || submittedInstitution.status === "none") {
+        throw new Error("The backend did not mark your school profile as pending review.");
+      }
+
+      revalidateTag("onboarding", "max");
+      return actionOk<OnboardingProgressResult>(
+        {
+          applicationStatus: submittedInstitution.status,
+          savedStep: Number(readFormString(formData, "step")) || 4,
+          snapshot: {
+            ...documentState,
+            applicationStatus: submittedInstitution.status,
+            institution: submittedInstitution,
+            role: "institution",
+            signatoryApproval,
+            user,
+          },
+          ticket: createVerifiedEmailSessionTicket(
+            createSessionResponse({
+              applicationStatus: submittedInstitution.status,
+              auth: sessionAuth,
+              institutionProfileId: submittedInstitution.id,
+              name: submittedInstitution.name,
+              role: "institution",
+            }),
+          ),
+        },
+        "Your school profile was submitted for review.",
+      );
+    }
+
     const postcode = readFormString(formData, "postcode");
     const user = await saveUserBasics(formData, postcode);
     const sessionAuth = await getOnboardingAuth();
@@ -987,6 +1083,9 @@ async function submitInstitutionOnboarding(formData: FormData) {
     }
     const institution = await saveInstitutionProfile(formData, sessionAuth.accessToken);
     if (!institution) throw new Error("The backend did not return the saved institution profile.");
+    const signatoryApproval = institution.institutionType === "MAT_SCHOOL"
+      ? await ensureSignatoryApproval(formData, sessionAuth.accessToken, readFormString(formData, "intent") === "signatory")
+      : null;
 
     const documentState = await getDocumentState("institution", sessionAuth.accessToken);
     const ticket = createVerifiedEmailSessionTicket(
@@ -999,9 +1098,7 @@ async function submitInstitutionOnboarding(formData: FormData) {
       }),
     );
     const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
-    const profileOnly = readFormString(formData, "intent") === "profile";
-
-    if (profileOnly || missingDocuments.length > 0) {
+    if (missingDocuments.length > 0 || (institution.institutionType === "MAT_SCHOOL" && signatoryApproval?.status !== "APPROVED")) {
       revalidateTag("onboarding", "max");
       return actionOk<OnboardingProgressResult>(
         {
@@ -1014,13 +1111,36 @@ async function submitInstitutionOnboarding(formData: FormData) {
             institution,
             requirementDocuments: documentState.requirementDocuments,
             role: "institution",
+            signatoryApproval,
             user,
           },
           ticket,
         },
-        profileOnly && missingDocuments.length === 0
-          ? "Profile created. Upload required documents before sending for review."
-          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
+        missingDocuments.length > 0
+          ? `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`
+          : "Waiting for the trust signatory to approve this school before it can be submitted for review.",
+      );
+    }
+
+    if (institution.institutionType === "MAT_SCHOOL" && signatoryApproval?.status !== "APPROVED") {
+      revalidateTag("onboarding", "max");
+      return actionOk<OnboardingProgressResult>(
+        {
+          applicationStatus: "none",
+          savedStep: Number(readFormString(formData, "step")) || 4,
+          snapshot: {
+            ...documentState,
+            applicationStatus: "none",
+            institution,
+            role: "institution",
+            signatoryApproval,
+            user,
+          },
+          ticket,
+        },
+        signatoryApproval?.status === "DECLINED"
+          ? signatoryApproval.declineReason || "The trust signatory declined this request. Update the details and send a new request."
+          : "Waiting for the trust signatory to approve this school before it can be submitted for review.",
       );
     }
 
@@ -1041,6 +1161,7 @@ async function submitInstitutionOnboarding(formData: FormData) {
           institution: submittedInstitution,
           requirementDocuments: documentState.requirementDocuments,
           role: "institution",
+          signatoryApproval,
           user,
         },
         ticket: createVerifiedEmailSessionTicket(
@@ -1060,116 +1181,10 @@ async function submitInstitutionOnboarding(formData: FormData) {
   }
 }
 
-async function submitIndividualOnboarding(formData: FormData) {
-  if (!backendEnabled()) {
-    revalidateTag("onboarding", "max");
-    return actionOk<OnboardingProgressResult>(
-      {
-        applicationStatus: "pending_review",
-        savedStep: Number(readFormString(formData, "step")) || 4,
-        snapshot: emptySnapshot("individual", readFormString(formData, "email")),
-      },
-      "Individual onboarding is ready for backend integration.",
-    );
-  }
-
-  const authContext = await getServerAuthContext();
-  if (!authContext?.accessToken || !authContext.refreshToken) {
-    return actionError("Your session expired. Sign in again before submitting onboarding.");
-  }
-
-  try {
-    const postcode = readFormString(formData, "postcode");
-    const user = await saveUserBasics(formData, postcode);
-    const sessionAuth = await getOnboardingAuth();
-    if (sessionAuth.user.role && sessionAuth.user.role !== "individual") {
-      return actionError("This account already has a different profile. Refresh the page to continue.");
-    }
-    const recruiter = await saveRecruiterProfile(formData, sessionAuth.accessToken);
-    if (!recruiter) throw new Error("The backend did not return the saved individual profile.");
-
-    const documentState = await getDocumentState("individual", sessionAuth.accessToken);
-    const ticket = createVerifiedEmailSessionTicket(
-      createSessionResponse({
-        applicationStatus: "none",
-        auth: sessionAuth,
-        name: recruiter.displayName || readFormString(formData, "fullName"),
-        recruiterProfileId: recruiter.id,
-        role: "individual",
-      }),
-    );
-    const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
-    const profileOnly = readFormString(formData, "intent") === "profile";
-
-    if (profileOnly || missingDocuments.length > 0) {
-      revalidateTag("onboarding", "max");
-      return actionOk<OnboardingProgressResult>(
-        {
-          applicationStatus: "none",
-          savedStep: Number(readFormString(formData, "step")) || 2,
-          snapshot: {
-            applicationStatus: "none",
-            documentRequirements: documentState.documentRequirements,
-            documents: documentState.documents,
-            recruiter,
-            requirementDocuments: documentState.requirementDocuments,
-            role: "individual",
-            user,
-          },
-          ticket,
-        },
-        profileOnly && missingDocuments.length === 0
-          ? "Profile created. Upload required documents before sending for review."
-          : `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`,
-      );
-    }
-
-    let savedRecruiter = (await getRecruiterSnapshot(sessionAuth.accessToken)) ?? recruiter;
-    if (savedRecruiter.status === "none" || savedRecruiter.status === "rejected") {
-      const submitted = normalizeRecruiterSnapshot(await api.patch<BackendRecruiterProfile>("/recruiters/me/status", undefined, {
-        auth: false,
-        headers: buildBearerHeaders(sessionAuth.accessToken),
-      }));
-      if (!submitted || submitted.status !== "pending_review") throw new Error("Your profile could not be submitted for review.");
-      savedRecruiter = submitted;
-    }
-    const applicationStatus = savedRecruiter.status;
-
-    revalidateTag("onboarding", "max");
-    return actionOk<OnboardingProgressResult>(
-      {
-        applicationStatus,
-        savedStep: Number(readFormString(formData, "step")) || 4,
-        snapshot: {
-          applicationStatus,
-          documentRequirements: documentState.documentRequirements,
-          documents: documentState.documents,
-          recruiter: savedRecruiter,
-          requirementDocuments: documentState.requirementDocuments,
-          role: "individual",
-          user,
-        },
-        ticket: createVerifiedEmailSessionTicket(
-          createSessionResponse({
-            applicationStatus,
-            auth: sessionAuth,
-            name: savedRecruiter.displayName || readFormString(formData, "fullName"),
-            recruiterProfileId: savedRecruiter.id,
-            role: "individual",
-          }),
-        ),
-      },
-      "Your individual profile was created.",
-    );
-  } catch (error) {
-    return onboardingError(error);
-  }
-}
-
 export async function submitOnboardingAction(formData: FormData) {
   const role = readFormString(formData, "role");
   if (role === "teacher") return submitInstructorOnboarding(formData);
   if (role === "institution") return submitInstitutionOnboarding(formData);
-  if (role === "individual") return submitIndividualOnboarding(formData);
+
   return actionError("Choose a valid account type before creating your profile.");
 }

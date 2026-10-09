@@ -5,6 +5,7 @@ export type OnboardingSnapshot = {
   completed: boolean;
   verified: boolean;
   role: AppRole | null;
+  signatoryApproval?: SignatoryApprovalSnapshot | null;
   step: number;
 };
 
@@ -22,10 +23,32 @@ export type OnboardingSubmitResult = {
 
 export type OnboardingDocumentKind = "addressProof" | "dbs" | "id" | "qualification";
 export type OnboardingDocumentContext =
-  | "APPLICATION"
   | "INSTRUCTOR_PROFILE"
   | "INSTITUTION_PROFILE"
-  | "RECRUITER_PROFILE";
+ ;
+
+export type InstitutionType = "MAT_SCHOOL" | "SINGLE_SCHOOL";
+export type SignatoryApprovalStatus = "APPROVED" | "DECLINED" | "EXPIRED" | "PENDING" | "REVOKED";
+
+export type InstitutionTrustSnapshot = {
+  companyNumber: string | null;
+  id: string;
+  name: string;
+};
+
+export type SignatoryApprovalSnapshot = {
+  approvedByAdmin: boolean;
+  createdAt: string;
+  decidedAt: string | null;
+  declineReason: string | null;
+  expiresAt: string;
+  id: string;
+  signatoryEmail: string;
+  signatoryJobTitle: string;
+  signatoryName: string;
+  status: SignatoryApprovalStatus;
+  termsVersion: string | null;
+};
 
 export type OnboardingDocumentSnapshot = {
   code?: string | null;
@@ -113,28 +136,17 @@ export type OnboardingInstitutionSnapshot = {
   county: string;
   domain: string;
   id: string;
+  institutionType: InstitutionType;
   name: string;
   postalCode: string;
   registrationId: string;
   safeguardingConfirmed: boolean;
   status: ApplicationStatus;
   staffingNeeds: string;
+  trust: InstitutionTrustSnapshot | null;
   typicalPupilCount: string;
   userRole: string;
   verified: boolean;
-};
-
-export type OnboardingRecruiterSnapshot = {
-  address: string;
-  bio: string;
-  city: string;
-  countryCode: string;
-  county: string;
-  displayName: string;
-  id: string;
-  imageUrl: string;
-  postalCode: string;
-  status: ApplicationStatus;
 };
 
 export type OnboardingProfileSnapshot = {
@@ -144,8 +156,8 @@ export type OnboardingProfileSnapshot = {
   institution?: OnboardingInstitutionSnapshot;
   instructor?: OnboardingInstructorSnapshot;
   requirementDocuments: Record<string, OnboardingDocumentSnapshot>;
-  recruiter?: OnboardingRecruiterSnapshot;
   role: AppRole | null;
+  signatoryApproval?: SignatoryApprovalSnapshot | null;
   user?: OnboardingUserSnapshot;
 };
 

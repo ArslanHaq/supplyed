@@ -1,13 +1,13 @@
 export { ApplicationStatusPage } from "./ApplicationStatusPage";
 export { AppChrome } from "./AppChrome";
-export { ApplicationsPage } from "./ApplicationsPage";
+export { ApplicationsPage } from "./ApplicationsWorkspacePage";
+export { BookingsPage } from "./BookingsPage";
 export { BillingPage } from "./BillingPage";
 export { CalendarPage } from "./CalendarPage";
 export { FindJobsPage } from "./FindJobsPage";
 export { FindTeachersPage } from "./FindTeachersPage";
 export { FoundingInterestPage } from "./FoundingInterestPage";
 export { ForgotPasswordRouteClient } from "./ForgotPasswordRouteClient";
-export { IndividualDashboard } from "./IndividualDashboard";
 export { InstitutionDashboard } from "./InstitutionDashboard";
 export { JobDetailPage } from "./JobDetailPage";
 export { LandingPage } from "./LandingPage";

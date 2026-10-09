@@ -27,7 +27,7 @@ function getDisplayName(name?: string | null, email?: string | null) {
 function getRoleLabel(role?: string | null) {
   if (role === "institution") return "School workspace";
   if (role === "teacher") return "Teacher account";
-  if (role === "individual") return "Hiring account";
+  if (role === "admin") return "Administrator";
   return "SupplyED account";
 }
 
@@ -50,12 +50,10 @@ function getAccountLinks(role?: string | null) {
     ];
   }
 
-  if (role === "individual") {
+  if (role === "admin") {
     return [
-      { href: "/post-auth", icon: "home", label: "Workspace", sub: "Continue to your hiring workspace" },
-      { href: "/find-teachers", icon: "search", label: "Teachers", sub: "Review verified teachers" },
-      { href: "/calendar", icon: "calendar", label: "Schedule", sub: "Review upcoming activity" },
-      { href: "/billing", icon: "settings", label: "Settings & payments", sub: "Manage account details" },
+      { href: "/post-auth", icon: "home", label: "Admin access", sub: "Continue to administrator routing" },
+      { href: "/security", icon: "shield", label: "Security", sub: "Manage account security" },
     ];
   }
 

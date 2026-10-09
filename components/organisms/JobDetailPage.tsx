@@ -1,17 +1,19 @@
 import { useState } from "react";
 
 import { useCreateApplication } from "@/features/applications/use-applications";
+import { isEmptyRichText, MAX_PROPOSAL_LENGTH } from "@/features/applications/rich-text";
 import { useJob } from "@/features/jobs/use-jobs";
 import { useJobMatchScore } from "@/features/matching/use-matching";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Btn, Field, Icon, Tag } from "../atoms";
-import { FormattedJobDescription, MatchScorePanel, Modal, SectionLoader } from "../molecules";
+import { Avatar, Btn, Field, Icon, Tag } from "../atoms";
+import { FormattedJobDescription, MatchScorePanel, Modal, ProposalEditor, SectionLoader } from "../molecules";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
   const [open, setOpen] = useState(false);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const [coverLetter, setCoverLetter] = useState("");
+  const [coverLetterTextLength, setCoverLetterTextLength] = useState(0);
   const [coverLetterError, setCoverLetterError] = useState<string>();
   const jobQuery = useJob(ctx.jobId ?? "");
   const matchQuery = useJobMatchScore(ctx.jobId ?? "", role === "teacher");
@@ -26,7 +28,9 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
 
       setApplicationSubmitted(true);
       setOpen(false);
-      toast({ title: "Application submitted", msg: "Your application and cover letter were sent successfully.", tone: "success" });
+      setCoverLetter("");
+      setCoverLetterTextLength(0);
+      toast({ title: "Application submitted", msg: "Your application and proposal were sent successfully.", tone: "success" });
     },
     onError: () => {
       toast({ title: "Could not apply", msg: "Please try again.", tone: "danger" });
@@ -37,8 +41,12 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
     if (!job || role !== "teacher") return;
 
     const normalizedCoverLetter = coverLetter.trim();
-    if (!normalizedCoverLetter) {
-      setCoverLetterError("Add a cover letter before applying.");
+    if (isEmptyRichText(normalizedCoverLetter)) {
+      setCoverLetterError("Add a proposal before applying.");
+      return;
+    }
+    if (normalizedCoverLetter.length > MAX_PROPOSAL_LENGTH) {
+      setCoverLetterError("Shorten the proposal or remove some formatting, then try again.");
       return;
     }
 
@@ -54,9 +62,9 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
 
   if (!ctx.jobId) {
     return (
-      <div className="app-page">
+      <div className="app-page job-detail-page">
         <div className="card card-pad-lg text-center">
-          <div className="font-serif text-[26px]">Choose a job</div>
+          <div className="font-heading text-[26px]">Choose a job</div>
           <p className="mx-auto mt-2 max-w-[420px] text-sm leading-6 text-muted">Open a job from your dashboard or the jobs list to view details.</p>
           <Btn className="mt-5" onClick={() => go(role === "teacher" ? "find-jobs" : "dashboard")}>Back to jobs</Btn>
         </div>
@@ -65,14 +73,14 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   }
 
   if (jobQuery.isLoading) {
-    return <div className="app-page"><SectionLoader rows={5} /></div>;
+    return <div className="app-page job-detail-page"><SectionLoader rows={5} /></div>;
   }
 
   if (!job) {
     return (
-      <div className="app-page">
+      <div className="app-page job-detail-page">
         <div className="card card-pad-lg text-center">
-          <div className="font-serif text-[26px]">Job not available</div>
+          <div className="font-heading text-[26px]">Job not available</div>
           <p className="mx-auto mt-2 max-w-[420px] text-sm leading-6 text-muted">This role may be closed, expired, or no longer visible.</p>
           <Btn className="mt-5" onClick={() => go(role === "teacher" ? "find-jobs" : "dashboard")}>Back to jobs</Btn>
         </div>
@@ -81,16 +89,49 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   }
 
   return (
-    <div className="app-page">
+    <div className="app-page job-detail-page">
+      <nav aria-label="Job navigation" className="job-detail-navigation"><Btn icon="arrowLeft" size="sm" variant="ghost" onClick={() => go(role === "teacher" ? "find-jobs" : "dashboard")}>Back to jobs</Btn><span>Role details</span></nav>
       <div className="two-col">
         <div>
           <div className="mb-3.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent - act fast</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant matching" : "Open brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div>
-          <h1 className="mb-2.5 font-serif text-[38px] leading-tight">{job.title}</h1>
-          <div className="mb-6 flex flex-wrap gap-4"><div className="flex items-center gap-1.5"><Icon name="building" size={14} />{job.school}</div><div className="flex items-center gap-1.5"><Icon name="pin" size={14} />{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"}</div><div className="flex items-center gap-1.5"><Icon name="clock" size={14} />Posted {job.postedAt}</div></div>
+          <h1 className="mb-2.5 font-heading text-[38px] leading-tight">{job.title}</h1>
+          <div className="mb-6 flex flex-wrap gap-4">
+            <div className="flex items-center gap-1.5">
+              <Icon name="building" size={14} />
+              <button
+                className="font-semibold hover:text-brand hover:underline disabled:cursor-default disabled:text-inherit disabled:no-underline"
+                disabled={!job.institution?.id}
+                onClick={() => job.institution?.id ? go("institution-profile", { institutionId: job.institution.id, jobId: job.id }) : undefined}
+                type="button"
+              >
+                {job.school}
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5"><Icon name="pin" size={14} />{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"}</div>
+            <div className="flex items-center gap-1.5"><Icon name="clock" size={14} />Posted {job.postedAt}</div>
+          </div>
+          <section className="card mb-7 overflow-hidden border-brand-tint-2 bg-[linear-gradient(135deg,#eef9fd_0%,#ffffff_70%)]">
+            <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+              <div className="rounded-xl border-2 border-white shadow-sm [&>div]:rounded-lg"><Avatar name={job.institution?.name || job.school} size="lg" src={job.institution?.imageUrl} /></div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-brand">About the hiring school</div>
+                <h2 className="mt-1 font-heading text-xl font-semibold text-ink">{job.institution?.name || job.school}</h2>
+                <p className="mt-1 text-sm leading-6 text-muted">View the school’s verified profile, details and reviews before you apply.</p>
+              </div>
+              <Btn
+                className="w-full sm:w-auto"
+                disabled={!job.institution?.id}
+                icon="building"
+                onClick={() => job.institution?.id ? go("institution-profile", { institutionId: job.institution.id, jobId: job.id }) : undefined}
+              >
+                View school profile
+              </Btn>
+            </div>
+          </section>
           <div className="grid-3 mb-7">
-            <div className="card card-pad text-center"><div className="text-xs text-muted">Day rate</div><div className="font-serif text-[26px] text-brand">£{job.rate}</div></div>
-            <div className="card card-pad text-center"><div className="text-xs text-muted">Duration</div><div className="font-serif text-xl">1 Day</div></div>
-            <div className="card card-pad text-center"><div className="text-xs text-muted">Experience</div><div className="font-serif text-xl">{job.minExperienceYears != null ? `${job.minExperienceYears}+ years` : "Not specified"}</div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">Day rate</div><div className="font-heading text-[26px] text-brand">£{job.rate}</div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">Duration</div><div className="font-heading text-xl">1 Day</div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">Experience</div><div className="font-heading text-xl">{job.minExperienceYears != null ? `${job.minExperienceYears}+ years` : "Not specified"}</div></div>
           </div>
           <div className="card card-pad-lg mb-5">
             <div className="section-title">About this role</div>
@@ -98,47 +139,79 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
           </div>
           <div className="card card-pad-lg"><div className="section-title">Requirements</div>{[`Subject: ${job.subject}`, `Key stage: ${job.keyStage}`, job.minExperienceYears != null ? `Minimum experience: ${job.minExperienceYears} years` : "No minimum experience specified", job.parkingInfo || "Arrival details will be shared by the hiring account."].map((item) => <div key={item} className="flex items-center gap-2.5 py-2"><Icon name="checkCircle" size={16} />{item}</div>)}{job.requiredSkills.length ? <div className="mt-3 flex flex-wrap gap-2">{job.requiredSkills.map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div> : null}</div>
         </div>
-        <div className="card card-pad-lg sticky top-[88px] self-start">
-          <div className="mb-3.5 flex items-center justify-between"><div><div className="text-xs text-muted">Day rate</div><div className="font-serif text-[28px]">£{job.rate}</div></div>{matchQuery.data ? <Tag tone="green">{matchQuery.data.score}% match</Tag> : null}</div>
+        <aside aria-label="Job summary and actions" className="sidebar-panel card-pad-lg self-start lg:sticky lg:top-6">
+          <div className="mb-3.5 flex items-center justify-between"><div><div className="text-xs text-muted">Day rate</div><div className="font-heading text-[28px]">£{job.rate}</div></div>{matchQuery.data ? <Tag tone="green">{matchQuery.data.score}% match</Tag> : null}</div>
           <div className="mb-3.5 flex flex-wrap gap-2"><span className="pill">{job.keyStage}</span><span className="pill">{job.subject}</span><span className="pill">{job.date}</span></div>
           {role === "teacher" && matchQuery.isLoading ? <div className="mb-4"><SectionLoader rows={1} /></div> : null}
           {role === "teacher" && matchQuery.data ? <div className="mb-4"><MatchScorePanel match={matchQuery.data} /></div> : null}
+          {job.institution?.id ? (
+            <Btn
+              className="mb-2 w-full"
+              icon="building"
+              variant="secondary"
+              onClick={() => go("institution-profile", { institutionId: job.institution?.id, jobId: job.id })}
+            >
+              View school profile
+            </Btn>
+          ) : null}
           <Btn className="w-full" disabled={role === "teacher" && applicationSubmitted} size="lg" onClick={() => setOpen(true)}>{role === "teacher" ? (applicationSubmitted ? "Application submitted" : "Apply for job") : "Invite candidates"}</Btn>
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging")}>Message school</Btn>
-        </div>
+        </aside>
       </div>
-      <Modal open={open} onClose={closeModal}>
-        <div className="card-pad-lg">
-          <div className="mb-2 font-serif text-[26px]">{role === "teacher" ? "Apply to this role" : "Invite candidates"}</div>
+      <Modal open={open} onClose={closeModal} size={role === "teacher" ? "xl" : "md"}>
           {role === "teacher" ? (
-            <>
-              <p className="mb-5 text-sm leading-6 text-muted">Introduce yourself and explain why you are a good fit for this role.</p>
-              <Field error={coverLetterError} htmlFor="job-cover-letter" label="Cover letter" required>
-                <textarea
-                  id="job-cover-letter"
-                  className="textarea"
-                  maxLength={2000}
-                  placeholder="Share your relevant experience, availability, and suitability for this role."
+            <article className="proposal-dialog">
+              <header className="proposal-dialog-header">
+                <span aria-hidden="true" className="proposal-heading-icon"><Icon name="file" size={23} /></span>
+                <div className="proposal-heading-copy"><p className="proposal-eyebrow">Your application</p><h2>Create your proposal</h2></div>
+                <button aria-label="Close proposal" className="proposal-close" disabled={createApplication.isPending} onClick={closeModal} type="button"><Icon name="x" size={18} /></button>
+              </header>
+              <div className="proposal-role-context">
+                <span aria-hidden="true" className="proposal-role-icon"><Icon name="building" size={19} /></span>
+                <div><strong>{job.title}</strong><small>{job.institution?.name || job.school}{job.date ? ` · ${job.date}` : ""}</small></div>
+                {job.keyStage ? <Tag tone="ghost">{job.keyStage}</Tag> : null}
+              </div>
+              <div className="proposal-dialog-body">
+              <p className="proposal-intro">Introduce yourself, connect your experience to the role, and keep the formatting clear and professional.</p>
+              <Field error={coverLetterError} htmlFor="job-proposal-editor" label="Proposal" required>
+                <ProposalEditor
+                  id="job-proposal-editor"
+                  invalid={Boolean(coverLetterError)}
+                  maxLength={MAX_PROPOSAL_LENGTH}
                   value={coverLetter}
-                  onChange={(event) => {
-                    setCoverLetter(event.target.value);
+                  onChange={(nextValue, textLength) => {
+                    setCoverLetter(nextValue);
+                    setCoverLetterTextLength(textLength);
                     if (coverLetterError) setCoverLetterError(undefined);
                   }}
                 />
               </Field>
-              <div className="-mt-2 mb-5 text-right text-xs text-muted">{coverLetter.length.toLocaleString()} / 2,000</div>
-              <div className="flex items-center justify-between">
-                <Btn disabled={createApplication.isPending} variant="ghost" onClick={closeModal}>Cancel</Btn>
-                <Btn loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
+              <div className="proposal-editor-footer">
+                <p className={`proposal-format-note${coverLetter.length > MAX_PROPOSAL_LENGTH ? " is-error" : ""}`}>
+                  {coverLetter.length > MAX_PROPOSAL_LENGTH
+                    ? "The formatted proposal is too long. Shorten it or clear some formatting."
+                    : "Formatting is saved with your application."}
+                </p>
+                <span className={`proposal-character-count${coverLetter.length > MAX_PROPOSAL_LENGTH ? " is-error" : ""}`}>
+                  <strong>{coverLetterTextLength.toLocaleString()}</strong> / {MAX_PROPOSAL_LENGTH.toLocaleString()} text characters
+                </span>
               </div>
-            </>
+              </div>
+              <footer className="proposal-dialog-actions">
+                <p className="proposal-submit-note"><Icon name="file" size={16} /><span>Your proposal will be shared with {job.institution?.name || job.school}.</span></p>
+                <div className="proposal-action-buttons">
+                <Btn disabled={createApplication.isPending} variant="ghost" onClick={closeModal}>Cancel</Btn>
+                <Btn disabled={coverLetter.length > MAX_PROPOSAL_LENGTH} iconRight="arrowRight" loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
+                </div>
+              </footer>
+            </article>
           ) : (
-            <>
+            <div className="card-pad-lg">
+              <h2 className="mb-2 font-heading text-[26px]">Invite candidates</h2>
               <Field label="Message"><textarea className="textarea" defaultValue="Please review this role and let us know if you are interested." /></Field>
               <div className="flex items-center justify-between"><Btn variant="ghost" onClick={closeModal}>Cancel</Btn><Btn onClick={() => { setOpen(false); toast({ title: "Success", msg: "Top candidates invited." }); }}>Confirm</Btn></div>
-            </>
+            </div>
           )}
-        </div>
       </Modal>
     </div>
   );

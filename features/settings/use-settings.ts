@@ -32,9 +32,6 @@ function snapshotWithProfileImage(snapshot: SettingsProfileSnapshot, imageUrl: s
     return { ...snapshot, institution: { ...snapshot.institution, imageUrl: imageUrl ?? "" } };
   }
 
-  if (snapshot.role === "individual" && snapshot.recruiter) {
-    return { ...snapshot, recruiter: { ...snapshot.recruiter, imageUrl: imageUrl ?? "" } };
-  }
 
   return snapshot;
 }

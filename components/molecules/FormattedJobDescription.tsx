@@ -96,7 +96,7 @@ export function FormattedJobDescription({
       {blocks.map((block, index) => {
         if (block.type === "heading") {
           return (
-            <h3 key={`${block.type}-${index}`} className="font-serif text-lg leading-tight text-ink">
+            <h3 key={`${block.type}-${index}`} className="font-heading text-lg leading-tight text-ink">
               {renderInline(block.text, `heading-${index}`)}
             </h3>
           );

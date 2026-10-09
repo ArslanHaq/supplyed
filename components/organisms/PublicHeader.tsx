@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { QueryProvider } from "@/lib/query/query-client";
 
-import { Logo } from "../atoms";
+import { Icon, Logo } from "../atoms";
 import { PublicHeaderAccountSlot } from "./PublicHeaderAccountSlot";
 
 type PublicHeaderProps = {
@@ -10,28 +10,36 @@ type PublicHeaderProps = {
 };
 
 const navItems = [
+  { id: "founding-schools", label: "For Schools", href: "/founding-schools" },
+  { id: "founding-teachers", label: "For Teachers", href: "/founding-teachers" },
+  { id: "hire-talent", label: "Hire Talent", href: "/signup" },
   { id: "how-it-works", label: "How it works", href: "/how-it-works" },
   { id: "pricing", label: "Pricing", href: "/pricing" },
 ] as const;
 
 export function PublicHeader({ active = "home" }: PublicHeaderProps) {
   return (
-    <header className="flex min-h-[76px] items-center gap-4 border-b border-border bg-white px-4 py-3 sm:px-6 lg:px-12">
-      <Logo href="/" size={20} />
+    <header className="marketing-header">
+      <div className="marketing-header-inner">
+      <Logo href="/" size={25} />
 
-      <nav aria-label="Public navigation" className="ml-0 hidden items-center gap-2 md:flex lg:ml-8">
-        <Link className={`app-nav-link ${active === "founding-schools" ? "active" : ""}`} href="/founding-schools">For Schools</Link>
-        <Link className={`app-nav-link ${active === "founding-teachers" ? "active" : ""}`} href="/founding-teachers">For Teachers</Link>
-        <Link className="app-nav-link" href="/signup">Hire Talent</Link>
+      <nav aria-label="Public navigation" className="marketing-nav">
         {navItems.map((item) => (
-          <Link key={item.id} className={`app-nav-link ${active === item.id ? "active" : ""}`} href={item.href}>
+          <Link key={item.id} aria-current={active === item.id ? "page" : undefined} className={`app-nav-link ${active === item.id ? "active" : ""}`} href={item.href}>
             {item.label}
           </Link>
         ))}
       </nav>
 
-      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+      <div className="marketing-account">
         <QueryProvider><PublicHeaderAccountSlot /></QueryProvider>
+      </div>
+      <details className="marketing-mobile-nav">
+        <summary aria-label="Navigation menu"><Icon name="list" size={21} /></summary>
+        <nav aria-label="Mobile public navigation">
+          {navItems.map((item) => <Link aria-current={active === item.id ? "page" : undefined} href={item.href} key={item.id}>{item.label}<Icon name="arrow" size={15} /></Link>)}
+        </nav>
+      </details>
       </div>
     </header>
   );

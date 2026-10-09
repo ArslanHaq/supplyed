@@ -13,7 +13,6 @@ import type {
   SettingsInstitutionUpdateInput,
   SettingsInstructorUpdateInput,
   SettingsProfileSnapshot,
-  SettingsRecruiterUpdateInput,
   SettingsUpdateInput,
   SettingsUserUpdateInput,
 } from "./types";
@@ -30,7 +29,6 @@ type SettingsActionField =
   | "phone"
   | "schoolName";
 
-const phonePattern = /^[0-9+()\s-]{7,}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function backendEnabled() {
@@ -82,19 +80,17 @@ function actionFailure(error: unknown, fallback: string) {
 function validateUser(input: SettingsUserUpdateInput) {
   const errors: Partial<Record<SettingsActionField, string>> = {};
   const name = text(input.name);
-  const phone = text(input.phone);
 
   if (!name) errors.name = "Enter your display name.";
-  if (phone && !phonePattern.test(phone)) errors.phone = "Use a valid phone number.";
 
   return errors;
 }
 
 function userPayload(input: SettingsUserUpdateInput) {
-  return withoutUndefined({
+  // Phone changes are saved by the verification endpoint, including across tabs.
+  return {
     name: text(input.name),
-    phone: optionalText(input.phone),
-  });
+  };
 }
 
 function instructorPayload(input: SettingsInstructorUpdateInput) {
@@ -153,19 +149,6 @@ function institutionPayload(input: SettingsInstitutionUpdateInput) {
   });
 }
 
-function recruiterPayload(input: SettingsRecruiterUpdateInput) {
-  return withoutUndefined({
-    address: optionalText(input.address),
-    bio: optionalText(input.bio),
-    city: optionalText(input.city),
-    countryCode: optionalText(input.countryCode) ?? "GB",
-    county: optionalText(input.county),
-    displayName: text(input.displayName),
-
-    postalCode: optionalText(input.postalCode),
-  });
-}
-
 function validateProfile(input: SettingsUpdateInput) {
   const errors: Partial<Record<SettingsActionField, string>> = {};
 
@@ -183,9 +166,6 @@ function validateProfile(input: SettingsUpdateInput) {
     }
   }
 
-  if (input.role === "individual") {
-    if (!text(input.recruiter?.displayName)) errors.displayName = "Enter your profile display name.";
-  }
 
   return errors;
 }
@@ -201,15 +181,10 @@ function mergeLocalSnapshot(current: SettingsProfileSnapshot, input: SettingsUpd
       input.role === "teacher" && input.instructor && current.instructor
         ? { ...current.instructor, ...input.instructor }
         : current.instructor,
-    recruiter:
-      input.role === "individual" && input.recruiter && current.recruiter
-        ? { ...current.recruiter, ...input.recruiter }
-        : current.recruiter,
     role: input.role,
     user: {
       ...current.user,
       name: text(input.user.name),
-      phone: text(input.user.phone),
     },
   };
 }
@@ -366,11 +341,6 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
       if (!profileId || !input.institution) return actionError("Institution profile was not found.");
 
       await api.patch(`/institutions/${profileId}`, institutionPayload(input.institution));
-    }
-
-    if (input.role === "individual") {
-      if (!input.recruiter) return actionError("Individual profile was not found.");
-      await api.patch("/recruiters/me", recruiterPayload(input.recruiter));
     }
 
     revalidateTag("settings", "max");

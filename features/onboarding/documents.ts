@@ -166,8 +166,8 @@ function readStringArray(value: unknown) {
 }
 
 /**
- * Right after the profile is created the session token still carries the USER
- * role, so callers can pass a freshly refreshed token instead.
+ * Callers may pass a freshly refreshed access token immediately after profile
+ * creation so the backend sees the latest authenticated account state.
  */
 function requestOptions(auth: DocumentRequestAuth, extra: RequestOptions = {}): RequestOptions {
   if (!auth.accessToken) return extra;
@@ -212,22 +212,18 @@ export async function getProfileDocumentRequirements(
   role: AppRole | null | undefined,
   auth: DocumentRequestAuth = {},
 ): Promise<OnboardingDocumentRequirement[]> {
-  const profileRole = backendProfileRole(role);
-  if (!profileRole) return [];
+  if (!backendProfileRole(role)) return [];
   if (!backendEnabled()) return role === "teacher" ? localInstructorRequirements : [];
 
   const response = await api.get<unknown>(
     "/document-requirements/profile",
-    requestOptions(auth, { cache: "no-store", query: { role: profileRole } }),
+    requestOptions(auth, { cache: "no-store" }),
   );
   if (!Array.isArray(response)) throw new Error("Document requirements could not be verified. Try again.");
   if (response.some((item) => !isRecord(item) || !item.id || !isRecord(item.documentType) || !item.documentType.id)) {
     throw new Error("Document requirements are incomplete. Try again.");
   }
-  // Instructor responses also include application requirements, which belong to job applications.
-  if (response.some((item) =>
-    item.context !== profileDocumentContext(role) && !(role === "teacher" && item.context === "APPLICATION"),
-  )) {
+  if (response.some((item) => item.context !== profileDocumentContext(role))) {
     throw new Error("Document requirements do not match your profile. Retry the check.");
   }
 

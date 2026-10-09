@@ -43,10 +43,10 @@ export function PublicHeaderAccountSlot() {
 
   return (
     <>
-      <Link className={buttonClassName({ variant: "ghost", className: "h-10 rounded-full px-4 text-sm sm:h-11 sm:px-5 sm:text-[15px]" })} href="/login">
+      <Link className={buttonClassName({ variant: "ghost", size: "sm", className: "max-sm:px-2 max-sm:text-[11px]" })} href="/login">
         Log in
       </Link>
-      <Link className={buttonClassName({ className: "h-10 rounded-full px-5 text-sm text-white! sm:h-11 sm:px-6 sm:text-[15px]" })} href="/signup">
+      <Link className={buttonClassName({ size: "sm", className: "max-sm:px-2.5 max-sm:text-[11px]" })} href="/signup">
         Get started
       </Link>
     </>

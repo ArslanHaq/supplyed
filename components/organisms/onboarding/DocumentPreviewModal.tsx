@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-
 import { buttonClassName, Icon } from "../../atoms";
+import { Modal } from "../../molecules/Modal";
 import type { DocumentPreview } from "./types";
 import { formatFileSize } from "./utils";
 
@@ -13,47 +12,21 @@ export function DocumentPreviewModal({
   onClose: () => void;
   preview: DocumentPreview | null;
 }) {
-  useEffect(() => {
-    if (!preview) return;
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [onClose, preview]);
-
   if (!preview) return null;
 
   const isImage = preview.file.type.startsWith("image/");
   const title = `${preview.file.name} preview`;
 
   return (
-    <div
-      aria-labelledby="document-preview-title"
-      aria-modal="true"
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-3 sm:p-6"
-      onClick={onClose}
-      role="dialog"
-    >
-      <div
-        className="flex max-h-[92vh] w-full max-w-6xl cursor-default flex-col overflow-hidden rounded-2xl border border-white/15 bg-white shadow-[0_30px_80px_rgb(0_0_0/0.35)]"
-        onClick={(event) => event.stopPropagation()}
-      >
+    <Modal open={Boolean(preview)} onClose={onClose} size="xl" label={title}>
+      <div className="document-preview flex w-full flex-col overflow-hidden rounded-2xl bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
               <Icon name={isImage ? "image" : "file"} size={19} />
             </div>
             <div className="min-w-0">
-              <h2 id="document-preview-title" className="truncate font-serif text-xl leading-tight text-ink">
+              <h2 id="document-preview-title" className="truncate font-heading text-xl leading-tight text-ink">
                 {preview.file.name}
               </h2>
               <p className="mt-1 text-xs font-medium text-muted">
@@ -83,7 +56,7 @@ export function DocumentPreviewModal({
         </div>
 
         <div className="min-h-0 flex-1 bg-[#101217] p-3 sm:p-4">
-          <div className="flex h-[70vh] min-h-[420px] items-center justify-center overflow-hidden rounded-xl bg-[#f8fafc]">
+          <div className="document-preview-frame flex items-center justify-center overflow-hidden rounded-lg bg-[#f8fafc]">
             {isImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -101,6 +74,6 @@ export function DocumentPreviewModal({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

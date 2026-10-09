@@ -72,6 +72,23 @@ function getApiBaseUrl() {
   return baseUrl;
 }
 
+function buildApiPath(basePath: string, path: string) {
+  const normalizedBasePath = basePath === "/" ? "" : basePath.replace(/\/+$/, "");
+  const normalizedPath = path.replace(/^\/+/, "");
+
+  return [normalizedBasePath, normalizedPath].filter(Boolean).join("/");
+}
+
+function buildApiUrl(path: string) {
+  const baseUrl = getApiBaseUrl();
+  if (!baseUrl) return null;
+
+  const url = new URL(baseUrl);
+  url.pathname = buildApiPath(url.pathname, path);
+  url.search = "";
+  return url;
+}
+
 function unwrapApiPayload(payload: unknown) {
   if (isRecord(payload) && "data" in payload && ("success" in payload || "message" in payload)) {
     return payload.data;
@@ -109,10 +126,10 @@ function readAccessTokenExpiresAt(record: Record<string, unknown>, accessToken?:
 }
 
 export async function refreshBackendAccessToken(refreshToken: string): Promise<RefreshResult | null> {
-  const baseUrl = getApiBaseUrl();
-  if (!baseUrl) return null;
+  const url = buildApiUrl("/auth/refresh");
+  if (!url) return null;
 
-  const response = await fetch(new URL("/auth/refresh", baseUrl), {
+  const response = await fetch(url, {
     body: JSON.stringify({ refreshToken }),
     cache: "no-store",
     headers: {

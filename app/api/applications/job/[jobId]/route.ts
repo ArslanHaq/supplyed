@@ -15,7 +15,6 @@ export async function GET(request: Request, context: { params: Promise<{ jobId: 
       page: Number(searchParams.get("page") ?? 1),
       status:
         status === "APPLIED" ||
-        status === "COMPLETED" ||
         status === "HIRED" ||
         status === "INTERVIEW" ||
         status === "REJECTED" ||

@@ -1,16 +1,82 @@
-import type { Job, JobCreateInput, JobListFilters, JobUpdateInput, BackendJobResponse } from "./types";
+import type { JobStatus } from "@/types/supplyed";
+
+import type {
+  BackendJobResponse,
+  Job,
+  JobCreateInput,
+  JobListFilters,
+  JobsPagination,
+  JobStatusCounts,
+  JobUpdateInput,
+  MyJobs,
+  PaginatedJobs,
+} from "./types";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const JOB_STATUSES: JobStatus[] = ["DRAFT", "ACTIVE", "EXPIRED", "CLOSED"];
 
 export function normalizeJobFilters(filters: JobListFilters = {}): JobListFilters {
   return {
     keyStage: filters.keyStage?.trim() || undefined,
-    mode: filters.mode,
-    search: filters.search?.trim() || undefined,
-    status: filters.status,
+    limit: wholeNumberBetween(filters.limit, 1, 100),
+    page: wholeNumberBetween(filters.page, 1, Number.MAX_SAFE_INTEGER),
+    search: filters.search?.trim().slice(0, 100) || undefined,
+    status: filters.status && JOB_STATUSES.includes(filters.status) ? filters.status : undefined,
     subject: filters.subject?.trim() || undefined,
     urgent: filters.urgent,
   };
+}
+
+/** Reads the job-list paging and filters from a request's query string. */
+export function readJobFilters(searchParams: URLSearchParams): JobListFilters {
+  const urgent = searchParams.get("urgent");
+
+  return normalizeJobFilters({
+    keyStage: searchParams.get("keyStage") ?? undefined,
+    limit: Number(searchParams.get("limit")) || undefined,
+    page: Number(searchParams.get("page")) || undefined,
+    search: searchParams.get("search") ?? undefined,
+    status: (searchParams.get("status") as JobStatus | null) ?? undefined,
+    subject: searchParams.get("subject") ?? undefined,
+    urgent: urgent === "true" ? true : urgent === "false" ? false : undefined,
+  });
+}
+
+export function normalizePaginatedJobs(result: { jobs?: BackendJobResponse[]; pagination?: Partial<JobsPagination> } | null | undefined, filters: JobListFilters = {}): PaginatedJobs {
+  const jobs = Array.isArray(result?.jobs) ? result.jobs.map(normalizeBackendJob) : [];
+  const limit = result?.pagination?.limit ?? filters.limit ?? 20;
+  const total = result?.pagination?.total ?? jobs.length;
+
+  return {
+    jobs,
+    pagination: {
+      hasNextPage: Boolean(result?.pagination?.hasNextPage),
+      limit,
+      page: result?.pagination?.page ?? filters.page ?? 1,
+      total,
+      totalPages: result?.pagination?.totalPages ?? Math.ceil(total / limit),
+    },
+  };
+}
+
+export function normalizeMyJobs(result: { jobs?: BackendJobResponse[]; pagination?: Partial<JobsPagination>; statusCounts?: Partial<JobStatusCounts> } | null | undefined, filters: JobListFilters = {}): MyJobs {
+  const counts = result?.statusCounts ?? {};
+
+  return {
+    ...normalizePaginatedJobs(result, filters),
+    statusCounts: {
+      ACTIVE: counts.ACTIVE ?? 0,
+      ALL: counts.ALL ?? 0,
+      CLOSED: counts.CLOSED ?? 0,
+      DRAFT: counts.DRAFT ?? 0,
+      EXPIRED: counts.EXPIRED ?? 0,
+    },
+  };
+}
+
+function wholeNumberBetween(value: number | undefined, min: number, max: number) {
+  return value !== undefined && Number.isInteger(value) && value >= min && value <= max ? value : undefined;
 }
 
 export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
@@ -21,7 +87,6 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
     countryCode: input.countryCode?.trim().toUpperCase() || "GB",
     county: input.county?.trim() || undefined,
     description: input.description.trim(),
-    documentRequirementIds: normalizeStringList(input.documentRequirementIds ?? []),
     endDate: input.endDate?.trim() || undefined,
     expiresAt: input.expiresAt?.trim() || undefined,
     keyStages: normalizeStringList(input.keyStages),
@@ -83,6 +148,13 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     expiresAt,
     keyStage: keyStages[0] ?? "All stages",
     keyStages,
+    institution: job.institution?.id
+      ? {
+          id: job.institution.id,
+          imageUrl: job.institution.imageUrl ?? null,
+          name: job.institution.name || "Hiring school",
+        }
+      : null,
     latitude: readNumber(job.latitude) ?? null,
     longitude: readNumber(job.longitude) ?? null,
     minExperienceYears: normalizeNonNegativeInteger(job.minExperienceYears) ?? null,
@@ -100,7 +172,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     postalCode: job.postalCode?.trim() || null,
     rate: payAmount,
     requiredSkills,
-    school: "Hiring account",
+    school: job.institution?.name || "Hiring account",
     startDate,
     status: job.status,
     subject,
@@ -108,23 +180,6 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     updatedAt: readDateIso(job.updatedAt),
     urgent: isUrgent(expiresAt),
   };
-}
-
-export function applyJobFilters(jobs: Job[], filters: JobListFilters = {}) {
-  const normalized = normalizeJobFilters(filters);
-
-  return jobs.filter((job) => {
-    const matchesSearch = normalized.search
-      ? `${job.title} ${job.school} ${job.city} ${job.county ?? ""} ${job.postalCode ?? ""} ${job.subject} ${job.requiredSkills.join(" ")}`.toLowerCase().includes(normalized.search.toLowerCase())
-      : true;
-    const matchesSubject = normalized.subject ? job.subject === normalized.subject : true;
-    const matchesKeyStage = normalized.keyStage ? job.keyStages?.includes(normalized.keyStage) || job.keyStage === normalized.keyStage : true;
-    const matchesMode = normalized.mode ? job.mode === normalized.mode : true;
-    const matchesUrgent = normalized.urgent === undefined ? true : job.urgent === normalized.urgent;
-    const matchesStatus = normalized.status ? job.status === normalized.status : true;
-
-    return matchesSearch && matchesSubject && matchesKeyStage && matchesMode && matchesUrgent && matchesStatus;
-  });
 }
 
 export function toCreateJobPayload(input: JobCreateInput) {

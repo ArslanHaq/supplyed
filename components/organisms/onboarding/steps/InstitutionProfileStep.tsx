@@ -9,9 +9,9 @@ export function InstitutionProfileStep(props: AccountStepProps) {
 
   return (
     <AccountBasicsStep {...props}>
-      <div className="space-y-6 rounded-xl border border-border bg-chalk p-4 sm:p-5">
+      <div className="onboarding-field-section space-y-6">
         <div>
-          <h3 className="font-serif text-2xl leading-tight">Institution profile</h3>
+          <h3 className="font-heading text-2xl leading-tight">Institution profile</h3>
           <p className="mt-1 text-sm leading-6 text-muted">
             These fields create the school or MAT profile in the backend before review.
           </p>
@@ -43,6 +43,15 @@ export function InstitutionProfileStep(props: AccountStepProps) {
               value={form.institutionAddress}
               onChange={(event) => updateField("institutionAddress", event.target.value)}
               placeholder="1 School Lane"
+            />
+          </Field>
+          <Field label="Postal code" htmlFor="institution-postcode" error={errors.postcode} required>
+            <input
+              id="institution-postcode"
+              className={fieldClass(errors.postcode)}
+              value={form.postcode}
+              onChange={(event) => updateField("postcode", event.target.value)}
+              placeholder="M1 1AE"
             />
           </Field>
           <CountryCityFields

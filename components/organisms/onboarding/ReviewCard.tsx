@@ -40,14 +40,14 @@ export function ReviewCard({
   onEdit: () => void;
 }) {
   return (
-    <section className={cn("min-w-0 rounded-xl border border-border bg-white", featured ? "p-5" : "p-4")}>
+    <section className={cn("onboarding-review-card min-w-0 rounded-xl border border-border bg-white", featured ? "p-5" : "p-4")}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
             <Icon name={group.icon} size={19} />
           </div>
           <div className="min-w-0">
-            <h3 className="font-serif text-xl leading-tight">{group.title}</h3>
+            <h3 className="font-heading text-xl leading-tight">{group.title}</h3>
             <p className="mt-1 text-sm leading-5 text-muted">{group.description}</p>
           </div>
         </div>
@@ -64,7 +64,7 @@ export function ReviewCard({
         {group.lines.map((line) => (
           <div
             key={line.label}
-            className={cn("min-w-0 rounded-lg bg-chalk px-3.5 py-3", line.wide ? "sm:col-span-2" : null)}
+            className={cn("review-line min-w-0", line.wide ? "sm:col-span-2" : null)}
           >
             <div className="mb-1 text-[10px] font-bold uppercase tracking-[1px] text-muted">{line.label}</div>
             <div className="min-w-0 break-words text-sm leading-6 text-ink">{line.value}</div>

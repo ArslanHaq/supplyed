@@ -23,10 +23,11 @@ export async function AppRouteShell(props: { page: AppPage }) {
     redirect("/post-auth");
   }
 
-  const snapshot = process.env.API_BASE_URL ? await getOnboardingProfileSnapshot() : null;
+  const isAdmin = session.user.role === "admin";
+  const snapshot = process.env.API_BASE_URL && !isAdmin ? await getOnboardingProfileSnapshot() : null;
   const role = snapshot ? snapshot.role : session.user.role;
-  const applicationStatus = snapshot ? profileEntryStatus(snapshot) : session.user.applicationStatus;
-  if (!role || !hasSubmittedApplicationStatus(applicationStatus)) {
+  const applicationStatus = isAdmin ? "approved" : snapshot ? profileEntryStatus(snapshot) : session.user.applicationStatus;
+  if (!role || (role !== "admin" && !hasSubmittedApplicationStatus(applicationStatus))) {
     redirect("/onboarding");
   }
 

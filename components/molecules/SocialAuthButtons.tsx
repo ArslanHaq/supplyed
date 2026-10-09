@@ -43,7 +43,7 @@ export function SocialAuthButtons({
       <div className="grid gap-3 sm:grid-cols-2">
         {socialProviders.map((provider) => {
           const providerAvailable = provider.id === "google" ? available.google : available.microsoft;
-          const unavailableLabel = `${provider.name} sign-in is not configured`;
+          const unavailableLabel = `${provider.name} sign-in is currently unavailable`;
 
           return (
             <button
@@ -69,7 +69,7 @@ export function SocialAuthButtons({
       </div>
       {!available.google || !available.microsoft ? (
         <p className="mt-3 text-xs leading-5 text-muted">
-          Unavailable social providers need credentials configured and the app restarted before they can connect.
+          Some sign-in options are currently unavailable. You can still continue with email.
         </p>
       ) : null}
 

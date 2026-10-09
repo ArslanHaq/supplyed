@@ -7,9 +7,9 @@ import type {
 } from "@/features/onboarding/types";
 import type { AppRole } from "@/types/supplyed";
 
-export type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
+export type SignupRole = Extract<AppRole, "institution" | "teacher">;
 export type SignupStep = 1 | 2 | 3 | 4;
-export type OnboardingPending = "step" | "submit" | null;
+export type OnboardingPending = "status" | "step" | "submit" | null;
 
 /** Per-card upload errors keyed by document requirement id. */
 export type DocumentErrors = Record<string, string | undefined>;
@@ -46,7 +46,12 @@ export type SignupField =
   | "accountRole"
   | "fullName"
   | "email"
-  | "recruiterProfileId"
+  | "institutionType"
+  | "trustName"
+  | "trustCompanyNumber"
+  | "signatoryName"
+  | "signatoryEmail"
+  | "signatoryJobTitle"
   | "phone"
   | "profileCity"
   | "profileCountryCode"
@@ -113,6 +118,7 @@ export type SignupForm = {
   institutionDomain: string;
   institutionProfileId: string;
   institutionRegistrationId: string;
+  institutionType: "MAT_SCHOOL" | "SINGLE_SCHOOL";
   keyStages: string[];
   localAuthority: string;
   maxTravelDistance: string;
@@ -121,16 +127,20 @@ export type SignupForm = {
   profileCity: string;
   profileCountryCode: string;
   postcode: string;
-  recruiterProfileId: string;
   safeguardingConfirmed: boolean;
   schoolName: string;
   skills: string[];
   staffingNeeds: string;
+  signatoryEmail: string;
+  signatoryJobTitle: string;
+  signatoryName: string;
   subjects: string[];
   teacherProfileId: string;
   teachingReferenceNumber: string;
   termsAccepted: boolean;
   typicalPupilCount: string;
+  trustCompanyNumber: string;
+  trustName: string;
   yearsExperience: string;
 };
 

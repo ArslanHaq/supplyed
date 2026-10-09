@@ -19,6 +19,7 @@ export const initialForm: SignupForm = {
   institutionDomain: "",
   institutionProfileId: "",
   institutionRegistrationId: "",
+  institutionType: "SINGLE_SCHOOL",
   keyStages: [],
   localAuthority: "",
   maxTravelDistance: "",
@@ -27,16 +28,20 @@ export const initialForm: SignupForm = {
   profileCity: "",
   profileCountryCode: "GB",
   postcode: "",
-  recruiterProfileId: "",
   safeguardingConfirmed: false,
   schoolName: "",
   skills: [],
   staffingNeeds: "",
+  signatoryEmail: "",
+  signatoryJobTitle: "",
+  signatoryName: "",
   subjects: [],
   teacherProfileId: "",
   teachingReferenceNumber: "",
   termsAccepted: false,
   typicalPupilCount: "",
+  trustCompanyNumber: "",
+  trustName: "",
   yearsExperience: "",
 };
 
@@ -58,13 +63,6 @@ export function stepContent(role: SignupRole) {
   if (role === "teacher") {
     return [
       { label: "Teacher profile", description: "Contact details, subjects, rates, travel, and teaching style" },
-      { label: "Full review", description: "Review everything before creating the profile" },
-    ];
-  }
-
-  if (role === "individual") {
-    return [
-      { label: "Profile details", description: "Create your hiring profile with basic contact details" },
       { label: "Full review", description: "Review everything before creating the profile" },
     ];
   }

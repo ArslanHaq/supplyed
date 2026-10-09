@@ -11,7 +11,6 @@ declare module "next-auth" {
       id: string;
       instructorProfileId?: string;
       institutionProfileId?: string;
-      recruiterProfileId?: string;
       isEmailVerified: boolean;
       role: AppRole | null;
     } & DefaultSession["user"];
@@ -27,7 +26,6 @@ declare module "next-auth" {
     backendAuthErrorProvider?: string;
     instructorProfileId?: string;
     institutionProfileId?: string;
-    recruiterProfileId?: string;
     refreshToken?: string;
     role?: AppRole | null;
   }
@@ -44,7 +42,6 @@ declare module "next-auth/jwt" {
     backendAuthErrorProvider?: string;
     instructorProfileId?: string;
     institutionProfileId?: string;
-    recruiterProfileId?: string;
     refreshToken?: string;
     role?: AppRole | null;
     userId?: string;

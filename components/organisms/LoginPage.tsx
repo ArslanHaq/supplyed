@@ -68,9 +68,9 @@ export function LoginPage({
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-chalk lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-      <aside className="relative flex min-h-[340px] flex-col justify-between overflow-hidden bg-[#0a0a0a] px-5 py-7 text-white sm:px-8 sm:py-10 lg:min-h-screen lg:px-14 lg:py-16">
-        <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:54px_54px]" />
+    <div className="auth-shell">
+      <aside className="auth-aside">
+        <div className="auth-aside-rule" aria-hidden="true" />
         <div className="relative flex items-center justify-between gap-4">
           <Logo size={22} className="text-white" onClick={onLanding} />
           <Btn
@@ -83,16 +83,17 @@ export function LoginPage({
           </Btn>
         </div>
 
-        <div className="relative my-12 max-w-[540px] lg:my-0">
-          <h1 className="text-5xl font-bold leading-[0.98] text-white sm:text-6xl lg:text-[68px]">
+        <div className="auth-story">
+          <div className="auth-story-label"><span /> Your education network</div>
+          <h1 className="font-heading text-white">
             Welcome back
-            <br />
+            <br />{" "}
             to Supply<span className="text-brand">ED</span>
           </h1>
-          <p className="mt-7 max-w-[520px] text-lg leading-8 text-white/62 sm:text-xl">
+          <p className="auth-story-description">
             Log in to access your dashboard, manage jobs, and connect with schools or teachers across the UK.
           </p>
-          <ul className="mt-10 grid gap-5 text-base text-white/72 sm:text-lg">
+          <ul className="auth-benefits">
             {signinBenefits.map((benefit) => (
               <li key={benefit} className="flex items-center gap-4">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-tint text-brand">
@@ -104,14 +105,14 @@ export function LoginPage({
           </ul>
         </div>
 
-        <div className="relative text-xs text-white/40">© 2026 SupplyED</div>
+        <div className="auth-aside-footer"><span>© 2026 SupplyED</span><span>Built for education.</span></div>
       </aside>
 
-      <section className="flex min-h-[calc(100vh-340px)] items-center justify-center px-4 py-8 sm:px-6 lg:min-h-screen lg:px-12 lg:py-16">
-        <div className="w-full max-w-[460px]">
-          <div className="mb-7">
+      <section className="auth-main">
+        <div className="auth-main-inner">
+          <div className="auth-form-heading">
             <div className="eyebrow mb-2 text-brand">Secure sign in</div>
-            <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">Log in to SupplyED</h2>
+            <h2 className="font-heading">Log in to SupplyED</h2>
             <p className="mt-3 text-muted">
               New to SupplyED?{" "}
               <button className="font-semibold text-brand" onClick={onSwitchSignup} type="button">
@@ -120,7 +121,7 @@ export function LoginPage({
             </p>
           </div>
 
-          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleCredentialSubmit}>
+          <form className="auth-form" method="post" noValidate onSubmit={handleCredentialSubmit}>
             <SocialAuthButtons available={socialAuth} disabled={pending} onGoogle={onGoogleAuth} onMicrosoft={onMicrosoftAuth} />
 
             <Field label="Email address" htmlFor="login-email" error={errors.email} required>
@@ -173,6 +174,7 @@ export function LoginPage({
               Continue securely
             </Btn>
           </form>
+          <p className="auth-security-note"><Icon name="shield" size={14} /> Secure access to your SupplyED workspace</p>
         </div>
       </section>
     </div>

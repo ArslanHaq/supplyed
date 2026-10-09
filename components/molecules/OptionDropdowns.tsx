@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -44,6 +44,7 @@ function optionSummary(value: string[], options: MultiSelectOption[], placeholde
 
 export function SelectDropdown({ id, value, options, onChange, placeholder = "Select an option", error }: SelectDropdownProps) {
   const [open, setOpen] = useState(false);
+  const listId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useDropdownDismiss(open, rootRef, () => setOpen(false));
@@ -51,6 +52,7 @@ export function SelectDropdown({ id, value, options, onChange, placeholder = "Se
   function selectOption(option: string) {
     onChange(option);
     setOpen(false);
+    rootRef.current?.querySelector<HTMLButtonElement>('[aria-haspopup="listbox"]')?.focus();
   }
 
   return (
@@ -58,6 +60,9 @@ export function SelectDropdown({ id, value, options, onChange, placeholder = "Se
       <button
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-controls={open ? listId : undefined}
+        aria-invalid={error || undefined}
+        role="combobox"
         id={id}
         className={cn(
           "select flex min-h-[44px] cursor-pointer items-center justify-between gap-3 text-left",
@@ -65,6 +70,7 @@ export function SelectDropdown({ id, value, options, onChange, placeholder = "Se
           error ? "border-danger bg-danger-tint" : null,
         )}
         onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => { if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); setOpen(true); } }}
         type="button"
       >
         <span className="min-w-0 flex-1 truncate">{value || placeholder}</span>
@@ -73,7 +79,7 @@ export function SelectDropdown({ id, value, options, onChange, placeholder = "Se
 
       {open ? (
         <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-lg border border-border bg-white shadow-card">
-          <div className="max-h-64 overflow-auto p-1.5" role="listbox">
+          <div className="option-list max-h-64 overflow-auto p-1.5" role="listbox" id={listId} aria-label={placeholder}>
             {options.map((option) => {
               const selected = value === option;
 
@@ -104,31 +110,50 @@ export function SelectDropdown({ id, value, options, onChange, placeholder = "Se
 }
 
 function useDropdownDismiss(open: boolean, rootRef: React.RefObject<HTMLDivElement | null>, onDismiss: () => void) {
+  const dismissRef = useRef(onDismiss);
+  useEffect(() => { dismissRef.current = onDismiss; }, [onDismiss]);
   useEffect(() => {
     if (!open) return;
+    const root = rootRef.current;
+    const trigger = root?.querySelector<HTMLButtonElement>('[aria-haspopup="listbox"]');
+    const selected = root?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]') ?? root?.querySelector<HTMLElement>('[role="option"]');
+    selected?.focus();
 
     function handlePointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
-        onDismiss();
+        dismissRef.current();
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onDismiss();
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); dismissRef.current(); trigger?.focus(); }
+      if (!root?.contains(event.target as Node)) return;
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const options = Array.from(root.querySelectorAll<HTMLElement>('[role="option"]'));
+      const current = options.indexOf(document.activeElement as HTMLElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? options.length - 1 : (current + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+      options[next]?.focus();
     }
 
     document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
+    function handleFocusOut(event: FocusEvent) {
+      if (event.relatedTarget && !root?.contains(event.relatedTarget as Node)) dismissRef.current();
+    }
+    root?.addEventListener("keydown", handleKeyDown);
+    root?.addEventListener("focusout", handleFocusOut);
 
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      root?.removeEventListener("keydown", handleKeyDown);
+      root?.removeEventListener("focusout", handleFocusOut);
     };
-  }, [open, rootRef, onDismiss]);
+  }, [open, rootRef]);
 }
 
 export function MultiSelectDropdown({ id, value, options, onChange, placeholder = "Select options", error, disabled = false }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
+  const listId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const normalizedOptions = options.map(normalizeMultiSelectOption);
 
@@ -143,6 +168,9 @@ export function MultiSelectDropdown({ id, value, options, onChange, placeholder 
       <button
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-controls={open ? listId : undefined}
+        aria-invalid={error || undefined}
+        role="combobox"
         id={id}
         className={cn(
           "select flex min-h-[44px] cursor-pointer items-center justify-between gap-3 text-left",
@@ -152,6 +180,7 @@ export function MultiSelectDropdown({ id, value, options, onChange, placeholder 
         )}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => { if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); setOpen(true); } }}
         type="button"
       >
         <span className="min-w-0 flex-1 truncate">{optionSummary(value, normalizedOptions, placeholder)}</span>
@@ -163,7 +192,7 @@ export function MultiSelectDropdown({ id, value, options, onChange, placeholder 
 
       {open ? (
         <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-lg border border-border bg-white shadow-card">
-          <div className="max-h-64 overflow-auto p-1.5" role="listbox" aria-multiselectable="true">
+          <div className="option-list max-h-64 overflow-auto p-1.5" role="listbox" id={listId} aria-label={placeholder} aria-multiselectable="true">
             {normalizedOptions.map((option) => {
               const selected = value.includes(option.value);
 

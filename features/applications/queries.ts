@@ -1,13 +1,25 @@
 import "server-only";
 
 import { seedApplications, seedTeachers } from "@/data/supplyed";
+import { listMyJobs } from "@/features/jobs/queries";
 import { api } from "@/lib/server/api-client";
 
-import { normalizeApplicationsQuery, normalizePaginatedApplications } from "./schemas";
+import { normalizeApplication, normalizeApplicationsQuery, normalizePaginatedApplications } from "./schemas";
 import type { JobApplication, JobApplicationsQuery, PaginatedApplications } from "./types";
 
 function backendEnabled() {
   return Boolean(process.env.API_BASE_URL);
+}
+
+export async function getApplicationById(applicationId: string): Promise<JobApplication | null> {
+  if (backendEnabled()) {
+    return normalizeApplication(await api.get<JobApplication>(`/applications/${applicationId}`, {
+      cache: "no-store",
+    }));
+  }
+
+  const application = seedApplications.find((item) => item.id === applicationId);
+  return application ? toJobApplication(application) : null;
 }
 
 export async function listApplicationsByJob(jobId: string, query: JobApplicationsQuery = {}): Promise<PaginatedApplications> {
@@ -24,44 +36,103 @@ export async function listApplicationsByJob(jobId: string, query: JobApplication
 
   const applications = seedApplications
     .filter((application) => application.jobId === jobId)
-    .map<JobApplication>((application) => {
-      const teacher = seedTeachers.find((item) => item.id === application.teacherId);
+    .filter((application) => !normalized.status || application.stage.toUpperCase() === normalized.status)
+    .map(toJobApplication);
 
-      return {
-        coverLetter: application.coverLetter,
-        createdAt: application.appliedAt,
-        id: application.id,
-        instructor: teacher
-          ? {
-              city: teacher.city,
-              county: null,
-              dbsVerified: teacher.dbs,
-              experience: teacher.yearsExp,
-              fullName: teacher.name,
-              id: teacher.id,
-              imageUrl: null,
-              keyStages: teacher.keyStages,
-              ratingAverage: teacher.rating,
-              ratingCount: teacher.reviews,
-              skills: [teacher.role],
-              subjects: teacher.subjects,
-            }
-          : undefined,
-        instructorId: application.teacherId,
-        jobId: application.jobId,
-        status: application.stage.toUpperCase() as JobApplication["status"],
-        updatedAt: null,
-      };
+  return paginateApplications(applications, normalized);
+}
+
+export async function listMyApplications(query: JobApplicationsQuery = {}): Promise<PaginatedApplications> {
+  const normalized = normalizeApplicationsQuery(query);
+
+  if (backendEnabled()) {
+    const result = await api.get<PaginatedApplications>("/applications/me", {
+      next: { tags: ["applications", "applications:me"] },
+      query: normalized,
     });
 
+    return normalizePaginatedApplications(result);
+  }
+
+  const applications = seedApplications
+    .filter((application) => application.teacherId === "t-sarah")
+    .filter((application) => !normalized.status || application.stage.toUpperCase() === normalized.status)
+    .map(toJobApplication);
+
+  return paginateApplications(applications, normalized);
+}
+
+/** Total application records across every active job owned by the signed-in institution. */
+export async function countApplicationsForActiveJobs(): Promise<{ total: number }> {
+  const jobIds: string[] = [];
+  let page = 1;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    const jobsPage = await listMyJobs({ limit: 100, page, status: "ACTIVE" });
+    jobIds.push(...jobsPage.jobs.map((job) => job.id));
+    hasNextPage = jobsPage.pagination.hasNextPage;
+    page += 1;
+  }
+
+  let total = 0;
+  const batchSize = 10;
+
+  for (let index = 0; index < jobIds.length; index += batchSize) {
+    const applicationPages = await Promise.all(
+      jobIds.slice(index, index + batchSize).map((jobId) => listApplicationsByJob(jobId, { limit: 1, page: 1 })),
+    );
+    total += applicationPages.reduce((sum, applications) => sum + applications.pagination.total, 0);
+  }
+
+  return { total };
+}
+
+function toJobApplication(application: (typeof seedApplications)[number]): JobApplication {
+  const teacher = seedTeachers.find((item) => item.id === application.teacherId);
+
   return {
-    applications,
+    coverLetter: application.coverLetter,
+    createdAt: application.appliedAt,
+    id: application.id,
+    instructor: teacher
+      ? {
+          city: teacher.city,
+          county: null,
+          dbsVerified: teacher.dbs,
+          experience: teacher.yearsExp,
+          fullName: teacher.name,
+          id: teacher.id,
+          imageUrl: null,
+          keyStages: teacher.keyStages,
+          ratingAverage: teacher.rating,
+          ratingCount: teacher.reviews,
+          skills: [teacher.role],
+          subjects: teacher.subjects,
+        }
+      : undefined,
+    instructorId: application.teacherId,
+    jobId: application.jobId,
+    status: application.stage.toUpperCase() as JobApplication["status"],
+    updatedAt: null,
+  };
+}
+
+function paginateApplications(applications: JobApplication[], query: JobApplicationsQuery): PaginatedApplications {
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 20;
+  const start = (page - 1) * limit;
+  const pagedApplications = applications.slice(start, start + limit);
+  const totalPages = Math.ceil(applications.length / limit);
+
+  return {
+    applications: pagedApplications,
     pagination: {
-      hasNextPage: false,
-      limit: normalized.limit ?? 20,
-      page: normalized.page ?? 1,
+      hasNextPage: page < totalPages,
+      limit,
+      page,
       total: applications.length,
-      totalPages: applications.length ? 1 : 0,
+      totalPages,
     },
   };
 }

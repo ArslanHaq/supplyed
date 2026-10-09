@@ -71,9 +71,9 @@ export function TwoFactorChallengePage({
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-chalk lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-      <aside className="relative flex min-h-[340px] flex-col justify-between overflow-hidden bg-[#0a0a0a] px-5 py-7 text-white sm:px-8 sm:py-10 lg:min-h-screen lg:px-14 lg:py-16">
-        <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--se-rgb)/0.08)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--se-rgb)/0.08)_1px,transparent_1px)] bg-[length:54px_54px]" />
+    <div className="auth-shell">
+      <aside className="auth-aside">
+        <div className="auth-aside-rule" aria-hidden="true" />
         <div className="relative flex items-center justify-between gap-4">
           <Logo size={22} className="text-white" onClick={onLanding} />
           <Btn className="border-white/15 text-white hover:bg-white/10 hover:text-white" variant="ghost" size="sm" onClick={onBack}>
@@ -81,32 +81,33 @@ export function TwoFactorChallengePage({
           </Btn>
         </div>
 
-        <div className="relative my-12 max-w-[540px] lg:my-0">
-          <div className="eyebrow mb-5 text-brand">Second step</div>
-          <h1 className="text-5xl font-bold leading-[0.98] text-white sm:text-6xl lg:text-[68px]">
+        <div className="auth-story">
+          <div className="eyebrow">Second step</div>
+          <h1 className="font-heading text-white">
             Verify this
-            <br />
+            <br />{" "}
             sign in.
           </h1>
-          <p className="mt-7 max-w-[520px] text-lg leading-8 text-white/62 sm:text-xl">
+          <p className="auth-story-description">
             This account uses an authenticator app. Enter the current code, or use one saved recovery code.
           </p>
         </div>
 
-        <div className="relative text-xs text-white/40">Protected by two-factor authentication</div>
+        <div className="auth-aside-footer">Protected by two-factor authentication</div>
       </aside>
 
-      <section className="flex min-h-[calc(100vh-340px)] items-center justify-center px-4 py-8 sm:px-6 lg:min-h-screen lg:px-12 lg:py-16">
-        <div className="w-full max-w-[460px]">
-          <div className="mb-7">
+      <section className="auth-main">
+        <div className="auth-main-inner">
+          <div className="auth-security-badge"><Icon name="shield" size={18} /> Two-factor authentication</div>
+          <div className="auth-form-heading">
             <div className="eyebrow mb-2 text-brand">Authenticator code</div>
-            <h2 className="font-serif text-3xl leading-tight sm:text-[38px]">Enter your security code.</h2>
+            <h2 className="font-heading">Enter your security code.</h2>
             <p className="mt-3 text-muted">
               We verified the password for <span className="font-semibold text-ink">{email || "this account"}</span>.
             </p>
           </div>
 
-          <form className="rounded-xl border border-border bg-white p-5 shadow-(--shadow-xs) sm:p-7" noValidate onSubmit={handleSubmit}>
+          <form className="auth-form" method="post" noValidate onSubmit={handleSubmit}>
             {notice ? (
               <div className="mb-5 rounded-lg border border-brand/20 bg-brand-tint p-4 text-sm leading-6 text-brand-dark">
                 {notice}

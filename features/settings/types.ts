@@ -66,27 +66,10 @@ export type SettingsInstitutionProfile = {
   verified: boolean;
 };
 
-export type SettingsRecruiterProfile = {
-  address: string;
-  bio: string;
-  city: string;
-  countryCode: string;
-  county: string;
-  createdAt: string | null;
-  displayName: string;
-  id: string;
-  imageUrl: string;
-  postalCode: string;
-  status: ApplicationStatus;
-  updatedAt: string | null;
-  userId: string | null;
-};
-
 export type SettingsProfileSnapshot = {
   applicationStatus: ApplicationStatus;
   institution?: SettingsInstitutionProfile;
   instructor?: SettingsInstructorProfile;
-  recruiter?: SettingsRecruiterProfile;
   role: AppRole | null;
   user: SettingsUserSnapshot;
 };
@@ -136,22 +119,9 @@ export type SettingsInstitutionUpdateInput = {
   userRole: string;
 };
 
-export type SettingsRecruiterUpdateInput = {
-  address: string;
-  bio: string;
-  city: string;
-  countryCode: string;
-  county: string;
-  displayName: string;
-  id?: string;
-  imageUrl: string;
-  postalCode: string;
-};
-
 export type SettingsUpdateInput = {
   institution?: SettingsInstitutionUpdateInput;
   instructor?: SettingsInstructorUpdateInput;
-  recruiter?: SettingsRecruiterUpdateInput;
   role: AppRole;
   user: SettingsUserUpdateInput;
 };

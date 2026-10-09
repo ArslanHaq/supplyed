@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PublicThemeControls } from "@/components/molecules";
 import { LandingPage } from "@/components/organisms/LandingPage";
 import { siteConfig } from "@/lib/seo";
 
@@ -23,10 +22,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return (
-    <>
-      <LandingPage />
-      <PublicThemeControls />
-    </>
-  );
+  return <LandingPage />;
 }

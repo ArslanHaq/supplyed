@@ -27,7 +27,7 @@ import { PageLoader, PublicThemeControls } from "../molecules";
 import { OnboardingPage } from "./OnboardingPage";
 import type { OnboardingDocumentUploadActionResult, OnboardingPrefill } from "./onboarding/types";
 
-type SignupRole = Extract<AppRole, "institution" | "teacher" | "individual">;
+type SignupRole = Extract<AppRole, "institution" | "teacher">;
 const sessionRefreshTimeoutMs = 12_000;
 
 function withClientTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -45,7 +45,7 @@ function withClientTimeout<T>(promise: Promise<T>, ms: number, message: string):
 
 function normalizeSignupRole(role: AppRole | null | undefined): SignupRole {
   if (role === "teacher") return "teacher";
-  if (role === "individual") return "individual";
+
   return "institution";
 }
 
@@ -58,10 +58,6 @@ function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfi
     if (!snapshot.institution) return 1;
     if (snapshot.institution.userRole && snapshot.institution.staffingNeeds) return 3;
     return 2;
-  }
-
-  if (role === "individual") {
-    return snapshot.recruiter ? 2 : 1;
   }
 
   return 1;
@@ -120,14 +116,18 @@ function prefillFromFoundingIntent(intent: FoundingSignupIntent | null): Onboard
 }
 
 function hasFoundingAccountBasics(intent: FoundingSignupIntent) {
-  return Boolean(intent.name?.trim() && intent.phone?.trim() && intent.postcode?.trim());
+  return Boolean(intent.name?.trim() && intent.phone?.trim());
+}
+
+function hasFoundingTeacherBasics(intent: FoundingSignupIntent) {
+  return Boolean(hasFoundingAccountBasics(intent) && intent.postcode?.trim());
 }
 
 function hasFoundingTeacherProfile(intent: FoundingSignupIntent) {
   const keyStages = intent.keyStages ?? keyStagesFromFoundingPhase(intent.phase);
 
   return Boolean(
-    hasFoundingAccountBasics(intent) &&
+    hasFoundingTeacherBasics(intent) &&
       intent.subjects?.length &&
       keyStages?.length &&
       intent.yearsExperience?.trim() &&
@@ -367,6 +367,7 @@ function OnboardingRouteClientInner({
         onFinish={finishOnboarding}
         onLanding={goLanding}
         onLogin={logout}
+        onRefresh={() => router.refresh()}
         onStepSave={saveStep}
         prefill={prefillFromFoundingIntent(foundingIntent)}
         role={role}

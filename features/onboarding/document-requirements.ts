@@ -5,7 +5,7 @@ import type { OnboardingDocumentRequirementSnapshot } from "./types";
 export function profileDocumentContext(role?: AppRole | null) {
   if (role === "teacher") return "INSTRUCTOR_PROFILE";
   if (role === "institution") return "INSTITUTION_PROFILE";
-  if (role === "individual") return "RECRUITER_PROFILE";
+
   return undefined;
 }
 

@@ -290,7 +290,7 @@ export async function foundingInterestAction(
     return actionOk(
       result,
       result.alreadyRegistered
-        ? "This email is already registered. Continue to signup with the same email."
+        ? "Your interest is already registered with this email. We will keep you updated before launch."
         : "Thanks. We received your details and will contact you before launch.",
     );
   } catch (error) {

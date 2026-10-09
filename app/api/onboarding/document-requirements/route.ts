@@ -1,13 +1,13 @@
-import { normalizeRole } from "@/features/auth/backend";
+import { auth } from "@/auth";
 import { getProfileDocumentRequirements } from "@/features/onboarding/documents";
 import { routeError } from "@/lib/server/route-error";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const role = normalizeRole(new URL(request.url).searchParams.get("role"));
-    return Response.json(await getProfileDocumentRequirements(role));
+    const session = await auth();
+    return Response.json(await getProfileDocumentRequirements(session?.user.role));
   } catch (error) {
     return routeError(error);
   }

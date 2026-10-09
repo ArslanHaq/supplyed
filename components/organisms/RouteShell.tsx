@@ -15,26 +15,32 @@ import type { AppPage, AppRole, ApplicationStatus, AppState, GoFn, RouteProps, T
 
 import { ToastStack } from "../molecules";
 import { ApplicationStatusPage } from "./ApplicationStatusPage";
+import { AdminDashboard } from "./AdminDashboard";
 import { AppChrome } from "./AppChrome";
-import { ApplicationsPage } from "./ApplicationsPage";
+import { ApplicationsPage } from "./ApplicationsWorkspacePage";
 import { BillingPage } from "./BillingPage";
+import { BookingsPage } from "./BookingsPage";
 import { CalendarPage } from "./CalendarPage";
 import { FindJobsPage } from "./FindJobsPage";
 import { FindTeachersPage } from "./FindTeachersPage";
-import { IndividualDashboard } from "./IndividualDashboard";
 import { InstitutionDashboard } from "./InstitutionDashboard";
+import { InstitutionProfilePage } from "./InstitutionProfilePage";
 import { JobDetailPage } from "./JobDetailPage";
 import { MessagingPage } from "./MessagingPage";
 import { PostJobPage } from "./PostJobPage";
 import { SecurityPage } from "./SecurityPage";
 import { SettingsPage } from "./SettingsPage";
 import { TeacherDashboard } from "./TeacherDashboard";
-import { TeacherProfilePage } from "./TeacherProfilePage";
+import { TeacherApplicationsPage } from "./TeacherApplicationsPage";
+import { PublicTeacherProfilePage as TeacherProfilePage } from "./PublicTeacherProfilePage";
 import { TweaksPanel } from "./TweaksPanel";
 
 function readContext(searchParams: URLSearchParams) {
   return {
+    applicationId: searchParams.get("applicationId") || undefined,
+    institutionId: searchParams.get("institutionId") || undefined,
     jobId: searchParams.get("jobId") || undefined,
+    search: searchParams.get("search") || undefined,
     teacherId: searchParams.get("teacherId") || undefined,
   };
 }
@@ -66,14 +72,14 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
   const router = useRouter();
   const searchParams = useSearchParams();
   const [localState, setState] = useState<AppState>(() => createInitialRouteState(page, sessionState));
-  const onboardingQuery = useOnboardingSnapshot(sessionState.email);
+  const onboardingQuery = useOnboardingSnapshot(sessionState.email, { enabled: sessionState.role !== "admin" });
   // Ignore a cached result until this visit has checked the latest documents.
   const onboarding = onboardingQuery.isSuccess && onboardingQuery.isFetchedAfterMount ? onboardingQuery.data : undefined;
   const state: AppState = {
     ...localState,
     accountName: sessionState.name?.trim() || localState.accountName,
     applicationStatus: onboarding?.applicationStatus ?? sessionState.applicationStatus,
-    role: onboarding?.role ?? sessionState.role,
+    role: sessionState.role === "admin" ? "admin" : onboarding?.role ?? sessionState.role,
     signupEmail: sessionState.email,
   };
   const [tweaks, setTweaks] = useState<Tweaks>(loadTweaks);
@@ -81,11 +87,11 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
   const activePage = page;
 
   useEffect(() => {
-    if (onboarding?.completed === false) {
+    if (sessionState.role !== "admin" && onboarding?.completed === false) {
       startRouteLoading();
       router.replace("/onboarding");
     }
-  }, [onboarding?.completed, router]);
+  }, [onboarding?.completed, router, sessionState.role]);
 
   useEffect(() => {
     applyBrandTheme(tweaks.accent);
@@ -130,7 +136,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     tweaks,
   };
 
-  if (onboarding?.completed === false) {
+  if (sessionState.role !== "admin" && onboarding?.completed === false) {
     return <p role="status" className="p-6 text-muted">Returning to profile setup...</p>;
   }
 
@@ -141,34 +147,32 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     if (activePage === "dashboard") content = <InstitutionDashboard {...routeProps} />;
     else if (activePage === "post-job") content = <PostJobPage {...routeProps} />;
     else if (activePage === "applications") content = <ApplicationsPage {...routeProps} />;
-    else if (activePage === "find-teachers") content = <FindTeachersPage {...routeProps} />;
+    else if (activePage === "bookings") content = <BookingsPage {...routeProps} />;
+    else if (activePage === "find-teachers") content = <FindTeachersPage key={routeCtx.search ?? "all-teachers"} {...routeProps} />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
+    else if (activePage === "institution-profile") content = <InstitutionProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
     else if (activePage === "security") content = <SecurityPage {...routeProps} />;
-    else if (activePage === "billing") content = <BillingPage />;
+    else if (activePage === "billing") content = <BillingPage {...routeProps} />;
     else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
     else content = <InstitutionDashboard {...routeProps} />;
   } else if (state.role === "teacher") {
     if (activePage === "dashboard") content = <TeacherDashboard {...routeProps} />;
     else if (activePage === "find-jobs") content = <FindJobsPage {...routeProps} />;
+    else if (activePage === "applications") content = <TeacherApplicationsPage {...routeProps} />;
+    else if (activePage === "bookings") content = <BookingsPage {...routeProps} />;
     else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
     else if (activePage === "calendar") content = <CalendarPage />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
+    else if (activePage === "institution-profile") content = <InstitutionProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
     else if (activePage === "security") content = <SecurityPage {...routeProps} />;
+    else if (activePage === "billing") content = <BillingPage {...routeProps} />;
     else content = <TeacherDashboard {...routeProps} />;
-  } else if (state.role === "individual") {
-    if (activePage === "dashboard") content = <IndividualDashboard {...routeProps} />;
-    else if (activePage === "post-job") content = <PostJobPage {...routeProps} />;
-    else if (activePage === "applications") content = <ApplicationsPage {...routeProps} />;
-    else if (activePage === "find-teachers") content = <FindTeachersPage {...routeProps} />;
-    else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
-    else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
-    else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;
-    else if (activePage === "calendar") content = <CalendarPage />;
-    else if (activePage === "security") content = <SecurityPage {...routeProps} />;
-    else if (activePage === "billing") content = <BillingPage />;
-    else content = <IndividualDashboard {...routeProps} />;
+  } else if (state.role === "admin") {
+    if (activePage === "security") content = <SecurityPage {...routeProps} />;
+    else if (activePage === "billing") content = <BillingPage {...routeProps} />;
+    else content = <AdminDashboard />;
   }
 
   if (shouldShowApplicationStatusPage(routeProps.state.role, routeProps.state.applicationStatus)) {
