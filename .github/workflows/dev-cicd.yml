@@ -96,4 +96,38 @@ jobs:
           test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
           ssh_target="${SERVER_USER}@${SERVER_HOST}"
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
-            "set -euo pipefail; app_root=\"\$HOME/supplyed\"; deploy_path=\"\$app_root/frontend-dev\"; cd \"\$deploy_path\"; test -L current || { echo \"Missing \$deploy_path/current release link\"; exit 1; }; test -f .env || { echo \"Missing \$deploy_path/.env\"; exit 1; }; for key in FRONTEND_PORT API_BASE_URL AUTH_SECRET AUTH_URL NEXT_PUBLIC_SITE_URL; do grep -q \"^\${key}=\" .env || { echo \"Missing \${key} in \$deploy_path/.env\"; exit 1; }; done; docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend; docker compose --env-file .env -f docker-compose.dev.yml up -d --force-recreate --remove-orphans"
+            'bash -se' <<'REMOTE_SCRIPT'
+          set -euo pipefail
+          app_root="$HOME/supplyed"
+          deploy_path="$app_root/frontend-dev"
+          cd "$deploy_path"
+          test -L current || { echo "Missing $deploy_path/current release link"; exit 1; }
+          test -f .env || { echo "Missing $deploy_path/.env"; exit 1; }
+          for key in FRONTEND_PORT API_BASE_URL AUTH_SECRET AUTH_URL NEXT_PUBLIC_SITE_URL; do
+            grep -q "^${key}=" .env || { echo "Missing ${key} in $deploy_path/.env"; exit 1; }
+          done
+
+          docker_retry_dir="$(mktemp -d)"
+          trap 'rm -rf -- "$docker_retry_dir"' EXIT
+          if ! docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend 2>&1 | tee "$docker_retry_dir/build.log"; then
+            if ! grep -Eq 'failed to (authorize|fetch oauth token).*401' "$docker_retry_dir/build.log"; then
+              exit 1
+            fi
+
+            echo "Registry authentication was rejected; retrying the public Node image without saved credentials."
+            docker_config_root="${DOCKER_CONFIG:-$HOME/.docker}"
+            docker_context="$(docker context show)"
+            docker_public_config="$docker_retry_dir/config"
+            mkdir -p "$docker_public_config"
+            for entry in contexts cli-plugins buildx; do
+              if [ -d "$docker_config_root/$entry" ]; then
+                ln -s "$docker_config_root/$entry" "$docker_public_config/$entry"
+              fi
+            done
+            # An empty Hub entry also prevents automatic credential-helper discovery.
+            printf '%s\n' '{"auths":{"https://index.docker.io/v1/":{}}}' > "$docker_public_config/config.json"
+            DOCKER_CONFIG="$docker_public_config" DOCKER_CONTEXT="$docker_context" \
+              docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend
+          fi
+          docker compose --env-file .env -f docker-compose.dev.yml up -d --force-recreate --remove-orphans
+          REMOTE_SCRIPT
