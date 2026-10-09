@@ -1,6 +1,7 @@
 export const queryKeys = {
   applications: {
     all: ["applications"] as const,
+    activeJobCount: () => [...queryKeys.applications.all, "active-job-count"] as const,
     byJob: (jobId: string, filters?: Record<string, unknown>) =>
       [...queryKeys.applications.all, "job", jobId, filters ?? {}] as const,
     detail: (applicationId: string) => [...queryKeys.applications.all, "detail", applicationId] as const,
@@ -39,6 +40,7 @@ export const queryKeys = {
     all: ["notifications"] as const,
     list: () => [...queryKeys.notifications.all, "list"] as const,
     preferences: () => [...queryKeys.notifications.all, "preferences"] as const,
+    recent: (limit?: number) => [...queryKeys.notifications.all, "recent", ...(limit ? [limit] : [])] as const,
     unread: () => [...queryKeys.notifications.all, "unread"] as const,
   },
   onboarding: {
@@ -70,6 +72,7 @@ export const queryKeys = {
   teachers: {
     all: ["teachers"] as const,
     detail: (id: string) => [...queryKeys.teachers.all, "detail", id] as const,
+    directory: (filters?: Record<string, unknown>) => [...queryKeys.teachers.all, "directory", filters ?? {}] as const,
     list: (filters?: Record<string, unknown>) => [...queryKeys.teachers.all, "list", filters ?? {}] as const,
   },
 };

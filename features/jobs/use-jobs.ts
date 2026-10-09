@@ -81,7 +81,10 @@ export function useCreateJob(options: UseCreateJobOptions = {}) {
       if (handleSessionExpiredResult(result)) return;
 
       if (result.ok) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),
+        ]);
       }
 
       await options.onSuccess?.(result);
@@ -99,7 +102,10 @@ export function useUpdateJob(options: UseUpdateJobOptions = {}) {
       if (handleSessionExpiredResult(result)) return;
 
       if (result.ok) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),
+        ]);
       }
 
       await options.onSuccess?.(result);
@@ -117,7 +123,10 @@ export function useDeleteJob(options: UseDeleteJobOptions = {}) {
       if (handleSessionExpiredResult(result)) return;
 
       if (result.ok) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),
+        ]);
       }
 
       await options.onSuccess?.(result);

@@ -148,6 +148,13 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     expiresAt,
     keyStage: keyStages[0] ?? "All stages",
     keyStages,
+    institution: job.institution?.id
+      ? {
+          id: job.institution.id,
+          imageUrl: job.institution.imageUrl ?? null,
+          name: job.institution.name || "Hiring school",
+        }
+      : null,
     latitude: readNumber(job.latitude) ?? null,
     longitude: readNumber(job.longitude) ?? null,
     minExperienceYears: normalizeNonNegativeInteger(job.minExperienceYears) ?? null,
@@ -165,7 +172,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     postalCode: job.postalCode?.trim() || null,
     rate: payAmount,
     requiredSkills,
-    school: "Hiring account",
+    school: job.institution?.name || "Hiring account",
     startDate,
     status: job.status,
     subject,

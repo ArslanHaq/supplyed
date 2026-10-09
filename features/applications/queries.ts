@@ -1,6 +1,7 @@
 import "server-only";
 
 import { seedApplications, seedTeachers } from "@/data/supplyed";
+import { listMyJobs } from "@/features/jobs/queries";
 import { api } from "@/lib/server/api-client";
 
 import { normalizeApplication, normalizeApplicationsQuery, normalizePaginatedApplications } from "./schemas";
@@ -59,6 +60,32 @@ export async function listMyApplications(query: JobApplicationsQuery = {}): Prom
     .map(toJobApplication);
 
   return paginateApplications(applications, normalized);
+}
+
+/** Total application records across every active job owned by the signed-in institution. */
+export async function countApplicationsForActiveJobs(): Promise<{ total: number }> {
+  const jobIds: string[] = [];
+  let page = 1;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    const jobsPage = await listMyJobs({ limit: 100, page, status: "ACTIVE" });
+    jobIds.push(...jobsPage.jobs.map((job) => job.id));
+    hasNextPage = jobsPage.pagination.hasNextPage;
+    page += 1;
+  }
+
+  let total = 0;
+  const batchSize = 10;
+
+  for (let index = 0; index < jobIds.length; index += batchSize) {
+    const applicationPages = await Promise.all(
+      jobIds.slice(index, index + batchSize).map((jobId) => listApplicationsByJob(jobId, { limit: 1, page: 1 })),
+    );
+    total += applicationPages.reduce((sum, applications) => sum + applications.pagination.total, 0);
+  }
+
+  return { total };
 }
 
 function toJobApplication(application: (typeof seedApplications)[number]): JobApplication {

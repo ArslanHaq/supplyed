@@ -40,6 +40,7 @@ function readContext(searchParams: URLSearchParams) {
     applicationId: searchParams.get("applicationId") || undefined,
     institutionId: searchParams.get("institutionId") || undefined,
     jobId: searchParams.get("jobId") || undefined,
+    search: searchParams.get("search") || undefined,
     teacherId: searchParams.get("teacherId") || undefined,
   };
 }
@@ -147,7 +148,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     else if (activePage === "post-job") content = <PostJobPage {...routeProps} />;
     else if (activePage === "applications") content = <ApplicationsPage {...routeProps} />;
     else if (activePage === "bookings") content = <BookingsPage {...routeProps} />;
-    else if (activePage === "find-teachers") content = <FindTeachersPage {...routeProps} />;
+    else if (activePage === "find-teachers") content = <FindTeachersPage key={routeCtx.search ?? "all-teachers"} {...routeProps} />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
     else if (activePage === "institution-profile") content = <InstitutionProfilePage {...routeProps} />;
     else if (activePage === "messaging") content = <MessagingPage {...routeProps} />;

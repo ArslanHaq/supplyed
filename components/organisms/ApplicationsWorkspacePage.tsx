@@ -354,6 +354,11 @@ function ApplicationDetail({
           <section className="sidebar-panel card-pad-lg">
             <div className="section-title mb-4">Main actions</div>
             <div className="grid gap-3">
+              {instructor?.id ? (
+                <Btn className="h-12 w-full" size="lg" variant="secondary" onClick={() => onOpenTeacher(instructor.id)}>
+                  View teacher profile
+                </Btn>
+              ) : null}
               <Btn className="h-12 w-full" icon="message" size="lg" onClick={() => onMessage(application.id)}>
                 Message teacher
               </Btn>

@@ -104,14 +104,48 @@ export function JobManagementList({
         ))}
       </div>
       {pagination && onPageChange && pagination.totalPages > 1 ? (
-        <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+        <nav aria-label="Job pages" className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
           <Btn disabled={pagination.page <= 1 || loading} size="sm" variant="ghost" onClick={() => onPageChange(pagination.page - 1)}>Previous</Btn>
-          <span className="text-muted">Page {pagination.page} of {pagination.totalPages}</span>
+          {pageItems(pagination.page, pagination.totalPages).map((item, index) =>
+            typeof item === "number" ? (
+              <button
+                key={item}
+                aria-current={item === pagination.page ? "page" : undefined}
+                aria-label={`Page ${item}`}
+                className={`h-9 min-w-9 rounded-lg border px-2 text-sm font-semibold transition-colors ${
+                  item === pagination.page
+                    ? "border-brand bg-brand text-white"
+                    : "border-border bg-white text-slate hover:border-brand hover:bg-brand-tint hover:text-brand"
+                }`}
+                disabled={loading}
+                onClick={() => onPageChange(item)}
+                type="button"
+              >
+                {item}
+              </button>
+            ) : (
+              <span key={`${item}-${index}`} aria-hidden="true" className="px-1 text-muted">…</span>
+            ),
+          )}
           <Btn disabled={!pagination.hasNextPage || loading} size="sm" variant="ghost" onClick={() => onPageChange(pagination.page + 1)}>Next</Btn>
-        </div>
+        </nav>
       ) : null}
     </>
   );
+}
+
+function pageItems(currentPage: number, totalPages: number): Array<number | "ellipsis"> {
+  const pages = Array.from(new Set([1, currentPage - 1, currentPage, currentPage + 1, totalPages]))
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+  const items: Array<number | "ellipsis"> = [];
+
+  pages.forEach((page, index) => {
+    if (index > 0 && page - pages[index - 1] > 1) items.push("ellipsis");
+    items.push(page);
+  });
+
+  return items;
 }
 
 function JobManagementRow({

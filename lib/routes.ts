@@ -23,6 +23,7 @@ export function buildAppHref(page: AppPage, ctx: RouteContext = {}) {
   if (ctx.applicationId) params.set("applicationId", ctx.applicationId);
   if (ctx.institutionId) params.set("institutionId", ctx.institutionId);
   if (ctx.jobId) params.set("jobId", ctx.jobId);
+  if (ctx.search) params.set("search", ctx.search);
   if (ctx.teacherId) params.set("teacherId", ctx.teacherId);
 
   const query = params.toString();

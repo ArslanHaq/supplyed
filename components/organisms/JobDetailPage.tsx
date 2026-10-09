@@ -6,7 +6,7 @@ import { useJob } from "@/features/jobs/use-jobs";
 import { useJobMatchScore } from "@/features/matching/use-matching";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Btn, Field, Icon, Tag } from "../atoms";
+import { Avatar, Btn, Field, Icon, Tag } from "../atoms";
 import { FormattedJobDescription, MatchScorePanel, Modal, ProposalEditor, SectionLoader } from "../molecules";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
@@ -94,7 +94,39 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
         <div>
           <div className="mb-3.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent - act fast</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant matching" : "Open brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div>
           <h1 className="mb-2.5 font-heading text-[38px] leading-tight">{job.title}</h1>
-          <div className="mb-6 flex flex-wrap gap-4"><div className="flex items-center gap-1.5"><Icon name="building" size={14} />{job.school}</div><div className="flex items-center gap-1.5"><Icon name="pin" size={14} />{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"}</div><div className="flex items-center gap-1.5"><Icon name="clock" size={14} />Posted {job.postedAt}</div></div>
+          <div className="mb-6 flex flex-wrap gap-4">
+            <div className="flex items-center gap-1.5">
+              <Icon name="building" size={14} />
+              <button
+                className="font-semibold hover:text-brand hover:underline disabled:cursor-default disabled:text-inherit disabled:no-underline"
+                disabled={!job.institution?.id}
+                onClick={() => job.institution?.id ? go("institution-profile", { institutionId: job.institution.id, jobId: job.id }) : undefined}
+                type="button"
+              >
+                {job.school}
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5"><Icon name="pin" size={14} />{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"}</div>
+            <div className="flex items-center gap-1.5"><Icon name="clock" size={14} />Posted {job.postedAt}</div>
+          </div>
+          <section className="card mb-7 overflow-hidden border-brand-tint-2 bg-[linear-gradient(135deg,#eef9fd_0%,#ffffff_70%)]">
+            <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+              <div className="rounded-xl border-2 border-white shadow-sm [&>div]:rounded-lg"><Avatar name={job.institution?.name || job.school} size="lg" src={job.institution?.imageUrl} /></div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-brand">About the hiring school</div>
+                <h2 className="mt-1 font-heading text-xl font-semibold text-ink">{job.institution?.name || job.school}</h2>
+                <p className="mt-1 text-sm leading-6 text-muted">View the school’s verified profile, details and reviews before you apply.</p>
+              </div>
+              <Btn
+                className="w-full sm:w-auto"
+                disabled={!job.institution?.id}
+                icon="building"
+                onClick={() => job.institution?.id ? go("institution-profile", { institutionId: job.institution.id, jobId: job.id }) : undefined}
+              >
+                View school profile
+              </Btn>
+            </div>
+          </section>
           <div className="grid-3 mb-7">
             <div className="card card-pad text-center"><div className="text-xs text-muted">Day rate</div><div className="font-heading text-[26px] text-brand">£{job.rate}</div></div>
             <div className="card card-pad text-center"><div className="text-xs text-muted">Duration</div><div className="font-heading text-xl">1 Day</div></div>
@@ -111,6 +143,16 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
           <div className="mb-3.5 flex flex-wrap gap-2"><span className="pill">{job.keyStage}</span><span className="pill">{job.subject}</span><span className="pill">{job.date}</span></div>
           {role === "teacher" && matchQuery.isLoading ? <div className="mb-4"><SectionLoader rows={1} /></div> : null}
           {role === "teacher" && matchQuery.data ? <div className="mb-4"><MatchScorePanel match={matchQuery.data} /></div> : null}
+          {job.institution?.id ? (
+            <Btn
+              className="mb-2 w-full"
+              icon="building"
+              variant="secondary"
+              onClick={() => go("institution-profile", { institutionId: job.institution?.id, jobId: job.id })}
+            >
+              View school profile
+            </Btn>
+          ) : null}
           <Btn className="w-full" disabled={role === "teacher" && applicationSubmitted} size="lg" onClick={() => setOpen(true)}>{role === "teacher" ? (applicationSubmitted ? "Application submitted" : "Apply for job") : "Invite candidates"}</Btn>
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging")}>Message school</Btn>
         </aside>

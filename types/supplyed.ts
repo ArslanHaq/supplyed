@@ -46,6 +46,7 @@ export type Teacher = {
 
 export type Job = {
   id: string;
+  institution?: { id: string; imageUrl: string | null; name: string } | null;
   title: string;
   postedByUserId?: string;
   description?: string;
@@ -103,6 +104,7 @@ export type RouteContext = {
   applicationId?: string;
   institutionId?: string;
   jobId?: string;
+  search?: string;
   teacherId?: string;
 };
 

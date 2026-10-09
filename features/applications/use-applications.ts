@@ -40,6 +40,13 @@ export function useMyApplications(query: JobApplicationsQuery = {}) {
   });
 }
 
+export function useActiveJobApplicantCount() {
+  return useQuery({
+    queryFn: () => fetchJson<{ total: number }>("/api/applications/active-jobs/count"),
+    queryKey: queryKeys.applications.activeJobCount(),
+  });
+}
+
 export function useUpdateApplicationStatus(options: UseCreateApplicationOptions = {}) {
   const queryClient = useQueryClient();
   return useMutation({

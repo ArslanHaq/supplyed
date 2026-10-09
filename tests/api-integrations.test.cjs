@@ -274,6 +274,81 @@ test("paid invoice evidence wins over stale or lower-case payment statuses", () 
   assert.equal(booking.invoice.paidAt, paidAt);
 });
 
+test("booking filters are normalized for the paginated API", () => {
+  const schemas = loadModule("features/bookings/schemas.ts");
+  const normalized = schemas.normalizeBookingsQuery({
+    from: " 2026-10-01 ",
+    invoice: "unpaid",
+    jobId: " job-id ",
+    limit: 150,
+    page: 0,
+    search: `  ${"maths".repeat(30)}  `,
+    status: "COMPLETED",
+    to: " 2026-10-31 ",
+  });
+
+  assert.equal(normalized.from, "2026-10-01");
+  assert.equal(normalized.invoice, "unpaid");
+  assert.equal(normalized.jobId, "job-id");
+  assert.equal(normalized.limit, 100);
+  assert.equal(normalized.page, 1);
+  assert.equal(normalized.search.length, 100);
+  assert.equal(normalized.status, "COMPLETED");
+  assert.equal(normalized.to, "2026-10-31");
+  assert.equal(schemas.normalizeBookingsQuery({ invoice: "overdue" }).invoice, undefined);
+});
+
+test("public marketplace profiles expose normalized safe fields", () => {
+  const schemas = loadModule("features/public-profiles/schemas.ts");
+  const instructor = schemas.normalizeInstructorPublicProfile({
+    id: "teacher-profile-id", fullName: "Teacher", subjects: ["Maths", ""], skills: [], keyStages: [],
+    ratingAverage: "4.75", ratingCount: "8", dbsVerified: true, dailyRate: "180", memberSince: "2026-01-01",
+  });
+  const institution = schemas.normalizeInstitutionPublicProfile({
+    id: "school-profile-id", name: "Oak School", institutionType: "MAT_SCHOOL", coverTypes: ["DAILY"],
+    trust: { name: "Oak Trust" }, typicalPupilCount: "420", verified: true,
+  });
+
+  assert.deepEqual(Array.from(instructor.subjects), ["Maths"]);
+  assert.equal(instructor.dailyRate, 180);
+  assert.equal(instructor.ratingAverage, 4.75);
+  assert.equal(institution.institutionType, "MAT_SCHOOL");
+  assert.equal(institution.trust.name, "Oak Trust");
+  assert.equal(institution.typicalPupilCount, 420);
+});
+
+test("profile reviews use the API pagination total", () => {
+  const schemas = loadModule("features/reviews/schemas.ts");
+  const result = schemas.normalizeProfileReviews({
+    pagination: { page: 1, limit: 2, total: 7, totalPages: 4, hasNextPage: true },
+    reviews: [
+      { id: "review-1", rating: 5, reviewerName: "Oak School" },
+      { id: "review-2", rating: 4, reviewerName: "Elm School" },
+    ],
+  });
+
+  assert.equal(result.total, 7);
+  assert.equal(result.averageRating, 4.5);
+  assert.equal(result.reviews.length, 2);
+});
+
+test("job responses retain the safe institution profile identity", () => {
+  const schemas = loadModule("features/jobs/schemas.ts");
+  const job = schemas.normalizeBackendJob({
+    id: "job-id",
+    postedByUserId: "private-user-id",
+    institution: { id: "school-profile-id", imageUrl: "https://images.example/school.jpg", name: "Oak School" },
+    title: "Maths cover",
+    description: "Cover role",
+    status: "ACTIVE",
+  });
+
+  assert.equal(job.school, "Oak School");
+  assert.equal(job.institution.id, "school-profile-id");
+  assert.equal(job.institution.imageUrl, "https://images.example/school.jpg");
+  assert.notEqual(job.institution.id, job.postedByUserId);
+});
+
 test("worked time stays within inclusive booking dates even across a UK clock change", () => {
   const { bookingDays, invoiceUnitsLimit } = loadModule("features/bookings/schemas.ts");
   const daily = { startDate: "2026-10-24T00:00:00.000Z", endDate: "2026-10-26T00:00:00.000Z", payType: "daily" };

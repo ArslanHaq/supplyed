@@ -32,6 +32,15 @@ export function useNotifications(enabled: boolean) {
   });
 }
 
+/** A small newest-first page used by dashboard activity previews. */
+export function useRecentNotifications(enabled = true, limit = 4) {
+  return useQuery({
+    enabled,
+    queryFn: () => fetchJson<NotificationsPage>("/api/notifications", { query: { limit, page: 1 } }),
+    queryKey: queryKeys.notifications.recent(limit),
+  });
+}
+
 /** All loaded notifications, in order, without repeats. */
 export function flattenNotifications(data: InfiniteData<NotificationsPage, unknown> | undefined): AppNotification[] {
   const seen = new Set<string>();
@@ -63,6 +72,12 @@ function patchList(queryClient: ReturnType<typeof useQueryClient>, patch: (item:
   );
 }
 
+function patchRecent(queryClient: ReturnType<typeof useQueryClient>, patch: (item: AppNotification) => AppNotification) {
+  queryClient.setQueriesData<NotificationsPage>({ queryKey: queryKeys.notifications.recent() }, (data) =>
+    data ? { ...data, notifications: data.notifications.map(patch) } : data,
+  );
+}
+
 export function useMarkNotificationRead() {
   const queryClient = useQueryClient();
 
@@ -77,6 +92,7 @@ export function useMarkNotificationRead() {
       if (notification.readAt) return;
       const readAt = new Date().toISOString();
       patchList(queryClient, (item) => (item.id === notification.id ? { ...item, readAt } : item));
+      patchRecent(queryClient, (item) => (item.id === notification.id ? { ...item, readAt } : item));
       const current = queryClient.getQueryData<{ total: number }>(queryKeys.notifications.unread());
       if (current) setUnread(queryClient, current.total - 1);
     },
@@ -96,6 +112,7 @@ export function useMarkAllNotificationsRead() {
     onMutate: () => {
       const readAt = new Date().toISOString();
       patchList(queryClient, (item) => (item.readAt ? item : { ...item, readAt }));
+      patchRecent(queryClient, (item) => (item.readAt ? item : { ...item, readAt }));
       setUnread(queryClient, 0);
     },
     onError: () => void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
@@ -155,6 +172,15 @@ export function useNotificationStream(enabled: boolean, onOpen: (link: string) =
         const [first, ...rest] = data.pages;
         return { ...data, pages: [{ ...first, notifications: [notification, ...first.notifications] }, ...rest] };
       });
+      queryClient.setQueriesData<NotificationsPage>({ queryKey: queryKeys.notifications.recent() }, (data) => {
+        if (!data) return data;
+        const notifications = [notification, ...data.notifications.filter((item) => item.id !== notification.id)]
+          .slice(0, data.pagination.limit);
+        return { ...data, notifications, unreadCount: payload.unreadCount };
+      });
+      if (notification.type === "APPLICATION_RECEIVED") {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
+      }
       showDesktopAlert(notification, (link) => openRef.current(link));
     };
 
@@ -162,6 +188,7 @@ export function useNotificationStream(enabled: boolean, onOpen: (link: string) =
       setUnread(queryClient, payload.unreadCount);
       // Read in another tab: the list is refetched next time it is shown.
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list(), refetchType: "none" });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.recent() });
     };
 
     // After a reconnect, anything missed while offline is fetched again.

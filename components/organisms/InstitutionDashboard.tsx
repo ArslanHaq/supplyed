@@ -1,22 +1,30 @@
 import { useState } from "react";
 
-import { seedTeachers } from "@/data/supplyed";
+import { useActiveJobApplicantCount } from "@/features/applications/use-applications";
 import { useDeleteJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job } from "@/features/jobs/types";
+import { useRecommendedInstructors } from "@/features/matching/use-matching";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, Icon, MatchScore, Stat, Tag } from "../atoms";
-import { PageHead } from "../molecules";
+import { Avatar, Btn, MatchScore, Stat } from "../atoms";
+import { PageHead, SectionLoader } from "../molecules";
 import { JobManagementList, type JobStatusFilter } from "./JobManagementList";
+import { RecentNotifications } from "./RecentNotifications";
 
-export function InstitutionDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "toast" | "tweaks">) {
-  const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ALL");
+export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toast">) {
+  const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ACTIVE");
   const [page, setPage] = useState(1);
-  const jobsQuery = useMyJobs({ limit: 20, page, status: statusFilter === "ALL" ? undefined : statusFilter });
+  const jobsQuery = useMyJobs({ limit: 6, page, status: statusFilter === "ALL" ? undefined : statusFilter });
   const jobs = jobsQuery.data?.jobs ?? [];
   const counts = jobsQuery.data?.statusCounts;
   const activeCount = counts?.ACTIVE ?? 0;
   const draftCount = counts?.DRAFT ?? 0;
+  const applicantCountQuery = useActiveJobApplicantCount();
+  const applicantCount = applicantCountQuery.data?.total;
+  const topMatchJobsQuery = useMyJobs({ limit: 6, page: 1, status: "ACTIVE" });
+  const topMatchJob = topMatchJobsQuery.data?.jobs[0];
+  const topMatchesQuery = useRecommendedInstructors(topMatchJob?.id, { limit: 4, minScore: 70, page: 1 });
+  const topMatches = topMatchesQuery.data?.instructors ?? [];
   const updateJob = useUpdateJob({
     onSuccess: (result) => {
       toast({
@@ -52,18 +60,7 @@ export function InstitutionDashboard({ go, toast, tweaks }: Pick<RouteProps, "go
   }
 
   return (
-    <>
-      {tweaks.urgentBanner ? (
-        <div className="urgent-banner">
-          <Icon name="zap" size={16} />
-          <strong>{activeCount || draftCount ? `${activeCount} active roles.` : "Ready to post your first role."}</strong>
-          <span style={{ opacity: 0.8 }}>Approved school accounts can publish roles and review applicants from one workspace.</span>
-          <div className="ml-auto flex gap-2">
-            <Btn variant="danger" size="sm" onClick={() => go("post-job")}>Post urgent</Btn>
-          </div>
-        </div>
-      ) : null}
-      <div className="app-page">
+    <div className="app-page">
         <PageHead
           title="School hiring workspace"
           subtitle={`${counts?.ALL ?? 0} posted roles - ${activeCount} active - ${draftCount} drafts`}
@@ -73,7 +70,11 @@ export function InstitutionDashboard({ go, toast, tweaks }: Pick<RouteProps, "go
           <Stat value={activeCount} label="Active jobs" delta={`${draftCount} drafts`} />
           <Stat value={counts?.ALL ?? 0} label="Total posted" delta="Across all statuses" />
           <Stat value={counts?.CLOSED ?? 0} label="Closed roles" delta="Kept for records" />
-          <Stat value="0" label="Applicants today" delta="Live count pending" />
+          <Stat
+            value={applicantCount ?? (applicantCountQuery.isError ? "-" : "...")}
+            label="Applicants"
+            delta={applicantCountQuery.isError ? "Count unavailable" : "Across all active jobs"}
+          />
         </div>
         <div className="two-col">
           <div>
@@ -94,30 +95,44 @@ export function InstitutionDashboard({ go, toast, tweaks }: Pick<RouteProps, "go
               pagination={jobsQuery.data?.pagination}
               title="Job posts"
             />
-            <div className="section-title mt-7">Recent activity</div>
-            <div className="card card-pad">
-              {[
-                "Sarah Johnson applied to Y6 Maths cover",
-                "Priya Mehta accepted the interview invitation",
-                "Marcus Webb sent a message",
-                "Invoice #INV-2041 generated",
-              ].map((entry) => (
-                <div key={entry} className="flex items-center justify-between border-b border-border py-2.5">
-                  <div>{entry}</div>
-                  <div className="text-xs text-muted">Today</div>
-                </div>
-              ))}
-            </div>
           </div>
           <div>
             <div className="section-title">Top matches today</div>
             <div className="sidebar-panel overflow-hidden">
-              {seedTeachers.slice(0, 4).map((teacher, index) => (
-                <div key={teacher.id} className="flex cursor-pointer items-center gap-2.5 border-b px-3.5 py-3" style={{ borderBottomColor: index < 3 ? "var(--border)" : "transparent" }} onClick={() => go("teacher-profile", { teacherId: teacher.id })}>
-                  <Avatar name={teacher.name} tone={teacher.tone} />
-                  <div className="flex-1"><div className="font-medium">{teacher.name}</div><div className="text-xs text-muted">{teacher.role}</div></div>
-                  <MatchScore score={teacher.matchScore} size={38} />
+              {topMatchJob ? <div className="border-b border-border bg-chalk px-3.5 py-2 text-xs text-muted">For {topMatchJob.title}</div> : null}
+              {topMatchJobsQuery.isLoading || topMatchesQuery.isLoading ? <div className="p-3.5"><SectionLoader rows={4} /></div> : null}
+              {topMatchJobsQuery.isError ? (
+                <div className="p-4 text-center" role="alert">
+                  <div className="text-sm font-semibold">Active jobs could not be loaded</div>
+                  <Btn className="mt-2" size="sm" variant="ghost" onClick={() => void topMatchJobsQuery.refetch()}>Try again</Btn>
                 </div>
+              ) : null}
+              {topMatchesQuery.isError ? (
+                <div className="p-4 text-center" role="alert">
+                  <div className="text-sm font-semibold">Matches could not be loaded</div>
+                  <Btn className="mt-2" size="sm" variant="ghost" onClick={() => void topMatchesQuery.refetch()}>Try again</Btn>
+                </div>
+              ) : null}
+              {!topMatchJobsQuery.isLoading && !topMatchJobsQuery.isError && !topMatchJob ? (
+                <div className="p-4 text-center text-sm text-muted">Post an active job to see teacher matches.</div>
+              ) : null}
+              {!topMatchesQuery.isLoading && !topMatchesQuery.isError && topMatchJob && topMatches.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted">No teachers currently meet the 70% match threshold.</div>
+              ) : null}
+              {topMatches.slice(0, 4).map(({ instructor, match }) => (
+                <button
+                  key={instructor.id}
+                  className="flex w-full items-center gap-2.5 border-b border-border px-3.5 py-3 text-left transition last:border-b-0 hover:bg-chalk"
+                  onClick={() => go("teacher-profile", { teacherId: instructor.id })}
+                  type="button"
+                >
+                  <Avatar name={instructor.fullName} src={instructor.imageUrl} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{instructor.fullName}</span>
+                    <span className="block truncate text-xs text-muted">{instructor.subjects[0] ?? instructor.skills[0] ?? "Teacher"}</span>
+                  </span>
+                  <MatchScore score={match.score} size={38} />
+                </button>
               ))}
             </div>
             <div className="section-title mt-7">Quick actions</div>
@@ -127,17 +142,9 @@ export function InstitutionDashboard({ go, toast, tweaks }: Pick<RouteProps, "go
               <Btn variant="secondary" icon="message" className="justify-start" onClick={() => go("messaging")}>Open messages</Btn>
               <Btn variant="secondary" icon="file" className="justify-start" onClick={() => go("billing")}>View invoices</Btn>
             </div>
-            <div className="section-title mt-7">Your plan</div>
-            <div className="card card-pad border-brand bg-brand-tint">
-              <Tag>Pro - Active</Tag>
-              <div className="mt-2.5 font-heading text-[22px]">£99 / month</div>
-              <div className="mt-1 text-xs text-muted">Renews 24 Apr 2026</div>
-              <div className="progress mt-3.5"><div className="progress-fill" style={{ width: "58%" }} /></div>
-              <Btn variant="ink" size="sm" className="mt-3.5 w-full" onClick={() => go("billing")}>Manage plan</Btn>
-            </div>
           </div>
         </div>
-      </div>
-    </>
+        <RecentNotifications />
+    </div>
   );
 }

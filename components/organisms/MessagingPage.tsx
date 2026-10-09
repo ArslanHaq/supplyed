@@ -29,7 +29,7 @@ import type { Job } from "@/features/jobs/types";
 import type { RouteProps, ToastFn } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Tag } from "../atoms";
-import { PageHead, ProposalContent, SectionLoader } from "../molecules";
+import { Modal, PageHead, ProposalContent, SectionLoader } from "../molecules";
 import { MessageAttachmentPreview } from "./MessageAttachmentPreview";
 
 type PendingFile = {
@@ -48,12 +48,10 @@ type PendingFile = {
 export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" | "go" | "role" | "toast">) {
   const conversationsQuery = useConversations();
   const fromApplication = useConversationForApplication(ctx.applicationId);
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } = conversationsQuery;
   // undefined follows a direct application link, null explicitly returns to the inbox.
-  const [selectedId, setSelectedId] = useState<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    setSelectedId(undefined);
-  }, [ctx.applicationId]);
+  const [selection, setSelection] = useState<{ applicationId?: string; selectedId: string | null | undefined }>({ selectedId: undefined });
+  const selectedId = selection.applicationId === ctx.applicationId ? selection.selectedId : undefined;
 
   // A thread opened from an application may not be in the list yet.
   const conversations = useMemo(() => {
@@ -65,17 +63,17 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
   // Fill the inbox without making the user page through older conversations.
   useEffect(() => {
     if (
-      conversationsQuery.hasNextPage &&
-      !conversationsQuery.isFetchingNextPage &&
-      !conversationsQuery.isFetchNextPageError
+      hasNextPage &&
+      !isFetchingNextPage &&
+      !isFetchNextPageError
     ) {
-      void conversationsQuery.fetchNextPage();
+      void fetchNextPage();
     }
   }, [
-    conversationsQuery.fetchNextPage,
-    conversationsQuery.hasNextPage,
-    conversationsQuery.isFetchNextPageError,
-    conversationsQuery.isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    isFetchNextPageError,
+    isFetchingNextPage,
   ]);
 
   const activeId = selectedId === undefined ? fromApplication.data?.id ?? null : selectedId;
@@ -86,7 +84,7 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
   const unread = conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0);
 
   function returnToInbox() {
-    setSelectedId(null);
+    setSelection({ applicationId: ctx.applicationId, selectedId: null });
   }
 
   return (
@@ -125,7 +123,7 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
             hasMore={conversationsQuery.hasNextPage}
             loadingMore={conversationsQuery.isFetchingNextPage}
             onLoadMore={() => void conversationsQuery.fetchNextPage()}
-            onSelect={setSelectedId}
+            onSelect={(nextId) => setSelection({ applicationId: ctx.applicationId, selectedId: nextId })}
             total={total}
           />
           {active ? (
@@ -364,10 +362,12 @@ function ConversationContextPanel({
   loading: boolean;
   role: RouteProps["role"];
 }) {
+  const [proposalOpen, setProposalOpen] = useState(false);
   const applicant = application?.instructor;
   const status = application?.status ?? conversation.applicationStatus;
 
   return (
+    <>
     <aside className="messaging-context sidebar-panel overflow-y-auto">
       <div className="border-b border-border p-5">
         <div className="flex items-start justify-between gap-3">
@@ -391,8 +391,8 @@ function ConversationContextPanel({
               className="block max-w-full truncate text-left font-bold text-ink hover:text-brand hover:underline disabled:cursor-default disabled:no-underline"
               disabled={!conversation.counterpart.id}
               onClick={() => conversation.counterpart.role === "school"
-                ? go("institution-profile", { institutionId: conversation.counterpart.id ?? undefined })
-                : go("teacher-profile", { teacherId: conversation.counterpart.id ?? undefined })}
+                ? go("institution-profile", { institutionId: conversation.counterpart.id ?? undefined, jobId: conversation.job.id })
+                : go("teacher-profile", { applicationId: conversation.applicationId, jobId: conversation.job.id, teacherId: conversation.counterpart.id ?? undefined })}
               type="button"
             >
               {conversation.counterpart.name}
@@ -444,7 +444,20 @@ function ConversationContextPanel({
         {application?.coverLetter ? (
           <section className="border-t border-border pt-5">
             <p className="context-label">Proposal</p>
-            <ProposalContent className="mt-2 max-h-40 overflow-y-auto pr-1" value={application.coverLetter} />
+            <div className="mt-3 rounded-xl border border-brand-tint-2 bg-brand-tint p-4">
+              <div className="flex items-start gap-3">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-brand shadow-sm">
+                  <Icon name="file" size={17} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-ink">Application proposal</p>
+                  <p className="mt-1 text-xs leading-5 text-muted">Read the teacher&apos;s complete introduction and suitability for this role.</p>
+                </div>
+              </div>
+              <Btn className="mt-4 w-full" icon="eye" size="sm" variant="secondary" onClick={() => setProposalOpen(true)}>
+                View full proposal
+              </Btn>
+            </div>
           </section>
         ) : null}
 
@@ -473,6 +486,34 @@ function ConversationContextPanel({
         </div>
       </div>
     </aside>
+    <Modal open={proposalOpen} scrollMode="viewport" size="xl" onClose={() => setProposalOpen(false)}>
+      <article className="overflow-hidden rounded-xl">
+        <header className="border-b border-border bg-[linear-gradient(135deg,#eef9fd_0%,#ffffff_72%)] px-5 py-5 sm:px-8 sm:py-7">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3.5">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-sm">
+                <Icon name="file" size={21} />
+              </div>
+              <div className="min-w-0">
+                <p className="context-label text-brand">Application proposal</p>
+                <h2 className="mt-1 font-heading text-xl font-semibold text-ink sm:text-2xl">{applicant?.fullName ?? conversation.counterpart.name}</h2>
+                <p className="mt-1 text-sm text-muted">For {job?.title ?? conversation.job.title}</p>
+              </div>
+            </div>
+            <button aria-label="Close proposal" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-white text-muted shadow-sm transition-colors hover:bg-chalk hover:text-ink" onClick={() => setProposalOpen(false)} type="button">
+              <Icon name="x" size={18} />
+            </button>
+          </div>
+        </header>
+        <div className="px-5 py-6 sm:px-8 sm:py-8">
+          <ProposalContent className="text-[15px] leading-8 text-slate" value={application?.coverLetter ?? ""} />
+        </div>
+        <footer className="flex justify-end border-t border-border bg-surface-subtle px-5 py-4 sm:px-8">
+          <Btn variant="secondary" onClick={() => setProposalOpen(false)}>Close proposal</Btn>
+        </footer>
+      </article>
+    </Modal>
+    </>
   );
 }
 

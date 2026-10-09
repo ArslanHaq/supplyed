@@ -48,7 +48,8 @@ function readAverage(payload: unknown, reviews: ProfileReview[]) {
 
 function readTotal(payload: unknown, reviews: ProfileReview[]) {
   if (!isRecord(payload)) return reviews.length;
-  return readNumber(payload.total) ?? readNumber(payload.count) ?? reviews.length;
+  const pagination = isRecord(payload.pagination) ? payload.pagination : null;
+  return readNumber(payload.total) ?? readNumber(payload.count) ?? readNumber(pagination?.total) ?? reviews.length;
 }
 
 function readNestedName(record: Record<string, unknown>, key: string) {

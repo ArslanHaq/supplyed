@@ -34,6 +34,7 @@ export type MyJobs = PaginatedJobs & {
 
 export type BackendJobResponse = {
   id: string;
+  institution?: { id: string; imageUrl: string | null; name: string } | null;
   postedByUserId: string;
   title: string;
   description: string;

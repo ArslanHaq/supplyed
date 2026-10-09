@@ -42,6 +42,7 @@ function fixture(role, mounted = false) {
   const mocks = {
     "../atoms": { Icon: () => React.createElement("svg"), Logo: () => React.createElement("span", null, "SupplyED") },
     "../molecules": { AppAccountMenu: () => React.createElement("span", null, "Account") },
+    "./NotificationBell": { NotificationBell: () => React.createElement("span", null, "Notifications") },
     "./actions": {},
     ...(mounted ? { "@/lib/use-mounted": { useMounted: () => true } } : {}),
   };
@@ -90,9 +91,8 @@ for (const role of ["teacher", "institution"]) {
         setUnread(total);
         const html = renderChrome();
         if (total === 0) {
-          assert.doesNotMatch(html, /notif-dot|aria-label="\d+ unread"/);
+          assert.doesNotMatch(html, /aria-label="\d+ unread"/);
         } else {
-          assert.match(html, /class="notif-dot"/);
           assert.match(html, new RegExp(`aria-label="${total} unread"`));
           const displayedCount = total > 99 ? "99\\+" : String(total);
           assert.match(html, new RegExp(`aria-label="${total} unread"[^>]*>${displayedCount}</span>`));

@@ -5,6 +5,7 @@ import type { RouteProps } from "@/types/supplyed";
 import { Btn, Icon, Stat, Tag } from "../atoms";
 import { MatchScorePanel, PageHead, SectionLoader } from "../molecules";
 import { DashboardMessages } from "./DashboardMessages";
+import { RecentNotifications } from "./RecentNotifications";
 
 export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">) {
   const firstName = getFirstName(state.accountName, state.signupEmail);
@@ -71,6 +72,7 @@ export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">
           <DashboardMessages go={go} />
         </div>
       </div>
+      <RecentNotifications />
     </div>
   );
 }
