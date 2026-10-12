@@ -17,6 +17,8 @@ import {
   FoundingTeacherTrustStrip,
 } from "./FoundingTeacherSections";
 import { PublicHeader } from "./PublicHeader";
+import { WaitlistSchoolIntro } from "./WaitlistSchoolIntro";
+import { WaitlistTeacherIntro } from "./WaitlistTeacherIntro";
 
 type FoundingInterestType = "SCHOOL" | "TEACHER";
 
@@ -331,25 +333,11 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
       {type === "TEACHER" ? <FoundingTeacherFaqSection /> : null}
 
       <div id="register" className="h-0 scroll-mt-24" aria-hidden="true" />
-      <section id={registrationAnchorId} className="marketing-registration marketing-section scroll-mt-24 bg-white">
+      <section id={registrationAnchorId} className={`marketing-registration marketing-section scroll-mt-24 ${type === "TEACHER" ? "waitlist-teacher-registration" : "bg-white"}`}>
         <div
-          className="supplyed-content-wrap marketing-registration-grid marketing-registration-grid-long"
+          className="supplyed-content-wrap marketing-registration-grid marketing-registration-grid-long waitlist-registration-grid"
         >
-          <div className="max-w-[590px]">
-            <Tag className="mb-5">{content.formBadge}</Tag>
-            <h2 className="font-heading text-3xl leading-[1.08] sm:text-4xl lg:text-[46px]">{content.ctaTitle}</h2>
-            <p className="mt-4 max-w-[520px] text-base leading-7 text-muted">{content.ctaCopy}</p>
-            <div className="mt-6 grid gap-4 text-sm leading-6 text-muted sm:text-[15px]">
-              {content.formBullets.map((point) => (
-                <div key={point.title} className="flex gap-3">
-                  <Icon className="mt-0.5 shrink-0 text-brand" name="check" size={18} />
-                  <p>
-                    <span className="font-semibold text-ink">{point.title}</span> - {point.copy}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+          {type === "SCHOOL" ? <WaitlistSchoolIntro /> : <WaitlistTeacherIntro />}
 
           <FoundingInterestForm campaign={campaign} id={registrationFormId} key={type} source={source} type={type} />
         </div>

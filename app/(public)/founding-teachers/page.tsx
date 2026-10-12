@@ -41,9 +41,9 @@ export default async function FoundingTeachersPage({ searchParams }: FoundingTea
 
   return (
     <FoundingInterestPage
+      type="TEACHER"
       campaign={cleanAttribution(firstQueryParam(params?.campaign), 120)}
       source={cleanAttribution(firstQueryParam(params?.source), 80)}
-      type="TEACHER"
     />
   );
 }

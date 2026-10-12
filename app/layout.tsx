@@ -5,6 +5,7 @@ import "@/components/styles/workspace.css";
 import "@/components/styles/proposal.css";
 import "@/components/styles/proposal-preview.css";
 import "@/components/styles/public.css";
+import "@/components/styles/waitlist.css";
 
 import type { Metadata } from "next";
 import localFont from "next/font/local";

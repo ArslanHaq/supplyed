@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { buttonClassName, Icon, Tag } from "../atoms";
 import { PublicHeader } from "./PublicHeader";
-import { RegisterInterestForm } from "./RegisterInterestForm";
+import { HomeWaitlistSection } from "./HomeWaitlistSection";
 
 const heroSignals = [
   { title: "Schools & MATs", copy: "Post staffing needs, manage compliance, and join the founding-schools programme from one verified workspace.", icon: "building" },
@@ -124,46 +124,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="register-interest" className="marketing-section marketing-registration">
-          <div className="supplyed-content-wrap marketing-registration-grid">
-            <div>
-              <span className="eyebrow">03 / Founding schools &amp; teachers</span>
-              <h2>Shape the platform.<br /><span className="text-brand">Lock in founding terms.</span></h2>
-              <div className="marketing-benefit-list">
-                {[
-                  ["Schools: founding pricing, locked for 2 years", "your launch rate never rises while you stay with us."],
-                  ["Teachers: a founding rate uplift", "an extra GBP 5 per day on SupplyED bookings, locked for 18 months from launch."],
-                  ["Direct line to the founder", "monthly input sessions that shape the roadmap."],
-                  ["Priority access at launch", "your roles reach verified teachers first."],
-                ].map(([title, copy]) => (
-                  <div key={title}>
-                    <Icon name="checkCircle" size={20} />
-                    <p><strong>{title}</strong><span>{copy}</span></p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <RegisterInterestForm />
-          </div>
-        </section>
-
-        <section className="marketing-closing">
-          <div className="supplyed-content-wrap">
-            <div>
-              <span className="eyebrow">Your next chapter</span>
-              <h2>Ready to transform<br />your staffing?</h2>
-              <p>Join 2,100+ schools already using SupplyED to cover urgent staffing, long-term briefs, and learner support.</p>
-            </div>
-            <div className="marketing-closing-actions">
-              <Link className={buttonClassName({ size: "xl" })} href="/founding-schools">
-                Get started free <Icon name="arrow" size={18} />
-              </Link>
-              <Link className={buttonClassName({ variant: "secondary", size: "xl", className: "marketing-button-light" })} href="/pricing">
-                View pricing
-              </Link>
-            </div>
-          </div>
-        </section>
+        <HomeWaitlistSection />
       </main>
     </div>
   );

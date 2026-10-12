@@ -6,9 +6,11 @@ import { PublicThemeControls } from "@/components/molecules";
 const footerLinks = [
   ["For schools", "/founding-schools"],
   ["For teachers", "/founding-teachers"],
-  ["How it works", "/how-it-works"],
-  ["Pricing", "/pricing"],
+  ["How it works", "/#waitlist-how-it-works"],
+  ["FAQ", "/#faq"],
+  ["Join the waitlist", "/#register-interest"],
   ["Terms & conditions", "/terms"],
+  ["Privacy", "/terms#privacy"],
 ] as const;
 
 export function PublicFooter() {
