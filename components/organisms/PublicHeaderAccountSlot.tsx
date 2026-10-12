@@ -47,7 +47,7 @@ export function PublicHeaderAccountSlot() {
         Log in
       </Link>
       <Link className={buttonClassName({ size: "sm", className: "max-sm:px-2.5 max-sm:text-[11px]" })} href="/signup">
-        Get started
+        Sign up
       </Link>
     </>
   );

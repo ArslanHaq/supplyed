@@ -54,7 +54,7 @@
   .settings-navigation-label { margin: 0 12px 14px; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
   .settings-navigation nav { display: grid; gap: 4px; }
   .settings-navigation nav a, .settings-navigation nav button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 43px; padding: 10px 12px; border-radius: 8px; text-align: left; color: var(--muted); font-size: 12px; font-weight: 550; transition: background .16s, color .16s; }
-  .settings-navigation nav a:first-child { background: var(--se-tint); color: var(--se); }
+  .settings-navigation nav a.active { background: var(--se-tint); color: var(--se); font-weight: 650; }
   .settings-navigation nav a:hover, .settings-navigation nav button:hover { background: #fff; color: var(--ink); }
   .settings-navigation nav button > svg:last-child { margin-left: auto; }
   .settings-navigation-note { display: flex; gap: 10px; padding: 22px 12px 0; margin-top: 22px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.8; }

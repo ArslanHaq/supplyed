@@ -83,7 +83,7 @@ const sections: TermsSection[] = [
     id: "fees",
     title: "Fees and payments",
     clauses: [
-      "Creating a teacher profile is free. Schools pay the fees shown on the Pricing page or in their signed founding agreement.",
+      "Creating a teacher profile is free. School fees are confirmed in their agreement before they join.",
       "Payments are processed by our payment partner, Stripe. By connecting a payout or payment account you also agree to Stripe's own terms.",
       "We may change our standard fees with at least 30 days' notice. Founding terms locked in writing are honoured for the period stated in that agreement.",
     ],
