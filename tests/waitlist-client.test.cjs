@@ -6,11 +6,11 @@ const { test } = require('node:test');
 const ts = require('typescript');
 
 function load(actions) {
-  const module = { exports: {} };
+  const testModule = { exports: {} };
   const file = path.resolve(__dirname, '../features/contact/waitlist-client.ts');
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, require: () => actions });
-  return module.exports;
+  vm.runInNewContext(code, { module: testModule, exports: testModule.exports, require: () => actions });
+  return testModule.exports;
 }
 
 test('an outdated action or network rejection returns an inline failure instead of crashing the page', async () => {
