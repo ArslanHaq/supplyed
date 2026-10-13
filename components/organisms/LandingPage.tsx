@@ -40,7 +40,6 @@ export function LandingPage() {
                 <Link className={buttonClassName({ size: "xl" })} href="/founding-schools">I&apos;m a school <Icon name="arrow" size={17} /></Link>
                 <Link className={buttonClassName({ variant: "secondary", size: "xl", className: "marketing-button-light" })} href="/founding-teachers">I&apos;m a teacher</Link>
               </div>
-              <Link className="marketing-text-link" href="/signup">I&apos;m hiring talent <Icon name="arrow" size={15} /></Link>
               <div className="marketing-launch-note"><Icon name="pin" size={16} /> <span>Launching 2026 · Greater Manchester &amp; Lancashire</span></div>
             </div>
 

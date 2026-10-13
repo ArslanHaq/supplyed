@@ -111,9 +111,6 @@
 .waitlist-teacher-booking-row svg:last-child {
   margin-left: auto;
 }
-.home-waitlist-sections .waitlist-programmes {
-  background: #0d3051;
-}
 .home-waitlist-sections h2,
 .home-waitlist-sections .waitlist-programmes h3,
 .home-waitlist-sections .waitlist-steps h4 {
@@ -132,9 +129,6 @@
   scroll-margin-top: 140px;
 }
 .marketing-account .marketing-nav-waitlist {
-  background: #0d3051;
-  border-color: #0d3051;
-  color: white;
   margin-right: 10px;
 }
 @media (max-width: 1000px) {
@@ -544,14 +538,14 @@
   margin-top: 10px;
 }
 .waitlist-programmes {
-  background: #007cac;
+  background: var(--se-dark);
   color: white;
 }
 .waitlist-programmes .eyebrow {
-  color: #d4efff;
+  color: var(--se-tint);
 }
 .waitlist-programmes .waitlist-section-heading > p {
-  color: #e2f3fb;
+  color: white;
 }
 .waitlist-programmes article {
   border: 1px solid #ffffff5c;
@@ -567,7 +561,7 @@
   margin-top: 12px;
   font-size: 15px;
   line-height: 1.7;
-  color: #e2f3fb;
+  color: white;
 }
 .waitlist-programmes article a {
   display: inline-flex;
