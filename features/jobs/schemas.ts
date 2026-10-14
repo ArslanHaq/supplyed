@@ -1,3 +1,4 @@
+import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 import type { JobStatus } from "@/types/supplyed";
 
 import type {
@@ -83,17 +84,17 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
   return {
     ...input,
     address: input.address?.trim() || undefined,
-    city: input.city?.trim() || undefined,
-    countryCode: input.countryCode?.trim().toUpperCase() || "GB",
-    county: input.county?.trim() || undefined,
+    city: validateUkCity(input.city).value || undefined,
+    countryCode: validateUkCountry(input.countryCode).value || "GB",
+    county: validateUkRegion(input.county).value || undefined,
     description: input.description.trim(),
     endDate: input.endDate?.trim() || undefined,
     expiresAt: input.expiresAt?.trim() || undefined,
-    keyStages: normalizeStringList(input.keyStages),
+    keyStages: normalizeStringList(input.keyStages ?? []),
     minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
     payAmount: normalizePositiveNumber(input.payAmount),
-    postalCode: input.postalCode?.trim().toUpperCase() || undefined,
+    postalCode: validateUkPostcode(input.postalCode).value || undefined,
     requiredSkills: normalizeStringList(input.requiredSkills ?? []),
     startDate: input.startDate?.trim() || undefined,
     subject: input.subject?.trim() || undefined,
@@ -105,9 +106,9 @@ export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
   return withoutEmptyJobFields({
     ...input,
     address: input.address?.trim() || undefined,
-    city: input.city?.trim() || undefined,
-    countryCode: input.countryCode?.trim().toUpperCase() || undefined,
-    county: input.county?.trim() || undefined,
+    city: validateUkCity(input.city).value || undefined,
+    countryCode: validateUkCountry(input.countryCode).value || undefined,
+    county: validateUkRegion(input.county).value || undefined,
     description: input.description?.trim() || undefined,
     endDate: input.endDate?.trim() || undefined,
     expiresAt: input.expiresAt?.trim() || undefined,
@@ -116,7 +117,7 @@ export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
     minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
     payAmount: normalizePositiveNumber(input.payAmount),
-    postalCode: input.postalCode?.trim().toUpperCase() || undefined,
+    postalCode: validateUkPostcode(input.postalCode).value || undefined,
     requiredSkills: input.requiredSkills ? normalizeStringList(input.requiredSkills) : undefined,
     startDate: input.startDate?.trim() || undefined,
     subject: input.subject?.trim() || undefined,
@@ -133,7 +134,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
   const keyStages = normalizeStringList(job.keyStages ?? []);
   const requiredSkills = normalizeStringList(job.requiredSkills ?? []);
   const subject = job.subject?.trim() || "General cover";
-  const city = job.city?.trim() || job.county?.trim() || job.postalCode?.trim() || "Location TBC";
+  const city = job.city?.trim() || "Location TBC";
 
   return {
     id: job.id,

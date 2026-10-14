@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+import { ApiError } from "./api-error";
 import { readUnverifiedJwtExpiresAt, readUnverifiedJwtPayload } from "./jwt";
 import type { ServerAuthContext } from "./auth-context";
 
@@ -8,6 +10,13 @@ type RefreshResult = {
   accessTokenExpiresAt?: number;
   refreshToken?: string;
 };
+
+// Share only the upstream request, never a caller's cookie-writing context.
+// A short grace period lets parallel requests and the first client request after
+// server rendering persist the same rotated pair. This cache is process-local.
+const refreshes = new Map<string, { promise: Promise<RefreshResult | null>; expiresAt: number }>();
+const MAX_REFRESHES = 1000;
+const REFRESH_GRACE_MS = 30_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -39,8 +48,12 @@ async function updateBackendAuthSession(data: Record<string, unknown>) {
   try {
     const { updateAuthSession } = await import("@/auth");
     await updateAuthSession(data as never);
-  } catch {
-    // Refresh persistence is best-effort; the request retry can still use the refreshed token.
+  } catch (error) {
+    // Server Components cannot write cookies. The grace cache keeps the rotated
+    // pair available to the next writable request without reusing the old token.
+    if (!(error instanceof Error && error.message.includes("Cookies can only be modified"))) {
+      console.error(JSON.stringify({ event: "session_persistence_failed", errorType: error instanceof Error ? error.name : "Unknown" }));
+    }
   }
 }
 
@@ -125,7 +138,7 @@ function readAccessTokenExpiresAt(record: Record<string, unknown>, accessToken?:
   return readUnverifiedJwtExpiresAt(accessToken);
 }
 
-export async function refreshBackendAccessToken(refreshToken: string): Promise<RefreshResult | null> {
+async function requestTokenRefresh(refreshToken: string): Promise<RefreshResult | null> {
   const url = buildApiUrl("/auth/refresh");
   if (!url) return null;
 
@@ -137,17 +150,18 @@ export async function refreshBackendAccessToken(refreshToken: string): Promise<R
       "Content-Type": "application/json",
     },
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
-    await markBackendSessionExpired();
-    return null;
+    await response.body?.cancel();
+    if (response.status === 401 || response.status === 403) return null;
+    throw new ApiError("Your session could not be refreshed right now. Please try again.", 503, undefined, "AUTH_SERVICE_UNAVAILABLE");
   }
 
-  const payload = unwrapApiPayload(await response.json());
+  const payload = unwrapApiPayload(await response.json().catch(() => null));
   if (!isRecord(payload)) {
-    await markBackendSessionExpired();
-    return null;
+    throw new ApiError("The authentication service returned an invalid response. Please try again.", 502);
   }
 
   const tokens = isRecord(payload.tokens) ? payload.tokens : {};
@@ -155,8 +169,7 @@ export async function refreshBackendAccessToken(refreshToken: string): Promise<R
   const nextRefreshToken = readString(payload.refreshToken) ?? readString(tokens.refreshToken);
 
   if (!accessToken) {
-    await markBackendSessionExpired();
-    return null;
+    throw new ApiError("The authentication service returned an incomplete response. Please try again.", 502);
   }
 
   const result = {
@@ -165,8 +178,31 @@ export async function refreshBackendAccessToken(refreshToken: string): Promise<R
     refreshToken: nextRefreshToken,
   };
 
-  await persistBackendTokenRefresh(result);
+  return result;
+}
 
+export async function refreshBackendAccessToken(refreshToken: string): Promise<RefreshResult | null> {
+  const now = Date.now();
+  for (const [key, entry] of refreshes) {
+    if (entry.expiresAt <= now) refreshes.delete(key);
+  }
+  const key = createHash("sha256").update(refreshToken).digest("hex");
+  let entry = refreshes.get(key);
+  if (!entry) {
+    if (refreshes.size >= MAX_REFRESHES) {
+      throw new ApiError("Sign-in is busy. Please try again shortly.", 503);
+    }
+    entry = { promise: requestTokenRefresh(refreshToken), expiresAt: now + 15_000 + REFRESH_GRACE_MS };
+    refreshes.set(key, entry);
+    const current = entry;
+    void current.promise.then((result) => {
+      if (!result) refreshes.delete(key);
+      else current.expiresAt = Math.min(Date.now() + REFRESH_GRACE_MS, result.accessTokenExpiresAt ?? Infinity);
+    }, () => { refreshes.delete(key); });
+  }
+  const result = await entry.promise;
+  if (result) await persistBackendTokenRefresh(result);
+  else await markBackendSessionExpired();
   return result;
 }
 

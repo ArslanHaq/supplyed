@@ -1,8 +1,12 @@
 import "server-only";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { api } from "@/lib/server/api-client";
 import { readUnverifiedJwtExpiresAt } from "@/lib/server/jwt";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
+import { normalizeEmail, passwordRequirementsMessage, validateEmail, validatePassword } from "./schemas";
+import { validateOtpCode, validateTwoFactorCode } from "@/lib/auth-code-validation";
 
 import type {
   AuthUser,
@@ -22,9 +26,6 @@ import type {
   TwoFactorVerificationInput,
 } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 function backendOAuthExchangeEnabled() {
   return process.env.AUTH_BACKEND_OAUTH_ENABLED === "true";
@@ -352,6 +353,9 @@ function normalizePasswordResetChallenge(payload: unknown): PasswordResetChallen
 }
 
 export async function createEmailAccount(input: SignupInput): Promise<EmailVerificationChallenge> {
+  if (!input || !validateEmail(input.email) || !["teacher", "institution"].includes(input.role ?? "")) throw new Error("Use a valid email and account type.");
+  if (!validatePassword(input.password)) throw new Error(passwordRequirementsMessage);
+  input = { ...input, email: normalizeEmail(input.email) };
   const payload = {
     email: input.email,
     password: input.password,
@@ -375,6 +379,8 @@ export async function createEmailAccount(input: SignupInput): Promise<EmailVerif
 }
 
 export async function loginWithEmail(input: LoginInput): Promise<BackendAuthResponse | TwoFactorLoginChallenge> {
+  if (!input || !validateEmail(input.email) || typeof input.password !== "string" || input.password.length < 8 || input.password.length > 128) throw new Error("Use a valid email and a password between 8 and 128 characters.");
+  input = { ...input, email: normalizeEmail(input.email) };
   logBackendPayload(`POST ${backendAuthEndpoints.login}`, {
     email: input.email,
     password: input.password,
@@ -394,6 +400,7 @@ export async function loginWithEmail(input: LoginInput): Promise<BackendAuthResp
 }
 
 export async function verifyEmail(input: EmailVerificationInput): Promise<BackendAuthResponse> {
+  if (!input || typeof input.code !== "string" || !validateOtpCode(input.code) || !validateEmail(input.email)) throw new Error("Enter a valid email and 6-digit verification code.");
   const payload = {
     otp: input.code,
   };
@@ -422,6 +429,7 @@ export async function verifyEmail(input: EmailVerificationInput): Promise<Backen
 }
 
 export async function verifyTwoFactorLogin(input: TwoFactorVerificationInput): Promise<BackendAuthResponse> {
+  if (!input || typeof input.code !== "string" || !validateTwoFactorCode(input.code)) throw new Error("Enter a valid authenticator or recovery code.");
   const payload = {
     code: input.code,
   };
@@ -452,6 +460,8 @@ export async function verifyTwoFactorLogin(input: TwoFactorVerificationInput): P
 }
 
 export async function resendEmailVerification(input: ResendEmailVerificationInput): Promise<EmailVerificationResendResponse> {
+  if (!input || !validateEmail(input.email)) throw new Error("Use a valid email address.");
+  input = { ...input, email: normalizeEmail(input.email) };
   logBackendPayload(`POST ${backendAuthEndpoints.resendEmailVerification}`, {
     email: input.email,
   });
@@ -470,6 +480,8 @@ export async function resendEmailVerification(input: ResendEmailVerificationInpu
 }
 
 export async function requestPasswordReset(input: ForgotPasswordInput): Promise<PasswordResetChallenge> {
+  if (!input || !validateEmail(input.email)) throw new Error("Use a valid email address.");
+  input = { ...input, email: normalizeEmail(input.email) };
   logBackendPayload(`POST ${backendAuthEndpoints.forgotPassword}`, {
     email: input.email,
   });
@@ -487,6 +499,8 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
 }
 
 export async function resetPassword(input: PasswordResetInput): Promise<PasswordResetResponse> {
+  if (!input || typeof input.code !== "string" || !validateOtpCode(input.code)) throw new Error("Enter the 6-digit reset code.");
+  if (!validatePassword(input.password)) throw new Error(passwordRequirementsMessage);
   const payload = {
     otp: input.code,
     password: input.password,

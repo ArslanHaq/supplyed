@@ -13,8 +13,8 @@ import { useCreateInvoice, useInvoice } from "@/features/payments/use-payments";
 import type { Invoice, PayableInvoice } from "@/features/payments/types";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, buttonClassName, Icon, Tag } from "../atoms";
-import { Modal, PageHead, SectionLoader } from "../molecules";
+import { Avatar, Btn, buttonClassName, Field, Icon, Tag } from "../atoms";
+import { Modal, PageHead, SectionLoader, SelectDropdown } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { PayInvoiceModal } from "./PayInvoiceModal";
 
@@ -169,15 +169,10 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
               To
               <input className="input mt-2" min={filterDraft.from || undefined} type="date" value={filterDraft.to ?? ""} onChange={(event) => setFilterDraft((current) => ({ ...current, to: event.target.value }))} />
             </label>
-            <label className="block text-xs font-semibold text-graphite">
-              Invoice
-              <select className="select mt-2" value={filterDraft.invoice ?? ""} onChange={(event) => setFilterDraft((current) => ({ ...current, invoice: (event.target.value || undefined) as BookingInvoiceFilter | undefined }))}>
-                <option value="">Any invoice state</option>
-                <option value="none">No invoice</option>
-                <option value="unpaid">Unpaid</option>
-                <option value="paid">Paid</option>
-              </select>
-            </label>
+            <div className="text-xs font-semibold text-graphite">
+              <label htmlFor="booking-invoice-filter">Invoice</label>
+              <SelectDropdown aria-label="Invoice" className="mt-2" id="booking-invoice-filter" options={[{ label: "Any invoice state", value: "" }, { label: "No invoice", value: "none" }, { label: "Unpaid", value: "unpaid" }, { label: "Paid", value: "paid" }]} placeholder="Any invoice state" value={filterDraft.invoice ?? ""} onChange={(value) => setFilterDraft((current) => ({ ...current, invoice: (value || undefined) as BookingInvoiceFilter | undefined }))} />
+            </div>
           </div>
           {filterError ? <p className="mt-3 text-sm font-medium text-danger" role="alert">{filterError}</p> : null}
           <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -458,6 +453,8 @@ function CreateInvoiceModal({
   const unit = payType === "hourly" ? "hours" : "days";
   const [units, setUnits] = useState(() => (booking && payType === "daily" ? String(bookingDays(booking) ?? "") : ""));
   const [poNumber, setPoNumber] = useState("");
+  const [inputError, setInputError] = useState<string>();
+  const [poError, setPoError] = useState<string>();
   const unitsValue = Number(units);
   const maxUnits = booking ? invoiceUnitsLimit(booking) : 9999.99;
   const validPay = ["daily", "hourly", "fixed"].includes(payType ?? "") && typeof booking?.payAmount === "number" && booking.payAmount > 0;
@@ -469,9 +466,15 @@ function CreateInvoiceModal({
     <Modal open={Boolean(booking)} onClose={onClose}>
       <form
         className="p-6 sm:p-7"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
-          if (!loading && unitsValid) onSubmit(fixed ? undefined : unitsValue, poNumber.trim() || undefined);
+          if (loading) return;
+          if (!unitsValid) { setInputError(`Enter valid ${unit} between 0.01 and ${maxUnits}, with up to two decimal places.`); return; }
+          setInputError(undefined);
+          if (poNumber.trim().length > 100) { setPoError("Use 100 characters or fewer for the PO number."); return; }
+          setPoError(undefined);
+          onSubmit(fixed ? undefined : unitsValue, poNumber.trim() || undefined);
         }}
       >
         <Tag tone="green">Invoice</Tag>
@@ -487,6 +490,8 @@ function CreateInvoiceModal({
           <label className="mt-4 block text-sm font-semibold">
             {payType === "hourly" ? "Hours worked" : "Days worked"}
             <input
+              aria-invalid={Boolean(inputError)}
+              aria-describedby={inputError ? "invoice-units-error" : undefined}
               className="input mt-2 w-full"
               inputMode="decimal"
               type="number"
@@ -501,12 +506,14 @@ function CreateInvoiceModal({
             <span className="mt-1 block text-xs font-normal text-muted">
               At {formatPence(Math.round(rate * 100))} per {unit === "hours" ? "hour" : "day"}. Enter 0.01–{maxUnits} {unit}, with up to two decimal places.
             </span>
+            {inputError ? <span className="mt-1 block text-sm font-normal text-danger" id="invoice-units-error" role="alert">{inputError}</span> : null}
           </label>
         )}
 
         <label className="mt-4 block text-sm font-semibold">
           PO number <span className="font-normal text-muted">(optional)</span>
-          <input className="input mt-2 w-full" maxLength={100} onChange={(event) => setPoNumber(event.target.value)} value={poNumber} />
+          <input aria-invalid={Boolean(poError)} aria-describedby={poError ? "invoice-po-error" : undefined} className="input mt-2 w-full" maxLength={100} onChange={(event) => setPoNumber(event.target.value)} value={poNumber} />
+          {poError ? <span className="mt-1 block text-sm font-normal text-danger" id="invoice-po-error" role="alert">{poError}</span> : null}
         </label>
 
         {unitsValid ? (
@@ -519,7 +526,7 @@ function CreateInvoiceModal({
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Btn disabled={loading} variant="ghost" onClick={onClose}>Cancel</Btn>
-          <Btn disabled={!unitsValid} loading={loading} loadingLabel="Sending" type="submit">Send invoice</Btn>
+          <Btn loading={loading} loadingLabel="Sending" type="submit">Send invoice</Btn>
         </div>
       </form>
     </Modal>
@@ -542,6 +549,7 @@ function CancelBookingModal({
   onSubmit: (reason: string) => void;
 }) {
   const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState<string>();
 
   return (
     <Modal open={Boolean(booking)} onClose={onClose}>
@@ -549,22 +557,28 @@ function CancelBookingModal({
         className="p-6 sm:p-7"
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit(reason);
+          if (loading || !booking) return;
+          const problem = validateCancellationReason(reason);
+          setReasonError(problem);
+          if (problem) return;
+          onSubmit(reason.trim());
         }}
       >
         <Tag tone="red">Cancel booking</Tag>
         <h2 className="mt-4 font-heading text-2xl">Cancel this booking?</h2>
         <p className="mt-3 text-sm leading-6 text-muted">Add a short reason so both sides have a clear record.</p>
-        <textarea
-          className="input mt-4 min-h-28 w-full"
-          maxLength={1000}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder="Reason for cancellation"
-          value={reason}
-        />
+        <div className="mt-4"><Field error={reasonError} label="Reason for cancellation" required>
+          <textarea
+            className="textarea min-h-28 w-full"
+            maxLength={1000}
+            onChange={(event) => { setReason(event.target.value); if (reasonError) setReasonError(validateCancellationReason(event.target.value)); }}
+            placeholder="Reason for cancellation"
+            value={reason}
+          />
+        </Field></div>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Btn disabled={loading} variant="ghost" onClick={onClose}>Keep booking</Btn>
-          <Btn disabled={!reason.trim()} loading={loading} loadingLabel="Cancelling" type="submit" variant="danger">Cancel booking</Btn>
+          <Btn loading={loading} loadingLabel="Cancelling" type="submit" variant="danger">Cancel booking</Btn>
         </div>
       </form>
     </Modal>
@@ -586,6 +600,7 @@ function ReviewBookingModal({
 }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+  const [reviewError, setReviewError] = useState<string>();
   const reviewee = useMemo(() => {
     if (!booking) return role === "teacher" ? "school" : "teacher";
     return role === "teacher" ? booking.institution.name ?? "school" : booking.instructor.fullName ?? "teacher";
@@ -597,15 +612,21 @@ function ReviewBookingModal({
         className="p-6 sm:p-7"
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit(rating, comment);
+          if (loading || !booking) return;
+          const problem = validateBookingReview(rating, comment);
+          setReviewError(problem);
+          if (problem) return;
+          onSubmit(rating, comment.trim());
         }}
       >
         <Tag tone="green">Booking review</Tag>
         <h2 className="mt-4 font-heading text-2xl">Review {reviewee}</h2>
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div aria-label="Rating" className="mt-5 flex flex-wrap gap-2" role="group">
           {[1, 2, 3, 4, 5].map((value) => (
             <button
               key={value}
+              aria-label={`${value} ${value === 1 ? "star" : "stars"}`}
+              aria-pressed={rating === value}
               className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border ${rating >= value ? "border-brand bg-brand-tint text-brand" : "border-border text-muted"}`}
               onClick={() => setRating(value)}
               type="button"
@@ -614,13 +635,15 @@ function ReviewBookingModal({
             </button>
           ))}
         </div>
-        <textarea
-          className="input mt-4 min-h-28 w-full"
-          maxLength={2000}
-          onChange={(event) => setComment(event.target.value)}
-          placeholder="Optional review note"
-          value={comment}
-        />
+        <div className="mt-4"><Field error={reviewError} label="Review note (optional)">
+          <textarea
+            className="textarea min-h-28 w-full"
+            maxLength={2000}
+            onChange={(event) => { setComment(event.target.value); if (reviewError) setReviewError(validateBookingReview(rating, event.target.value)); }}
+            placeholder="Optional review note"
+            value={comment}
+          />
+        </Field></div>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Btn disabled={loading} variant="ghost" onClick={onClose}>Cancel</Btn>
           <Btn loading={loading} loadingLabel="Submitting" type="submit">Submit review</Btn>
@@ -632,6 +655,16 @@ function ReviewBookingModal({
 
 function Detail({ icon, label, value }: { icon: string; label: string; value: string }) {
   return <div className="rounded-lg bg-chalk p-3"><div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted"><Icon name={icon} size={13} />{label}</div><div className="font-medium">{value}</div></div>;
+}
+
+function validateCancellationReason(reason: string) {
+  if (!reason.trim()) return "Enter a reason for cancelling this booking.";
+  if (reason.trim().length > 1000) return "Use 1,000 characters or fewer.";
+}
+
+function validateBookingReview(rating: number, comment: string) {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) return "Choose a rating between 1 and 5.";
+  if (comment.trim().length > 2000) return "Use 2,000 characters or fewer for your review.";
 }
 
 function BookingStatusTag({ status }: { status: BookingStatus }) {

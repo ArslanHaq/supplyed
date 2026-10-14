@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { City, Country, type ICity } from "country-state-city";
+import { useEffect, useState } from "react";
 
 import { usePhoneVerificationPending } from "@/features/auth/use-phone-verification";
+import { validateSettingsInput } from "@/features/settings/validation";
+import { getUkCities, getUkRegions, validateUkCity, validateUkCountry, validateUkPhone, validateUkRegion } from "@/lib/uk-validation";
 import { useSettingsProfile, useUpdateSettings, useUploadSettingsProfileImage } from "@/features/settings/use-settings";
 import type {
   SettingsInstitutionUpdateInput,
@@ -14,8 +15,8 @@ import type {
 } from "@/features/settings/types";
 import type { AppRole, ApplicationStatus, RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, Checkbox, Field, Icon, Tag } from "../atoms";
-import { PageHead, PostcodeLookup, SectionLoader } from "../molecules";
+import { Avatar, Btn, buttonClassName, Checkbox, Field, Icon, Tag } from "../atoms";
+import { PageHead, PostcodeLookup, SectionLoader, SelectDropdown } from "../molecules";
 import { NotificationSettings } from "./NotificationSettings";
 import { PayoutSettings } from "./PayoutSettings";
 import { PhoneVerification } from "../molecules/PhoneVerification";
@@ -39,7 +40,7 @@ const maxProfileImageBytes = 5 * 1024 * 1024;
 
 function profileImageContentType(file: File) {
   const explicitType = file.type.toLowerCase();
-  if (profileImageTypes.has(explicitType)) return explicitType;
+  if (explicitType) return explicitType;
 
   const extension = file.name.split(".").pop()?.toLowerCase();
   if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
@@ -50,6 +51,7 @@ function profileImageContentType(file: File) {
 }
 
 function profileImageValidationError(file: File) {
+  if (file.size === 0) return "Choose an image that is not empty.";
   if (file.size > maxProfileImageBytes) return "Profile image must be 5 MB or smaller.";
   if (!profileImageTypes.has(profileImageContentType(file))) return "Profile image must be a JPG, PNG, or WebP file.";
   return undefined;
@@ -61,7 +63,8 @@ function profileImageUrlForRole(form: SettingsForm, role: AppRole | null | undef
 
   return "";
 }
-const countryOptions = Country.getAllCountries().sort((first, second) => first.name.localeCompare(second.name));
+const cityOptions = getUkCities();
+const regionOptions = getUkRegions();
 
 const emptyInstructor: SettingsInstructorUpdateInput = {
   address: "",
@@ -109,19 +112,6 @@ function arrayToText(values: string[]) {
 
 function textToArray(value: string) {
   return Array.from(new Set(value.split(",").map((item) => item.trim()).filter(Boolean)));
-}
-
-function uniqueCities(cities: ICity[]) {
-  const seen = new Set<string>();
-
-  return cities
-    .filter((city) => {
-      const key = city.name.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((first, second) => first.name.localeCompare(second.name));
 }
 
 function roleLabel(role: AppRole | null | undefined) {
@@ -269,7 +259,7 @@ function ProfileImageField({
             {error ? <p className="mt-1 text-xs font-semibold text-danger">{error}</p> : null}
           </div>
         </div>
-        <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border-strong bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand hover:bg-brand-tint focus-within:outline-none focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2">
+        <label aria-disabled={disabled || pending || undefined} className={buttonClassName({ variant: "secondary", size: "sm", className: "profile-image-upload" })}>
           <Icon className={pending ? "animate-spin" : undefined} name={pending ? "loader" : "upload"} size={15} />
           {pending ? "Uploading" : imageUrl ? "Replace image" : "Upload image"}
           <input
@@ -308,31 +298,16 @@ function CountryCityFields({
   onCityChange: (value: string) => void;
   onCountryChange: (value: string) => void;
 }) {
-  const cityOptions = useMemo(() => uniqueCities(City.getCitiesOfCountry(countryCode) ?? []), [countryCode]);
-  const currentCityInOptions = cityOptions.some((option) => option.name === city);
+  const country = validateUkCountry(countryCode, { required: true });
+  const selectedCity = validateUkCity(city);
 
   return (
     <>
-      <Field error={countryError} label="Country" required={countryRequired}>
-        <select className="select" onChange={(event) => onCountryChange(event.target.value)} value={countryCode}>
-          <option value="">Select country</option>
-          {countryOptions.map((country) => (
-            <option key={country.isoCode} value={country.isoCode}>
-              {country.name}
-            </option>
-          ))}
-        </select>
+      <Field error={countryError} hint={!country.valid && countryCode ? `Saved country: ${countryCode}. Select United Kingdom to correct it.` : "United Kingdom addresses only."} label="Country" required={countryRequired}>
+        <SelectDropdown onChange={onCountryChange} options={[{ label: "United Kingdom", value: "GB" }]} placeholder="Select United Kingdom" value={country.valid ? country.value : countryCode} />
       </Field>
-      <Field error={cityError} label="City" required={cityRequired}>
-        <select className="select" disabled={!countryCode} onChange={(event) => onCityChange(event.target.value)} value={city}>
-          <option value="">{countryCode ? "Select city" : "Select country first"}</option>
-          {city && !currentCityInOptions ? <option value={city}>{city}</option> : null}
-          {cityOptions.map((cityOption) => (
-            <option key={cityOption.name} value={cityOption.name}>
-              {cityOption.name}
-            </option>
-          ))}
-        </select>
+      <Field error={cityError} hint={!selectedCity.valid && city ? `Saved location: ${city}. Select a UK city or town to correct it.` : undefined} label="City or town" required={cityRequired}>
+        <SelectDropdown onChange={onCityChange} options={[{ label: "Select city or town", value: "" }, ...cityOptions]} placeholder="Select a UK city or town" searchable value={selectedCity.valid ? selectedCity.value : city} />
       </Field>
     </>
   );
@@ -354,7 +329,9 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   }));
   const [errors, setErrors] = useState<SettingsFormErrors>({});
   const [submitError, setSubmitError] = useState<string>();
-  const form = formCache.snapshotKey === snapshotKey ? formCache.form : createForm(profile);
+  const [phoneEdited, setPhoneEdited] = useState(false);
+  const cachedForm = formCache.snapshotKey === snapshotKey ? formCache.form : createForm(profile);
+  const form = { ...cachedForm, user: { ...cachedForm.user, phone: phoneEdited ? cachedForm.user.phone : profile?.user.phone ?? cachedForm.user.phone } };
   const role = profile?.role ?? state.role;
   const canSave = Boolean(profile && role && profileExists(profile, role));
   const [profileImageError, setProfileImageError] = useState<string>();
@@ -431,8 +408,8 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   });
 
   function updateUser<Field extends keyof SettingsUserUpdateInput>(field: Field, value: SettingsUserUpdateInput[Field]) {
+    if (field === "phone") setPhoneEdited(true);
     setForm((current) => ({ ...current, user: { ...current.user, [field]: value } }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
     setSubmitError(undefined);
   }
 
@@ -441,13 +418,11 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
     value: SettingsInstructorUpdateInput[Field],
   ) {
     setForm((current) => ({ ...current, instructor: { ...current.instructor, [field]: value } }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
     setSubmitError(undefined);
   }
 
   function updateInstructorCountry(countryCode: string) {
     setForm((current) => ({ ...current, instructor: { ...current.instructor, city: "", countryCode } }));
-    setErrors((current) => ({ ...current, city: undefined, countryCode: undefined }));
     setSubmitError(undefined);
   }
 
@@ -456,13 +431,11 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
     value: SettingsInstitutionUpdateInput[Field],
   ) {
     setForm((current) => ({ ...current, institution: { ...current.institution, [field]: value } }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
     setSubmitError(undefined);
   }
 
   function updateInstitutionCountry(countryCode: string) {
     setForm((current) => ({ ...current, institution: { ...current.institution, city: "", countryCode } }));
-    setErrors((current) => ({ ...current, city: undefined, countryCode: undefined }));
     setSubmitError(undefined);
   }
 
@@ -491,7 +464,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   }
   function saveSettings(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (phoneVerificationPending) return;
+    if (phoneVerificationPending || updateSettings.isPending) return;
 
     if (!profile || !role) {
       setSubmitError("Profile settings are not ready yet.");
@@ -507,6 +480,16 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
       user: { ...form.user, phone: profile.user.phone },
     };
 
+    const nextErrors = validateSettingsInput(payload);
+    const enteredPhone = validateUkPhone(form.user.phone);
+    if (!enteredPhone.valid) nextErrors.phone = enteredPhone.error!;
+    else if (enteredPhone.value !== validateUkPhone(profile.user.phone).value) nextErrors.phone = "Verify your UK phone number before saving these changes.";
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      setSubmitError("Check the highlighted fields before saving.");
+      return;
+    }
+    setSubmitError(undefined);
     updateSettings.mutate(payload);
   }
 
@@ -603,6 +586,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                 disabled={updateSettings.isPending}
                 error={errors.phone}
                 onChange={(phone) => updateUser("phone", phone)}
+                onVerified={() => setPhoneEdited(false)}
                 phone={form.user.phone}
                 savedPhone={profile.user.phone}
                 verified={profile.user.phoneVerified}
@@ -621,6 +605,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   />
                 </Field>
                 <PostcodeLookup
+                  error={errors.postalCode}
                   id="settings-instructor-postcode"
                   label="Postal code"
                   onChange={(value) => updateInstructor("postalCode", value)}
@@ -632,7 +617,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   }}
                   value={form.instructor.postalCode}
                 />
-                <Field label="Address">
+                <Field error={errors.address} label="Address">
                   <input
                     className="input"
                     onChange={(event) => updateInstructor("address", event.target.value)}
@@ -644,18 +629,22 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   cityError={errors.city}
                   countryCode={form.instructor.countryCode}
                   countryError={errors.countryCode}
+                  countryRequired
                   onCityChange={(value) => updateInstructor("city", value)}
                   onCountryChange={updateInstructorCountry}
                 />
+                <Field error={errors.county} hint={form.instructor.county && !validateUkRegion(form.instructor.county).valid ? `Saved region: ${form.instructor.county}. Select a UK county or region to correct it.` : undefined} label="County or region (optional)">
+                  <SelectDropdown onChange={(value) => updateInstructor("county", value)} options={[{ label: "No county or region", value: "" }, ...regionOptions]} searchable value={validateUkRegion(form.instructor.county).value} />
+                </Field>
                 <div className="settings-section-heading settings-section-heading-small"><span>03</span><div><h2>Work preferences</h2><p>Experience, travel and your preferred rates.</p></div></div>
-                <Field label="Currency">
+                <Field error={errors.currency} label="Currency">
                   <input
                     className="input"
                     onChange={(event) => updateInstructor("currency", event.target.value)}
                     value={form.instructor.currency}
                   />
                 </Field>
-                <Field label="Experience">
+                <Field error={errors.experience} label="Experience">
                   <input
                     className="input"
                     min={0}
@@ -664,7 +653,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.instructor.experience}
                   />
                 </Field>
-                <Field label="Max travel distance">
+                <Field error={errors.maxTravelDistance} label="Max travel distance">
                   <input
                     className="input"
                     min={0}
@@ -673,7 +662,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.instructor.maxTravelDistance}
                   />
                 </Field>
-                <Field label="Hourly rate">
+                <Field error={errors.hourlyRate} label="Hourly rate">
                   <input
                     className="input"
                     min={0}
@@ -682,7 +671,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.instructor.hourlyRate}
                   />
                 </Field>
-                <Field label="Daily rate">
+                <Field error={errors.dailyRate} label="Daily rate">
                   <input
                     className="input"
                     min={0}
@@ -693,7 +682,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                 </Field>
                 <div className="settings-section-heading settings-section-heading-small"><span>04</span><div><h2>About your teaching</h2><p>Help schools understand your expertise.</p></div></div>
                 <div className="sm:col-span-2">
-                  <Field label="Bio">
+                  <Field error={errors.bio} label="Bio">
                     <textarea
                       className="textarea"
                       onChange={(event) => updateInstructor("bio", event.target.value)}
@@ -702,12 +691,14 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   </Field>
                 </div>
                 <ArrayField
+                  error={errors.subjects}
                   label="Subjects"
                   onChange={(value) => updateInstructor("subjects", value)}
                   placeholder="Mathematics, Physics"
                   value={form.instructor.subjects}
                 />
                 <ArrayField
+                  error={errors.keyStages}
                   label="Key stages"
                   onChange={(value) => updateInstructor("keyStages", value)}
                   placeholder="KS2, KS3"
@@ -715,6 +706,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                 />
                 <div className="sm:col-span-2">
                   <ArrayField
+                    error={errors.skills}
                     label="Skills"
                     onChange={(value) => updateInstructor("skills", value)}
                     placeholder="Classroom management, SEN"
@@ -734,7 +726,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.institution.name}
                   />
                 </Field>
-                <Field label="Registration ID">
+                <Field error={errors.registrationId} label="Registration ID">
                   <input
                     className="input"
                     onChange={(event) => updateInstitution("registrationId", event.target.value)}
@@ -749,6 +741,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   />
                 </Field>
                 <PostcodeLookup
+                  error={errors.postalCode}
                   id="settings-institution-postcode"
                   label="Postal code"
                   onChange={(value) => updateInstitution("postalCode", value)}
@@ -777,15 +770,18 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCityChange={(value) => updateInstitution("city", value)}
                   onCountryChange={updateInstitutionCountry}
                 />
+                <Field error={errors.county} hint={form.institution.county && !validateUkRegion(form.institution.county).valid ? `Saved region: ${form.institution.county}. Select a UK county or region to correct it.` : undefined} label="County or region (optional)">
+                  <SelectDropdown onChange={(value) => updateInstitution("county", value)} options={[{ label: "No county or region", value: "" }, ...regionOptions]} searchable value={validateUkRegion(form.institution.county).value} />
+                </Field>
                 <div className="settings-section-heading settings-section-heading-small"><span>03</span><div><h2>Staffing and compliance</h2><p>Your team, hiring needs and safeguarding contacts.</p></div></div>
-                <Field label="Your role">
+                <Field error={errors.userRole} label="Your role">
                   <input
                     className="input"
                     onChange={(event) => updateInstitution("userRole", event.target.value)}
                     value={form.institution.userRole}
                   />
                 </Field>
-                <Field label="Typical pupil count">
+                <Field error={errors.typicalPupilCount} label="Typical pupil count">
                   <input
                     className="input"
                     min={0}
@@ -794,7 +790,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.institution.typicalPupilCount}
                   />
                 </Field>
-                <Field label="Compliance contact">
+                <Field error={errors.complianceContact} label="Compliance contact">
                   <input
                     className="input"
                     onChange={(event) => updateInstitution("complianceContact", event.target.value)}
@@ -809,7 +805,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   />
                 </Field>
                 <div className="sm:col-span-2">
-                  <Field label="Staffing needs">
+                  <Field error={errors.staffingNeeds} label="Staffing needs">
                     <textarea
                       className="textarea"
                       onChange={(event) => updateInstitution("staffingNeeds", event.target.value)}
@@ -819,6 +815,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                 </div>
                 <div className="sm:col-span-2">
                   <ArrayField
+                    error={errors.coverTypes}
                     label="Cover types"
                     onChange={(value) => updateInstitution("coverTypes", value)}
                     placeholder="Same-day cover, Long-term roles"
@@ -827,10 +824,12 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                 </div>
                 <div className="sm:col-span-2 rounded-lg border border-border bg-chalk px-4 py-3">
                   <Checkbox
+                    aria-invalid={Boolean(errors.safeguardingConfirmed)}
                     checked={form.institution.safeguardingConfirmed}
                     label="Safeguarding responsibility confirmed"
                     onChange={(value) => updateInstitution("safeguardingConfirmed", value)}
                   />
+                  {errors.safeguardingConfirmed ? <p className="text-danger text-sm" role="alert">{errors.safeguardingConfirmed}</p> : null}
                 </div>
               </>
             ) : null}

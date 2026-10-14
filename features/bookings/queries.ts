@@ -1,13 +1,12 @@
 import "server-only";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { api } from "@/lib/server/api-client";
 
 import { normalizeBookingsQuery, normalizePaginatedBookings } from "./schemas";
 import type { BookingListQuery, PaginatedBookings } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 function emptyBookings(query: BookingListQuery): PaginatedBookings {
   return {

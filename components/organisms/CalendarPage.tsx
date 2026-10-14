@@ -13,7 +13,7 @@ export function CalendarPage() {
           <div className="calendar-grid grid grid-cols-7 gap-2">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => <div key={day} className="py-2 text-center text-xs text-muted">{day}</div>)}
             {days.map((item, index) => (
-              <div aria-label={item.day ? `March ${item.day}, ${item.state}` : undefined} key={index} className={`calendar-day ${item.day ? item.state : "empty"} flex aspect-square border text-sm font-medium tabular-nums`} style={{ borderColor: item.day ? "var(--border)" : "transparent", background: item.state === "available" ? "var(--se-tint)" : item.state === "booked" ? "var(--ink)" : "#fff", color: item.state === "booked" ? "#fff" : "var(--ink)" }}><span>{item.day}</span>{item.day && item.state !== "unavailable" ? <span className="calendar-day-state">{item.state === "booked" ? "Booked" : "Available"}</span> : null}</div>
+              <div aria-label={item.day ? `March ${item.day}, ${item.state}` : undefined} key={index} className={`calendar-day ${item.day ? item.state : "empty"} flex aspect-square border text-sm font-medium tabular-nums`}><span>{item.day}</span>{item.day && item.state !== "unavailable" ? <span className="calendar-day-state">{item.state === "booked" ? "Booked" : "Available"}</span> : null}</div>
             ))}
           </div>
           <div aria-label="Calendar legend" className="calendar-legend"><span><i className="available" />Available</span><span><i className="booked" />Booked</span><span><i />Unavailable</span></div>

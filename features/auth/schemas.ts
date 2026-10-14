@@ -13,7 +13,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const strongPasswordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 export const passwordRequirementsMessage =
-  "Use at least 8 characters with an uppercase letter, a number, and a special character.";
+  "Use 8–128 characters with an uppercase letter, a number, and a special character.";
 
 export function normalizeEmail(email: FormDataEntryValue | string | null): string {
   return String(email ?? "").trim().toLowerCase();
@@ -42,7 +42,7 @@ export function parseForgotPasswordForm(formData: FormData): ForgotPasswordInput
 
 export function parsePasswordResetForm(formData: FormData): PasswordResetInput {
   return {
-    code: String(formData.get("code") ?? "").replace(/\D/g, "").slice(0, 6),
+    code: String(formData.get("code") ?? "").trim(),
     otpToken: String(formData.get("otpToken") ?? "").trim() || undefined,
     password: String(formData.get("password") ?? ""),
   };
@@ -50,7 +50,7 @@ export function parsePasswordResetForm(formData: FormData): PasswordResetInput {
 
 export function parseEmailVerificationForm(formData: FormData): EmailVerificationInput {
   return {
-    code: String(formData.get("code") ?? "").replace(/\D/g, "").slice(0, 6),
+    code: String(formData.get("code") ?? "").trim(),
     email: normalizeEmail(formData.get("email")),
     otpToken: String(formData.get("otpToken") ?? "").trim() || undefined,
   };
@@ -71,9 +71,9 @@ export function parseResendEmailVerificationForm(formData: FormData): ResendEmai
 }
 
 export function validateEmail(email: string) {
-  return emailPattern.test(email);
+  return typeof email === "string" && email.length <= 254 && emailPattern.test(email);
 }
 
 export function validatePassword(password: string) {
-  return strongPasswordPattern.test(password);
+  return typeof password === "string" && password.length <= 128 && strongPasswordPattern.test(password);
 }

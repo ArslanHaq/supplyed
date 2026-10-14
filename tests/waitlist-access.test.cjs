@@ -1,0 +1,11 @@
+﻿const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
+const {NextRequest,NextResponse}=require('next/server');
+const mod={exports:{}};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('proxy.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:mod,exports:mod.exports,require:name=>{assert.equal(name,'next/server');return {NextResponse};}});
+const run=(path,method='GET',cookie='')=>mod.exports.proxy(new NextRequest('https://waitlist.example'+path,{method,headers:{cookie}}));
+test('only four public pages accept navigation and waitlist action posts',()=>{for(const path of ['/','/founding-schools','/founding-teachers','/how-it-works'])for(const method of ['GET','POST'])assert.equal(run(path,method).headers.get('x-middleware-next'),'1');});
+test('auth, product, legal, unknown and public HTML URLs redirect home regardless of session',()=>{for(const path of ['/login','/signup?role=teacher','/forgot-password','/dashboard','/security','/bookings','/institution-profile','/post-auth','/onboarding','/terms','/signatory-approval/token','/unknown','/founding-schools (1) (1).html'])for(const cookie of ['', 'authjs.session-token=existing-session']){const response=run(path,'GET',cookie);assert.equal(response.status,307);assert.equal(response.headers.get('location'),'https://waitlist.example/');}});
+test('product APIs and blocked-page writes are unavailable',()=>{for(const path of ['/api/auth/session','/api/auth/callback/google','/api/auth/me','/api/jobs','/api/settings/profile','/api/payments/payout-account'])for(const method of ['GET','POST'])assert.equal(run(path,method).status,404);assert.equal(run('/signup','POST').status,404);});
+test('health and discovery assets remain available',()=>{for(const path of ['/api/health','/favicon.svg','/robots.txt','/sitemap.xml','/manifest.webmanifest'])assert.equal(run(path).headers.get('x-middleware-next'),'1');});

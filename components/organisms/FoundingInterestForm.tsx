@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Button, Field, Icon } from "@/components/atoms";
+import { Button, Checkbox, Field, Icon } from "@/components/atoms";
+import { SelectDropdown } from "@/components/molecules/OptionDropdowns";
 import {
   type FoundingInterestActionState,
   type WaitlistField,
@@ -120,24 +121,19 @@ function WaitlistForm({
         error={errors?.[name]}
         required
       >
-        <select
+        <SelectDropdown
           aria-invalid={Boolean(errors?.[name])}
-          className="select"
+          disabled={pending}
+          error={Boolean(errors?.[name])}
           id={fieldId(name)}
           name={name}
-          onChange={(e) =>
-            setValues((current) => ({ ...current, [name]: e.target.value }))
+          onChange={(value) =>
+            setValues((current) => ({ ...current, [name]: value }))
           }
+          options={options}
           required
           value={values[name] ?? ""}
-        >
-          <option value="">Select an option</option>
-          {options.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
+        />
       </Field>
     );
   }
@@ -154,7 +150,7 @@ function WaitlistForm({
       />
     );
   return (
-    <form action={action} className="waitlist-form" id={id}>
+    <form action={action} className="waitlist-form" id={id} noValidate>
       <input name="type" type="hidden" value={type} />
       <input
         name="source"
@@ -237,18 +233,14 @@ function WaitlistForm({
               "How you book cover now",
               coverBookingOptions,
             )}
-            <label className="waitlist-checkbox">
-              <input
-                checked={founding}
-                name="foundingProgrammeInterest"
-                onChange={(e) => setFounding(e.target.checked)}
-                type="checkbox"
-              />
-              <span>
-                I&apos;d like to hear about the Founding Schools Programme (20
-                places).
-              </span>
-            </label>
+            <Checkbox
+              checked={founding}
+              className="waitlist-checkbox"
+              disabled={pending}
+              label="I'd like to hear about the Founding Schools Programme (20 places)."
+              name="foundingProgrammeInterest"
+              onChange={setFounding}
+            />
           </>
         ) : (
           <>
@@ -267,7 +259,7 @@ function WaitlistForm({
               autoComplete: "email",
               maxLength: 254,
             })}
-            {input("phone", "Mobile number (optional)", "e.g. 07700 900123", {
+            {input("phone", "UK phone number (optional)", "e.g. 07400 123456 or 020 7946 0018", {
               type: "tel",
               autoComplete: "tel",
               optional: true,
@@ -287,20 +279,16 @@ function WaitlistForm({
               "How many days a week would you want?",
               daysPerWeekOptions,
             )}
-            <label className="waitlist-checkbox">
-              <input
-                aria-invalid={Boolean(errors?.emailConsent)}
-                checked={consent}
-                name="emailConsent"
-                onChange={(e) => setConsent(e.target.checked)}
-                required
-                type="checkbox"
-              />
-              <span>
-                Email me about the first cohort and SupplyED&apos;s launch. I
-                can unsubscribe any time.
-              </span>
-            </label>
+            <Checkbox
+              aria-invalid={Boolean(errors?.emailConsent)}
+              checked={consent}
+              className="waitlist-checkbox"
+              disabled={pending}
+              label="Email me about the first cohort and SupplyED's launch. I can unsubscribe any time."
+              name="emailConsent"
+              onChange={setConsent}
+              required
+            />
             {errors?.emailConsent ? (
               <p className="text-danger text-sm" role="alert">
                 {errors.emailConsent}
@@ -325,7 +313,7 @@ function WaitlistForm({
         </Button>
         <p className="waitlist-form-privacy">
           We&apos;ll only email you about SupplyED&apos;s launch and first
-          cohort. See our <Link href="/terms#privacy">privacy information</Link>
+          cohort. See our <Link href="#waitlist-privacy">privacy information</Link>
           .
         </p>
       </fieldset>

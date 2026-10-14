@@ -1,10 +1,13 @@
 import { Field } from "../../../atoms";
 import { CountryCityFields } from "../CountryCityFields";
 import { PostcodeLookup } from "../../../molecules";
-import { MultiSelectDropdown } from "../../../molecules/OptionDropdowns";
+import { MultiSelectDropdown, SelectDropdown } from "../../../molecules/OptionDropdowns";
 import { coverTypes } from "../constants";
 import type { StepComponentProps } from "../step-types";
 import { fieldClass } from "../utils";
+import { getUkRegions } from "@/lib/uk-validation";
+
+const regionOptions = getUkRegions();
 
 export function InstitutionDetailsStep({ controller }: StepComponentProps) {
   const { errors, form, updateField } = controller;
@@ -12,12 +15,16 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
   return (
     <div className="space-y-6">
       <Field label="School type" htmlFor="institution-type" error={errors.institutionType} required>
-        <select
+        <SelectDropdown
           id="institution-type"
-          className={fieldClass(errors.institutionType)}
+          error={Boolean(errors.institutionType)}
+          options={[
+            { value: "SINGLE_SCHOOL", label: "Single school" },
+            { value: "MAT_SCHOOL", label: "Part of a multi-academy trust" },
+          ]}
           value={form.institutionType}
-          onChange={(event) => {
-            const value = event.target.value === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL";
+          onChange={(selection) => {
+            const value = selection === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL";
             updateField("institutionType", value);
             if (value === "SINGLE_SCHOOL") {
               updateField("trustName", "");
@@ -27,10 +34,7 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
               updateField("signatoryJobTitle", "");
             }
           }}
-        >
-          <option value="SINGLE_SCHOOL">Single school</option>
-          <option value="MAT_SCHOOL">Part of a multi-academy trust</option>
-        </select>
+        />
       </Field>
 
       {form.institutionType === "MAT_SCHOOL" ? (
@@ -101,13 +105,12 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
         </Field>
         <PostcodeLookup
           error={errors.postcode}
-          hint="Fills in the town from the postcode."
+          hint="Check the UK postcode, then select your city or town."
           id="institution-postcode"
           label="School postal code"
           onChange={(value) => updateField("postcode", value)}
           onSelect={(selection) => {
             updateField("postcode", selection.postcode);
-            updateField("institutionCountryCode", "GB");
             if (selection.city) updateField("institutionCity", selection.city);
           }}
           placeholder="M1 1AE"
@@ -137,12 +140,15 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
             updateField("institutionCity", "");
           }}
         />
-        <Field label="Typical pupil count" htmlFor="pupils" hint="Optional, helps estimate staffing needs.">
+        <Field label="County / region" htmlFor="institution-region" error={errors.localAuthority} hint="Optional">
+          <SelectDropdown id="institution-region" options={[{ label: "Select county / region", value: "" }, ...regionOptions]} searchable value={form.localAuthority} onChange={(value) => updateField("localAuthority", value)} error={Boolean(errors.localAuthority)} />
+        </Field>
+        <Field label="Typical pupil count" htmlFor="pupils" error={errors.typicalPupilCount} hint="Optional, helps estimate staffing needs.">
           <input
             id="pupils"
             className="input"
             value={form.typicalPupilCount}
-            onChange={(event) => updateField("typicalPupilCount", event.target.value.replace(/\D/g, ""))}
+            onChange={(event) => updateField("typicalPupilCount", event.target.value)}
             placeholder="420"
             inputMode="numeric"
           />
@@ -157,6 +163,9 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
           value={form.coverTypes}
           onChange={(value) => updateField("coverTypes", value)}
         />
+      </Field>
+      <Field label="Additional staffing details" htmlFor="staffing-details" error={errors.staffingNeeds} hint="Optional, up to 1,000 characters.">
+        <textarea id="staffing-details" className="textarea" maxLength={1000} value={form.staffingNeeds} onChange={(event) => updateField("staffingNeeds", event.target.value)} />
       </Field>
     </div>
   );

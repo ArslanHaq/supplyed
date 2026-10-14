@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { validateTwoFactorCode } from "@/lib/auth-code-validation";
 
 import { Btn, Field, Icon, Logo } from "../atoms";
 
@@ -43,7 +44,7 @@ export function TwoFactorChallengePage({
   }, [expiresAt]);
 
   function validate() {
-    const validCode = /^(?:\d{6}|[A-HJ-NP-Z2-9]{4}(?:-[A-HJ-NP-Z2-9]{4}){3})$/i.test(normalizedCode);
+    const validCode = validateTwoFactorCode(normalizedCode);
 
     if (!validCode) {
       setErrors({ code: "Enter a 6-digit authenticator code or a recovery code." });
@@ -123,10 +124,10 @@ export function TwoFactorChallengePage({
                   className="input pr-12 tracking-[0.12em]"
                   id="login-two-factor-code"
                   inputMode="text"
-                  maxLength={19}
+                  maxLength={64}
                   onChange={(event) => {
                     setCode(event.target.value);
-                    setErrors({});
+                    if (validateTwoFactorCode(event.target.value)) setErrors({});
                   }}
                   placeholder="123456"
                   value={code}

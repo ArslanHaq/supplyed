@@ -44,7 +44,7 @@ export function AdminPayoutLookup() {
       <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start" noValidate onSubmit={lookup}>
         <div className="flex-1">
           <Field error={inputError} hint="Use the instructor profile ID from the booking or invoice." label="Instructor profile ID" required>
-            <input className="input" onChange={(event) => { setInput(event.target.value); setInputError(undefined); }} placeholder="00000000-0000-0000-0000-000000000000" value={input} />
+            <input className="input" onChange={(event) => { setInput(event.target.value); if (inputError) setInputError(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event.target.value.trim()) ? undefined : "Enter the instructor profile ID as a valid UUID."); }} placeholder="00000000-0000-0000-0000-000000000000" value={input} />
           </Field>
         </div>
         <Btn className="sm:mt-6" loading={payoutQuery.isFetching} loadingLabel="Checking" type="submit" variant="secondary">Check status</Btn>

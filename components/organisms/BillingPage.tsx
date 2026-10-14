@@ -21,7 +21,7 @@ import {
 import type { AppRole, RouteProps, ToastFn } from "@/types/supplyed";
 
 import { Btn, buttonClassName, Stat, Tag } from "../atoms";
-import { Modal, PageHead, SectionLoader } from "../molecules";
+import { Modal, PageHead, SectionLoader, SelectDropdown } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { PayInvoiceModal, usePaymentReturn } from "./PayInvoiceModal";
 import { PayoutSettings } from "./PayoutSettings";
@@ -320,7 +320,7 @@ function AdminPayments({ toast }: { toast: ToastFn }) {
         <div className="p-6 sm:p-7">
           <h2 className="font-heading text-2xl">Void this invoice?</h2>
           <p className="mt-3 text-sm leading-6 text-muted">This cancels the unpaid invoice for {voidTarget?.booking.jobTitle}. The school can issue a replacement invoice for the booking.</p>
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Btn disabled={voidInvoice.isPending} variant="ghost" onClick={() => setVoidTarget(null)}>Keep invoice</Btn>
             <Btn loading={voidInvoice.isPending} loadingLabel="Voiding" variant="danger" onClick={() => { if (voidTarget) voidInvoice.mutate(voidTarget.id); }}>Void invoice</Btn>
           </div>
@@ -378,14 +378,10 @@ function RefundModal({
         </label>
         {error ? <p className="mt-3 text-sm text-danger" role="alert">{error}</p> : null}
         {invalid ? <p className="mt-2 text-sm text-danger">Enter an amount between £0.01 and {formatPence(refundable)}.</p> : null}
-        <label className="mt-4 block text-sm font-semibold">
-          Reason
-          <select className="input mt-2 w-full" onChange={(event) => setReason(event.target.value as RefundReason)} value={reason}>
-            <option value="requested_by_customer">Requested by the school</option>
-            <option value="duplicate">Duplicate payment</option>
-            <option value="fraudulent">Fraudulent</option>
-          </select>
-        </label>
+        <div className="mt-4 text-sm font-semibold">
+          <label htmlFor="invoice-refund-reason">Reason</label>
+          <SelectDropdown aria-label="Reason" className="mt-2" id="invoice-refund-reason" onChange={(value) => setReason(value as RefundReason)} options={[{ label: "Requested by the school", value: "requested_by_customer" }, { label: "Duplicate payment", value: "duplicate" }, { label: "Fraudulent", value: "fraudulent" }]} value={reason} />
+        </div>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Btn disabled={loading} variant="ghost" onClick={onClose}>
             Cancel
@@ -461,7 +457,7 @@ function InvoiceList({
     <>
       <div className="workspace-toolbar card card-pad mb-4 flex flex-wrap items-center gap-3">
         {filters.filter((item) => role === "admin" || item.value !== "pending").map((item) => (
-          <Btn key={item.value} size="sm" variant={filter === item.value ? "secondary" : "ghost"} onClick={() => onFilter(item.value)}>
+          <Btn key={item.value} aria-pressed={filter === item.value} size="sm" variant={filter === item.value ? "secondary" : "ghost"} onClick={() => onFilter(item.value)}>
             {item.label}
           </Btn>
         ))}

@@ -69,16 +69,30 @@ export function AppAccountMenu({
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
 
     function onPointerDown(event: PointerEvent) {
       if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
     }
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (!menuRef.current?.contains(event.target as Node)) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const items = Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+      const current = items.indexOf(document.activeElement as HTMLElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : (current + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+      items[next]?.focus();
     }
 
     document.addEventListener("pointerdown", onPointerDown);
@@ -130,13 +144,20 @@ export function AppAccountMenu({
   ];
 
   return (
-    <div ref={menuRef} className="relative">
+    <div ref={menuRef} className="relative" onBlur={(event) => {
+      if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false);
+    }}>
       <button
+        ref={triggerRef}
+        aria-label={`Account menu for ${displayName}`}
         aria-controls={open ? menuId : undefined}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex h-11 max-w-[300px] cursor-pointer items-center gap-2 rounded-full border border-transparent bg-white py-1 pl-1 pr-2.5 text-left transition hover:border-border hover:bg-chalk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+        className="flex h-11 max-w-[300px] cursor-pointer items-center gap-2 rounded-full border border-transparent bg-surface py-1 pl-1 pr-2.5 text-left transition hover:border-border hover:bg-chalk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); setOpen(true); }
+        }}
         type="button"
       >
         <Avatar name={displayName} size="sm" />
@@ -149,9 +170,7 @@ export function AppAccountMenu({
 
       {open ? (
         <div
-          className="absolute right-0 z-50 mt-2 w-[min(320px,calc(100vw-32px))] overflow-hidden rounded-xl border border-border bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]"
-          id={menuId}
-          role="menu"
+          className="absolute right-0 z-50 mt-2 max-h-[calc(100dvh-100px)] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-xl border border-border bg-surface shadow-panel"
         >
           <div className="border-b border-border bg-chalk p-4">
             <div className="flex min-w-0 items-center gap-3">
@@ -166,7 +185,7 @@ export function AppAccountMenu({
             </div>
           </div>
 
-          <div className="p-2">
+          <div className="p-2" id={menuId} role="menu" aria-label="Account actions">
             {actions.map((action) => (
               <AppAccountMenuItem key={action.label} {...action} />
             ))}

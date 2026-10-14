@@ -2,21 +2,21 @@ name: Dev CI/CD
 
 on:
   pull_request:
-    branches: [dev]
+    branches: [dev, main]
   push:
-    branches: [dev]
+    branches: [dev, main]
   workflow_dispatch:
 
 concurrency:
-  group: dev-${{ github.workflow }}
-  cancel-in-progress: true
+  group: frontend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   validate:
-    name: Lint and build
+    name: Test, lint and build
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -34,10 +34,16 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Regression tests
+        run: npm test
+
       - name: Build
         run: npm run build
         env:
           AUTH_SECRET: ci-only-secret-not-used-at-runtime
+
+      - name: Production HTTP smoke tests
+        run: npm run test:smoke
 
   deploy:
     name: Deploy to development server
@@ -96,4 +102,4 @@ jobs:
           test -n "$SERVER_USER" || { echo "Missing DEV_SERVER_USER secret"; exit 1; }
           ssh_target="${SERVER_USER}@${SERVER_HOST}"
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
-            "set -euo pipefail; app_root=\"\$HOME/supplyed\"; deploy_path=\"\$app_root/frontend-dev\"; cd \"\$deploy_path\"; test -L current || { echo \"Missing \$deploy_path/current release link\"; exit 1; }; test -f .env || { echo \"Missing \$deploy_path/.env\"; exit 1; }; for key in FRONTEND_PORT API_BASE_URL AUTH_SECRET AUTH_URL NEXT_PUBLIC_SITE_URL; do grep -q \"^\${key}=\" .env || { echo \"Missing \${key} in \$deploy_path/.env\"; exit 1; }; done; docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend; docker compose --env-file .env -f docker-compose.dev.yml up -d --force-recreate --remove-orphans"
+            "set -euo pipefail; app_root=\"\$HOME/supplyed\"; deploy_path=\"\$app_root/frontend-dev\"; cd \"\$deploy_path\"; test -L current || { echo \"Missing \$deploy_path/current release link\"; exit 1; }; test -f .env || { echo \"Missing \$deploy_path/.env\"; exit 1; }; for key in FRONTEND_PORT API_BASE_URL AUTH_SECRET AUTH_URL NEXT_PUBLIC_SITE_URL; do grep -q \"^\${key}=\" .env || { echo \"Missing \${key} in \$deploy_path/.env\"; exit 1; }; done; docker compose --env-file .env -f docker-compose.dev.yml build --pull frontend; docker compose --env-file .env -f docker-compose.dev.yml up -d --force-recreate --remove-orphans --wait --wait-timeout 120"

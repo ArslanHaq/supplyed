@@ -1,5 +1,7 @@
 "use server";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { revalidateTag } from "next/cache";
 
 import { normalizeRole } from "@/features/auth/backend";
@@ -9,6 +11,8 @@ import { getServerAuthContext } from "@/lib/server/auth-context";
 import type { AppRole } from "@/types/supplyed";
 
 import { getSettingsProfileSnapshot } from "./queries";
+import { validateSettingsInput } from "./validation";
+import { validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 import type {
   SettingsInstitutionUpdateInput,
   SettingsInstructorUpdateInput,
@@ -17,23 +21,7 @@ import type {
   SettingsUserUpdateInput,
 } from "./types";
 
-type SettingsActionField =
-  | "address"
-  | "bio"
-  | "city"
-  | "complianceEmail"
-  | "displayName"
-  | "domain"
-  | "fullName"
-  | "name"
-  | "phone"
-  | "schoolName";
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 function text(value: string | undefined) {
   return value?.trim() ?? "";
@@ -77,15 +65,6 @@ function actionFailure(error: unknown, fallback: string) {
   return actionError(fallback);
 }
 
-function validateUser(input: SettingsUserUpdateInput) {
-  const errors: Partial<Record<SettingsActionField, string>> = {};
-  const name = text(input.name);
-
-  if (!name) errors.name = "Enter your display name.";
-
-  return errors;
-}
-
 function userPayload(input: SettingsUserUpdateInput) {
   // Phone changes are saved by the verification endpoint, including across tabs.
   return {
@@ -106,9 +85,9 @@ function instructorPayload(input: SettingsInstructorUpdateInput) {
   return withoutUndefined({
     address: optionalText(input.address),
     bio: optionalText(input.bio),
-    city: optionalText(input.city),
-    countryCode: optionalText(input.countryCode) ?? "GB",
-    county: optionalText(input.county),
+    city: validateUkCity(input.city).value,
+    countryCode: validateUkCountry(input.countryCode, { required: true }).value,
+    county: validateUkRegion(input.county).value,
     currency: optionalText(input.currency) ?? "GBP",
     dailyRate,
     experience,
@@ -117,7 +96,7 @@ function instructorPayload(input: SettingsInstructorUpdateInput) {
 
     keyStages: normalizeStringArray(input.keyStages),
     maxTravelDistance,
-    postalCode: optionalText(input.postalCode),
+    postalCode: validateUkPostcode(input.postalCode).value,
     skills: normalizeStringArray(input.skills),
     subjects: normalizeStringArray(input.subjects),
   });
@@ -132,42 +111,21 @@ function institutionPayload(input: SettingsInstitutionUpdateInput) {
 
   return withoutUndefined({
     address: text(input.address),
-    city: text(input.city),
+    city: validateUkCity(input.city).value,
     complianceContact: optionalText(input.complianceContact),
     complianceEmail: optionalText(input.complianceEmail),
-    countryCode: optionalText(input.countryCode) ?? "GB",
-    county: optionalText(input.county),
+    countryCode: validateUkCountry(input.countryCode, { required: true }).value,
+    county: validateUkRegion(input.county).value,
     coverTypes: normalizeStringArray(input.coverTypes),
     domain: text(input.domain).replace(/^https?:\/\//i, "").split("/")[0]?.trim().toLowerCase(),
     name: text(input.name),
-    postalCode: optionalText(input.postalCode),
+    postalCode: validateUkPostcode(input.postalCode).value,
     registrationId: optionalText(input.registrationId),
     safeguardingConfirmed: input.safeguardingConfirmed,
     staffingNeeds: optionalText(input.staffingNeeds),
     typicalPupilCount,
     userRole: optionalText(input.userRole),
   });
-}
-
-function validateProfile(input: SettingsUpdateInput) {
-  const errors: Partial<Record<SettingsActionField, string>> = {};
-
-  if (input.role === "teacher") {
-    if (!text(input.instructor?.fullName)) errors.fullName = "Enter your teacher profile name.";
-  }
-
-  if (input.role === "institution") {
-    if (!text(input.institution?.name)) errors.schoolName = "Enter the school or organisation name.";
-    if (!text(input.institution?.domain)) errors.domain = "Enter the institution domain.";
-    if (!text(input.institution?.address)) errors.address = "Enter the institution address.";
-    if (!text(input.institution?.city)) errors.city = "Enter the city.";
-    if (input.institution?.complianceEmail && !emailPattern.test(text(input.institution.complianceEmail))) {
-      errors.complianceEmail = "Use a valid compliance email.";
-    }
-  }
-
-
-  return errors;
 }
 
 function mergeLocalSnapshot(current: SettingsProfileSnapshot, input: SettingsUpdateInput): SettingsProfileSnapshot {
@@ -224,6 +182,7 @@ function readFormFile(formData: FormData, key: string) {
 function profileImageContentType(file: File) {
   const explicitType = file.type.toLowerCase();
   if (profileImageTypes.has(explicitType)) return explicitType;
+  if (explicitType) return explicitType;
 
   const extension = file.name.split(".").pop()?.toLowerCase();
   if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
@@ -279,6 +238,7 @@ export async function uploadSettingsProfileImageAction(formData: FormData) {
       body: file!,
       headers: { "Content-Type": contentType, ...(upload.requiredHeaders ?? {}) },
       method: "PUT",
+      signal: AbortSignal.timeout(120_000),
     });
 
     if (!uploadResponse.ok) {
@@ -305,16 +265,20 @@ export async function uploadSettingsProfileImageAction(formData: FormData) {
 }
 
 export async function updateSettingsAction(input: SettingsUpdateInput) {
-  const userErrors = validateUser(input.user);
-  const profileErrors = validateProfile(input);
-  const fieldErrors = { ...userErrors, ...profileErrors };
-
-  if (Object.keys(fieldErrors).length > 0) {
-    return actionError("Check the highlighted settings and try again.", { fieldErrors });
-  }
-
+  let userSaved = false;
   try {
+    if (!input || !input.user || typeof input.user !== "object") return actionError("Check your settings and try again.");
+    const fieldErrors = validateSettingsInput(input);
+    if (Object.keys(fieldErrors).length > 0) {
+      return actionError("Check the highlighted settings and try again.", { fieldErrors });
+    }
+    // Validate both payloads before starting the existing two-request save.
+    const profilePayload = input.role === "teacher" && input.instructor
+      ? instructorPayload(input.instructor)
+      : input.role === "institution" && input.institution ? institutionPayload(input.institution) : undefined;
     const current = await getSettingsProfileSnapshot();
+    const savedPhone = validateUkPhone(current.user.phone);
+    if (!savedPhone.valid) return actionError("Update and verify your saved UK phone number before saving your profile.", { fieldErrors: { phone: savedPhone.error! } });
 
     if (!backendEnabled()) {
       return actionOk(mergeLocalSnapshot(current, input), "Settings saved locally for backend-disabled development.");
@@ -327,20 +291,28 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
 
     assertRoleAllowed(normalizeRole(authContext.role), input.role);
 
+    if (input.role === "teacher" && (!input.instructor || !(input.instructor.id || current.instructor?.id || authContext.instructorProfileId))) {
+      return actionError("Teacher profile was not found.");
+    }
+    if (input.role === "institution" && (!input.institution || !(input.institution.id || current.institution?.id || authContext.institutionProfileId))) {
+      return actionError("Institution profile was not found.");
+    }
+
     await api.patch("/users/me", userPayload(input.user));
+    userSaved = true;
 
     if (input.role === "teacher") {
       const profileId = input.instructor?.id || current.instructor?.id || authContext.instructorProfileId || "";
       if (!profileId || !input.instructor) return actionError("Teacher profile was not found.");
 
-      await api.patch(`/instructors/${profileId}`, instructorPayload(input.instructor));
+      await api.patch(`/instructors/${profileId}`, profilePayload);
     }
 
     if (input.role === "institution") {
       const profileId = input.institution?.id || current.institution?.id || authContext.institutionProfileId || "";
       if (!profileId || !input.institution) return actionError("Institution profile was not found.");
 
-      await api.patch(`/institutions/${profileId}`, institutionPayload(input.institution));
+      await api.patch(`/institutions/${profileId}`, profilePayload);
     }
 
     revalidateTag("settings", "max");
@@ -350,6 +322,11 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
 
     return actionOk(await getSettingsProfileSnapshot(), "Settings saved.");
   } catch (error) {
+    if (userSaved && !(error instanceof ApiError && error.status === 401)) {
+      revalidateTag("settings", "max");
+      revalidateTag("auth", "max");
+      return actionError("Your account details were saved, but the full profile update could not be confirmed. Please try saving again.", { code: "SETTINGS_PARTIAL_SAVE" });
+    }
     return actionFailure(error, "Settings could not be saved. Check the details and try again.");
   }
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 
@@ -66,19 +66,34 @@ export function PublicAccountMenu({ email, name, role, verified }: PublicAccount
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuId = useId();
   const displayName = getDisplayName(name, email);
   const roleLabel = getRoleLabel(role);
   const accountLinks = getAccountLinks(role);
 
   useEffect(() => {
     if (!open) return;
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
 
     function onPointerDown(event: PointerEvent) {
       if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
     }
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (!menuRef.current?.contains(event.target as Node)) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const items = Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+      items[next]?.focus();
     }
 
     document.addEventListener("pointerdown", onPointerDown);
@@ -98,12 +113,23 @@ export function PublicAccountMenu({ email, name, role, verified }: PublicAccount
   }
 
   return (
-    <div ref={menuRef} className="relative">
+    <div ref={menuRef} className="public-account-menu relative" onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+    }}>
       <button
+        ref={triggerRef}
+        aria-label={`Account menu for ${displayName}`}
+        aria-controls={open ? menuId : undefined}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex h-11 min-w-0 items-center gap-2 rounded-full border border-border-strong bg-white py-1 pl-1 pr-2.5 text-left transition hover:bg-chalk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+        className="flex h-11 min-w-0 items-center gap-2 rounded-full border border-border-strong bg-surface py-1 pl-1 pr-2.5 text-left transition hover:bg-chalk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
         type="button"
       >
         <Avatar name={displayName} size="sm" />
@@ -116,8 +142,7 @@ export function PublicAccountMenu({ email, name, role, verified }: PublicAccount
 
       {open ? (
         <div
-          className="absolute right-0 z-50 mt-2 w-[min(320px,calc(100vw-32px))] overflow-hidden rounded-xl border border-border bg-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]"
-          role="menu"
+          className="public-account-popover absolute right-0 z-50 mt-2 w-[min(320px,calc(100vw-32px))] max-h-[calc(100dvh-100px)] overflow-y-auto rounded-panel border border-border bg-surface shadow-panel"
         >
           <div className="border-b border-border bg-chalk p-4">
             <div className="flex min-w-0 items-center gap-3">
@@ -133,6 +158,7 @@ export function PublicAccountMenu({ email, name, role, verified }: PublicAccount
             </div>
           </div>
 
+          <div id={menuId} role="menu" aria-label="Account actions">
           <div className="p-2">
             {accountLinks.map((item) => (
               <Link
@@ -165,6 +191,7 @@ export function PublicAccountMenu({ email, name, role, verified }: PublicAccount
               </span>
               Logout
             </button>
+          </div>
           </div>
         </div>
       ) : null}

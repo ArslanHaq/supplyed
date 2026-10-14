@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { useJobApplications } from "@/features/applications/use-applications";
 import type { Job, JobsPagination, JobStatus, JobStatusCounts } from "@/features/jobs/types";
@@ -78,7 +78,7 @@ export function JobManagementList({
                 key={statusFilter.value}
                 aria-pressed={filter === statusFilter.value}
                 className={`min-h-9 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                  filter === statusFilter.value ? "border-brand bg-brand-tint text-brand" : "border-border bg-white text-slate hover:bg-chalk"
+                  filter === statusFilter.value ? "border-brand bg-brand-tint text-brand" : "border-border bg-surface text-slate hover:bg-chalk"
                 }`}
                 onClick={() => onFilterChange(statusFilter.value)}
                 type="button"
@@ -124,7 +124,7 @@ export function JobManagementList({
                 className={`h-9 min-w-9 rounded-lg border px-2 text-sm font-semibold transition-colors ${
                   item === pagination.page
                     ? "border-brand bg-brand text-white"
-                    : "border-border bg-white text-slate hover:border-brand hover:bg-brand-tint hover:text-brand"
+                    : "border-border bg-surface text-slate hover:border-brand hover:bg-brand-tint hover:text-brand"
                 }`}
                 disabled={loading || refreshing}
                 onClick={() => onPageChange(item)}
@@ -177,6 +177,30 @@ function JobManagementRow({
   const applicationsQuery = useJobApplications(job.id, { limit: 1 });
   const applicantCount = applicationsQuery.data?.pagination.total;
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const root = menuRef.current;
+    function dismissOutside(event: PointerEvent) {
+      if (!root?.contains(event.target as Node)) setMenuOpen(false);
+    }
+    function dismissOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape" || !root?.contains(event.target as Node)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setMenuOpen(false);
+      menuTriggerRef.current?.focus();
+    }
+    document.addEventListener("pointerdown", dismissOutside);
+    root?.addEventListener("keydown", dismissOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside);
+      root?.removeEventListener("keydown", dismissOnEscape);
+    };
+  }, [menuOpen]);
 
   return (
     <div
@@ -194,18 +218,20 @@ function JobManagementRow({
         <span aria-label={applicantCount !== undefined ? `${applicantCount} applicants` : applicationsQuery.isError ? "Applicant count unavailable" : "Loading applicant count"} aria-live="polite"><strong>{applicantCount ?? (applicationsQuery.isError ? "-" : "...")}</strong><span>{applicantCount === 1 ? "applicant" : "applicants"}</span></span>
         <span>Review <Icon name="arrowRight" size={13} /></span>
       </button>
-      <div className="job-management-menu" onClick={(event) => event.stopPropagation()}>
+      <div ref={menuRef} className="job-management-menu" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMenuOpen(false); }} onClick={(event) => event.stopPropagation()}>
         <button
+          ref={menuTriggerRef}
+          aria-controls={menuOpen ? menuId : undefined}
           aria-expanded={menuOpen}
           aria-label={`Options for ${job.title}`}
-          className="grid h-10 w-10 place-items-center rounded-lg border border-border-strong bg-white text-slate transition hover:border-brand hover:bg-brand-tint hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          className="grid h-10 w-10 place-items-center rounded-lg border border-border-strong bg-surface text-slate transition hover:border-brand hover:bg-brand-tint hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           onClick={() => setMenuOpen((current) => !current)}
           type="button"
         >
           <Icon name="moreH" size={18} />
         </button>
         {menuOpen ? (
-          <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-border bg-white p-1.5 shadow-(--shadow-sm)">
+          <div id={menuId} className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-border bg-surface p-1.5 shadow-card">
             <button
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-ink hover:bg-chalk"
               onClick={() => {

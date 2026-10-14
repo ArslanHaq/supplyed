@@ -7,7 +7,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { createInvoicePaymentSessionAction, syncInvoiceAction } from "@/features/payments/actions";
 import { formatPence } from "@/features/payments/schemas";
-import { getStripe, paymentAppearance, stripeFonts } from "@/features/payments/stripe-client";
+import { getPaymentAppearance, getStripe, observeStripeTheme, stripeFonts } from "@/features/payments/stripe-client";
 import type { InvoiceStatus, PayableInvoice } from "@/features/payments/types";
 import { unwrapActionResult } from "@/lib/server/action-response";
 import { queryKeys } from "@/lib/query/keys";
@@ -35,6 +35,8 @@ export function PayInvoiceModal({ invoice, onClose, toast }: { invoice: PayableI
 }
 
 function PaymentSession({ invoice, onBusy, onClose, toast }: { invoice: PayableInvoice; onBusy: (busy: boolean) => void; onClose: () => void; toast: ToastFn }) {
+  const [appearance, setAppearance] = useState(getPaymentAppearance);
+  useEffect(() => observeStripeTheme(() => setAppearance(getPaymentAppearance())), []);
   // Kept out of the payments keys: refreshing invoices must not swap the secret under a mounted Payment Element.
   const session = useQuery({
     gcTime: 0,
@@ -67,7 +69,7 @@ function PaymentSession({ invoice, onBusy, onClose, toast }: { invoice: PayableI
         <Elements
           stripe={getStripe(session.data.publishableKey)}
           options={{
-            appearance: paymentAppearance,
+            appearance,
             clientSecret: session.data.clientSecret,
             customerSessionClientSecret: session.data.customerSessionClientSecret,
             fonts: stripeFonts,

@@ -1,5 +1,7 @@
 "use server";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { revalidateTag } from "next/cache";
 
 import { normalizeAuthUser, normalizeRole, normalizeStatus } from "@/features/auth/backend";
@@ -19,6 +21,8 @@ import {
   uploadProfileDocument,
 } from "./documents";
 import { hasCreatedRoleProfile } from "./profile-progress";
+import { normalizeOnboardingForm, validateOnboardingForm } from "./validation";
+import { validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 import type {
   OnboardingDocumentDownloadResult,
   OnboardingDocumentKind,
@@ -34,9 +38,6 @@ import type {
   OnboardingUserSnapshot,
 } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
@@ -586,8 +587,10 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   let currentPhoneVerified = false;
   if (backendEnabled()) {
     const current = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
-    if (normalizeRole(current.role)) return normalizeUserSnapshot(current, current.email, postcodeFallback);
-    currentPhone = current.phone?.trim() ?? "";
+    // Signup assigns the account role before a profile or phone exists. Save the
+    // validated form value for both new and existing roles; only an already
+    // verified number needs the separate OTP flow before it can be replaced.
+    currentPhone = validateUkPhone(current.phone).value;
     currentPhoneVerified = current.phoneVerified === true;
   }
   if (!backendEnabled()) {
@@ -633,7 +636,10 @@ function onboardingError(error: unknown) {
 
 async function saveInstructorProfile(formData: FormData, accessToken: string) {
   const existing = await getCurrentInstructorSnapshot(accessToken);
-  if (existing) return existing;
+  if (existing) {
+    if (!["none", "rejected"].includes(existing.status)) return existing;
+    return normalizeInstructorSnapshot(await api.patch<BackendInstructorProfile>(`/instructors/${existing.id}`, buildInstructorProfilePayload(formData), { auth: false, headers: buildBearerHeaders(accessToken) }));
+  }
 
   try {
     return normalizeInstructorSnapshot(await api.post<BackendInstructorProfile>("/instructors", buildInstructorProfilePayload(formData), {
@@ -650,7 +656,10 @@ async function saveInstructorProfile(formData: FormData, accessToken: string) {
 
 async function saveInstitutionProfile(formData: FormData, accessToken: string) {
   const existing = await getInstitutionSnapshot(accessToken);
-  if (existing) return existing;
+  if (existing) {
+    if (!["none", "rejected"].includes(existing.status)) return existing;
+    return normalizeInstitutionSnapshot(await api.patch<BackendInstitutionProfile>(`/institutions/${existing.id}`, buildInstitutionProfilePayload(formData), { auth: false, headers: buildBearerHeaders(accessToken) }));
+  }
 
   try {
     return normalizeInstitutionSnapshot(await api.post<BackendInstitutionProfile>("/institutions", buildInstitutionProfilePayload(formData), {
@@ -666,6 +675,7 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string) {
 }
 
 async function submitInstructorProfileForReview(accessToken: string, current?: OnboardingInstructorSnapshot) {
+  assertStoredProfileLocation(current);
   if (current && ["pending_review", "approved"].includes(current.status)) return current;
   try {
     return normalizeInstructorSnapshot(
@@ -685,6 +695,7 @@ async function submitInstructorProfileForReview(accessToken: string, current?: O
 }
 
 async function submitInstitutionProfileForReview(accessToken: string, current?: OnboardingInstitutionSnapshot) {
+  assertStoredProfileLocation(current);
   if (current && ["pending_review", "approved"].includes(current.status)) return current;
   try {
     return normalizeInstitutionSnapshot(
@@ -775,6 +786,9 @@ export async function downloadOnboardingDocumentAction(formData: FormData) {
 }
 
 export async function saveOnboardingStepAction(formData: FormData) {
+  const fieldErrors = validateOnboardingForm(formData);
+  if (Object.keys(fieldErrors).length) return actionError("Check the highlighted fields before continuing.", { fieldErrors });
+  formData = normalizeOnboardingForm(formData);
   const role = readFormString(formData, "role") as AppRole;
   const step = Number(readFormString(formData, "step")) || 1;
   const postcode = readFormString(formData, "postcode");
@@ -809,7 +823,7 @@ export async function saveOnboardingStepAction(formData: FormData) {
     const stepUser = {
       ...user,
       emailVerified: savedUser?.emailVerified === true,
-      phoneVerified: savedUser?.phoneVerified === true && savedUser.phone === user.phone,
+      phoneVerified: savedUser?.phoneVerified === true && validateUkPhone(savedUser.phone).value === user.phone,
     };
     const documentState = normalizeRole(authContext.role)
       ? await getDocumentState(role)
@@ -866,6 +880,8 @@ async function submitInstructorOnboarding(formData: FormData) {
       if (!instructor) throw new Error("Create your teacher profile before sending it for review.");
 
       const user = normalizeUserSnapshot(sessionAuth.user, sessionAuth.user.email, readFormString(formData, "postcode"));
+      const savedPhone = validateUkPhone(sessionAuth.user.phone, { required: true });
+      if (!savedPhone.valid) return actionError("Update and verify your saved UK phone number before review.", { fieldErrors: { phone: savedPhone.error! } });
       const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
       if (missingDocuments.length > 0) {
         return actionOk<OnboardingProgressResult>(
@@ -1022,6 +1038,8 @@ async function submitInstitutionOnboarding(formData: FormData) {
       if (!institution) throw new Error("Create your school profile before sending it for review.");
 
       const user = normalizeUserSnapshot(sessionAuth.user, sessionAuth.user.email, readFormString(formData, "postcode"));
+      const savedPhone = validateUkPhone(sessionAuth.user.phone, { required: true });
+      if (!savedPhone.valid) return actionError("Update and verify your saved UK phone number before review.", { fieldErrors: { phone: savedPhone.error! } });
       const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
       if (missingDocuments.length > 0 || (institution.institutionType === "MAT_SCHOOL" && signatoryApproval?.status !== "APPROVED")) {
         return actionOk<OnboardingProgressResult>(
@@ -1182,9 +1200,20 @@ async function submitInstitutionOnboarding(formData: FormData) {
 }
 
 export async function submitOnboardingAction(formData: FormData) {
+  const fieldErrors = validateOnboardingForm(formData, { complete: true });
+  if (Object.keys(fieldErrors).length) return actionError("Check the highlighted fields before submitting your profile.", { fieldErrors });
+  formData = normalizeOnboardingForm(formData);
   const role = readFormString(formData, "role");
   if (role === "teacher") return submitInstructorOnboarding(formData);
   if (role === "institution") return submitInstitutionOnboarding(formData);
 
   return actionError("Choose a valid account type before creating your profile.");
+}
+
+function assertStoredProfileLocation(profile?: OnboardingInstructorSnapshot | OnboardingInstitutionSnapshot) {
+  if (!profile) throw new Error("Load your saved profile before submitting it for review.");
+  const checks = [validateUkCountry(profile.countryCode, { required: true }), validateUkCity(profile.city, { required: true }), validateUkPostcode(profile.postalCode, { required: true })];
+  if ("county" in profile) checks.push(validateUkRegion(profile.county));
+  const invalid = checks.find(check => !check.valid);
+  if (invalid) throw new Error(`Your saved profile needs correction before review. ${invalid.error}`);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { io, type Socket } from "socket.io-client";
+import { useSyncExternalStore } from "react";
 
 /**
  * One Socket.IO connection to the backend's `/conversations` namespace,
@@ -12,6 +13,24 @@ let socket: Socket | null = null;
 let holders = 0;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let retryAttempt = 0;
+let ready = false;
+const connectionListeners = new Set<() => void>();
+
+function setReady(value: boolean) {
+  if (ready === value) return;
+  ready = value;
+  connectionListeners.forEach((listener) => listener());
+}
+
+function subscribeConnection(listener: () => void) {
+  connectionListeners.add(listener);
+  return () => { connectionListeners.delete(listener); };
+}
+
+/** Connection health, not just configuration, controls the polling fallback. */
+export function useConversationConnected() {
+  return useSyncExternalStore(subscribeConnection, () => ready, () => false);
+}
 
 /** Where the backend listens for sockets; it sits under /api so one proxy rule covers REST and sockets. */
 const SOCKET_PATH = "/api/socket.io";
@@ -29,7 +48,9 @@ export function liveMessagingAvailable() {
 }
 
 async function fetchTicket(): Promise<string> {
-  const response = await fetch("/api/conversations/socket-ticket", { credentials: "same-origin", method: "POST" });
+  const response = await fetch("/api/conversations/socket-ticket", {
+    credentials: "same-origin", method: "POST", signal: AbortSignal.timeout(15_000),
+  });
   if (!response.ok) throw new Error(`Socket ticket request failed with status ${response.status}`);
 
   const payload = (await response.json()) as { ticket?: string };
@@ -83,13 +104,19 @@ export function acquireConversationSocket(): Socket | null {
     created.on("connect", () => {
       retryAttempt = 0;
     });
+    created.on("ready", () => setReady(true));
+    created.on("disconnect", () => setReady(false));
     created.on("connect_error", (error) => {
+      setReady(false);
       const code = (error as Error & { data?: { code?: string } }).data?.code ?? error.message;
       if (!created.active) scheduleRetry(created, code);
     });
     // The backend closes a socket whose credential expired; the next connect fetches a fresh ticket.
     created.on("auth:expired", () => {
-      if (created === socket) created.connect();
+      if (created === socket) {
+        setReady(false);
+        created.disconnect().connect();
+      }
     });
 
     socket = created;
@@ -108,6 +135,7 @@ export function releaseConversationSocket() {
     retryAttempt = 0;
     socket.disconnect();
     socket = null;
+    setReady(false);
   }
 }
 

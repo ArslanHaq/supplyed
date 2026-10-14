@@ -29,7 +29,8 @@ import type { Job } from "@/features/jobs/types";
 import type { RouteProps, ToastFn } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Tag } from "../atoms";
-import { Modal, PageHead, ProposalContent, SectionLoader } from "../molecules";
+import { PageHead, SectionLoader } from "../molecules";
+import { ProposalPreviewModal } from "../molecules/ProposalPreviewModal";
 import { MessageAttachmentPreview } from "./MessageAttachmentPreview";
 
 type PendingFile = {
@@ -446,7 +447,7 @@ function ConversationContextPanel({
             <p className="context-label">Proposal</p>
             <div className="mt-3 rounded-xl border border-brand-tint-2 bg-brand-tint p-4">
               <div className="flex items-start gap-3">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-brand shadow-sm">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface text-brand shadow-sm">
                   <Icon name="file" size={17} />
                 </div>
                 <div className="min-w-0">
@@ -486,33 +487,15 @@ function ConversationContextPanel({
         </div>
       </div>
     </aside>
-    <Modal open={proposalOpen} scrollMode="viewport" size="xl" onClose={() => setProposalOpen(false)}>
-      <article className="overflow-hidden rounded-xl">
-        <header className="border-b border-border bg-[linear-gradient(135deg,#eef9fd_0%,#ffffff_72%)] px-5 py-5 sm:px-8 sm:py-7">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex min-w-0 items-start gap-3.5">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-sm">
-                <Icon name="file" size={21} />
-              </div>
-              <div className="min-w-0">
-                <p className="context-label text-brand">Application proposal</p>
-                <h2 className="mt-1 font-heading text-xl font-semibold text-ink sm:text-2xl">{applicant?.fullName ?? conversation.counterpart.name}</h2>
-                <p className="mt-1 text-sm text-muted">For {job?.title ?? conversation.job.title}</p>
-              </div>
-            </div>
-            <button aria-label="Close proposal" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-white text-muted shadow-sm transition-colors hover:bg-chalk hover:text-ink" onClick={() => setProposalOpen(false)} type="button">
-              <Icon name="x" size={18} />
-            </button>
-          </div>
-        </header>
-        <div className="px-5 py-6 sm:px-8 sm:py-8">
-          <ProposalContent className="text-[15px] leading-8 text-slate" value={application?.coverLetter ?? ""} />
-        </div>
-        <footer className="flex justify-end border-t border-border bg-surface-subtle px-5 py-4 sm:px-8">
-          <Btn variant="secondary" onClick={() => setProposalOpen(false)}>Close proposal</Btn>
-        </footer>
-      </article>
-    </Modal>
+    <ProposalPreviewModal
+      applicantImage={applicant?.imageUrl}
+      applicantName={applicant?.fullName ?? conversation.counterpart.name}
+      jobTitle={job?.title ?? conversation.job.title}
+      onClose={() => setProposalOpen(false)}
+      open={proposalOpen}
+      submittedAt={application?.createdAt}
+      value={application?.coverLetter ?? ""}
+    />
     </>
   );
 }
@@ -528,7 +511,7 @@ function ContextRow({ icon, text }: { icon: string; text: string }) {
 
 function ContextStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border bg-white p-3">
+    <div className="rounded-lg border border-border bg-surface p-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
       <p className="mt-1 text-sm font-semibold text-ink">{value}</p>
     </div>
@@ -591,7 +574,7 @@ function Bubble({
         {message.attachments.map((attachment) => (
           <MessageAttachmentPreview key={attachment.id} attachment={attachment} conversationId={conversationId} light={mine} toast={toast} />
         ))}
-        <div className="mt-1.5 text-xs opacity-70">{formatTime(message.createdAt)}</div>
+        <div className={`mt-1.5 text-xs ${mine ? "text-white" : "text-muted"}`}>{formatTime(message.createdAt)}</div>
       </div>
       {seen ? <span className="mt-0.5 text-[11px] text-muted">Seen</span> : null}
     </div>
@@ -601,6 +584,7 @@ function Bubble({
 function Composer({ conversationId, toast }: { conversationId: string; toast: ToastFn }) {
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<PendingFile[]>([]);
+  const [messageError, setMessageError] = useState<string>();
   const fileInput = useRef<HTMLInputElement>(null);
   const typingRef = useRef<{ lastSentAt: number; stopTimer: ReturnType<typeof setTimeout> | null }>({ lastSentAt: 0, stopTimer: null });
   const send = useSendMessage({ onError: (message) => toast({ msg: message, title: "Message not sent", tone: "danger" }) });
@@ -637,7 +621,8 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
   }, [conversationId]);
   const uploading = files.some((file) => file.status === "uploading");
   const readyIds = files.flatMap((file) => (file.status === "ready" && file.attachment ? [file.attachment.id] : []));
-  const canSend = !send.isPending && !uploading && (body.trim().length > 0 || readyIds.length > 0);
+  const failedFiles = files.some((file) => file.status === "error");
+  const canSend = !send.isPending && !uploading && !failedFiles && body.length <= MAX_MESSAGE_LENGTH && (body.trim().length > 0 || readyIds.length > 0);
 
   function addFiles(list: FileList | null) {
     const picked = Array.from(list ?? []);
@@ -651,6 +636,7 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
       const localId = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
       const problem = !ALLOWED_ATTACHMENT_TYPES.includes(file.type)
         ? "Only PDF, Word, JPEG, PNG and text files"
+        : file.size === 0 ? "Choose a file that is not empty"
         : file.size > MAX_ATTACHMENT_BYTES
           ? "Files can be up to 10 MB"
           : null;
@@ -680,7 +666,11 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
   }
 
   function submit() {
+    if (failedFiles) { setMessageError("Remove or replace the failed attachments before sending."); return; }
+    if (body.length > MAX_MESSAGE_LENGTH) { setMessageError(`Use ${MAX_MESSAGE_LENGTH.toLocaleString()} characters or fewer.`); return; }
+    if (!body.trim() && !readyIds.length) { setMessageError("Write a message or add an attachment."); return; }
     if (!canSend) return;
+    setMessageError(undefined);
 
     const state = typingRef.current;
     if (state.stopTimer) clearTimeout(state.stopTimer);
@@ -738,6 +728,8 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
           Attach
         </Btn>
         <textarea
+          aria-invalid={Boolean(messageError)}
+          aria-describedby={messageError ? "message-validation-error" : undefined}
           aria-label="Message"
           className="input min-h-[44px] flex-1 resize-none"
           maxLength={MAX_MESSAGE_LENGTH}
@@ -759,6 +751,7 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
           Send
         </Btn>
       </div>
+      {messageError ? <p className="mt-2 text-sm text-danger" id="message-validation-error" role="alert">{messageError}</p> : null}
       <p className="message-composer-hint">Enter to send · Shift+Enter for a new line</p>
     </div>
   );

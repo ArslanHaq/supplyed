@@ -1,5 +1,7 @@
 import "server-only";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { normalizeRole, normalizeStatus } from "@/features/auth/backend";
 import { api, ApiError } from "@/lib/server/api-client";
 import { getServerAuthContext } from "@/lib/server/auth-context";
@@ -12,9 +14,6 @@ import type {
   SettingsUserSnapshot,
 } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));

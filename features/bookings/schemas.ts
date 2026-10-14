@@ -153,7 +153,7 @@ export function normalizeReviewInput(input: BookingReviewInput): BookingReviewIn
   return {
     bookingId: input.bookingId.trim(),
     comment: input.comment?.trim() || undefined,
-    rating: Math.min(5, Math.max(1, Math.round(input.rating))),
+    rating: input.rating,
   };
 }
 

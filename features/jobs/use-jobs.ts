@@ -80,7 +80,7 @@ export function useCreateJob(options: UseCreateJobOptions = {}) {
     onSuccess: async (result) => {
       if (handleSessionExpiredResult(result)) return;
 
-      if (result.ok) {
+      if (result.ok || result.savedJobId) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),

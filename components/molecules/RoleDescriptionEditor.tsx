@@ -83,6 +83,7 @@ export function RoleDescriptionEditor({
   const quillRef = useRef<QuillType | null>(null);
   const onChangeRef = useRef(onChange);
   const valueRef = useRef(value);
+  const invalidRef = useRef(invalid);
   const lastEmittedValueRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -92,6 +93,11 @@ export function RoleDescriptionEditor({
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
+
+  useEffect(() => {
+    invalidRef.current = invalid;
+    quillRef.current?.root.setAttribute("aria-invalid", String(invalid));
+  }, [invalid]);
 
   useEffect(() => {
     let active = true;
@@ -115,7 +121,14 @@ export function RoleDescriptionEditor({
         theme: "snow",
       });
 
+      quill.root.setAttribute("role", "textbox");
       quill.root.setAttribute("aria-label", "Role description");
+      quill.root.setAttribute("aria-multiline", "true");
+      quill.root.setAttribute("aria-invalid", String(invalidRef.current));
+      // Quill copies the select's label onto a non-interactive wrapper.
+      // Name the generated button that keyboard and screen-reader users reach.
+      toolbarElement.querySelector(".ql-size.ql-picker")?.removeAttribute("aria-label");
+      toolbarElement.querySelector(".ql-size .ql-picker-label")?.setAttribute("aria-label", "Font size");
       quill.root.style.fontSize = "16px";
       quill.clipboard.dangerouslyPasteHTML(legacyDescriptionToHtml(valueRef.current), "silent");
       quillRef.current = quill;
@@ -151,8 +164,8 @@ export function RoleDescriptionEditor({
   }, [value]);
 
   return (
-    <div className={"role-description-editor overflow-hidden rounded-lg border bg-white focus-within:ring-2 focus-within:ring-brand/15 " + (invalid ? "border-danger" : "border-border-strong")}>
-      <div ref={toolbarRef} aria-label="Role description formatting" className="border-0! border-b! border-border! bg-chalk">
+    <div className={"role-description-editor overflow-hidden rounded-lg border bg-surface focus-within:ring-2 focus-within:ring-brand/15 " + (invalid ? "border-danger" : "border-border-strong")}>
+      <div ref={toolbarRef} aria-label="Role description formatting" role="toolbar" className="border-0! border-b! border-border! bg-chalk">
         <span className="ql-formats">
           <button aria-label="Bold" className="ql-bold" type="button" />
           <button aria-label="Italic" className="ql-italic" type="button" />

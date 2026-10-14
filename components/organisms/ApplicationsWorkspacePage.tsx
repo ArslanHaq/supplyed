@@ -16,6 +16,7 @@ import { MatchScorePanel, Modal, PageHead, ProposalContent, SectionLoader } from
 import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 import { ProposalPreview } from "../molecules/ProposalPreviewModal";
 import { ApplicationsJobList } from "./ApplicationsJobList";
+import { RatingStars } from "./ProfileReviewsPanel";
 import { WorkspaceEmptyState, WorkspaceSummary } from "./WorkspacePanels";
 
 type ApplicationRow = {
@@ -314,7 +315,7 @@ function ApplicationDetail({
       <div className="application-detail-grid grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <section className="card overflow-hidden">
-            <div className="border-b border-border bg-[linear-gradient(135deg,#fff_0%,#f6fbf8_55%,rgb(var(--se-rgb)/0.10)_100%)] px-5 py-5 sm:px-7">
+            <div className="border-b border-border bg-brand-tint px-5 py-5 sm:px-7">
               <div className="flex min-w-0 items-center gap-4">
                 <Avatar name={instructor?.fullName ?? "Teacher"} size="lg" src={instructor?.imageUrl ?? undefined} />
                 <div className="min-w-0">
@@ -323,7 +324,7 @@ function ApplicationDetail({
                     {instructor?.dbsVerified ? <Tag tone="green">DBS verified</Tag> : null}
                   </div>
                   <button
-                    className="truncate text-left font-heading text-3xl leading-tight hover:text-brand"
+                    className="max-w-full break-words text-left font-heading text-3xl leading-tight hover:text-brand"
                     onClick={() => instructor?.id ? onOpenTeacher(instructor.id) : undefined}
                     type="button"
                   >
@@ -469,7 +470,7 @@ function TeacherReviewsPanel({
             </div>
           </div>
           {reviews.slice(0, 4).map((review, index) => (
-            <article key={`${review.id}-${index}`} className="rounded-xl border border-border bg-white p-4">
+            <article key={`${review.id}-${index}`} className="rounded-xl border border-border bg-surface p-4">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold">{review.reviewerName || "School review"}</div>
@@ -486,18 +487,6 @@ function TeacherReviewsPanel({
         </div>
       ) : null}
     </section>
-  );
-}
-
-function RatingStars({ rating }: { rating: number }) {
-  const rounded = Math.round(rating);
-
-  return (
-    <div className="flex items-center gap-0.5 text-brand">
-      {[1, 2, 3, 4, 5].map((value) => (
-        <Icon key={value} className={value <= rounded ? "fill-current" : "text-muted"} name="star" size={13} />
-      ))}
-    </div>
   );
 }
 
@@ -548,10 +537,10 @@ function StatusWorkflow({
                 active
                   ? "border-brand bg-brand-tint"
                   : dropActive
-                    ? "border-brand bg-white shadow-(--shadow-xs)"
+                    ? "border-brand bg-surface shadow-(--shadow-xs)"
                     : complete
                       ? "border-border bg-chalk text-muted"
-                      : "border-border bg-white"
+                      : "border-border bg-surface"
               }`}
               onDragOver={(event) => {
                 if (dropActive) event.preventDefault();
@@ -581,7 +570,7 @@ function StatusWorkflow({
               </button>
               {active ? (
                 <div
-                  className="mx-4 mb-4 rounded-lg border border-brand bg-white px-3 py-2 text-sm font-semibold text-ink shadow-(--shadow-xs)"
+                  className="mx-4 mb-4 rounded-lg border border-brand bg-surface px-3 py-2 text-sm font-semibold text-ink shadow-(--shadow-xs)"
                   draggable={!pending && application.status !== "HIRED"}
                   onDragEnd={() => setDraggingStatus(null)}
                   onDragStart={(event) => {
@@ -687,7 +676,7 @@ function InfoTile({ label, value }: { label: string; value: string }) {
 
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border bg-white px-3 py-2.5">
+    <div className="rounded-lg border border-border bg-surface px-3 py-2.5">
       <div className="text-[10px] font-bold uppercase tracking-[1px] text-muted">{label}</div>
       <div className="mt-1 break-words text-sm font-semibold text-ink">{value}</div>
     </div>

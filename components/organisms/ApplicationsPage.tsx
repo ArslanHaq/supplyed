@@ -18,6 +18,8 @@ type Tab = "best" | "pipeline" | "recommended";
 export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ctx" | "toast">) {
   const [tab, setTab] = useState<Tab>("best");
   const [minScore, setMinScore] = useState(0);
+  const [scoreInput, setScoreInput] = useState("0");
+  const [scoreError, setScoreError] = useState<string>();
   const [page, setPage] = useState(1);
   const [hireTarget, setHireTarget] = useState<JobApplication | null>(null);
   // Only the newest job is needed, as the default when no job was chosen.
@@ -55,8 +57,13 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       />
 
       <div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center gap-3">
-        {([['best', 'Best match'], ['pipeline', 'All applications'], ['recommended', 'Recommended teachers']] as const).map(([value, label]) => <Btn key={value} size="sm" variant={tab === value ? "secondary" : "ghost"} onClick={() => { setTab(value); setPage(1); }}>{label}</Btn>)}
-        {tab !== "pipeline" ? <label className="ml-auto flex items-center gap-2 text-xs font-semibold">Minimum score<input aria-label="Minimum match score" className="input w-24" min={0} max={100} type="number" value={minScore} onChange={(event) => { setMinScore(Math.min(100, Math.max(0, Number(event.target.value) || 0))); setPage(1); }} /></label> : null}
+        {([['best', 'Best match'], ['pipeline', 'All applications'], ['recommended', 'Recommended teachers']] as const).map(([value, label]) => <Btn key={value} aria-pressed={tab === value} size="sm" variant={tab === value ? "secondary" : "ghost"} onClick={() => { setTab(value); setPage(1); }}>{label}</Btn>)}
+        {tab !== "pipeline" ? <div className="ml-auto"><label className="flex items-center gap-2 text-xs font-semibold">Minimum score<input aria-label="Minimum match score" aria-describedby={scoreError ? "application-score-error" : undefined} aria-invalid={Boolean(scoreError)} className="input w-24" min={0} max={100} type="number" value={scoreInput} onChange={(event) => {
+          const input = event.target.value; setScoreInput(input);
+          const score = Number(input);
+          if (!Number.isFinite(score) || score < 0 || score > 100) { setScoreError("Enter a score between 0 and 100."); return; }
+          setScoreError(undefined); setMinScore(score); setPage(1);
+        }} /></label>{scoreError ? <p className="mt-1 text-xs text-danger" id="application-score-error" role="alert">{scoreError}</p> : null}</div> : null}
       </div>
 
       {activeLoading ? <SectionLoader rows={4} /> : null}

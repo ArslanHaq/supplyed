@@ -1,3 +1,5 @@
+import { validateEmail } from "@/features/auth/schemas";
+
 export type FoundingSignupType = "school" | "teacher";
 export type FoundingSignupRole = "institution" | "teacher";
 
@@ -44,7 +46,7 @@ function readString(value: unknown) {
 
 export function readFoundingSignupEmail(value: unknown) {
   const email = readString(value)?.toLowerCase();
-  return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : undefined;
+  return email && validateEmail(email) ? email : undefined;
 }
 
 function readStringArray(value: unknown) {
@@ -66,13 +68,12 @@ function readFormStringArray(data: FormData, key: string) {
 }
 
 function readDigits(value: unknown) {
-  const digits = readString(value)?.replace(/\D/g, "");
-  return digits || undefined;
+  // Keep invalid saved values visible so the destination form can reject them.
+  return readString(value);
 }
 
 function readDecimal(value: unknown) {
-  const numeric = readString(value)?.replace(/[^\d.]/g, "");
-  return numeric || undefined;
+  return readString(value);
 }
 
 function normalizeDomain(value: unknown) {

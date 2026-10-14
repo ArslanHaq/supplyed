@@ -121,7 +121,7 @@ export function FoundingSchoolTrustStrip() {
             className="border-border lg:border-l lg:pl-8 first:lg:border-l-0 first:lg:pl-0"
             key={signal.copy}
           >
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-brand shadow-(--shadow-xs)">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface text-brand shadow-(--shadow-xs)">
               <Icon name={signal.icon} size={22} />
             </div>
             <h2 className="text-lg font-bold leading-tight text-ink">{signal.title}</h2>
@@ -156,14 +156,14 @@ export function FoundingSchoolCohortSection() {
           <div aria-hidden="true" className="grid grid-cols-5 gap-2.5 sm:grid-cols-10">
             {foundingPlaces.map((place) => (
               <div
-                className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-border bg-white text-xs font-bold text-muted/65"
+                className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-border bg-surface text-xs font-bold text-muted"
                 key={place}
               >
                 {place}
               </div>
             ))}
           </div>
-          <p className="mt-4 text-center text-xs font-semibold uppercase tracking-[0.8px] text-muted/70">
+          <p className="mt-4 text-center text-xs font-semibold uppercase tracking-[0.8px] text-muted">
             20 founding places - registrations reviewed in order received
           </p>
         </div>
@@ -174,7 +174,7 @@ export function FoundingSchoolCohortSection() {
 
 export function FoundingSchoolTiersSection() {
   return (
-    <section className="border-b border-border bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
+    <section className="border-b border-border bg-surface px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
       <div className="mx-auto max-w-[1200px]">
         <div className="mb-10 text-center">
           <div className="eyebrow">Two ways to join</div>
@@ -186,7 +186,7 @@ export function FoundingSchoolTiersSection() {
           {tiers.map((tier) => (
             <article className="marketing-benefit-card card card-pad-lg relative" key={tier.name} style={tier.enhanced ? themedCardStyle() : undefined}>
               {tier.enhanced ? (
-                <Tag className="absolute right-6 top-0 -translate-y-1/2 bg-brand text-white">Enhanced</Tag>
+                <Tag className="absolute right-6 top-0 -translate-y-1/2">Enhanced</Tag>
               ) : null}
               <h3 className="font-heading text-2xl leading-tight">{tier.name}</h3>
               <p className="mt-2 text-muted">{tier.description}</p>
@@ -206,7 +206,7 @@ export function FoundingSchoolTiersSection() {
 
         <div className="mt-8 rounded-xl border border-warning/25 bg-warning-tint p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-warning">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface text-warning">
               <Icon name="file" size={22} />
             </span>
             <p className="text-sm leading-7 text-muted sm:text-base">

@@ -14,7 +14,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
         <div>
           <h3 className="font-heading text-2xl leading-tight">Teaching profile</h3>
           <p className="mt-1 text-sm leading-6 text-muted">
-            These details are sent to the instructor profile endpoint and used for matching after review.
+            Tell schools about your teaching experience, subjects and availability.
           </p>
         </div>
 
@@ -24,6 +24,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
               error={Boolean(errors.subjects)}
               options={subjects}
               placeholder="Select primary subjects"
+              searchable
               value={form.subjects}
               onChange={(value) => updateField("subjects", value)}
             />
@@ -39,10 +40,12 @@ export function TeacherProfileStep(props: AccountStepProps) {
           </Field>
         </div>
 
-        <Field label="Skills" hint="Optional, but useful for matching.">
+        <Field label="Skills" error={errors.skills} hint="Optional, but useful for matching.">
           <MultiSelectDropdown
+            error={Boolean(errors.skills)}
             options={teacherSkills}
             placeholder="Select skills"
+            searchable
             value={form.skills}
             onChange={(value) => updateField("skills", value)}
           />
@@ -55,7 +58,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
               id="experience"
               className={fieldClass(errors.yearsExperience)}
               value={form.yearsExperience}
-              onChange={(event) => updateField("yearsExperience", event.target.value.replace(/[^\d]/g, ""))}
+              onChange={(event) => updateField("yearsExperience", event.target.value)}
               placeholder="5"
               inputMode="numeric"
             />
@@ -65,7 +68,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
               id="daily-rate"
               className={fieldClass(errors.dailyRate)}
               value={form.dailyRate}
-              onChange={(event) => updateField("dailyRate", event.target.value.replace(/[^\d.]/g, ""))}
+              onChange={(event) => updateField("dailyRate", event.target.value)}
               placeholder="180"
               inputMode="decimal"
             />
@@ -75,7 +78,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
               id="hourly-rate"
               className={fieldClass(errors.hourlyRate)}
               value={form.hourlyRate}
-              onChange={(event) => updateField("hourlyRate", event.target.value.replace(/[^\d.]/g, ""))}
+              onChange={(event) => updateField("hourlyRate", event.target.value)}
               placeholder="35"
               inputMode="decimal"
             />
@@ -94,7 +97,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
               id="travel-distance"
               className={fieldClass(errors.maxTravelDistance)}
               value={form.maxTravelDistance}
-              onChange={(event) => updateField("maxTravelDistance", event.target.value.replace(/[^\d.]/g, ""))}
+              onChange={(event) => updateField("maxTravelDistance", event.target.value)}
               placeholder="25"
               inputMode="decimal"
             />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import type { MatchResult } from "@/features/matching/types";
 
@@ -10,6 +10,7 @@ type MatchScorePanelProps = { match: MatchResult; initiallyExpanded?: boolean };
 
 export function MatchScorePanel({ match, initiallyExpanded = false }: MatchScorePanelProps) {
   const [expanded, setExpanded] = useState(initiallyExpanded);
+  const detailsId = useId();
   const hasWarning = match.flags.scheduleConflict || match.flags.outsideTravelRadius;
 
   return (
@@ -27,12 +28,12 @@ export function MatchScorePanel({ match, initiallyExpanded = false }: MatchScore
           {match.flags.outsideTravelRadius ? <Tag tone="amber">Outside travel radius</Tag> : null}
           {!hasWarning && match.flags.distanceKnown ? <Tag tone="green">Available match</Tag> : null}
         </div>
-        <Btn size="sm" variant="ghost" onClick={() => setExpanded((value) => !value)}>{expanded ? "Hide details" : "Score details"}</Btn>
+        <Btn aria-expanded={expanded} aria-controls={expanded ? detailsId : undefined} size="sm" variant="ghost" onClick={() => setExpanded((value) => !value)}>{expanded ? "Hide details" : "Score details"}</Btn>
       </div>
       {expanded ? (
-        <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
+        <div id={detailsId} className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
           {match.factors.map((factor) => (
-            <div key={factor.key} className={factor.applicable ? "" : "opacity-60"}>
+            <div key={factor.key}>
               <div className="mb-1 flex items-center justify-between gap-2 text-xs">
                 <span className="font-semibold">{factor.label}</span>
                 <span className="text-muted">{factor.applicable ? `${Math.round(factor.value * 100)}% · weight ${factor.weight}` : "Not applicable"}</span>

@@ -1,3 +1,4 @@
+import { assertValidQuery } from "@/lib/server/query-validation";
 import { listMyApplications } from "@/features/applications/queries";
 import type { JobApplicationsQuery } from "@/features/applications/types";
 import { routeError } from "@/lib/server/route-error";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    assertValidQuery(searchParams, { status: { values: ["APPLIED", "HIRED", "INTERVIEW", "REJECTED", "SHORTLISTED", "VIEWED"] } });
     const status = searchParams.get("status");
 
     const query: JobApplicationsQuery = {

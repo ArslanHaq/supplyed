@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Btn, Checkbox, Icon, Logo, Tag } from "../atoms";
+import { Btn, Checkbox, Field, Icon, Logo, Tag } from "../atoms";
 import { Modal } from "../molecules";
 
 type ApprovalStatus = "APPROVED" | "DECLINED" | "EXPIRED" | "PENDING" | "REVOKED";
@@ -42,6 +42,7 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string>();
+  const [reasonError, setReasonError] = useState<string>();
   const [pending, setPending] = useState(false);
 
   async function load() {
@@ -71,20 +72,22 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
   }, [token]);
 
   async function decide(action: "approve" | "decline") {
+    if (pending || approval?.status !== "PENDING") return;
     if (action === "approve" && !acceptTerms) {
       setError("Accept the trust approval terms before approving this school.");
       return;
     }
-    if (action === "decline" && !reason.trim()) {
-      setError("Explain why the trust is declining this request.");
+    if (action === "decline" && (!reason.trim() || reason.trim().length > 1000)) {
+      setReasonError("Explain why the trust is declining this request (up to 1,000 characters).");
       return;
     }
 
     setPending(true);
     setError(undefined);
+    setReasonError(undefined);
     try {
       setApproval(await readResponse(await fetch(`/api/signatory-approvals/${encodeURIComponent(token)}`, {
-        body: JSON.stringify({ acceptTerms, action, reason }),
+        body: JSON.stringify({ acceptTerms, action, reason: reason.trim() }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       }))); 
@@ -106,7 +109,7 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
       <main className="marketing-approval min-h-screen px-4 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="marketing-approval-header"><Logo href="/" size={24} /><span><Icon name="lock" size={14} /> Secure approval link</span></div>
-        <div className="marketing-approval-card mt-8 border border-border bg-white p-6 sm:p-9">
+        <div className="marketing-approval-card mt-8 border border-border bg-surface p-6 sm:p-9">
           <Tag tone={approval?.status === "APPROVED" ? "green" : approval?.status === "DECLINED" ? "red" : "amber"}>
             Trust signatory approval
           </Tag>
@@ -136,10 +139,9 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
                     <p className="mt-2 text-xs text-muted">Terms version {signatoryTermsVersion}. Link expires {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(approval.expiresAt))}.</p>
                   </div>
                   {declining ? (
-                    <label className="block text-sm font-semibold">
-                      Reason for declining
+                    <Field error={reasonError} label="Reason for declining" required>
                       <textarea className="textarea mt-2" maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />
-                    </label>
+                    </Field>
                   ) : null}
                   <div className="marketing-approval-actions flex flex-col gap-3 sm:flex-row sm:justify-end">
                     {declining ? (

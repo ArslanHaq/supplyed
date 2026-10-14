@@ -23,6 +23,7 @@ function withQuery(path: string, query?: FetchJsonOptions["query"]) {
 export async function fetchJson<Data>(path: string, options: FetchJsonOptions = {}): Promise<Data> {
   const response = await fetch(withQuery(path, options.query), {
     credentials: "same-origin",
+    signal: AbortSignal.timeout(60_000),
   });
 
   if (!response.ok) {

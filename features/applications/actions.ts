@@ -10,6 +10,9 @@ import { isEmptyRichText, MAX_PROPOSAL_LENGTH } from "./rich-text";
 import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplication } from "./types";
 
 export async function createApplicationAction(input: ApplicationCreateInput) {
+  if (!input || typeof input.jobId !== "string" || typeof input.coverLetter !== "string") {
+    return actionError("Check the job and proposal before applying.", { code: "APPLICATION_INPUT_INVALID" });
+  }
   const normalized = normalizeApplicationCreateInput(input);
 
   if (!normalized.jobId) {
@@ -42,7 +45,8 @@ export async function createApplicationAction(input: ApplicationCreateInput) {
 }
 
 export async function updateApplicationStatusAction(input: ApplicationStatusUpdateInput) {
-  if (!input.id.trim()) return actionError("Choose a valid application.", { code: "APPLICATION_ID_REQUIRED" });
+  if (!input || typeof input.id !== "string" || !input.id.trim()) return actionError("Choose a valid application.", { code: "APPLICATION_ID_REQUIRED" });
+  if (!["APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEW", "HIRED", "REJECTED"].includes(input.status)) return actionError("Choose a valid application status.");
   try {
     const application = await api.patch<JobApplication>(`/applications/${input.id}/status`, { status: input.status });
     revalidateTag("applications", "max");

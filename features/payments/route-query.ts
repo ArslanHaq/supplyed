@@ -1,8 +1,10 @@
 import { invoiceStatuses } from "./schemas";
 import type { AdminInvoiceListQuery, InvoiceStatus } from "./types";
+import { assertValidQuery } from "@/lib/server/query-validation";
 
 export function readInvoiceListQuery(request: Request, options: { admin?: boolean } = {}): AdminInvoiceListQuery {
   const { searchParams } = new URL(request.url);
+  assertValidQuery(searchParams, { status: { values: [...invoiceStatuses].filter(status => options.admin || status !== "PENDING") }, ...(options.admin ? { bookingId: { uuid: true }, instructorId: { uuid: true }, institutionId: { uuid: true } } : {}) });
   const status = searchParams.get("status") as InvoiceStatus | null;
 
   return {

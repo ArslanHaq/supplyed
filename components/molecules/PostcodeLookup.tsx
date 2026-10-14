@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { formatUkPostcode, isValidUkPostcode } from "@/lib/postcode";
+import { validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 
 import { Btn, Field } from "../atoms";
 
@@ -21,10 +21,9 @@ type PostcodesIoResponse = {
   } | null;
 };
 
-const unavailableMessage = "Postcode lookup is unavailable. Enter the town yourself.";
+const unavailableMessage = "Postcode lookup is unavailable. You can still enter a valid UK postcode and select your town.";
 
-// postcodes.io is free, needs no key, and allows browser calls. It knows a
-// postcode's town and county, not the street addresses within it.
+// A postcode district is not a town or street address. Never infer a city from it.
 async function lookupPostcodeArea(postcode: string): Promise<PostcodeLookupSelection | { error: string }> {
   const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode.replace(/\s+/g, ""))}`, {
     signal: AbortSignal.timeout(6000),
@@ -35,11 +34,10 @@ async function lookupPostcodeArea(postcode: string): Promise<PostcodeLookupSelec
 
   const payload = (await response.json()) as PostcodesIoResponse;
 
-  return {
-    city: payload.result?.admin_district?.trim() ?? "",
-    county: payload.result?.admin_county?.trim() ?? "",
-    postcode: payload.result?.postcode ?? formatUkPostcode(postcode),
-  };
+  const validated = validateUkPostcode(payload.result?.postcode, { required: true });
+  if (!validated.valid || validated.value !== validateUkPostcode(postcode).value) return { error: unavailableMessage };
+  const region = validateUkRegion(payload.result?.admin_county ?? payload.result?.admin_district);
+  return { city: "", county: region.valid ? region.value : "", postcode: validated.value };
 }
 
 export function PostcodeLookup({
@@ -69,6 +67,7 @@ export function PostcodeLookup({
   // State updates land after a render, so a ref is what stops a second lookup
   // starting before the first one has set `pending`.
   const inFlight = useRef(false);
+  const inputVersion = useRef(0);
 
   async function lookup() {
     if (inFlight.current) return;
@@ -76,15 +75,18 @@ export function PostcodeLookup({
     setLookupError("");
     setNotice("");
 
-    if (!isValidUkPostcode(value)) {
-      setLookupError("Enter a valid UK postcode, for example M5 4WT.");
+    const validated = validateUkPostcode(value, { required: true });
+    if (!validated.valid) {
+      setLookupError(validated.error!);
       return;
     }
 
     inFlight.current = true;
+    const requestVersion = inputVersion.current;
     setPending(true);
     try {
-      const result = await lookupPostcodeArea(value);
+      const result = await lookupPostcodeArea(validated.value);
+      if (requestVersion !== inputVersion.current) return;
 
       if ("error" in result) {
         setLookupError(result.error);
@@ -93,9 +95,9 @@ export function PostcodeLookup({
 
       onChange(result.postcode);
       onSelect(result);
-      setNotice(result.city ? `Town filled in: ${result.city}.` : "Postcode found. Enter the town yourself.");
+      setNotice("UK postcode found. Select your city or town below; this does not verify your street address.");
     } catch {
-      setLookupError(unavailableMessage);
+      if (requestVersion === inputVersion.current) setLookupError(unavailableMessage);
     } finally {
       inFlight.current = false;
       setPending(false);
@@ -106,20 +108,24 @@ export function PostcodeLookup({
 
   return (
     <div className="min-w-0">
-      <Field label={label} htmlFor={id} error={shownError} hint={notice || hint} required={required}>
-        <div className="flex gap-2">
+      <Field label={label} htmlFor={id} error={shownError} hint={notice || hint || "UK postcodes only, for example SW1A 1AA. Format validation does not verify an address."} required={required}>
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             aria-invalid={Boolean(shownError)}
             autoComplete="postal-code"
             className={cn("input min-w-0 flex-1", shownError ? "border-danger bg-danger-tint" : "")}
             id={id}
             maxLength={10}
+            required={required}
             onBlur={() => {
-              if (isValidUkPostcode(value)) onChange(formatUkPostcode(value));
+              const result = validateUkPostcode(value, { required });
+              setLookupError(result.error || "");
+              if (result.valid && value) onChange(result.value);
             }}
             onChange={(event) => {
               onChange(event.target.value.toUpperCase());
-              setLookupError("");
+              inputVersion.current += 1;
+              if (lookupError) setLookupError(validateUkPostcode(event.target.value, { required }).error || "");
               setNotice("");
             }}
             onKeyDown={(event) => {
@@ -142,7 +148,7 @@ export function PostcodeLookup({
             onClick={() => void lookup()}
             variant="secondary"
           >
-            Find town
+            Check postcode
           </Btn>
         </div>
       </Field>

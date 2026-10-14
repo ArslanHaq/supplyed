@@ -1,5 +1,7 @@
 import "server-only";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { seedTeachers } from "@/data/supplyed";
 import { api } from "@/lib/server/api-client";
 
@@ -12,9 +14,6 @@ import type {
   TeacherListFilters,
 } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 export async function listTeachers(filters: TeacherListFilters = {}): Promise<Teacher[]> {
   const normalized = normalizeTeacherFilters(filters);

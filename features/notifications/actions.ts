@@ -28,6 +28,7 @@ export async function markAllNotificationsReadAction() {
 }
 
 export async function updateNotificationPreferencesAction(input: Partial<NotificationPreferences>) {
+  if (!input || typeof input !== "object" || Array.isArray(input) || !Object.keys(input).length || Object.entries(input).some(([key, value]) => !["emailJobMatches", "emailMessages", "emailUpdates"].includes(key) || typeof value !== "boolean")) return actionError("Choose valid notification preferences.");
   const body = Object.fromEntries(Object.entries(input).filter(([, value]) => typeof value === "boolean"));
 
   try {

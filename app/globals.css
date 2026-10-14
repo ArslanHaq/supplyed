@@ -41,7 +41,7 @@
   --ink: #15232d;
   --graphite: #2d3c48;
   --slate: #50616e;
-  --muted: #647580;
+  --muted: #5f707b;
   --border: #e2e8ec;
   --border-2: #cbd5dd;
   --chalk: #f5f7f9;
@@ -51,7 +51,7 @@
   --green-tint: #f0fdf4;
   --amber: #a96008;
   --amber-tint: #fffbeb;
-  --red: #e11d48;
+  --red: #cf1941;
   --red-tint: #fff1f2;
   --purple: #7c3aed;
   --purple-tint: #f5f3ff;
@@ -59,6 +59,18 @@
   --radius: 10px;
   --radius-lg: 12px;
   --radius-xl: 18px;
+  --control-height: 46px;
+  --control-radius: 9px;
+  --radius-check: 4px;
+  --control-font-size: 14px;
+  --control-padding-x: 13px;
+  --control-padding-y: 11px;
+  --focus-ring: 0 0 0 3px rgb(var(--se-rgb) / 0.14);
+  --duration-ui: 160ms;
+  --ease-ui: cubic-bezier(.2, .8, .2, 1);
+  --overlay: rgb(15 23 35 / .45);
+  --on-brand: #ffffff;
+  --text-brand: var(--se-dark);
   --shadow-xs: 0 1px 3px rgba(24, 46, 62, 0.035);
   --shadow-sm: 0 1px 3px rgba(10, 10, 10, 0.06), 0 1px 2px rgba(10, 10, 10, 0.04);
   --shadow: 0 4px 16px rgba(10, 10, 10, 0.04), 0 1px 3px rgba(10, 10, 10, 0.03);
@@ -151,6 +163,15 @@ input[type="radio"] {
   accent-color: var(--se);
 }
 
+input[type="date"], input[type="time"], select {
+  color-scheme: light;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+
 ::selection {
   background: var(--se-tint-2);
   color: var(--ink);
@@ -200,7 +221,7 @@ input[type="radio"] {
 
 .eyebrow {
   font-size: 11px;
-  color: var(--se);
+  color: var(--text-brand);
   font-weight: 600;
 }
 
@@ -222,17 +243,18 @@ input[type="radio"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
   min-height: 44px;
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 600;
-  line-height: 1.4;
-  white-space: nowrap;
+  line-height: 20px;
+  max-width: 100%;
+  white-space: normal;
 }
 
 .btn-primary {
@@ -282,14 +304,16 @@ input[type="radio"] {
 }
 
 .btn-lg {
-  padding: 12px 18px;
+  min-height: 48px;
+  padding: 12px 20px;
   font-size: 14px;
 }
 
 .btn-xl {
-  padding: 15px 24px;
+  min-height: 52px;
+  padding: 14px 24px;
   font-size: 15px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
 }
 
 .btn:disabled {
@@ -312,7 +336,7 @@ input[type="radio"] {
   padding: 4px 9px;
   border-radius: 6px;
   background: var(--se-tint);
-  color: var(--se);
+  color: var(--text-brand);
 }
 
 .tag-green {
@@ -360,22 +384,23 @@ input[type="radio"] {
 }
 
 .chip.active {
-  background: var(--se);
+  background: var(--se-dark);
   color: #fff;
-  border-color: var(--se);
+  border-color: var(--se-dark);
 }
 
 .input,
 .select,
 .textarea {
   width: 100%;
-  min-height: 44px;
+  min-width: 0;
+  min-height: var(--control-height);
   border: 1px solid var(--border-2);
-  border-radius: var(--radius);
+  border-radius: var(--control-radius);
   background: var(--surface);
   color: var(--ink);
-  padding: 10px 14px;
-  font-size: 14px;
+  padding: var(--control-padding-y) var(--control-padding-x);
+  font-size: var(--control-font-size);
   font-weight: 400;
   line-height: 1.5;
   transition: border-color 160ms ease, box-shadow 160ms ease;
@@ -386,7 +411,7 @@ input[type="radio"] {
 .select:focus,
 .textarea:focus {
   border-color: var(--se);
-  box-shadow: 0 0 0 3px rgb(var(--se-rgb) / 0.14);
+  box-shadow: var(--focus-ring);
 }
 
 .textarea {
@@ -448,7 +473,7 @@ input[type="radio"] {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--surface);
   transition: transform 0.18s ease;
 }
 
@@ -517,7 +542,7 @@ input[type="radio"] {
 }
 
 .avatar-green {
-  background: #dcfce7;
+  background: var(--green-tint);
   color: var(--green);
 }
 
@@ -577,7 +602,7 @@ input[type="radio"] {
 .fw-7 { font-weight: 700; }
 
 .muted { color: var(--muted); }
-.se { color: var(--se); }
+.se { color: var(--text-brand); }
 
 .truncate {
   white-space: nowrap;
@@ -592,7 +617,7 @@ input[type="radio"] {
   align-items: center;
   gap: 24px;
   border-bottom: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
 }
 
 .app-nav-links {
@@ -964,7 +989,7 @@ input[type="radio"] {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  background: #fff;
+  background: var(--surface);
   box-shadow: var(--shadow-lg);
 }
 
@@ -1086,7 +1111,7 @@ input[type="radio"] {
 
 .auth-loader-kicker {
   margin-top: 28px;
-  color: var(--se);
+  color: var(--text-brand);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -1159,8 +1184,8 @@ input[type="radio"] {
 }
 
 .step.done {
-  background: var(--se);
-  border-color: var(--se);
+  background: var(--se-dark);
+  border-color: var(--se-dark);
   color: #fff;
 }
 
@@ -1179,9 +1204,9 @@ input[type="radio"] {
   align-items: center;
   gap: 10px;
   padding: 10px 20px;
-  border-bottom: 0.5px solid #fecdd3;
-  background: linear-gradient(90deg, #fff1f2 0%, #fffbeb 100%);
-  color: #9f1239;
+  border-bottom: 1px solid color-mix(in srgb, var(--red) 20%, var(--surface));
+  background: linear-gradient(90deg, var(--red-tint) 0%, var(--amber-tint) 100%);
+  color: var(--red);
 }
 
 .match-score {
@@ -1197,14 +1222,14 @@ input[type="radio"] {
 
 .match-score.high {
   background: var(--se-tint);
-  color: var(--se);
-  border: 1.5px solid #9ad5ec;
+  color: var(--se-dark);
+  border: 1.5px solid var(--se-tint-2);
 }
 
 .match-score.mid {
   background: var(--amber-tint);
   color: var(--amber);
-  border: 1.5px solid #fde68a;
+  border: 1.5px solid color-mix(in srgb, var(--amber) 25%, var(--surface));
 }
 
 .match-score.low {
@@ -1219,7 +1244,7 @@ input[type="radio"] {
   gap: 5px;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 0.5px solid #bbf7d0;
+  border: 1px solid color-mix(in srgb, var(--green) 20%, var(--surface));
   background: var(--green-tint);
   color: var(--green);
   font-size: 10px;
@@ -1272,7 +1297,7 @@ input[type="radio"] {
   padding: 10px 12px;
   border-radius: var(--radius);
   border: 0.5px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
 }
 
@@ -1306,7 +1331,7 @@ input[type="radio"] {
 }
 
 .msg-bubble.out {
-  background: var(--se);
+  background: var(--se-dark);
   color: #fff;
   margin-left: auto;
   border-top-right-radius: 4px;
@@ -1357,7 +1382,7 @@ input[type="radio"] {
 }
 
 .toast-success {
-  border-color: rgba(var(--se-rgb), 0.36);
+  border-color: rgb(var(--se-rgb) / 0.36);
 }
 
 .toast-icon {
@@ -1369,8 +1394,8 @@ input[type="radio"] {
   justify-content: center;
   flex: 0 0 auto;
   margin-top: 1px;
-  background: rgba(var(--se-rgb), 0.18);
-  color: #67d3ff;
+  background: rgb(var(--se-rgb) / 0.18);
+  color: var(--se-tint-2);
 }
 
 .toast-danger .toast-icon {
@@ -1443,7 +1468,7 @@ input[type="radio"] {
 }
 
 .toast-success .toast-progress {
-  background: rgba(103, 211, 255, 0.72);
+  background: var(--se-tint-2);
 }
 
 @keyframes toast-enter {
@@ -1507,7 +1532,7 @@ input[type="radio"] {
   overflow: auto;
   border-radius: var(--radius-xl);
   cursor: default;
-  background: #fff;
+  background: var(--surface);
   box-shadow: var(--shadow-lg);
 }
 
@@ -1520,7 +1545,7 @@ input[type="radio"] {
   padding: 16px;
   border-radius: var(--radius-lg);
   border: 0.5px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   box-shadow: var(--shadow-lg);
 }
 
@@ -1633,7 +1658,7 @@ input[type="radio"] {
 .input::placeholder,
 .textarea::placeholder {
   color: var(--muted);
-  opacity: 0.85;
+  opacity: 1;
 }
 
 .input:disabled,
@@ -2148,8 +2173,8 @@ button.card:hover {
 }
 
 .editor-link-action-primary {
-  background: var(--se);
-  border-color: var(--se);
+  background: var(--se-dark);
+  border-color: var(--se-dark);
   color: white;
 }
 
@@ -2180,7 +2205,7 @@ button.card:hover {
 }
 
 .proposal-content a {
-  color: var(--se);
+  color: var(--text-brand);
   font-weight: 650;
   text-decoration: underline;
   text-decoration-color: rgb(var(--se-rgb) / 0.35);
@@ -2199,4 +2224,9 @@ button.card:hover {
   .proposal-editor .ql-editor {
     min-height: 220px;
   }
+}
+
+/* Brand fills retain the accent; small brand text uses its readable dark tone. */
+@layer utilities {
+  .text-brand { color: var(--text-brand); }
 }

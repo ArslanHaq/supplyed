@@ -27,6 +27,7 @@ export type OnboardingFinishResult = {
     ticket?: string;
   };
   message?: string;
+  fieldErrors?: SignupErrors;
   ok: boolean;
 };
 

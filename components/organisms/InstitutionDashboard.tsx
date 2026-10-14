@@ -10,10 +10,12 @@ import { Avatar, Btn, Icon, MatchScore } from "../atoms";
 import { PageHead, SectionLoader } from "../molecules";
 import { JobManagementList, type JobStatusFilter } from "./JobManagementList";
 import { RecentNotifications } from "./RecentNotifications";
+import { DeleteJobModal } from "./DeleteJobModal";
 
 export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toast">) {
   const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ACTIVE");
   const [page, setPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
   const jobsQuery = useMyJobs({ limit: 6, page, status: statusFilter === "ALL" ? undefined : statusFilter });
   const jobs = jobsQuery.data?.jobs ?? [];
   const counts = jobsQuery.data?.statusCounts;
@@ -39,6 +41,7 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
   });
   const deleteJob = useDeleteJob({
     onSuccess: (result) => {
+      if (result.ok) setDeleteTarget(null);
       toast({
         title: result.ok ? "Job deleted" : "Could not delete job",
         msg: result.message ?? "The job was deleted.",
@@ -55,12 +58,12 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
   }
 
   function removeJob(job: Job) {
-    if (!window.confirm(`Delete "${job.title}"? This cannot be undone.`)) return;
-    deleteJob.mutate(job.id);
+    setDeleteTarget(job);
   }
 
   return (
     <div className="app-page dashboard-page school-dashboard">
+      <DeleteJobModal job={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={(job) => deleteJob.mutate(job.id)} pending={deleteJob.isPending} />
       <PageHead
         title="School hiring workspace"
         subtitle={`${counts?.ALL ?? 0} posted roles - ${activeCount} active - ${draftCount} drafts`}

@@ -9,10 +9,12 @@ import type { RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, Icon, MatchScore, Stat, Tag } from "../../atoms";
 import { PageHead } from "../../molecules";
 import { JobManagementList, type JobStatusFilter } from "../JobManagementList";
+import { DeleteJobModal } from "../DeleteJobModal";
 
 export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "toast" | "tweaks">) {
   const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ALL");
   const [page, setPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
   const jobsQuery = useMyJobs({ limit: 20, page, status: statusFilter === "ALL" ? undefined : statusFilter });
   const jobs = jobsQuery.data?.jobs ?? [];
   const counts = jobsQuery.data?.statusCounts;
@@ -32,6 +34,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
   });
   const deleteJob = useDeleteJob({
     onSuccess: (result) => {
+      if (result.ok) setDeleteTarget(null);
       toast({
         title: result.ok ? "Job deleted" : "Could not delete job",
         msg: result.message ?? "The job was deleted.",
@@ -48,12 +51,12 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
   }
 
   function removeJob(job: Job) {
-    if (!window.confirm(`Delete "${job.title}"? This cannot be undone.`)) return;
-    deleteJob.mutate(job.id);
+    setDeleteTarget(job);
   }
 
   return (
     <>
+      <DeleteJobModal job={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={(job) => deleteJob.mutate(job.id)} pending={deleteJob.isPending} />
       {tweaks.urgentBanner ? (
         <div className="urgent-banner">
           <Icon name="zap" size={16} />

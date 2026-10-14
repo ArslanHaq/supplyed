@@ -15,12 +15,13 @@ export const waitlistTeacherRoles = [
 export const waitlistSchoolAreas = [
   "Greater Manchester",
   "Lancashire",
-  "Somewhere else",
+  "Elsewhere in the United Kingdom",
 ] as const;
 export const waitlistTeacherAreas = [
   "Greater Manchester",
   "Lancashire",
   "Both",
+  "Elsewhere in the United Kingdom",
 ] as const;
 export const waitlistSchoolTypes = [
   "Primary",

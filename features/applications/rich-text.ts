@@ -22,7 +22,9 @@ function decodeHtmlEntities(value: string) {
         ? Number.parseInt(normalized.slice(1), 10)
         : Number.NaN;
 
-    return Number.isFinite(numeric) ? String.fromCodePoint(numeric) : match;
+    return Number.isInteger(numeric) && numeric >= 0 && numeric <= 0x10ffff && !(numeric >= 0xd800 && numeric <= 0xdfff)
+      ? String.fromCodePoint(numeric)
+      : match;
   });
 }
 

@@ -49,7 +49,7 @@ export function NotificationSettings({ role, toast }: { role: AppRole; toast: To
                 <div className="text-sm font-semibold">{row.label}</div>
                 <div className="text-xs leading-5 text-muted">{row.description}</div>
               </div>
-              <Toggle label={row.label} on={prefs[row.key]} onChange={(on) => update.mutate({ [row.key]: on })} />
+              <Toggle disabled={update.isPending} label={row.label} on={prefs[row.key]} onChange={(on) => { if (!update.isPending) update.mutate({ [row.key]: on }); }} />
             </div>
           ))}
         </div>

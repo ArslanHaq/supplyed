@@ -2,6 +2,8 @@ import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_BYTES } from "@/features/conve
 import type { AttachmentUpload } from "@/features/conversations/types";
 import { api } from "@/lib/server/api-client";
 import { routeError } from "@/lib/server/route-error";
+import { getServerAuthContext } from "@/lib/server/auth-context";
+import { readLimitedFormData, requireSameOrigin } from "@/lib/server/upload-request";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +15,12 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    requireSameOrigin(request);
+    if (!(await getServerAuthContext())?.userId) {
+      return Response.json({ message: "Sign in again before uploading files." }, { status: 401 });
+    }
     const { id } = await context.params;
-    const file = (await request.formData()).get("file");
+    const file = (await readLimitedFormData(request, MAX_ATTACHMENT_BYTES)).get("file");
 
     if (!(file instanceof File)) return Response.json({ message: "Choose a file to upload." }, { status: 400 });
     if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
@@ -33,6 +39,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       body: file,
       headers: started.upload.requiredHeaders,
       method: "PUT",
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(120_000)]),
     });
 
     if (!stored.ok) {

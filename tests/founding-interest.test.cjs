@@ -24,6 +24,11 @@ function loadModule(filename, mocks, globals, cache = new Map()) {
   const resolveImport = (specifier) => {
     if (Object.hasOwn(mocks, specifier)) return mocks[specifier];
     if (specifier === "server-only") return {};
+    if (specifier === "country-state-city") return require(specifier);
+    if (specifier === "libphonenumber-js/max") {
+      const phoneLibrary = require(specifier);
+      return { ...phoneLibrary, parsePhoneNumberFromString: (value, options) => phoneLibrary.parsePhoneNumberFromString(value, JSON.parse(JSON.stringify(options))) };
+    }
     if (specifier.startsWith("@/") || specifier.startsWith(".")) {
       const dependency = specifier.startsWith("@/")
         ? path.resolve(projectRoot, specifier.slice(2))
@@ -261,7 +266,7 @@ test("optional teacher details use the submission capability, normalize postcode
   for (const [key, value] of Object.entries({
     id: "interest-123",
     token: "a".repeat(64),
-    postcode: " m20 ",
+    postcode: " m202lt ",
     mainSubject: " Maths ",
   }))
     form.set(key, value);
@@ -279,7 +284,7 @@ test("optional teacher details use the submission capability, normalize postcode
     token: "a".repeat(64),
     phases: ["Primary", "Secondary"],
     mainSubject: "Maths",
-    postcode: "M20",
+    postcode: "M20 2LT",
   });
 });
 

@@ -9,7 +9,7 @@ function load(actions) {
   const testModule = { exports: {} };
   const file = path.resolve(__dirname, '../features/contact/waitlist-client.ts');
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(code, { module: testModule, exports: testModule.exports, require: () => actions });
+  vm.runInNewContext(code, { module: testModule, exports: testModule.exports, require: (name) => name === './validation' ? { validateWaitlist: () => ({}), validateWaitlistDetails: () => ({}) } : actions });
   return testModule.exports;
 }
 

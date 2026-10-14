@@ -39,12 +39,12 @@ export function TeacherDocumentsStep({ controller }: StepComponentProps) {
     <div className="space-y-6">
       <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface text-brand">
             <Icon name="shield" size={19} />
           </div>
           <div>
             <div className="font-semibold text-brand-dark">Instructor documents</div>
-            <p className="mt-1 text-sm leading-6 text-brand-dark/80">
+            <p className="mt-1 text-sm leading-6 text-brand-dark">
               Upload each document listed below. Accepted formats and size limits are shown on every card. Files stay private and are only used for verification.
             </p>
           </div>
@@ -52,15 +52,15 @@ export function TeacherDocumentsStep({ controller }: StepComponentProps) {
       </div>
 
       {errors.documents ? (
-        <div className="rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">{errors.documents}</div>
+        <div className="rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger" role="alert">{errors.documents}</div>
       ) : null}
 
       {documentRequirementsLoading ? (
-        <CardGridLoader cards={4} className="xl:grid-cols-2" />
+        <div role="status" aria-label="Loading document requirements"><CardGridLoader cards={4} className="xl:grid-cols-2" /></div>
       ) : documentRequirementsError ? (
-        <div className="rounded-xl border border-danger bg-danger-tint p-5">
+        <div className="rounded-xl border border-danger bg-danger-tint p-5" role="alert">
           <div className="font-semibold text-danger">Document requirements could not be loaded</div>
-          <p className="mt-1 text-sm leading-6 text-danger/80">{documentRequirementsError}</p>
+          <p className="mt-1 text-sm leading-6 text-danger">{documentRequirementsError}</p>
           <div className="mt-4">
             <Btn size="sm" variant="secondary" onClick={retryDocumentRequirements}>
               Retry

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { api } from "@/lib/server/api-client";
 import type { AppRole } from "@/types/supplyed";
 import { profileDocumentContext } from "./document-requirements";
@@ -135,9 +137,6 @@ const localInstructorRequirements: OnboardingDocumentRequirement[] = [
   },
 ];
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -381,6 +380,7 @@ export async function uploadProfileDocument({
     body: file,
     headers: { "Content-Type": contentType, ...(upload.requiredHeaders ?? {}) },
     method: "PUT",
+    signal: AbortSignal.timeout(120_000),
   });
 
   if (!uploadResponse.ok) {

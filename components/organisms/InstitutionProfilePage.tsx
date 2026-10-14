@@ -33,12 +33,12 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
         <div className="relative px-5 py-7 sm:px-8 sm:py-9">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
             <div className="relative w-fit">
-              <div className="rounded-2xl border-4 border-white shadow-lg [&>div]:rounded-xl"><Avatar name={profile.name} size="xl" src={profile.imageUrl} /></div>
-              {profile.verified ? <div className="absolute -right-1 bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-success text-white"><Icon name="check" size={15} /></div> : null}
+              <div className="rounded-2xl border-4 border-surface shadow-lg [&>div]:rounded-xl"><Avatar name={profile.name} size="xl" src={profile.imageUrl} /></div>
+              {profile.verified ? <div className="absolute -right-1 bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-surface bg-success text-white"><Icon name="check" size={15} /></div> : null}
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex flex-wrap items-center gap-2.5">
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand shadow-sm">Hiring school</span>
+                <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-brand shadow-sm">Hiring school</span>
                 {profile.verified ? <Tag tone="green">Verified school</Tag> : null}
               </div>
               <h1 className="font-heading text-3xl font-semibold leading-tight text-ink sm:text-[40px]">{profile.name}</h1>
@@ -47,7 +47,7 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
                 {profile.memberSince ? <span className="flex items-center gap-1.5"><Icon className="text-brand" name="calendar" size={15} />Member since {formatMonth(profile.memberSince)}</span> : null}
               </div>
             </div>
-            <div className="w-full rounded-2xl border border-white bg-white/85 p-4 shadow-sm backdrop-blur sm:w-auto sm:min-w-48">
+            <div className="w-full rounded-2xl border border-surface bg-surface/85 p-4 shadow-sm backdrop-blur sm:w-auto sm:min-w-48">
               <div className="flex items-center gap-3 sm:block sm:text-center">
                 <div className="font-heading text-3xl font-semibold text-ink">{reviewCount ? rating.toFixed(1) : "New"}</div>
                 <div><RatingStars className="mt-1" rating={rating} size={17} /><div className="mt-1 text-xs text-muted">{reviewCount ? `${reviewCount} verified ${reviewCount === 1 ? "review" : "reviews"}` : "Ready for a first booking"}</div></div>
@@ -55,7 +55,7 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
             </div>
           </div>
         </div>
-        <div className="relative grid border-t border-brand-tint-2 bg-white/75 sm:grid-cols-3">
+        <div className="relative grid border-t border-brand-tint-2 bg-surface/75 sm:grid-cols-3">
           <ProfileMetric icon="building" label="School type" value={profile.institutionType === "MAT_SCHOOL" ? "MAT school" : "Single school"} />
           <ProfileMetric icon="users" label="Typical pupil count" value={profile.typicalPupilCount == null ? "Not shared" : profile.typicalPupilCount.toLocaleString("en-GB")} />
           <ProfileMetric icon="shield" label="Marketplace status" value={profile.verified ? "Verified school" : "Verification pending"} />
@@ -83,7 +83,7 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
         <aside className="profile-overview sidebar-panel overflow-hidden xl:sticky xl:top-6">
           <div className="border-b border-border px-6 py-5 text-white">
             <div className="flex items-center gap-2 text-base font-semibold"><Icon name="building" size={18} />School overview</div>
-            <p className="mt-1 text-xs leading-5 text-white/65">Details to help teachers book with confidence</p>
+            <p className="mt-1 text-xs leading-5 text-white">Details to help teachers book with confidence</p>
           </div>
           <div className="p-6">
             <ProfileFact icon="building" label="School type" value={profile.institutionType === "MAT_SCHOOL" ? "MAT school" : "Single school"} />

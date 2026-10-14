@@ -94,6 +94,7 @@ function loadModule(filename, mocks = {}, globals = {}, cache = new Map()) {
       if (!resolvedPath) throw new Error(`Cannot resolve ${specifier} imported by ${absolutePath}`);
       return loadModule(resolvedPath, mocks, globals, cache);
     }
+    if (specifier === "libphonenumber-js/max") { const lib = require(specifier); return { ...lib, parsePhoneNumberFromString: (value, options) => lib.parsePhoneNumberFromString(value, { ...options }) }; }
     return require(specifier);
   };
   vm.runInNewContext(source, {
@@ -147,13 +148,13 @@ function apiFixture(fetchResponse) {
 }
 
 test("backend envelope is unwrapped and OTP is sent with bearer auth under /api", async () => {
-  const challenge = { phone: "+447911123456", expiresInMinutes: 10, resendAvailableInSeconds: 60 };
+  const challenge = { phone: "+447912123456", expiresInMinutes: 10, resendAvailableInSeconds: 60 };
   const { api, calls } = apiFixture(Response.json({ success: true, data: challenge }));
-  const result = await api.post("/auth/phone/otp/send", { phone: "07911123456" });
+  const result = await api.post("/auth/phone/otp/send", { phone: "07912123456" });
   assert.deepEqual(result, challenge);
   assert.equal(calls[0].url, "https://backend.example/api/auth/phone/otp/send");
   assert.equal(calls[0].init.headers.Authorization, "Bearer test-access-token");
-  assert.deepEqual(JSON.parse(calls[0].init.body), { phone: "07911123456" });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { phone: "07912123456" });
 });
 
 test("backend validation messages and support reference survive API errors", async () => {
@@ -173,18 +174,18 @@ test("request ID header is retained when provider errors have no metadata", asyn
   await assert.rejects(() => api.post("/auth/phone/otp/send", {}), (error) => error.requestId === "sms-support-id");
 });
 
-test("phone send preserves UK input for backend normalization and returned cooldown", async () => {
-  const challenge = { phone: "+447911123456", expiresInMinutes: 7, resendAvailableInSeconds: 90 };
+test("phone send normalizes UK input before the backend and preserves returned cooldown", async () => {
+  const challenge = { phone: "+447912123456", expiresInMinutes: 7, resendAvailableInSeconds: 90 };
   const { actions, calls } = actionsFixture("features/auth/phone-actions.ts", challenge);
-  const result = await actions.sendPhoneOtpAction({ phone: " 07911123456 " });
+  const result = await actions.sendPhoneOtpAction({ phone: " 07912123456 " });
   assert.equal(result.ok, true);
   assert.equal(result.data.resendAvailableInSeconds, 90);
   assert.equal(result.data.expiresInMinutes, 7);
-  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ endpoint: "/auth/phone/otp/send", body: { phone: "07911123456" } }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ endpoint: "/auth/phone/otp/send", body: { phone: "+447912123456" } }]);
 });
 
 test("phone verification sends only the six-digit OTP and refreshes user snapshots", async () => {
-  const user = { id: "user-id", phone: "+447911123456", phoneVerified: true };
+  const user = { id: "user-id", phone: "+447912123456", phoneVerified: true };
   const { actions, calls, tags } = actionsFixture("features/auth/phone-actions.ts", user);
   const result = await actions.verifyPhoneOtpAction({ otp: "123456" });
   assert.equal(result.ok, true);
@@ -198,12 +199,12 @@ test("phone verification rejects invalid codes and unauthenticated sends before 
   for (const otp of ["12345", "1234567", "12a456"]) {
     assert.equal((await actions.verifyPhoneOtpAction({ otp })).ok, false);
   }
-  assert.equal((await actions.sendPhoneOtpAction({ phone: "+447911123456" })).code, "SESSION_EXPIRED");
+  assert.equal((await actions.sendPhoneOtpAction({ phone: "+447912123456" })).code, "SESSION_EXPIRED");
   assert.equal(calls.length, 0);
 });
 
 test("verification success requires the server to confirm a verified number", async () => {
-  const { actions, tags } = actionsFixture("features/auth/phone-actions.ts", { id: "user-id", phone: "+447911123456", phoneVerified: false });
+  const { actions, tags } = actionsFixture("features/auth/phone-actions.ts", { id: "user-id", phone: "+447912123456", phoneVerified: false });
   assert.equal((await actions.verifyPhoneOtpAction({ otp: "123456" })).ok, false);
   assert.equal(tags.length, 0);
 });

@@ -1,6 +1,7 @@
 import { listMyBookings } from "@/features/bookings/queries";
 import type { BookingInvoiceFilter, BookingListQuery, BookingStatus } from "@/features/bookings/types";
 import { routeError } from "@/lib/server/route-error";
+import { assertValidQuery } from "@/lib/server/query-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ const invoiceFilters = new Set<BookingInvoiceFilter>(["none", "unpaid", "paid"])
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    assertValidQuery(searchParams, { status: { values: [...bookingStatuses] }, invoice: { values: [...invoiceFilters] }, search: { maxLength: 100 }, from: { date: true }, to: { date: true }, jobId: { uuid: true } });
+    if (searchParams.get("from") && searchParams.get("to") && Date.parse(searchParams.get("from")!) > Date.parse(searchParams.get("to")!)) return Response.json({ message: "End date must be on or after the start date." }, { status: 400 });
     const status = searchParams.get("status") as BookingStatus | null;
     const invoice = searchParams.get("invoice") as BookingInvoiceFilter | null;
     const query: BookingListQuery = {

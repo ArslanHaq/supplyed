@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 
 import type { TeacherDirectoryFilters, TeacherDirectoryItem } from "@/features/teachers/types";
 import { useTeacherDirectory } from "@/features/teachers/use-teachers";
+import { getUkCities, validateUkCity } from "@/lib/uk-validation";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Checkbox, Field, Icon, Stars, Tag, VerifyBadge } from "../atoms";
-import { PageHead, SectionLoader } from "../molecules";
+import { PageHead, SectionLoader, SelectDropdown } from "../molecules";
 
 const PAGE_SIZE = 12;
 const stageOptions = ["", "KS1", "KS2", "KS3", "KS4", "KS5"];
@@ -42,9 +43,10 @@ const emptyFilters: DirectoryForm = {
 
 export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
   const [draft, setDraft] = useState<DirectoryForm>(() => ({ ...emptyFilters, search: ctx.search ?? "" }));
-  const [applied, setApplied] = useState<DirectoryForm>(() => ({ ...emptyFilters, search: ctx.search ?? "" }));
+  const [applied, setApplied] = useState<DirectoryForm>(() => ({ ...emptyFilters, search: (ctx.search ?? "").trim().length <= 100 ? ctx.search ?? "" : "" }));
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<keyof DirectoryForm, string>>>(() => (ctx.search ?? "").trim().length > 100 ? { search: "Use 100 characters or fewer." } : {});
   const filters = useMemo<TeacherDirectoryFilters>(() => ({
     availableToday: applied.availableToday || undefined,
     city: applied.city || undefined,
@@ -68,14 +70,19 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
 
   function update<Key extends keyof DirectoryForm>(key: Key, value: DirectoryForm[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
+    setErrors((current) => current[key] ? { ...current, [key]: validateDirectoryFilters({ ...draft, [key]: value })[key] } : current);
   }
 
   function applyFilters() {
-    setApplied(trimFilters(draft));
+    const nextErrors = validateDirectoryFilters(draft);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) { setFiltersOpen(true); return; }
+    setApplied({ ...trimFilters(draft), city: validateUkCity(draft.city).value });
     setPage(1);
   }
 
   function resetFilters() {
+    setErrors({});
     setDraft(emptyFilters);
     setApplied(emptyFilters);
     setPage(1);
@@ -108,36 +115,29 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
           </div>
 
           <div className="flex flex-col gap-4">
-            <Field label="Subject">
-              <input className="input" onChange={(event) => update("subject", event.target.value)} placeholder="e.g. Mathematics" value={draft.subject} />
+            <Field error={errors.subject} label="Subject">
+              <input className="input" maxLength={100} onChange={(event) => update("subject", event.target.value)} placeholder="e.g. Mathematics" value={draft.subject} />
             </Field>
             <Field label="Key stage">
-              <select className="select" onChange={(event) => update("keyStage", event.target.value)} value={draft.keyStage}>
-                {stageOptions.map((stage) => <option key={stage || "all"} value={stage}>{stage || "All key stages"}</option>)}
-              </select>
+              <SelectDropdown onChange={(value) => update("keyStage", value)} options={stageOptions.map((stage) => ({ label: stage || "All key stages", value: stage }))} placeholder="All key stages" value={draft.keyStage} />
             </Field>
-            <Field label="Skill">
-              <input className="input" onChange={(event) => update("skill", event.target.value)} placeholder="e.g. SEN" value={draft.skill} />
+            <Field error={errors.skill} label="Skill">
+              <input className="input" maxLength={100} onChange={(event) => update("skill", event.target.value)} placeholder="e.g. SEN" value={draft.skill} />
             </Field>
-            <Field label="City">
-              <input className="input" onChange={(event) => update("city", event.target.value)} placeholder="e.g. Leeds" value={draft.city} />
+            <Field error={errors.city} label="City or town">
+              <SelectDropdown onChange={(value) => update("city", value)} options={[{ label: "Any UK city or town", value: "" }, ...getUkCities()]} placeholder="Any UK city or town" searchable value={draft.city} />
             </Field>
-            <Field label="Minimum experience">
+            <Field error={errors.minExperience} label="Minimum experience">
               <input className="input" min={0} onChange={(event) => update("minExperience", event.target.value)} placeholder="Years" type="number" value={draft.minExperience} />
             </Field>
-            <Field label="Minimum rating">
-              <select className="select" onChange={(event) => update("minRating", event.target.value)} value={draft.minRating}>
-                <option value="">Any rating</option>
-                <option value="3">3+ stars</option>
-                <option value="4">4+ stars</option>
-                <option value="4.5">4.5+ stars</option>
-              </select>
+            <Field error={errors.minRating} label="Minimum rating">
+              <SelectDropdown onChange={(value) => update("minRating", value)} options={[{ label: "Any rating", value: "" }, { label: "3+ stars", value: "3" }, { label: "4+ stars", value: "4" }, { label: "4.5+ stars", value: "4.5" }]} placeholder="Any rating" value={draft.minRating} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Max hourly rate">
+              <Field error={errors.maxHourlyRate} label="Max hourly rate">
                 <input className="input" min={0} onChange={(event) => update("maxHourlyRate", event.target.value)} placeholder="GBP" type="number" value={draft.maxHourlyRate} />
               </Field>
-              <Field label="Max daily rate">
+              <Field error={errors.maxDailyRate} label="Max daily rate">
                 <input className="input" min={0} onChange={(event) => update("maxDailyRate", event.target.value)} placeholder="GBP" type="number" value={draft.maxDailyRate} />
               </Field>
             </div>
@@ -156,11 +156,14 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
             className="directory-search mb-5 flex flex-wrap items-center gap-3"
             onSubmit={(event) => { event.preventDefault(); applyFilters(); }}
           >
-            <label className="flex min-w-[240px] flex-1 items-center gap-2 rounded-lg border border-border-strong bg-white px-3.5 py-2.5">
+            <label className="flex min-w-[240px] flex-1 items-center gap-2 rounded-lg border border-border-strong bg-surface px-3.5 py-2.5">
               <Icon name="search" size={16} />
               <span className="sr-only">Search teachers</span>
               <input
                 className="min-w-0 flex-1 border-0 bg-transparent outline-none"
+                maxLength={100}
+                aria-invalid={Boolean(errors.search)}
+                aria-describedby={errors.search ? "directory-search-error" : undefined}
                 onChange={(event) => update("search", event.target.value)}
                 placeholder="Search by name, city or county"
                 value={draft.search}
@@ -168,6 +171,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
             </label>
             <Btn icon="search" type="submit">Search</Btn>
           </form>
+          {errors.search ? <p className="mb-4 text-sm text-danger" id="directory-search-error" role="alert">{errors.search}</p> : null}
 
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -208,7 +212,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
                   key={item}
                   aria-current={item === page ? "page" : undefined}
                   aria-label={`Page ${item}`}
-                  className={`h-9 min-w-9 rounded-lg border px-2 text-sm font-semibold ${item === page ? "border-brand bg-brand text-white" : "border-border bg-white text-slate hover:border-brand hover:text-brand"}`}
+                  className={`h-9 min-w-9 rounded-lg border px-2 text-sm font-semibold ${item === page ? "border-brand bg-brand text-white" : "border-border bg-surface text-slate hover:border-brand hover:text-brand"}`}
                   disabled={teachersQuery.isFetching}
                   onClick={() => setPage(item)}
                   type="button"
@@ -258,6 +262,23 @@ function TeacherDirectoryCard({ teacher, onOpen }: { teacher: TeacherDirectoryIt
 
 function trimFilters(filters: DirectoryForm): DirectoryForm {
   return Object.fromEntries(Object.entries(filters).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value])) as DirectoryForm;
+}
+
+function validateDirectoryFilters(values: DirectoryForm): Partial<Record<keyof DirectoryForm, string>> {
+  const errors: Partial<Record<keyof DirectoryForm, string>> = {};
+  const city = validateUkCity(values.city);
+  if (!city.valid) errors.city = city.error;
+  for (const key of ["subject", "skill", "search"] as const) {
+    if (values[key].trim().length > 100) errors[key] = "Use 100 characters or fewer.";
+  }
+  for (const key of ["minExperience", "maxDailyRate", "maxHourlyRate", "minRating"] as const) {
+    if (!values[key].trim()) continue;
+    const value = Number(values[key]);
+    if (!Number.isFinite(value) || value < 0 || (key === "minExperience" && (!Number.isInteger(value) || value > 100)) || (key === "minRating" && value > 5)) {
+      errors[key] = key === "minRating" ? "Choose a rating between 0 and 5." : key === "minExperience" ? "Enter a whole number between 0 and 100." : "Enter an amount of 0 or more.";
+    }
+  }
+  return errors;
 }
 
 function optionalNumber(value: string) {

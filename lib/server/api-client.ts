@@ -1,6 +1,8 @@
 import "server-only";
 
 import { getServerAuthContext } from "./auth-context";
+import { ApiError } from "./api-error";
+export { ApiError } from "./api-error";
 import { getValidAccessToken, markBackendSessionExpired, refreshBackendAccessToken } from "./token-refresh";
 
 type QueryValue = boolean | number | string | null | undefined;
@@ -22,19 +24,6 @@ type ApiRequestOptions = {
 };
 
 const DEFAULT_API_TIMEOUT_MS = 15_000;
-
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly payload?: unknown,
-    readonly code?: string,
-    readonly requestId?: string,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -188,6 +177,7 @@ async function request<Data>(
   let response = await fetch(url, requestInit(accessToken));
 
   if (options.auth !== false && isAuthFailureStatus(response.status) && authContext?.refreshToken) {
+    await response.body?.cancel();
     const refreshed = await refreshBackendAccessToken(authContext.refreshToken);
 
     if (refreshed?.accessToken) {

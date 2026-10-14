@@ -1,26 +1,9 @@
-import { useMemo } from "react";
-import { City, Country, type ICity } from "country-state-city";
+import { getUkCities, UK_COUNTRY_CODE, UK_COUNTRY_NAME, validateUkCity, validateUkCountry } from "@/lib/uk-validation";
 
 import { Field } from "../../atoms";
+import { SelectDropdown } from "../../molecules/OptionDropdowns";
 
-const countryOptions = Country.getAllCountries().sort((first, second) => first.name.localeCompare(second.name));
-
-function uniqueCities(cities: ICity[]) {
-  const seen = new Set<string>();
-
-  return cities
-    .filter((city) => {
-      const key = city.name.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((first, second) => first.name.localeCompare(second.name));
-}
-
-function selectClass(error?: string) {
-  return `select${error ? " border-danger bg-danger-tint" : ""}`;
-}
+const cityOptions = getUkCities();
 
 export function CountryCityFields({
   city,
@@ -43,37 +26,36 @@ export function CountryCityFields({
   onCityChange: (value: string) => void;
   onCountryChange: (value: string) => void;
 }) {
-  const cityOptions = useMemo(() => uniqueCities(City.getCitiesOfCountry(countryCode) ?? []), [countryCode]);
-  const currentCityInOptions = cityOptions.some((option) => option.name === city);
+  const countryValidation = validateUkCountry(countryCode, { required: countryRequired });
+  const cityValidation = validateUkCity(city, { required: cityRequired });
+  const shownCountryError = countryError || (countryCode && !countryValidation.valid ? countryValidation.error : undefined);
+  const shownCityError = cityError || (city && !cityValidation.valid ? cityValidation.error : undefined);
 
   return (
     <>
-      <Field label="Country" error={countryError} required={countryRequired}>
-        <select className={selectClass(countryError)} onChange={(event) => onCountryChange(event.target.value)} value={countryCode}>
-          <option value="">Select country</option>
-          {countryOptions.map((country) => (
-            <option key={country.isoCode} value={country.isoCode}>
-              {country.name}
-            </option>
-          ))}
-        </select>
+      <Field label="Country" error={shownCountryError} required={countryRequired} hint="SupplyED currently supports United Kingdom addresses.">
+        <SelectDropdown
+          error={Boolean(shownCountryError)}
+          onChange={onCountryChange}
+          options={[{ label: "Select country", value: "" }, { label: UK_COUNTRY_NAME, value: UK_COUNTRY_CODE }]}
+          placeholder="Select country"
+          value={countryCode}
+        />
       </Field>
-      <Field label="City" htmlFor={cityId} error={cityError} required={cityRequired}>
-        <select
+      <Field label="City / town" htmlFor={cityId} error={shownCityError} required={cityRequired}>
+        <SelectDropdown
           id={cityId}
-          className={selectClass(cityError)}
-          disabled={!countryCode}
-          onChange={(event) => onCityChange(event.target.value)}
+          error={Boolean(shownCityError)}
+          disabled={!countryValidation.valid || !countryCode}
+          onChange={onCityChange}
+          options={[
+            { label: countryCode ? "Select city" : "Select country first", value: "" },
+            ...cityOptions,
+          ]}
+          placeholder={countryCode ? "Select city" : "Select country first"}
+          searchable
           value={city}
-        >
-          <option value="">{countryCode ? "Select city" : "Select country first"}</option>
-          {city && !currentCityInOptions ? <option value={city}>{city}</option> : null}
-          {cityOptions.map((cityOption) => (
-            <option key={cityOption.name} value={cityOption.name}>
-              {cityOption.name}
-            </option>
-          ))}
-        </select>
+        />
       </Field>
     </>
   );

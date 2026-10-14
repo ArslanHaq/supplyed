@@ -14,6 +14,12 @@ Each compose file expects its own runtime file on the server:
 Each `.env` contains that environment's port, backend URL, Auth.js values,
 OAuth credentials, and public site URL.
 
+Set `NEXT_PUBLIC_API_URL` to the browser-accessible backend origin (without
+`/api`) for live messaging. Compose passes it into the image build; changing it
+requires a rebuild. Leave it empty only when polling-only messaging is intended.
+The `/api/health` endpoint checks the running application and required backend/auth
+configuration. It does not claim that the backend or its providers are healthy.
+
 Use separate deployment directories, for example:
 
 - `$HOME/supplyed/frontend-dev`
@@ -79,6 +85,14 @@ After changing `$HOME/supplyed/frontend-dev/.env`, rerun the `Dev CI/CD`
 workflow from GitHub Actions. The workflow rebuilds and force-recreates the
 container on the server so updated env values, including `FRONTEND_PORT`, are
 applied.
+
+## Verification before deployment
+
+Run `npm test`, `npm run lint`, `npm run build`, then `npm run test:smoke`.
+The smoke tests start the built production server against an isolated, in-memory
+backend and storage fixture. They check uploads, previews, profile photos, job
+creation and session refresh without contacting production services. CI runs
+these checks before allowing the development deployment.
 
 ## Main deployment
 

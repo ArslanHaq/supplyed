@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { AppNotification, NotificationType } from "@/features/notifications/types";
 import {
@@ -41,6 +41,8 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
   const [open, setOpen] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("unsupported");
   const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
   const unreadQuery = useUnreadNotifications(true);
   const listQuery = useNotifications(open);
   const markRead = useMarkNotificationRead();
@@ -58,7 +60,10 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener("mousedown", onPointer);
     document.addEventListener("keydown", onKey);
@@ -87,6 +92,8 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
   return (
     <div ref={panelRef} className="relative">
       <button
+        ref={triggerRef}
+        aria-controls={open ? panelId : undefined}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
@@ -104,8 +111,9 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
 
       {open ? (
         <div
+          id={panelId}
           aria-label="Notifications"
-          className="notification-panel absolute right-0 top-12 z-50 flex max-h-[70vh] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-xl border border-border bg-white shadow-panel"
+          className="notification-panel flex max-h-[70vh] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-panel"
           role="dialog"
         >
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">

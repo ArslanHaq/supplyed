@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { validateUkPhone, validateUkPostcode, validateUkCountry, validateUkCity, validateUkRegion } from "@/lib/uk-validation";
 import {
   acceptAttribute,
   describeAllowedMimes,
@@ -196,21 +197,21 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("step", String(step));
   data.set("fullName", form.fullName.trim());
   data.set("email", form.email || accountEmail || "");
-  data.set("phone", form.phone.trim());
-  data.set("profileCity", form.profileCity.trim());
-  data.set("profileCountryCode", form.profileCountryCode || "GB");
-  data.set("postcode", form.postcode.trim());
+  data.set("phone", validateUkPhone(form.phone).value);
+  data.set("profileCity", validateUkCity(form.profileCity).value);
+  data.set("profileCountryCode", validateUkCountry(form.profileCountryCode).value);
+  data.set("postcode", validateUkPostcode(form.postcode).value);
   data.set("teacherProfileId", form.teacherProfileId);
   data.set("institutionProfileId", form.institutionProfileId);
   data.set("institutionType", form.institutionType);
   data.set("schoolName", form.schoolName.trim());
   data.set("contactRole", form.contactRole.trim());
   data.set("institutionAddress", form.institutionAddress.trim());
-  data.set("institutionCity", form.institutionCity.trim());
-  data.set("institutionCountryCode", form.institutionCountryCode || "GB");
+  data.set("institutionCity", validateUkCity(form.institutionCity).value);
+  data.set("institutionCountryCode", validateUkCountry(form.institutionCountryCode).value);
   data.set("institutionDomain", form.institutionDomain.trim());
   data.set("institutionRegistrationId", form.institutionRegistrationId.trim());
-  data.set("localAuthority", form.localAuthority.trim());
+  data.set("localAuthority", validateUkRegion(form.localAuthority).value);
   data.set("staffingNeeds", form.staffingNeeds.trim());
   data.set("trustName", form.trustName.trim());
   data.set("trustCompanyNumber", form.trustCompanyNumber.trim());

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { SocialAuthAvailability } from "@/types/supplyed";
+import { validateEmail } from "@/features/auth/schemas";
 
 import { Btn, Checkbox, Field, Icon, Logo } from "../atoms";
 import { PasswordInput } from "../atoms/PasswordInput";
@@ -9,7 +10,6 @@ import { SocialAuthButtons } from "../molecules";
 type LoginErrors = Partial<Record<"email" | "password", string>>;
 type LoginResult = { message?: string; ok: true } | { fieldErrors?: LoginErrors; message: string; ok: false };
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const signinBenefits = [
   "DBS-verified teacher network",
   "AI-powered job matching",
@@ -44,10 +44,11 @@ export function LoginPage({
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) nextErrors.email = "Enter your email address.";
-    else if (!emailPattern.test(trimmedEmail)) nextErrors.email = "Use a valid email address.";
+    else if (!validateEmail(trimmedEmail)) nextErrors.email = "Use a valid email address.";
 
     if (!password) nextErrors.password = "Enter your password.";
     else if (password.length < 8) nextErrors.password = "Password must be at least 8 characters.";
+    else if (password.length > 128) nextErrors.password = "Password must be 128 characters or fewer.";
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -134,7 +135,7 @@ export function LoginPage({
                 inputMode="email"
                 onChange={(event) => {
                   setEmail(event.target.value);
-                  setErrors((current) => ({ ...current, email: undefined }));
+                  if (validateEmail(event.target.value.trim())) setErrors((current) => ({ ...current, email: undefined }));
                 }}
                 placeholder="name@example.com"
                 type="email"
@@ -151,7 +152,7 @@ export function LoginPage({
                 id="login-password"
                 onChange={(event) => {
                   setPassword(event.target.value);
-                  setErrors((current) => ({ ...current, password: undefined }));
+                  if (event.target.value.length >= 8 && event.target.value.length <= 128) setErrors((current) => ({ ...current, password: undefined }));
                 }}
                 placeholder="Enter your password"
                 value={password}

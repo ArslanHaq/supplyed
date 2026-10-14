@@ -48,11 +48,12 @@ function normalizeLink(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
-  const candidate = /^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  const candidate = /^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? `mailto:${trimmed}` : `https://${trimmed}`;
 
   try {
     const url = new URL(candidate);
-    return ["http:", "https:", "mailto:"].includes(url.protocol) ? url.toString() : null;
+    if (url.protocol === "mailto:") return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(url.pathname) ? url.toString() : null;
+    return ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname) && !/\s/.test(trimmed) ? url.toString() : null;
   } catch {
     return null;
   }
@@ -154,12 +155,6 @@ export function ProposalEditor({
       onChangeRef.current(valueRef.current, editorTextLength(quill));
 
       const handleTextChange = () => {
-        const length = editorTextLength(quill);
-        if (length > maxLength) {
-          quill.deleteText(maxLength, length - maxLength, "silent");
-          quill.setSelection(maxLength, 0, "silent");
-        }
-
         const nextValue = editorHtml(quill);
         const nextLength = editorTextLength(quill);
         lastEmittedValueRef.current = nextValue;
@@ -272,6 +267,11 @@ export function ProposalEditor({
 
       {linkEditor ? (
         <div className="proposal-link-panel" onKeyDownCapture={(event) => {
+          if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+            event.preventDefault();
+            event.stopPropagation();
+            applyLink();
+          }
           if (event.key === "Escape") {
             event.preventDefault();
             event.stopPropagation();
@@ -294,16 +294,12 @@ export function ProposalEditor({
               Website or email address
               <input
                 autoFocus
+                aria-invalid={Boolean(linkError)}
+                aria-describedby={linkError ? `${id}-link-error` : undefined}
                 className="input h-10"
                 onChange={(event) => {
                   setLinkEditor((current) => current ? { ...current, url: event.target.value } : current);
-                  if (linkError) setLinkError(undefined);
-                }}
-                onKeyDownCapture={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    applyLink();
-                  }
+                  if (linkError) setLinkError(normalizeLink(event.target.value) ? undefined : "Enter a valid website or email link.");
                 }}
                 placeholder="https://example.com"
                 value={linkEditor.url}
@@ -315,7 +311,7 @@ export function ProposalEditor({
               <button className="editor-link-action editor-link-action-primary" onClick={applyLink} type="button">Apply</button>
             </div>
           </div>
-          {linkError ? <p className="mt-2 text-xs text-danger" role="alert">{linkError}</p> : null}
+          {linkError ? <p className="mt-2 text-xs text-danger" id={`${id}-link-error`} role="alert">{linkError}</p> : null}
         </div>
       ) : null}
 

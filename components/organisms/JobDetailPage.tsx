@@ -15,6 +15,8 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   const [coverLetter, setCoverLetter] = useState("");
   const [coverLetterTextLength, setCoverLetterTextLength] = useState(0);
   const [coverLetterError, setCoverLetterError] = useState<string>();
+  const [invitation, setInvitation] = useState("Please review this role and let us know if you are interested.");
+  const [invitationError, setInvitationError] = useState<string>();
   const jobQuery = useJob(ctx.jobId ?? "");
   const matchQuery = useJobMatchScore(ctx.jobId ?? "", role === "teacher");
   const job = jobQuery.data;
@@ -38,7 +40,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   });
 
   function submitApplication() {
-    if (!job || role !== "teacher") return;
+    if (!job || role !== "teacher" || createApplication.isPending || applicationSubmitted) return;
 
     const normalizedCoverLetter = coverLetter.trim();
     if (isEmptyRichText(normalizedCoverLetter)) {
@@ -110,9 +112,9 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
             <div className="flex items-center gap-1.5"><Icon name="pin" size={14} />{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"}</div>
             <div className="flex items-center gap-1.5"><Icon name="clock" size={14} />Posted {job.postedAt}</div>
           </div>
-          <section className="card mb-7 overflow-hidden border-brand-tint-2 bg-[linear-gradient(135deg,#eef9fd_0%,#ffffff_70%)]">
+          <section className="card mb-7 overflow-hidden border-brand-tint-2 bg-brand-tint">
             <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-              <div className="rounded-xl border-2 border-white shadow-sm [&>div]:rounded-lg"><Avatar name={job.institution?.name || job.school} size="lg" src={job.institution?.imageUrl} /></div>
+              <div className="rounded-xl border-2 border-surface shadow-sm [&>div]:rounded-lg"><Avatar name={job.institution?.name || job.school} size="lg" src={job.institution?.imageUrl} /></div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-brand">About the hiring school</div>
                 <h2 className="mt-1 font-heading text-xl font-semibold text-ink">{job.institution?.name || job.school}</h2>
@@ -182,7 +184,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
                   onChange={(nextValue, textLength) => {
                     setCoverLetter(nextValue);
                     setCoverLetterTextLength(textLength);
-                    if (coverLetterError) setCoverLetterError(undefined);
+                    if (coverLetterError) setCoverLetterError(isEmptyRichText(nextValue) ? "Add a proposal before applying." : nextValue.length > MAX_PROPOSAL_LENGTH ? "Shorten the proposal or remove some formatting, then try again." : undefined);
                   }}
                 />
               </Field>
@@ -208,11 +210,21 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
           ) : (
             <div className="card-pad-lg">
               <h2 className="mb-2 font-heading text-[26px]">Invite candidates</h2>
-              <Field label="Message"><textarea className="textarea" defaultValue="Please review this role and let us know if you are interested." /></Field>
-              <div className="flex items-center justify-between"><Btn variant="ghost" onClick={closeModal}>Cancel</Btn><Btn onClick={() => { setOpen(false); toast({ title: "Success", msg: "Top candidates invited." }); }}>Confirm</Btn></div>
+              <Field error={invitationError} label="Message" required><textarea className="textarea" maxLength={5000} value={invitation} onChange={(event) => { setInvitation(event.target.value); if (invitationError) setInvitationError(validateInvitation(event.target.value)); }} /></Field>
+              <div className="flex items-center justify-between"><Btn variant="ghost" onClick={closeModal}>Cancel</Btn><Btn onClick={() => {
+                const problem = validateInvitation(invitation);
+                setInvitationError(problem);
+                if (problem) return;
+                setOpen(false); toast({ title: "Success", msg: "Top candidates invited." });
+              }}>Confirm</Btn></div>
             </div>
           )}
       </Modal>
     </div>
   );
+}
+
+function validateInvitation(message: string) {
+  if (!message.trim()) return "Enter a message for the candidates.";
+  if (message.trim().length > 5000) return "Use 5,000 characters or fewer.";
 }

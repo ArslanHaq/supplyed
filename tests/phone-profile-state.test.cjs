@@ -23,10 +23,11 @@ function loadModule(filename, mocks, cache = new Map()) {
       const target = specifier.startsWith("@/") ? path.resolve(root, specifier.slice(2)) : path.resolve(path.dirname(file), specifier);
       return loadModule(`${target}.ts`, mocks, cache);
     }
+    if (specifier === "libphonenumber-js/max") { const lib = require(specifier); return { ...lib, parsePhoneNumberFromString: (value, options) => lib.parsePhoneNumberFromString(value, { ...options }) }; }
     return require(specifier);
   };
   vm.runInNewContext(source, {
-    module: loadedModule, exports: loadedModule.exports, require: resolve, FormData, Error,
+    module: loadedModule, exports: loadedModule.exports, require: resolve, FormData, Error, URL,
     process: { env: { API_BASE_URL: "https://backend.example/api" } },
   }, { filename: file });
   return loadedModule.exports;
@@ -35,7 +36,7 @@ function loadModule(filename, mocks, cache = new Map()) {
 function fixture(filename, extraMocks = {}) {
   const patches = [];
   const user = { id: "user-id", email: "teacher@example.com", name: "Teacher", role: null,
-    phone: "+447911123456", phoneVerified: true, emailVerified: true };
+    phone: "+447912123456", phoneVerified: true, emailVerified: true };
   const session = { userId: user.id, email: user.email, role: null, accessToken: "test-token", refreshToken: "test-refresh" };
   const actions = loadModule(filename, {
     "next/cache": { revalidateTag: () => {} },
@@ -59,13 +60,13 @@ function fixture(filename, extraMocks = {}) {
 
 test("saving settings cannot overwrite a phone verified in another tab", async () => {
   const snapshot = { role: "teacher", applicationStatus: "approved", user: {
-    phone: "+447911123456", phoneVerified: true, name: "Teacher" }, instructor: { id: "instructor-id", fullName: "Teacher" } };
+    phone: "+447912123456", phoneVerified: true, name: "Teacher" }, instructor: { id: "instructor-id", fullName: "Teacher", countryCode: "GB", subjects: [], keyStages: [], skills: [] } };
   const { actions, patches, session } = fixture("features/settings/actions.ts", {
     "./queries": { getSettingsProfileSnapshot: async () => snapshot },
   });
   session.role = "INSTRUCTOR";
-  const result = await actions.updateSettingsAction({ role: "teacher", user: { name: "Updated name", phone: "+447700900000" },
-    instructor: { id: "instructor-id", fullName: "Teacher" } });
+  const result = await actions.updateSettingsAction({ role: "teacher", user: { name: "Updated name", phone: "+447912123457" },
+    instructor: { id: "instructor-id", fullName: "Teacher", countryCode: "GB", subjects: [], keyStages: [], skills: [] } });
   assert.equal(result.ok, true);
   const userPatch = patches.find((call) => call.endpoint === "/users/me");
   assert.deepEqual(JSON.parse(JSON.stringify(userPatch.body)), { name: "Updated name" });
@@ -83,12 +84,13 @@ test("onboarding keeps server phone verification across steps and protects it at
   form.set("email", user.email);
   form.set("fullName", "Teacher");
   form.set("phone", user.phone);
+  for (const [key, value] of Object.entries({ profileCountryCode: "GB", profileCity: "London", postcode: "SW1A 1AA", subjects: "[\"Maths\"]", keyStages: "[\"KS2\"]", skills: "[]", yearsExperience: "3", bio: "An experienced teacher supporting inclusive classroom learning every day." })) form.set(key, value);
   const saved = await actions.saveOnboardingStepAction(form);
   assert.equal(saved.ok, true);
   assert.equal(saved.data.snapshot.user.phoneVerified, true);
   assert.equal(saved.data.snapshot.user.emailVerified, true);
 
-  form.set("phone", "+447700900000");
+  form.set("phone", "+447912123457");
   const changedDraft = await actions.saveOnboardingStepAction(form);
   assert.equal(changedDraft.ok, true);
   assert.equal(changedDraft.data.snapshot.user.phoneVerified, false);

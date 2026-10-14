@@ -7,7 +7,7 @@ import { fetchJson } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
 
 import { markConversationReadAction, openConversationForApplicationAction, sendMessageAction } from "./actions";
-import { acquireConversationSocket, liveMessagingAvailable, releaseConversationSocket } from "./socket";
+import { acquireConversationSocket, releaseConversationSocket, useConversationConnected } from "./socket";
 import type {
   ChatMessage,
   Conversation,
@@ -35,6 +35,7 @@ type ConversationsData = InfiniteData<ConversationsPage, number>;
 
 /** The thread list, a page at a time: the most recent threads first, older ones loaded on demand. */
 export function useConversations(options: { enabled?: boolean; limit?: number } = {}) {
+  const connected = useConversationConnected();
   const limit = options.limit ?? 100;
   return useInfiniteQuery({
     enabled: options.enabled ?? true,
@@ -42,7 +43,7 @@ export function useConversations(options: { enabled?: boolean; limit?: number } 
     initialPageParam: 1,
     queryFn: ({ pageParam }) => fetchJson<ConversationsPage>("/api/conversations", { query: { page: pageParam, limit } }),
     queryKey: limit === 100 ? queryKeys.conversations.list() : [...queryKeys.conversations.list(), { limit }],
-    refetchInterval: liveMessagingAvailable() ? false : FALLBACK_REFETCH_MS,
+    refetchInterval: connected ? false : FALLBACK_REFETCH_MS,
   });
 }
 
@@ -85,6 +86,7 @@ export function useConversationForApplication(applicationId: string | undefined)
 
 /** A thread's messages: the newest page first, with older pages loaded on demand. */
 export function useMessages(conversationId: string | undefined) {
+  const connected = useConversationConnected();
   return useInfiniteQuery({
     enabled: Boolean(conversationId),
     getNextPageParam: (page: MessagesPage) => (page.hasMore ? page.messages[0]?.id : undefined),
@@ -92,7 +94,7 @@ export function useMessages(conversationId: string | undefined) {
     queryFn: ({ pageParam }) =>
       fetchJson<MessagesPage>(`/api/conversations/${conversationId}/messages`, { query: { before: pageParam } }),
     queryKey: queryKeys.conversations.messages(conversationId ?? ""),
-    refetchInterval: liveMessagingAvailable() ? false : FALLBACK_REFETCH_MS,
+    refetchInterval: connected ? false : FALLBACK_REFETCH_MS,
   });
 }
 
@@ -181,7 +183,6 @@ export function useConversationStream(enabled: boolean) {
 
     const socket = acquireConversationSocket();
     const typingTimers = new Map<string, ReturnType<typeof setTimeout>>();
-    let connections = 0;
 
     const onMessage = (payload: MessageEventPayload) => {
       // A thread still loading its first page is refetched instead, so the new message is not lost.
@@ -215,8 +216,7 @@ export function useConversationStream(enabled: boolean) {
 
     // "ready" means the server has joined us to our room; after a reconnect, anything missed is fetched again.
     const onReady = () => {
-      connections += 1;
-      if (connections > 1) void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
     };
 
     socket?.on("message", onMessage);

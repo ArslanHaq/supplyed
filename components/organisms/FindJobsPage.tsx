@@ -15,6 +15,8 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
   const [page, setPage] = useState(1);
   const [allPage, setAllPage] = useState(1);
   const [minScore, setMinScore] = useState(0);
+  const [scoreInput, setScoreInput] = useState("0");
+  const [scoreError, setScoreError] = useState<string>();
   const [urgency, setUrgency] = useState("All jobs");
   const [keyStage, setKeyStage] = useState("All stages");
   const [subject, setSubject] = useState("All subjects");
@@ -37,12 +39,18 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
   return (
     <div className="app-page discovery-page jobs-discovery">
       <PageHead title="Find jobs" subtitle={`${activeCount} ${tab === "recommended" ? "matched" : "open"} roles`} />
-      <div className="workspace-toolbar mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-3 shadow-(--shadow-xs)">
+      <div className="workspace-toolbar mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface p-3 shadow-(--shadow-xs)">
         <Btn aria-pressed={tab === "recommended"} size="sm" variant={tab === "recommended" ? "secondary" : "ghost"} onClick={() => setTab("recommended")}>For you</Btn>
         <Btn aria-pressed={tab === "all"} size="sm" variant={tab === "all" ? "secondary" : "ghost"} onClick={() => setTab("all")}>All jobs</Btn>
-        {tab === "recommended" ? <label className="ml-auto flex items-center gap-2 text-xs font-semibold">Minimum score<input className="input w-24" min={0} max={100} type="number" value={minScore} onChange={(event) => { setMinScore(Math.min(100, Math.max(0, Number(event.target.value) || 0))); setPage(1); }} /></label> : null}
+        {tab === "recommended" ? <div className="ml-auto"><label className="flex items-center gap-2 text-xs font-semibold">Minimum score<input aria-describedby={scoreError ? "job-score-error" : undefined} aria-invalid={Boolean(scoreError)} className="input w-24" min={0} max={100} type="number" value={scoreInput} onChange={(event) => {
+          const input = event.target.value;
+          setScoreInput(input);
+          const score = Number(input);
+          if (!Number.isFinite(score) || score < 0 || score > 100) { setScoreError("Enter a score between 0 and 100."); return; }
+          setScoreError(undefined); setMinScore(score); setPage(1);
+        }} /></label>{scoreError ? <p className="mt-1 text-xs text-danger" id="job-score-error" role="alert">{scoreError}</p> : null}</div> : null}
       </div>
-      {tab === "all" ? <div className="workspace-filter-panel mb-5 grid gap-3 rounded-xl border border-border bg-white p-3 shadow-(--shadow-xs) md:grid-cols-3">
+      {tab === "all" ? <div className="workspace-filter-panel mb-5 grid gap-3 rounded-xl border border-border bg-surface p-3 shadow-(--shadow-xs) md:grid-cols-3">
         <Field label="Role type">
           <SelectDropdown
             options={["All jobs", "Urgent only"]}
@@ -80,7 +88,7 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
               </div>
               <Btn aria-label={`View ${job.title}`} iconRight="arrowRight" size="sm" onClick={(event) => { event.stopPropagation(); go("job-detail", { jobId: job.id }); }}>View</Btn>
             </div>
-          )) : recommendedJobs.map(({ job, match }) => <div key={job.id} className="job-result-card card card-pad-lg cursor-pointer" onClick={() => go("job-detail", { jobId: job.id })}><div className="mb-4 flex flex-wrap items-start gap-4"><div className="min-w-0 flex-1"><div className="mb-1 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag>{job.requiredSkills.slice(0, 3).map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div><div className="font-heading text-xl">{job.title}</div><div className="text-sm text-muted">{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} · {job.date}{job.minExperienceYears != null ? ` · ${job.minExperienceYears}+ years experience` : ""}</div></div><div className="text-right"><div className="font-heading text-lg">£{job.rate}<span className="font-sans text-xs text-muted">/day</span></div><Btn aria-label={`View and apply for ${job.title}`} className="mt-2" iconRight="arrowRight" size="sm" onClick={(event) => { event.stopPropagation(); go("job-detail", { jobId: job.id }); }}>View & apply</Btn></div></div><div onClick={(event) => event.stopPropagation()}><MatchScorePanel match={match} /></div></div>)}
+          )) : recommendedJobs.map(({ job, match }) => <div key={job.id} className="job-result-card card card-pad-lg cursor-pointer" onClick={() => go("job-detail", { jobId: job.id })}><div className="mb-4 flex flex-wrap items-start gap-4"><div className="job-result-copy flex-1"><div className="mb-1 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag>{job.requiredSkills.slice(0, 3).map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div><div className="font-heading text-xl">{job.title}</div><div className="text-sm text-muted">{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} · {job.date}{job.minExperienceYears != null ? ` · ${job.minExperienceYears}+ years experience` : ""}</div></div><div className="text-right"><div className="font-heading text-lg">£{job.rate}<span className="font-sans text-xs text-muted">/day</span></div><Btn aria-label={`View and apply for ${job.title}`} className="mt-2" iconRight="arrowRight" size="sm" onClick={(event) => { event.stopPropagation(); go("job-detail", { jobId: job.id }); }}>View & apply</Btn></div></div><div onClick={(event) => event.stopPropagation()}><MatchScorePanel match={match} /></div></div>)}
           {!activeLoading && !activeError && activeCount === 0 ? (
             <WorkspaceEmptyState icon="search" title="No jobs match these filters" message="Try a different subject, key stage, or match score to discover more opportunities." />
           ) : null}

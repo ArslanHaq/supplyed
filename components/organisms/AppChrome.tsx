@@ -143,6 +143,7 @@ export function AppChrome({
             <input
               aria-label={searchPlaceholder.replace("...", "")}
               className="border-0 bg-transparent"
+              maxLength={100}
               onChange={(event) => setNavSearch(event.target.value)}
               placeholder={searchPlaceholder}
               value={navSearch}

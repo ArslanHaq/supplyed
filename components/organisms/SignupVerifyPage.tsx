@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { formatCodeResendCountdown, secondsUntilCodeResend } from "@/lib/code-resend-cooldown";
+import { validateOtpCode } from "@/lib/auth-code-validation";
 
 import { Btn, Field, Icon, Logo } from "../atoms";
 import { AuthProgress } from "./AuthProgress";
@@ -55,7 +56,7 @@ export function SignupVerifyPage({
   }, [resendAvailableAt]);
 
   function validate() {
-    if (codeValue.length !== 6) {
+    if (!validateOtpCode(codeValue)) {
       setErrors({ code: "Enter the 6-digit verification code." });
       return false;
     }
@@ -67,7 +68,7 @@ export function SignupVerifyPage({
   function handleCodeChange(index: number, value: string) {
     const digit = value.replace(/\D/g, "").slice(-1);
     setCode((current) => current.map((item, itemIndex) => (itemIndex === index ? digit : item)));
-    setErrors({});
+    if (validateOtpCode(code.map((item, itemIndex) => itemIndex === index ? digit : item).join(""))) setErrors({});
 
     if (digit && index < code.length - 1) {
       codeRefs.current[index + 1]?.focus();
@@ -81,12 +82,15 @@ export function SignupVerifyPage({
   }
 
   function handleCodePaste(event: React.ClipboardEvent<HTMLInputElement>) {
-    const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!pasted) return;
-
     event.preventDefault();
+    const pasted = event.clipboardData.getData("text").trim();
+    if (!validateOtpCode(pasted)) {
+      setErrors({ code: "Paste the complete 6-digit verification code." });
+      return;
+    }
     const nextCode = Array.from({ length: 6 }, (_, index) => pasted[index] || "");
     setCode(nextCode);
+    setErrors({});
     codeRefs.current[Math.min(pasted.length, 5)]?.focus();
   }
 

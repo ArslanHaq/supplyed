@@ -1,13 +1,12 @@
 import "server-only";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { api } from "@/lib/server/api-client";
 
 import { normalizeConversation, normalizeMessagesPage } from "./schemas";
 import type { Conversation, ConversationsPage, ConversationsPagination, MessagesPage } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 /** One page of the signed-in user's threads, most recent activity first. */
 export async function listMyConversations(page = 1, limit = 20): Promise<ConversationsPage> {

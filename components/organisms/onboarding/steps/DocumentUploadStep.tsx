@@ -36,12 +36,12 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
     <div className="space-y-4">
       <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface text-brand">
             <Icon name="file" size={20} />
           </div>
           <div>
             <div className="font-semibold text-brand-dark">Profile created</div>
-            <p className="mt-1 text-sm leading-6 text-brand-dark/80">
+            <p className="mt-1 text-sm leading-6 text-brand-dark">
               Upload any required documents below, then continue to your dashboard. You can replace documents that need changes here.
             </p>
           </div>
@@ -79,7 +79,7 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
           })}
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-white p-5 text-sm text-muted">
+        <div className="rounded-xl border border-border bg-surface p-5 text-sm text-muted">
           No additional documents are required for this profile.
         </div>
       )}

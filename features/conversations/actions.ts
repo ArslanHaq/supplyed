@@ -3,12 +3,12 @@
 import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 
-import { MAX_MESSAGE_LENGTH, normalizeConversation, normalizeMessage } from "./schemas";
+import { MAX_ATTACHMENTS, MAX_MESSAGE_LENGTH, normalizeConversation, normalizeMessage } from "./schemas";
 import type { ChatMessage, Conversation, SendMessageInput } from "./types";
 
 /** Opens (or starts) the conversation about an application. */
 export async function openConversationForApplicationAction(applicationId: string) {
-  const id = applicationId.trim();
+  const id = typeof applicationId === "string" ? applicationId.trim() : "";
   if (!id) return actionError("Choose a valid application.", { code: "APPLICATION_ID_REQUIRED" });
 
   try {
@@ -19,6 +19,7 @@ export async function openConversationForApplicationAction(applicationId: string
 }
 
 export async function sendMessageAction(input: SendMessageInput) {
+  if (!input || typeof input.conversationId !== "string" || !input.conversationId.trim() || (input.body !== undefined && typeof input.body !== "string") || (input.attachmentIds !== undefined && (!Array.isArray(input.attachmentIds) || input.attachmentIds.length > MAX_ATTACHMENTS || input.attachmentIds.some(id => typeof id !== "string" || !id.trim())))) return actionError("Check your message and attachments before sending.");
   const body = input.body?.trim() ?? "";
   const attachmentIds = input.attachmentIds ?? [];
   if (!body && !attachmentIds.length) return actionError("Write a message or attach a file.", { code: "MESSAGE_EMPTY" });
