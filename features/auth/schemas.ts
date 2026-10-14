@@ -7,6 +7,7 @@ import type {
   SignupInput,
   TwoFactorVerificationInput,
 } from "./types";
+import type { AppRole } from "@/types/supplyed";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const strongPasswordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
@@ -29,6 +30,7 @@ export function parseSignupForm(formData: FormData): SignupInput {
   return {
     email: normalizeEmail(formData.get("email")),
     password: String(formData.get("password") ?? ""),
+    role: (formData.get("role") as AppRole) || null,
   };
 }
 

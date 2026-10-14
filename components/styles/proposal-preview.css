@@ -1,0 +1,49 @@
+@layer components {
+  .proposal-preview-card { min-width: 0; margin-top: 22px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+  .proposal-preview-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+  .proposal-preview-heading > div { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .proposal-preview-heading h3 { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .proposal-preview-icon { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; color: var(--se); background: var(--se-tint); }
+  .proposal-preview-excerpt { min-width: 0; overflow-wrap: anywhere; }
+  .proposal-reader { display: flex; flex-direction: column; max-height: min(86dvh, 880px); min-width: 0; overflow: hidden; border-radius: inherit; }
+  .proposal-reader-header { flex-shrink: 0; padding: 26px 30px 22px; border-bottom: 1px solid var(--border); background: #fff; }
+  .proposal-reader-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
+  .proposal-reader-eyebrow { margin-bottom: 7px; color: var(--se); font-size: 10px; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; }
+  .proposal-reader-title-row h2 { color: var(--ink); font-size: 27px; line-height: 1.2; font-weight: 600; letter-spacing: -.035em; }
+  .proposal-reader-close { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); background: #fff; transition: background .15s, color .15s; }
+  .proposal-reader-close:hover { background: var(--chalk); color: var(--ink); }
+  .proposal-reader-close:focus-visible { outline: 2px solid var(--se); outline-offset: 3px; }
+  .proposal-reader-identity { display: flex; align-items: center; gap: 12px; margin-top: 22px; }
+  .proposal-reader-identity > div:last-child { min-width: 0; overflow-wrap: anywhere; }
+  .proposal-reader-identity strong { display: block; color: var(--ink); font-size: 13px; font-weight: 600; }
+  .proposal-reader-identity p { margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .proposal-reader-identity span { font-size: 11px; color: var(--muted); }
+  .proposal-reader-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--chalk); padding: 26px 30px; scrollbar-gutter: stable; }
+  .proposal-reader-body:focus-visible { outline: 2px solid var(--se); outline-offset: -3px; }
+  .proposal-reader-paper { min-width: 0; padding: 28px 32px; background: #fff; border: 1px solid var(--border); border-radius: 10px; }
+  .proposal-reader-content { max-width: 68ch; margin-inline: auto; overflow-wrap: anywhere; word-break: normal; }
+  .proposal-reader-content :where(p, li, a, span) { overflow-wrap: anywhere; }
+  .proposal-reader-content > :first-child { margin-top: 0; }
+  .proposal-reader-content > :last-child { margin-bottom: 0; }
+  .proposal-reader-content p + p { margin-top: 16px; }
+  .proposal-reader-content ul, .proposal-reader-content ol { padding-left: 24px; margin-block: 16px; }
+  .proposal-reader-content ul { list-style: disc; }
+  .proposal-reader-content ol { list-style: decimal; }
+  .proposal-reader-content li + li { margin-top: 6px; }
+  .proposal-reader-content a { color: var(--se-dark); text-decoration: underline; text-underline-offset: 3px; }
+  .proposal-reader-content a:focus-visible { outline: 2px solid var(--se); outline-offset: 3px; border-radius: 2px; }
+  .proposal-reader-footer { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 14px; padding: 16px 30px; border-top: 1px solid var(--border); background: #fff; }
+  .proposal-reader-footer p { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+  @media (max-width: 639px) {
+    .proposal-preview-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
+    .proposal-preview-open { width: 100%; }
+    .proposal-reader { max-height: 86dvh; }
+    .proposal-reader-header { padding: 20px 18px; }
+    .proposal-reader-title-row h2 { font-size: 24px; }
+    .proposal-reader-identity { margin-top: 18px; align-items: flex-start; }
+    .proposal-reader-body { padding: 16px 12px; }
+    .proposal-reader-paper { padding: 20px 17px; }
+    .proposal-reader-footer { padding: 13px 18px; }
+    .proposal-reader-footer p { max-width: 145px; line-height: 1.7; }
+  }
+}

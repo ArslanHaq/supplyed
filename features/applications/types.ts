@@ -1,4 +1,4 @@
-export type JobApplicationStatus = "APPLIED" | "COMPLETED" | "HIRED" | "INTERVIEW" | "REJECTED" | "SHORTLISTED" | "VIEWED";
+export type JobApplicationStatus = "APPLIED" | "HIRED" | "INTERVIEW" | "REJECTED" | "SHORTLISTED" | "VIEWED";
 
 export type ApplicantSummary = {
   city?: string | null;
@@ -30,6 +30,8 @@ export type ApplicationCreateInput = {
   coverLetter: string;
   jobId: string;
 };
+
+export type ApplicationStatusUpdateInput = { id: string; status: JobApplicationStatus };
 
 export type ApplicationsPagination = {
   hasNextPage: boolean;

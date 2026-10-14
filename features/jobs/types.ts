@@ -1,16 +1,40 @@
 import type { Job, JobPayType, JobStatus } from "@/types/supplyed";
 
+/** Paging and filters, applied by the backend so every page is filtered the same way. */
 export type JobListFilters = {
   keyStage?: string;
-  mode?: Job["mode"];
+  limit?: number;
+  page?: number;
   search?: string;
+  /** The poster's own jobs only. */
   status?: JobStatus;
   subject?: string;
   urgent?: boolean;
 };
 
+export type JobsPagination = {
+  hasNextPage: boolean;
+  limit: number;
+  page: number;
+  total: number;
+  totalPages: number;
+};
+
+export type PaginatedJobs = {
+  jobs: Job[];
+  pagination: JobsPagination;
+};
+
+/** How many of the poster's jobs are in each status, whatever page or filter is showing. */
+export type JobStatusCounts = Record<"ALL" | JobStatus, number>;
+
+export type MyJobs = PaginatedJobs & {
+  statusCounts: JobStatusCounts;
+};
+
 export type BackendJobResponse = {
   id: string;
+  institution?: { id: string; imageUrl: string | null; name: string } | null;
   postedByUserId: string;
   title: string;
   description: string;
@@ -18,7 +42,15 @@ export type BackendJobResponse = {
   mode?: string | null;
   postingMode?: string | null;
   subject?: string | null;
-  location?: string | null;
+  requiredSkills?: string[];
+  minExperienceYears?: number | string | null;
+  address?: string | null;
+  city?: string | null;
+  county?: string | null;
+  postalCode?: string | null;
+  countryCode?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   startDate?: string | null;
   endDate?: string | null;
   keyStages?: string[];
@@ -32,14 +64,22 @@ export type BackendJobResponse = {
 };
 
 export type JobCreateInput = {
+  address?: string;
+  city?: string;
+  countryCode?: string;
+  county?: string;
   description: string;
   endDate?: string;
   expiresAt?: string;
   keyStages: string[];
-  location?: string;
+  latitude?: number;
+  longitude?: number;
+  minExperienceYears?: number;
   parkingInfo?: string;
   payAmount?: number;
   payType?: JobPayType;
+  postalCode?: string;
+  requiredSkills?: string[];
   startDate?: string;
   status?: Extract<JobStatus, "ACTIVE" | "DRAFT">;
   subject?: string;

@@ -1,29 +1,34 @@
 import { useRef, useState } from "react";
 
-import { useApplicationDocumentRequirements } from "@/features/document-requirements/use-document-requirements";
-import { useCreateJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
+import { useCreateJob, useJob, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
+import { isValidUkPostcode } from "@/lib/postcode";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Tag } from "../atoms";
-import { FormattedJobDescription, PageHead } from "../molecules";
+import { FormattedJobDescription, PageHead, PostcodeLookup, TagInput } from "../molecules";
 import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdowns";
 
 type PostingMode = "instant" | "brief";
 
 type JobFormState = {
+  address: string;
+  city: string;
+  countryCode: string;
+  county: string;
   description: string;
-  documentRequirementIds: string[];
   endDate: string;
   expiresAt: string;
   keyStages: string[];
-  location: string;
+  minExperienceYears: string;
   parkingInfo: string;
   payAmount: string;
   payType: "daily" | "fixed" | "hourly";
+  postalCode: string;
   qtsRequired: boolean;
   startDate: string;
   subject: string;
+  requiredSkills: string[];
   title: string;
   urgent: boolean;
 };
@@ -35,42 +40,47 @@ const subjectOptions = ["Maths", "English", "Science", "All Primary", "SEN", "Hu
 const payTypeOptions = ["Daily", "Hourly", "Fixed"];
 
 const initialForm: JobFormState = {
+  address: "",
+  city: "",
+  countryCode: "GB",
+  county: "",
   description: "",
-  documentRequirementIds: [],
   endDate: "",
   expiresAt: "",
-  keyStages: ["KS2"],
-  location: "",
+  keyStages: [],
+  minExperienceYears: "",
   parkingInfo: "",
   payAmount: "",
   payType: "daily",
+  postalCode: "",
   qtsRequired: false,
   startDate: "",
-  subject: "Maths",
+  subject: "",
+  requiredSkills: [],
   title: "",
   urgent: false,
 };
 
 export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "role" | "toast">) {
   const isEditing = Boolean(ctx.jobId);
-  const myJobsQuery = useMyJobs();
-  const editingJob = ctx.jobId ? myJobsQuery.data?.find((job) => job.id === ctx.jobId) : undefined;
+  const editingJobQuery = useJob(ctx.jobId ?? "", true);
+  const editingJob = ctx.jobId ? editingJobQuery.data : undefined;
 
-  if (isEditing && myJobsQuery.isLoading) {
+  if (isEditing && editingJobQuery.isLoading) {
     return (
-      <div className="app-page">
+      <div className="app-page post-job-page">
         <PageHead title="Loading job" subtitle="Preparing the role editor." />
         <div className="card card-pad-lg max-w-[1040px] text-sm text-muted">Loading your job draft...</div>
       </div>
     );
   }
 
-  if (ctx.jobId && !myJobsQuery.isLoading && !editingJob) {
+  if (ctx.jobId && !editingJobQuery.isLoading && !editingJob) {
     return (
-      <div className="app-page">
+      <div className="app-page post-job-page">
         <PageHead title="Job not found" subtitle="This job may have been deleted or belongs to another account." />
-        <div className="card card-pad-lg max-w-[1040px]">
-          <p className="text-sm leading-6 text-muted">Only jobs returned from your backend `GET /jobs/mine` can be edited here.</p>
+        <div className="job-editor-card card card-pad-lg max-w-[1040px]">
+          <p className="text-sm leading-6 text-muted">Only jobs posted from your account can be edited here.</p>
           <Btn className="mt-5" icon="arrowLeft" onClick={() => go("dashboard")} variant="secondary">
             Back to dashboard
           </Btn>
@@ -111,13 +121,6 @@ function PostJobEditor({
   const [savingIntent, setSavingIntent] = useState<"draft" | "publish" | null>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const isEditing = Boolean(editingJob);
-  const documentRequirementsQuery = useApplicationDocumentRequirements();
-  const documentRequirements = documentRequirementsQuery.data ?? [];
-  const documentRequirementOptions = documentRequirements.map((requirement) => ({
-    description: requirement.description,
-    label: requirement.name,
-    value: requirement.id,
-  }));
   const todayDate = getTodayDateInput();
 
   const createJob = useCreateJob({
@@ -234,7 +237,7 @@ function PostJobEditor({
     return (
       <div>
         <div className="eyebrow mb-2.5">{isEditing ? "Posting type" : "Step 1 - Posting type"}</div>
-        <h2 className="mb-5 font-serif text-[26px]">How do you want to staff this role?</h2>
+        <h2 className="mb-5 font-heading text-[26px]">How do you want to staff this role?</h2>
         <div className="grid-2">
           {[
             { value: "instant" as const, title: "Instant matching", desc: "Best for urgent or same-day cover.", color: "var(--se)", bg: "var(--se-tint)" },
@@ -242,7 +245,7 @@ function PostJobEditor({
           ].map((option) => (
             <button
               key={option.value}
-              className="cursor-pointer rounded-xl border p-5 text-left transition"
+              className="posting-type-choice cursor-pointer rounded-xl border p-5 text-left transition"
               onClick={() => setMode(option.value)}
               style={{
                 background: mode === option.value ? option.bg : "#fff",
@@ -251,7 +254,7 @@ function PostJobEditor({
               }}
               type="button"
             >
-              <div className="mb-2 font-serif text-xl">{option.title}</div>
+              <div className="mb-2 font-heading text-xl">{option.title}</div>
               <div className="text-muted">{option.desc}</div>
             </button>
           ))}
@@ -272,22 +275,47 @@ function PostJobEditor({
               onChange={(event) => updateForm("title", event.target.value)}
             />
           </Field>
-          <Field error={errors.location} label="Location" required>
-            <input
-              className="input"
-              placeholder="e.g. Salford, Greater Manchester"
-              value={form.location}
-              onChange={(event) => updateForm("location", event.target.value)}
-            />
+          <Field error={errors.subject} label="Subject">
+            <SelectDropdown options={subjectOptions} placeholder="Select a subject" value={form.subject} onChange={(value) => updateForm("subject", value)} />
           </Field>
-          <Field error={errors.subject} label="Subject" required>
-            <SelectDropdown options={subjectOptions} value={form.subject} onChange={(value) => updateForm("subject", value)} />
-          </Field>
-          <Field error={errors.startDate} label="Start date" required>
+          <div className="md:col-span-2 rounded-xl border border-border bg-chalk/40 p-4">
+            <div className="mb-3 text-sm font-semibold">Role location</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <PostcodeLookup
+                error={errors.postalCode}
+                hint="Fills in the town and county from the postcode."
+                id="post-job-postcode"
+                onChange={(value) => updateForm("postalCode", value)}
+                onSelect={(selection) => {
+                  updateForm("postalCode", selection.postcode);
+                  updateForm("countryCode", "GB");
+                  if (selection.city) updateForm("city", selection.city);
+                  if (selection.county) updateForm("county", selection.county);
+                }}
+                value={form.postalCode}
+              />
+              <Field error={errors.address} label="Address">
+                <input className="input" maxLength={250} placeholder="School or street address" value={form.address} onChange={(event) => updateForm("address", event.target.value)} />
+              </Field>
+              <Field error={errors.city} label="City">
+                <input className="input" maxLength={100} placeholder="Salford" value={form.city} onChange={(event) => updateForm("city", event.target.value)} />
+              </Field>
+              <Field error={errors.county} label="County">
+                <input className="input" maxLength={100} placeholder="Greater Manchester" value={form.county} onChange={(event) => updateForm("county", event.target.value)} />
+              </Field>
+              <Field error={errors.countryCode} hint="Two-letter ISO country code." label="Country code">
+                <input className="input" maxLength={2} value={form.countryCode} onChange={(event) => updateForm("countryCode", event.target.value.toUpperCase())} />
+              </Field>
+            </div>
+          </div>
+          <Field error={errors.startDate} label="Start date">
             <input className="input" min={todayDate} type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
           </Field>
+          <Field error={errors.endDate} label="End date">
+            <input className="input" min={form.startDate || todayDate} type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
+          </Field>
           <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[minmax(0,1fr)_220px]">
-            <Field error={errors.payAmount} label="Pay amount (£)" required>
+            <Field error={errors.payAmount} label="Pay amount (£)">
               <input
                 className="input"
                 min={0}
@@ -305,9 +333,22 @@ function PostJobEditor({
               />
             </Field>
           </div>
-          <Field error={errors.endDate} label="End date">
-            <input className="input" min={form.startDate || todayDate} type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
+          <Field error={errors.minExperienceYears} label="Minimum experience (years)">
+            <input
+              className="input"
+              min={0}
+              placeholder="e.g. 2"
+              step={1}
+              type="number"
+              value={form.minExperienceYears}
+              onChange={(event) => updateForm("minExperienceYears", event.target.value)}
+            />
           </Field>
+          <div className="md:col-span-2">
+            <Field error={errors.requiredSkills} htmlFor="job-required-skills" hint="Optional. Press Enter or comma after each skill." label="Required skills">
+              <TagInput id="job-required-skills" value={form.requiredSkills} onChange={(value) => updateForm("requiredSkills", value)} />
+            </Field>
+          </div>
         </div>
         <Field error={errors.description} label="Role description" required>
           <div className="mb-2 flex flex-wrap gap-2">
@@ -331,7 +372,7 @@ function PostJobEditor({
     return (
       <div>
         <div className="grid-2">
-          <Field error={errors.keyStages} htmlFor="job-key-stages" label="Key stages" required>
+          <Field error={errors.keyStages} htmlFor="job-key-stages" label="Key stages">
             <MultiSelectDropdown
               id="job-key-stages"
               options={keyStageOptions}
@@ -343,35 +384,6 @@ function PostJobEditor({
           <Field error={errors.expiresAt} hint="Optional. If set, the job stops appearing publicly after this date." label="Listing expiry">
             <input className="input" min={todayDate} type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
           </Field>
-          <div className="md:col-span-2">
-            <Field htmlFor="job-document-requirements" hint="Optional. Select the documents applicants should provide." label="Application document requirements">
-              <MultiSelectDropdown
-                id="job-document-requirements"
-                disabled={documentRequirementsQuery.isLoading || documentRequirementsQuery.isError || documentRequirementOptions.length === 0}
-                error={documentRequirementsQuery.isError}
-                options={documentRequirementOptions}
-                placeholder={
-                  documentRequirementsQuery.isLoading
-                    ? "Loading document requirements..."
-                    : documentRequirementsQuery.isError
-                      ? "Document requirements unavailable"
-                      : documentRequirementOptions.length === 0
-                        ? "No document requirements available"
-                        : "Select document requirements"
-                }
-                value={form.documentRequirementIds}
-                onChange={(value) => updateForm("documentRequirementIds", value)}
-              />
-              {documentRequirementsQuery.isError ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-danger" role="alert">
-                  <span>Could not load document requirements.</span>
-                  <button className="cursor-pointer font-semibold underline underline-offset-2" onClick={() => void documentRequirementsQuery.refetch()} type="button">
-                    Try again
-                  </button>
-                </div>
-              ) : null}
-            </Field>
-          </div>
         </div>
         <Field label="Parking / arrival notes">
           <textarea
@@ -399,24 +411,23 @@ function PostJobEditor({
     return (
       <div>
         <div className="eyebrow mb-2.5">{eyebrow}</div>
-        <div className="card card-pad bg-chalk">
+        <div className="sidebar-panel card-pad bg-chalk">
           <div className="mb-2.5 flex flex-wrap gap-2">
             <Tag tone={mode === "instant" ? "" : "purple"}>{mode === "instant" ? "Instant matching" : "Open brief"}</Tag>
             <Tag tone="green">{isEditing ? "Current preview" : "Ready to publish"}</Tag>
             {form.urgent ? <Tag tone="red">Urgent</Tag> : null}
           </div>
-          <div className="font-serif text-[22px]">{form.title || "Untitled teaching role"}</div>
+          <div className="font-heading text-[22px]">{form.title || "Untitled teaching role"}</div>
           <FormattedJobDescription className="mt-2 max-w-[760px]" description={previewDescription} />
           <div className="mt-3 flex flex-wrap gap-2">
             {form.keyStages.map((stage) => <span key={stage} className="pill">{stage}</span>)}
-            <span className="pill">{form.subject}</span>
-            <span className="pill">{form.location || "Location TBC"}</span>
+            {form.subject ? <span className="pill">{form.subject}</span> : null}
+            <span className="pill">{formatFormLocation(form)}</span>
             <span className="pill">{formatPay(form)}</span>
             <span className="pill">{formatDateRange(form.startDate, form.endDate)}</span>
+            {form.minExperienceYears ? <span className="pill">{form.minExperienceYears}+ years experience</span> : null}
+            {form.requiredSkills.map((skill) => <span key={skill} className="pill">{skill}</span>)}
             {form.qtsRequired ? <span className="pill">QTS required</span> : null}
-            {documentRequirements
-              .filter((requirement) => form.documentRequirementIds.includes(requirement.id))
-              .map((requirement) => <span key={requirement.id} className="pill">{requirement.name}</span>)}
           </div>
         </div>
       </div>
@@ -425,13 +436,13 @@ function PostJobEditor({
 
   if (isEditing) {
     return (
-      <div className="app-page">
+      <div className="app-page post-job-page">
         <PageHead
           title="Edit job post"
           subtitle="Update the complete role in one place, save it as a draft, or publish the latest version."
         />
 
-        <div className="card card-pad-lg max-w-[1280px]">
+        <div className="job-editor-card card card-pad-lg max-w-[1280px]">
           <div className="grid gap-10 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
             <div className="space-y-10">
               {renderPostingTypeSection()}
@@ -483,14 +494,14 @@ function PostJobEditor({
   }
 
   return (
-    <div className="app-page">
+    <div className="app-page post-job-page">
       <PageHead
-        title={isEditing ? "Edit job post" : role === "individual" ? "Post a hiring role" : "Post a new role"}
+        title={isEditing ? "Edit job post" : "Post a new role"}
         subtitle={isEditing ? "Update the role, keep it as draft, or publish the latest version." : "Create the role once, publish it to active listings, then review applications from the same workspace."}
       />
-      <div className="mb-7 flex flex-wrap gap-2.5">
+      <div aria-label="Posting progress" className="job-posting-progress mb-7">
         {["Type", "Details", "Requirements", "Review"].map((label, index) => (
-          <div key={label} className="flex items-center gap-2">
+          <div aria-current={index + 1 === step ? "step" : undefined} key={label} className="job-posting-step flex items-center gap-2">
             <div className={`step ${index + 1 < step ? "done" : index + 1 === step ? "active" : ""}`}>{index + 1}</div>
             <span className={index + 1 === step ? "font-semibold" : "text-muted"}>{label}</span>
             {index < 3 ? <div className={`step-bar ${index + 1 < step ? "done" : ""}`} /> : null}
@@ -498,7 +509,7 @@ function PostJobEditor({
         ))}
       </div>
 
-      <div className="card card-pad-lg max-w-[1040px]">
+      <div className="job-editor-card card card-pad-lg max-w-[1040px]">
         {step === 1 ? renderPostingTypeSection() : null}
 
         {step === 2 ? renderDetailsFields() : null}
@@ -507,7 +518,7 @@ function PostJobEditor({
 
         {step === 4 ? renderReviewSummary() : null}
 
-        <div className="mt-8 flex items-center justify-between">
+        <div className="job-editor-actions mt-8 flex items-center justify-between">
           <Btn variant="ghost" onClick={() => (step > 1 ? setStep(step - 1) : go("dashboard"))}>
             {step > 1 ? "Back" : "Cancel"}
           </Btn>
@@ -541,24 +552,19 @@ function PostJobEditor({
 
 function validateStep(step: number, form: JobFormState): JobFormErrors {
   if (step === 2) {
-    return pickErrors(validateAll(form), ["description", "endDate", "location", "payAmount", "startDate", "subject", "title"]);
+    return pickErrors(validateAll(form), ["address", "city", "countryCode", "county", "description", "endDate", "minExperienceYears", "payAmount", "postalCode", "startDate", "subject", "title"]);
   }
-  if (step === 3) return pickErrors(validateAll(form), ["expiresAt", "keyStages"]);
+  if (step === 3) return pickErrors(validateAll(form), ["expiresAt"]);
   return {};
 }
 
 function validateAll(form: JobFormState): JobFormErrors {
   const errors: JobFormErrors = {};
-  const payAmount = Number(form.payAmount);
 
   if (!form.title.trim()) errors.title = "Enter a job title.";
-  if (!form.location.trim()) errors.location = "Enter the role location.";
-  if (!form.subject.trim()) errors.subject = "Choose a subject.";
-  if (!form.startDate) errors.startDate = "Choose a start date.";
   Object.assign(errors, validateJobDates(form));
-  if (!Number.isFinite(payAmount) || payAmount <= 0) errors.payAmount = "Enter a valid pay amount.";
+  Object.assign(errors, validateOptionalJobFields(form));
   if (!form.description.trim() || form.description.trim().length < 20) errors.description = "Add role details of at least 20 characters.";
-  if (form.keyStages.length === 0) errors.keyStages = "Choose at least one key stage.";
 
   return errors;
 }
@@ -569,7 +575,24 @@ function validateDraft(form: JobFormState): JobFormErrors {
   if (!form.title.trim()) errors.title = "Enter a job title before saving a draft.";
   if (!form.description.trim()) errors.description = "Add a short role description before saving a draft.";
   Object.assign(errors, validateJobDates(form));
+  Object.assign(errors, validateOptionalJobFields(form));
 
+  return errors;
+}
+
+function validateOptionalJobFields(form: JobFormState): JobFormErrors {
+  const errors: JobFormErrors = {};
+  if (form.postalCode.trim() && !isValidUkPostcode(form.postalCode)) errors.postalCode = "Enter a valid UK postcode.";
+  if (form.countryCode.trim() && !/^[A-Z]{2}$/i.test(form.countryCode.trim())) errors.countryCode = "Use a two-letter country code.";
+
+  if (form.payAmount.trim()) {
+    const payAmount = Number(form.payAmount);
+    if (!Number.isFinite(payAmount) || payAmount < 0) errors.payAmount = "Enter a valid pay amount.";
+  }
+  if (form.minExperienceYears.trim()) {
+    const years = Number(form.minExperienceYears);
+    if (!Number.isInteger(years) || years < 0) errors.minExperienceYears = "Enter a whole number of 0 or more.";
+  }
   return errors;
 }
 
@@ -598,21 +621,27 @@ function pickErrors(errors: JobFormErrors, keys: Array<keyof JobFormState>) {
 }
 
 function firstInvalidStep(errors: JobFormErrors) {
-  if (errors.title || errors.location || errors.subject || errors.startDate || errors.endDate || errors.payAmount || errors.description) return 2;
-  if (errors.expiresAt || errors.keyStages) return 3;
+  if (errors.title || errors.address || errors.city || errors.countryCode || errors.county || errors.subject || errors.startDate || errors.endDate || errors.payAmount || errors.minExperienceYears || errors.postalCode || errors.description) return 2;
+  if (errors.expiresAt) return 3;
   return 4;
 }
 
 function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract<JobCreateInput["status"], "ACTIVE" | "DRAFT">): JobCreateInput {
   return {
+    address: form.address || undefined,
+    city: form.city || undefined,
+    countryCode: form.countryCode || undefined,
+    county: form.county || undefined,
     description: buildDescription(form, mode),
     endDate: toIsoDate(form.endDate),
     expiresAt: toIsoDate(form.expiresAt),
     keyStages: form.keyStages,
-    location: form.location,
+    minExperienceYears: form.minExperienceYears ? Number(form.minExperienceYears) : undefined,
     parkingInfo: form.parkingInfo,
-    payAmount: Number(form.payAmount),
+    payAmount: form.payAmount ? Number(form.payAmount) : undefined,
     payType: form.payType,
+    postalCode: form.postalCode || undefined,
+    requiredSkills: form.requiredSkills,
     startDate: toIsoDate(form.startDate),
     status,
     subject: form.subject,
@@ -668,18 +697,23 @@ function toDateInput(value?: string | null) {
 
 function toFormState(job: Job): JobFormState {
   return {
+    address: job.address ?? "",
+    city: job.city === "Location TBC" ? "" : job.city,
+    countryCode: job.countryCode ?? "GB",
+    county: job.county ?? "",
     description: readEditableDescription(job.description ?? ""),
-    documentRequirementIds: [],
     endDate: toDateInput(job.endDate),
     expiresAt: toDateInput(job.expiresAt),
-    keyStages: job.keyStages?.length ? job.keyStages : job.keyStage ? [job.keyStage] : initialForm.keyStages,
-    location: job.location ?? job.city ?? "",
+    keyStages: job.keyStages?.length ? job.keyStages : [],
+    minExperienceYears: job.minExperienceYears != null ? String(job.minExperienceYears) : "",
     parkingInfo: job.parkingInfo ?? "",
     payAmount: job.payAmount != null && job.payAmount > 0 ? String(job.payAmount) : job.rate ? String(job.rate) : "",
     payType: isPayType(job.payType) ? job.payType : "daily",
+    postalCode: job.postalCode ?? "",
     qtsRequired: job.description?.includes("QTS requested.") ?? false,
     startDate: toDateInput(job.startDate),
-    subject: job.subject || initialForm.subject,
+    subject: job.subject === "General cover" ? "" : job.subject,
+    requiredSkills: job.requiredSkills,
     title: job.title,
     urgent: job.description?.includes("Marked urgent by the hiring account.") || job.urgent,
   };
@@ -726,4 +760,8 @@ function formatDateRange(startDate: string, endDate: string) {
   if (!startDate) return "Date TBC";
   if (!endDate || startDate === endDate) return startDate;
   return `${startDate} - ${endDate}`;
+}
+
+function formatFormLocation(form: JobFormState) {
+  return [form.city, form.county, form.postalCode].map((part) => part.trim()).filter(Boolean).join(", ") || "Location TBC";
 }

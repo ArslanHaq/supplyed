@@ -11,6 +11,7 @@ export type ActionResult<Data = void, Field extends string = string> =
       code?: string;
       fieldErrors?: ActionFieldErrors<Field>;
       message: string;
+      requestId?: string;
     };
 
 export function actionOk<Data>(data: Data, message?: string): ActionResult<Data> {
@@ -19,7 +20,7 @@ export function actionOk<Data>(data: Data, message?: string): ActionResult<Data>
 
 export function actionError<Field extends string = string>(
   message: string,
-  options: { code?: string; fieldErrors?: ActionFieldErrors<Field> } = {},
+  options: { code?: string; fieldErrors?: ActionFieldErrors<Field>; requestId?: string } = {},
 ): ActionResult<never, Field> {
   return { ok: false, message, ...options };
 }

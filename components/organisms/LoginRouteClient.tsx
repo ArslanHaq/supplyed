@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { loginAction, resendLoginVerification, verifyLoginEmail, verifyLoginTwoFactor } from "@/app/(auth)/login/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { readAuthSessionTicketPayload } from "@/lib/auth-session-routing";
+import { nextCodeResendAvailableAt } from "@/lib/code-resend-cooldown";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { useAuthToasts } from "@/lib/use-auth-toasts";
 import { useMounted } from "@/lib/use-mounted";
@@ -85,12 +86,11 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     email: string,
     otpToken: string | undefined,
     message?: string,
-    expiresInMinutes?: number,
   ) {
     setVerificationEmail(email);
     setVerificationNotice(message);
     setVerificationToken(otpToken);
-    setResendAvailableAt(readCooldownUntil(expiresInMinutes));
+    setResendAvailableAt(nextCodeResendAvailableAt());
     setStage("verify");
   }
 
@@ -142,7 +142,6 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
         loginResult.data.email,
         loginResult.data.otpToken,
         loginResult.message,
-        loginResult.data.expiresInMinutes,
       );
       return { ok: true as const };
     }
@@ -356,7 +355,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     if (!result.data.emailVerified) {
       setVerificationToken(result.data.otpToken);
       setVerificationNotice(result.message);
-      setResendAvailableAt(readCooldownUntil(result.data.expiresInMinutes));
+      setResendAvailableAt(nextCodeResendAvailableAt());
     }
 
     return { ok: true as const };

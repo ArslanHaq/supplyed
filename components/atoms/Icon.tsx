@@ -61,6 +61,7 @@ const icons: Record<string, LucideIcon> = {
   x: X,
   plus: Plus,
   arrow: ArrowRight,
+  arrowRight: ArrowRight,
   arrowLeft: ArrowLeft,
   chevronDown: ChevronDown,
   chevronRight: ChevronRight,

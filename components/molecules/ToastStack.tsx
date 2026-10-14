@@ -95,7 +95,7 @@ export function ToastStack({ autoCloseMs = 5000, onDismiss, toasts }: ToastStack
             className={`toast ${toast.tone === "danger" ? "toast-danger" : "toast-success"} ${closing ? "toast-leaving" : ""}`}
           >
             <div className="toast-icon">
-              <Icon name={toast.icon || "check"} size={13} />
+              <Icon name={toast.icon || "check"} size={12} />
             </div>
             <div className="toast-copy">
               <div className="toast-title">{toast.title}</div>
@@ -103,7 +103,7 @@ export function ToastStack({ autoCloseMs = 5000, onDismiss, toasts }: ToastStack
             </div>
             {onDismiss ? (
               <button className="toast-close" type="button" aria-label={`Dismiss ${toast.title}`} onClick={() => beginDismiss(toast.id)}>
-                <Icon name="x" size={15} />
+                <Icon name="x" size={13} />
               </button>
             ) : null}
             {onDismiss && autoCloseMs > 0 ? (

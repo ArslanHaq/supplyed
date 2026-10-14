@@ -1,10 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Country } from "country-state-city";
 
-import { documentFileValidationError } from "@/features/onboarding/document-utils";
-import type { OnboardingDocumentRequirement, OnboardingProfileSnapshot } from "@/features/onboarding/types";
-import { useOnboardingDocumentRequirements } from "@/features/onboarding/use-onboarding";
+import { useCurrentUser } from "@/features/auth/use-current-user";
+import { usePhoneVerificationPending } from "@/features/auth/use-phone-verification";
+import { filterProfileDocumentRequirements } from "@/features/onboarding/document-requirements";
+import { missingRequiredDocuments } from "@/features/onboarding/document-utils";
+import { useOnboardingDocumentRequirements, useOnboardingSnapshot } from "@/features/onboarding/use-onboarding";
+import type {
+  OnboardingDocumentRequirementSnapshot,
+  OnboardingDocumentSnapshot,
+  OnboardingProfileSnapshot,
+} from "@/features/onboarding/types";
 import type { AppRole } from "@/types/supplyed";
 
 import { FileSummary, ReviewBadgeList } from "./ReviewCard";
@@ -30,25 +38,31 @@ import {
   createInitialForm,
   documentFileError,
   roleLabel,
-  toUploadedFileFromDocument,
-  uploadedFilesFromSnapshot,
 } from "./utils";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phonePattern = /^[0-9+()\s-]{10,}$/;
 const domainPattern = /^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,}$/i;
+const companyNumberPattern = /^(?:\d{1,8}|[a-z]{2}\d{6})$/i;
 
 function snapshotFingerprint(snapshot?: OnboardingProfileSnapshot) {
   if (!snapshot) return "";
 
   return JSON.stringify({
+    documentRequirements: snapshot.documentRequirements,
     documents: snapshot.documents,
     institution: snapshot.institution,
     instructor: snapshot.instructor,
-    recruiter: snapshot.recruiter,
+    requirementDocuments: snapshot.requirementDocuments,
     role: snapshot.role,
+    signatoryApproval: snapshot.signatoryApproval,
     user: snapshot.user,
   });
+}
+
+function countryLabel(countryCode: string) {
+  if (!countryCode.trim()) return "Not provided";
+  return Country.getCountryByCode(countryCode)?.name ?? countryCode;
 }
 
 function snapshotString(current: string, next: string) {
@@ -59,7 +73,27 @@ function snapshotStringArray(current: string[], next: string[]) {
   return next.length > 0 ? next : current;
 }
 
-function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined, snapshot?: OnboardingProfileSnapshot) {
+function hasCreatedProfile(snapshot: OnboardingProfileSnapshot | undefined, role: SignupRole) {
+  if (!snapshot) return false;
+  if (role === "teacher") return Boolean(snapshot.instructor?.id);
+  if (role === "institution") return Boolean(snapshot.institution?.id);
+  return false;
+}
+
+function missingSnapshotDocumentRequirements(snapshot: OnboardingProfileSnapshot | undefined, role: SignupRole) {
+  if (!snapshot) return [];
+
+  return missingRequiredDocuments(
+    filterProfileDocumentRequirements(snapshot.documentRequirements ?? [], role),
+    snapshot.requirementDocuments ?? {},
+  );
+}
+
+function requirementErrorEntries(requirements: OnboardingDocumentRequirementSnapshot[]) {
+  return Object.fromEntries(requirements.map((requirement) => [requirement.id, `${requirement.documentType.name} is required.`]));
+}
+
+function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined, snapshot?: OnboardingProfileSnapshot, preservePhone = false) {
   if (!snapshot) return current;
 
   const next = createInitialForm(accountEmail, snapshot);
@@ -71,7 +105,7 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     complianceEmail: snapshotString(current.complianceEmail, next.complianceEmail),
     contactRole: snapshotString(current.contactRole, next.contactRole),
     coverTypes: snapshotStringArray(current.coverTypes, next.coverTypes),
-    currency: next.currency || current.currency || "GBP",
+    currency: snapshot.instructor?.currency || current.currency || "GBP",
     dailyRate: snapshotString(current.dailyRate, next.dailyRate),
     documents: { ...current.documents, ...next.documents },
     email: snapshotString(current.email, next.email),
@@ -79,23 +113,30 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     hourlyRate: snapshotString(current.hourlyRate, next.hourlyRate),
     institutionAddress: snapshotString(current.institutionAddress, next.institutionAddress),
     institutionCity: snapshotString(current.institutionCity, next.institutionCity),
-    institutionCountryCode: next.institutionCountryCode || current.institutionCountryCode || "GB",
+    institutionCountryCode: snapshot.institution?.countryCode || current.institutionCountryCode || "GB",
     institutionDomain: snapshotString(current.institutionDomain, next.institutionDomain),
     institutionProfileId: snapshotString(current.institutionProfileId, next.institutionProfileId),
     institutionRegistrationId: snapshotString(current.institutionRegistrationId, next.institutionRegistrationId),
+    institutionType: snapshot.institution?.institutionType ?? current.institutionType,
     keyStages: snapshotStringArray(current.keyStages, next.keyStages),
     localAuthority: snapshotString(current.localAuthority, next.localAuthority),
     maxTravelDistance: snapshotString(current.maxTravelDistance, next.maxTravelDistance),
-    phone: snapshotString(current.phone, next.phone),
+    phone: preservePhone ? current.phone : snapshotString(current.phone, next.phone),
+    profileCity: snapshotString(current.profileCity, next.profileCity),
+    profileCountryCode: snapshot.instructor?.countryCode || current.profileCountryCode || "GB",
     postcode: snapshotString(current.postcode, next.postcode),
-    recruiterProfileId: snapshotString(current.recruiterProfileId, next.recruiterProfileId),
     schoolName: snapshotString(current.schoolName, next.schoolName),
     safeguardingConfirmed: current.safeguardingConfirmed || next.safeguardingConfirmed,
     skills: snapshotStringArray(current.skills, next.skills),
     staffingNeeds: snapshotString(current.staffingNeeds, next.staffingNeeds),
+    signatoryEmail: snapshotString(current.signatoryEmail, next.signatoryEmail),
+    signatoryJobTitle: snapshotString(current.signatoryJobTitle, next.signatoryJobTitle),
+    signatoryName: snapshotString(current.signatoryName, next.signatoryName),
     subjects: snapshotStringArray(current.subjects, next.subjects),
     teacherProfileId: snapshotString(current.teacherProfileId, next.teacherProfileId),
     typicalPupilCount: snapshotString(current.typicalPupilCount, next.typicalPupilCount),
+    trustCompanyNumber: snapshotString(current.trustCompanyNumber, next.trustCompanyNumber),
+    trustName: snapshotString(current.trustName, next.trustName),
     yearsExperience: snapshotString(current.yearsExperience, next.yearsExperience),
   };
 }
@@ -131,6 +172,8 @@ function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill) {
     localAuthority: fillEmpty(current.localAuthority, prefill.localAuthority),
     maxTravelDistance: fillEmpty(current.maxTravelDistance, prefill.maxTravelDistance),
     phone: fillEmpty(current.phone, prefill.phone),
+    profileCity: fillEmpty(current.profileCity, prefill.profileCity),
+    profileCountryCode: fillEmpty(current.profileCountryCode, prefill.profileCountryCode),
     postcode: fillEmpty(current.postcode, prefill.postcode),
     schoolName: fillEmpty(current.schoolName, prefill.schoolName),
     skills: fillEmptyArray(current.skills, prefill.skills),
@@ -166,39 +209,62 @@ export function useOnboardingForm({
   setStep: (step: number) => void;
   step: number;
 }) {
-  const activeRole: SignupRole = role === "teacher" ? "teacher" : role === "individual" ? "individual" : "institution";
+  const activeRole: SignupRole = role === "teacher" ? "teacher" : "institution";
   const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
   const currentStep = Math.min(steps.length, Math.max(1, step)) as SignupStep;
   const [form, setForm] = useState<SignupForm>(() => mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill));
+  const currentUserQuery = useCurrentUser();
+  const phoneVerificationPending = usePhoneVerificationPending();
+  const phoneTouchedRef = useRef(false);
   const [errors, setErrors] = useState<SignupErrors>({});
   const [documentErrors, setDocumentErrors] = useState<DocumentErrors>({});
   const [pending, setPending] = useState<OnboardingPending>(null);
   const [uploadPending, setUploadPending] = useState<string | null>(null);
   const [viewPending, setViewPending] = useState<string | null>(null);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
+  const [documentRequirementsSnapshot, setDocumentRequirementsSnapshot] = useState<OnboardingDocumentRequirementSnapshot[]>(
+    () => initialSnapshot?.documentRequirements ?? [],
+  );
+  const [lockedDocumentStage, setLockedDocumentStage] = useState(
+    () => hasCreatedProfile(initialSnapshot, activeRole),
+  );
+  const [requirementDocuments, setRequirementDocuments] = useState<Record<string, OnboardingDocumentSnapshot>>(() => initialSnapshot?.requirementDocuments ?? {});
+  const [requirementDocumentErrors, setRequirementDocumentErrors] = useState<Record<string, string | undefined>>({});
+  const [requirementUploadPending, setRequirementUploadPending] = useState<string | null>(null);
+  const [requirementViewPending, setRequirementViewPending] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string>();
+  const [signatoryApproval, setSignatoryApproval] = useState(initialSnapshot?.signatoryApproval ?? null);
+  const [statusStage, setStatusStage] = useState(false);
   const progress = Math.round((currentStep / steps.length) * 100);
   const isLastStep = currentStep === steps.length;
   const mountedRef = useRef(true);
+  const mutationPendingRef = useRef(false);
   const previousStepRef = useRef(currentStep);
   const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
+  const requirementsQuery = useOnboardingDocumentRequirements(activeRole, { enabled: roleSelected });
+  const onboardingStatusQuery = useOnboardingSnapshot(accountEmail ?? "", {
+    enabled: Boolean(accountEmail && lockedDocumentStage && activeRole === "institution" && form.institutionType === "MAT_SCHOOL"),
+  });
+  const documentRequirements = filterProfileDocumentRequirements(
+    requirementsQuery.data?.map((requirement) => ({
+      id: requirement.id,
+      context: requirement.context,
+      isRequired: requirement.isRequired,
+      requiresReview: requirement.requiresReview,
+      documentType: {
+        allowedMimes: requirement.allowedMimes,
+        code: requirement.code,
+        maxSizeBytes: requirement.maxSizeBytes,
+        name: requirement.name,
+      },
+    })) ?? documentRequirementsSnapshot, activeRole,
+  );
   const previousSnapshotFingerprintRef = useRef(initialSnapshotFingerprint);
   const prefillFingerprint = useMemo(() => JSON.stringify(prefill ?? {}), [prefill]);
   const previousPrefillFingerprintRef = useRef(prefillFingerprint);
 
-  // Only teachers have a documents step today. The list is seeded from the
-  // server snapshot and refreshed from GET /document-requirements/profile.
-  const documentRequirementsQuery = useOnboardingDocumentRequirements(activeRole, {
-    enabled: roleSelected && activeRole === "teacher",
-    initialData: initialSnapshot?.documentRequirements,
-  });
-  const documentRequirements = useMemo(() => documentRequirementsQuery.data ?? [], [documentRequirementsQuery.data]);
-  const documentRequirementsLoading = documentRequirementsQuery.isLoading;
-  const documentRequirementsError = documentRequirementsQuery.isError
-    ? documentRequirementsQuery.error instanceof Error && documentRequirementsQuery.error.message
-      ? documentRequirementsQuery.error.message
-      : "Document requirements could not be loaded."
-    : undefined;
+  const documentRequirementsLoading = requirementsQuery.isPending || requirementsQuery.isFetching;
+  const documentRequirementsError = requirementsQuery.error?.message;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -219,15 +285,30 @@ export function useOnboardingForm({
     if (previousSnapshotFingerprintRef.current === initialSnapshotFingerprint) return;
 
     previousSnapshotFingerprintRef.current = initialSnapshotFingerprint;
-    setForm((current) => mergeSnapshotForm(current, accountEmail, initialSnapshot));
-  }, [accountEmail, initialSnapshot, initialSnapshotFingerprint]);
+    setForm((current) => mergeSnapshotForm(current, accountEmail, initialSnapshot,
+      phoneTouchedRef.current || currentUserQuery.data?.phoneVerified === true));
+    if (initialSnapshot?.documentRequirements.length || !lockedDocumentStage) {
+      setDocumentRequirementsSnapshot(initialSnapshot?.documentRequirements ?? []);
+    }
+    setRequirementDocuments(initialSnapshot?.requirementDocuments ?? {});
+    setSignatoryApproval(initialSnapshot?.signatoryApproval ?? null);
+    if (hasCreatedProfile(initialSnapshot, activeRole)) {
+      setLockedDocumentStage(true);
+    }
+  }, [accountEmail, activeRole, currentUserQuery.data?.phoneVerified, initialSnapshot, initialSnapshotFingerprint, lockedDocumentStage]);
 
   useEffect(() => {
-    if (previousPrefillFingerprintRef.current === prefillFingerprint) return;
+    const user = currentUserQuery.data;
+    if (phoneTouchedRef.current || !user?.phoneVerified || !user.phone) return;
+    // A newer server snapshot can contain a number verified in another tab.
+    setForm((current) => ({ ...current, phone: user.phone! }));
+  }, [currentUserQuery.data]);
 
-    previousPrefillFingerprintRef.current = prefillFingerprint;
-    setForm((current) => mergePrefillForm(current, prefill));
-  }, [prefill, prefillFingerprint]);
+  useEffect(() => {
+    if (onboardingStatusQuery.data?.signatoryApproval !== undefined) {
+      setSignatoryApproval(onboardingStatusQuery.data.signatoryApproval);
+    }
+  }, [onboardingStatusQuery.data?.signatoryApproval]);
 
   function buildPayload() {
     return buildOnboardingPayload(form, activeRole, currentStep, accountEmail);
@@ -239,14 +320,20 @@ export function useOnboardingForm({
       { label: "Name", value: form.fullName || "Not provided" },
       { label: "Email", value: form.email || accountEmail || "Not provided" },
       { label: "Phone", value: form.phone || "Not provided" },
-      { label: "Postalcode / location", value: form.postcode || "Not provided" },
+      ...(activeRole === "teacher"
+        ? [
+            { label: "Country", value: countryLabel(form.profileCountryCode) },
+            { label: "City", value: form.profileCity || "Not provided" },
+            { label: "Postal code", value: form.postcode || "Not provided" },
+          ]
+        : []),
     ];
 
     if (activeRole === "teacher") {
       const documentLines: ReviewLine[] =
         documentRequirements.length > 0
           ? documentRequirements.map((requirement) => ({
-              label: requirement.isRequired ? requirement.name : `${requirement.name} (optional)`,
+              label: requirement.isRequired ? requirement.documentType.name : `${requirement.documentType.name} (optional)`,
               value: <FileSummary file={form.documents[requirement.id] ?? null} />,
               wide: true,
             }))
@@ -270,28 +357,10 @@ export function useOnboardingForm({
             { label: "TRN", value: form.teachingReferenceNumber || "Optional" },
             { label: "Bio", value: form.bio || "Not provided", wide: true },
           ],
-        },
-        {
-          title: "Required Documents",
-          description: "Documents sent to verification review",
-          icon: "shield",
-          editStep: 2,
-          lines: documentLines,
-        },
+        }
       ];
     }
 
-    if (activeRole === "individual") {
-      return [
-        {
-          title: "Individual Profile",
-          description: "Contact details for your hiring account",
-          icon: "user",
-          editStep: 1,
-          lines: accountLines,
-        },
-      ];
-    }
 
     return [
       {
@@ -308,12 +377,19 @@ export function useOnboardingForm({
         editStep: 2,
         lines: [
           { label: "School / MAT", value: form.schoolName || "Not provided" },
+          { label: "School type", value: form.institutionType === "MAT_SCHOOL" ? "Multi-academy trust school" : "Single school" },
+          ...(form.institutionType === "MAT_SCHOOL"
+            ? [
+                { label: "Trust", value: form.trustName || "Not provided" },
+                { label: "Company number", value: form.trustCompanyNumber || "Optional" },
+              ]
+            : []),
           { label: "Your role", value: form.contactRole || "Not provided" },
           { label: "Domain", value: form.institutionDomain || "Not provided" },
           { label: "Address", value: form.institutionAddress || "Not provided", wide: true },
+          { label: "Postal code", value: form.postcode || "Not provided" },
+          { label: "Country", value: countryLabel(form.institutionCountryCode) },
           { label: "City", value: form.institutionCity || "Not provided" },
-          { label: "County / region", value: form.localAuthority || "Not provided" },
-          { label: "Country", value: form.institutionCountryCode || "GB" },
           { label: "Registration ID", value: form.institutionRegistrationId || "Optional" },
           { label: "Pupil count", value: form.typicalPupilCount || "Optional" },
           { label: "Needs", value: <ReviewBadgeList items={form.coverTypes} />, wide: true },
@@ -328,12 +404,20 @@ export function useOnboardingForm({
           { label: "Compliance lead", value: form.complianceContact || "Not provided" },
           { label: "Compliance email", value: form.complianceEmail || "Not provided" },
           { label: "Safeguarding", value: form.safeguardingConfirmed ? "Authorised staff confirmed" : "Not confirmed" },
+          ...(form.institutionType === "MAT_SCHOOL"
+            ? [
+                { label: "Trust signatory", value: form.signatoryName || "Not provided" },
+                { label: "Signatory email", value: form.signatoryEmail || "Not provided" },
+                { label: "Signatory role", value: form.signatoryJobTitle || "Not provided" },
+              ]
+            : []),
         ],
       },
     ];
   }, [accountEmail, activeRole, documentRequirements, form]);
 
   function updateField<FieldName extends keyof SignupForm>(field: FieldName, value: SignupForm[FieldName]) {
+    if (field === "phone") phoneTouchedRef.current = true;
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setSubmitError(undefined);
@@ -350,81 +434,101 @@ export function useOnboardingForm({
   }
 
   function retryDocumentRequirements() {
-    void documentRequirementsQuery.refetch();
+    void requirementsQuery.refetch();
   }
 
-  async function uploadDocument(requirement: OnboardingDocumentRequirement, file: UploadedFile) {
-    if (pending === "submit" || uploadPending) return;
+  async function uploadDocument(requirement: OnboardingDocumentRequirementSnapshot, file: UploadedFile) {
+    await uploadRequirementDocument(requirement.id, file);
+  }
 
+  async function viewDocument(requirementId: string, file: UploadedFile | null) {
+    await viewRequirementDocument(requirementId, file);
+  }
+
+  async function uploadRequirementDocument(requirementId: string, file: UploadedFile) {
+    if (mutationPendingRef.current || !lockedDocumentStage) return;
+
+    const requirement = documentRequirements.find((item) => item.id === requirementId);
+    const label = requirement?.documentType.name || "Document";
     const selectedFile = file.file;
+    const validationError = selectedFile
+      ? requirement
+        ? documentFileError(
+            { ...file, id: "validation-placeholder" },
+            {
+              allowedMimes: requirement.documentType.allowedMimes,
+              code: requirement.documentType.code,
+              context: requirement.context,
+              description: null,
+              id: requirement.id,
+              isRequired: requirement.isRequired,
+              maxSizeBytes: requirement.documentType.maxSizeBytes,
+              name: label,
+              requiresReview: true,
+            },
+          )
+        : undefined
+      : `${label} is required.`;
 
-    if (!selectedFile) {
-      setDocumentError(requirement.id, `${requirement.name} is required.`);
-      return;
-    }
-
-    const validationError = documentFileValidationError(file, requirement);
     if (validationError) {
-      setDocumentError(requirement.id, validationError);
+      setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: validationError }));
       return;
     }
 
-    const data = new FormData();
-    data.set("requirementId", requirement.id);
-    data.set("role", activeRole);
-    data.set("file", selectedFile, file.name);
+    const data = buildPayload();
+    data.set("requirementId", requirementId);
+    data.set("file", selectedFile!, file.name);
 
-    const previousFile = form.documents[requirement.id] ?? null;
-
-    setForm((current) => ({
-      ...current,
-      documents: { ...current.documents, [requirement.id]: { ...file, requirementId: requirement.id } },
-    }));
-    clearDocumentError(requirement.id);
-    setUploadPending(requirement.id);
+    setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: undefined }));
+    setSubmitError(undefined);
+    mutationPendingRef.current = true;
+    setRequirementUploadPending(requirementId);
 
     try {
       const result = await onDocumentUpload(data);
 
       if (!result.ok || !result.data?.document) {
-        setForm((current) => ({ ...current, documents: { ...current.documents, [requirement.id]: previousFile } }));
-        setDocumentError(requirement.id, result.message || `${requirement.name} could not be uploaded. Choose the file again.`);
+        setRequirementDocumentErrors((current) => ({
+          ...current,
+          [requirementId]: result.message || `${label} could not be uploaded. Choose the file again.`,
+        }));
         return;
       }
 
-      const uploadedFile = toUploadedFileFromDocument(result.data.document);
-      const uploadedDocuments = uploadedFilesFromSnapshot(result.data.documents);
-
-      setForm((current) => ({
+      setRequirementDocuments((current) => ({
         ...current,
-        documents: { ...current.documents, ...uploadedDocuments, [requirement.id]: uploadedFile },
+        ...result.data!.requirementDocuments,
+        [requirementId]: result.data!.document,
       }));
-      setDocumentError(requirement.id, undefined);
+      setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: undefined }));
     } catch (error) {
-      setForm((current) => ({ ...current, documents: { ...current.documents, [requirement.id]: previousFile } }));
-      setDocumentError(
-        requirement.id,
-        error instanceof Error && error.message ? error.message : `${requirement.name} could not be uploaded. Choose the file again.`,
-      );
+      setRequirementDocumentErrors((current) => ({
+        ...current,
+        [requirementId]: error instanceof Error && error.message ? error.message : `${label} could not be uploaded. Choose the file again.`,
+      }));
     } finally {
-      if (mountedRef.current) setUploadPending(null);
+      mutationPendingRef.current = false;
+      if (mountedRef.current) setRequirementUploadPending(null);
     }
   }
 
-  async function viewDocument(requirementId: string, file: UploadedFile | null) {
-    if (!file?.id || viewPending) return;
+  async function viewRequirementDocument(requirementId: string, file: UploadedFile | null) {
+    if (!file?.id || requirementViewPending) return;
 
     const data = new FormData();
     data.set("documentId", file.id);
     data.set("fileName", file.name);
-    setViewPending(requirementId);
+    setRequirementViewPending(requirementId);
     setSubmitError(undefined);
 
     try {
       const result = await onDocumentView(data);
 
       if (!result.ok || !result.data?.url) {
-        setDocumentError(requirementId, result.message || "This document could not be opened.");
+        setRequirementDocumentErrors((current) => ({
+          ...current,
+          [requirementId]: result.message || "This document could not be opened.",
+        }));
         return;
       }
 
@@ -434,9 +538,12 @@ export function useOnboardingForm({
         url: result.data.url,
       });
     } catch (error) {
-      setDocumentError(requirementId, error instanceof Error && error.message ? error.message : "This document could not be opened.");
+      setRequirementDocumentErrors((current) => ({
+        ...current,
+        [requirementId]: error instanceof Error && error.message ? error.message : "This document could not be opened.",
+      }));
     } finally {
-      if (mountedRef.current) setViewPending(null);
+      if (mountedRef.current) setRequirementViewPending(null);
     }
   }
 
@@ -451,7 +558,11 @@ export function useOnboardingForm({
 
   function applySnapshot(snapshot?: OnboardingProfileSnapshot) {
     if (!snapshot) return;
-    setForm((current) => mergeSnapshotForm(current, accountEmail, snapshot));
+    setForm((current) => mergeSnapshotForm(current, accountEmail, snapshot,
+      phoneTouchedRef.current || currentUserQuery.data?.phoneVerified === true));
+    setDocumentRequirementsSnapshot(snapshot.documentRequirements);
+    setRequirementDocuments(snapshot.requirementDocuments ?? {});
+    setSignatoryApproval(snapshot.signatoryApproval ?? null);
   }
 
   function validateStep(targetStep: SignupStep) {
@@ -462,7 +573,11 @@ export function useOnboardingForm({
       if (!form.fullName.trim()) nextErrors.fullName = "Enter your full name.";
       if (!form.phone.trim()) nextErrors.phone = "Enter a contact number.";
       else if (!phonePattern.test(form.phone.trim())) nextErrors.phone = "Use a valid phone number.";
-      if (!form.postcode.trim()) nextErrors.postcode = "Enter your postalcode or location.";
+      if (roleSelected && activeRole !== "institution") {
+        if (!form.profileCountryCode.trim()) nextErrors.profileCountryCode = "Select your country.";
+        if (!form.profileCity.trim()) nextErrors.profileCity = "Select your city.";
+      }
+      if (activeRole === "teacher" && !form.postcode.trim()) nextErrors.postcode = "Enter your postal code.";
 
       if (activeRole === "teacher") {
         if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
@@ -482,30 +597,18 @@ export function useOnboardingForm({
       if (!form.institutionDomain.trim()) nextErrors.institutionDomain = "Enter the school or trust domain.";
       else if (!domainPattern.test(form.institutionDomain.trim())) nextErrors.institutionDomain = "Use a valid domain, for example greenfield.ac.uk.";
       if (!form.institutionAddress.trim()) nextErrors.institutionAddress = "Enter the institution address.";
-      if (!form.institutionCity.trim()) nextErrors.institutionCity = "Enter the city.";
-      if (!form.localAuthority.trim()) nextErrors.localAuthority = "Enter the county or region.";
+      if (!form.postcode.trim()) nextErrors.postcode = "Enter the institution postal code.";
+      if (!form.institutionCountryCode.trim()) nextErrors.institutionCountryCode = "Select the institution country.";
+      if (!form.institutionCity.trim()) nextErrors.institutionCity = "Select the institution city.";
       if (form.coverTypes.length === 0) nextErrors.coverTypes = "Choose at least one staffing need.";
-    }
-
-    if (targetStep === 2 && activeRole === "teacher") {
-      const nextDocumentErrors: DocumentErrors = {};
-
-      if (documentRequirementsQuery.isError) {
-        nextErrors.documents = "Document requirements could not be loaded. Retry, then continue.";
-      } else if (!documentRequirementsQuery.isSuccess && documentRequirements.length === 0) {
-        nextErrors.documents = "Document requirements are still loading. Try again in a moment.";
-      } else {
-        documentRequirements.forEach((requirement) => {
-          const error = documentFileError(form.documents[requirement.id] ?? null, requirement);
-          if (error) nextDocumentErrors[requirement.id] = error;
-        });
-
-        if (Object.keys(nextDocumentErrors).length > 0) {
-          nextErrors.documents = "Upload the required documents before continuing.";
+      if (form.institutionType === "MAT_SCHOOL") {
+        if (!form.trustName.trim()) nextErrors.trustName = "Enter the multi-academy trust name.";
+        else if (form.trustName.trim().length > 200) nextErrors.trustName = "Trust name must be 200 characters or fewer.";
+        const companyNumber = form.trustCompanyNumber.replace(/\s+/g, "");
+        if (companyNumber && !companyNumberPattern.test(companyNumber)) {
+          nextErrors.trustCompanyNumber = "Use up to 8 digits, or 2 letters followed by 6 digits.";
         }
       }
-
-      setDocumentErrors(nextDocumentErrors);
     }
 
     if (targetStep === 3 && activeRole === "institution") {
@@ -513,6 +616,18 @@ export function useOnboardingForm({
       if (!form.complianceEmail.trim()) nextErrors.complianceEmail = "Enter the compliance email.";
       else if (!emailPattern.test(form.complianceEmail.trim())) nextErrors.complianceEmail = "Use a valid email address.";
       if (!form.safeguardingConfirmed) nextErrors.safeguardingConfirmed = "Confirm safeguarding responsibility.";
+      if (form.institutionType === "MAT_SCHOOL") {
+        if (!form.signatoryName.trim()) nextErrors.signatoryName = "Enter the trust signatory's name.";
+        else if (form.signatoryName.trim().length > 200) nextErrors.signatoryName = "Signatory name must be 200 characters or fewer.";
+        if (!form.signatoryEmail.trim()) nextErrors.signatoryEmail = "Enter the trust signatory's email.";
+        else if (!emailPattern.test(form.signatoryEmail.trim())) nextErrors.signatoryEmail = "Use a valid email address.";
+        else if (form.signatoryEmail.trim().length > 254) nextErrors.signatoryEmail = "Signatory email must be 254 characters or fewer.";
+        else if (form.signatoryEmail.trim().toLowerCase() === (form.email || accountEmail || "").trim().toLowerCase()) {
+          nextErrors.signatoryEmail = "The trust signatory must be someone other than you.";
+        }
+        if (!form.signatoryJobTitle.trim()) nextErrors.signatoryJobTitle = "Enter the trust signatory's job title.";
+        else if (form.signatoryJobTitle.trim().length > 150) nextErrors.signatoryJobTitle = "Signatory job title must be 150 characters or fewer.";
+      }
     }
 
     setErrors(nextErrors);
@@ -520,9 +635,10 @@ export function useOnboardingForm({
   }
 
   async function continueStep() {
-    if (pending || uploadPending) return;
+    if (lockedDocumentStage || mutationPendingRef.current || phoneVerificationPending) return;
     if (!validateStep(currentStep)) return;
 
+    mutationPendingRef.current = true;
     setPending("step");
     setSubmitError(undefined);
 
@@ -539,12 +655,13 @@ export function useOnboardingForm({
     } catch (error) {
       setSubmitError(error instanceof Error && error.message ? error.message : "This step could not be saved. Try again.");
     } finally {
+      mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);
     }
   }
 
   async function submitSignup() {
-    if (pending || uploadPending) return;
+    if (lockedDocumentStage || mutationPendingRef.current || phoneVerificationPending) return;
     for (let targetStep = 1; targetStep < steps.length; targetStep += 1) {
       if (!validateStep(targetStep as SignupStep)) {
         setStep(targetStep);
@@ -552,20 +669,129 @@ export function useOnboardingForm({
       }
     }
 
+    mutationPendingRef.current = true;
     setPending("submit");
     setSubmitError(undefined);
 
     try {
-      const result = await onFinish(buildPayload());
-      if (!result.ok) {
-        setSubmitError(result.message || "Onboarding could not be submitted. Try again.");
-        return;
+      const payload = buildPayload();
+      payload.set("intent", "profile");
+
+      const result = await onFinish(payload);
+      const snapshot = result.data?.snapshot;
+      applySnapshot(snapshot);
+      if (hasCreatedProfile(snapshot, activeRole)) {
+        setLockedDocumentStage(true);
+        setRequirementDocumentErrors({});
       }
 
-      applySnapshot(result.data?.snapshot);
+      if (!result.ok) {
+        setSubmitError(result.message || "Onboarding could not be submitted. Try again.");
+      }
     } catch (error) {
       setSubmitError(error instanceof Error && error.message ? error.message : "Onboarding could not be submitted. Try again.");
     } finally {
+      mutationPendingRef.current = false;
+      if (mountedRef.current) setPending(null);
+    }
+  }
+
+  async function submitDocumentsForReview() {
+    if (!lockedDocumentStage || mutationPendingRef.current) return;
+    if (documentRequirementsLoading || documentRequirementsError) {
+      setSubmitError("Wait for the document requirements to load, or retry the check before submitting.");
+      return;
+    }
+
+    const missingRequirements = missingRequiredDocuments(documentRequirements, requirementDocuments);
+    if (missingRequirements.length > 0) {
+      setRequirementDocumentErrors((current) => ({
+        ...current,
+        ...requirementErrorEntries(missingRequirements),
+      }));
+      setSubmitError("Upload all required documents before sending the profile for review.");
+      return;
+    }
+
+    mutationPendingRef.current = true;
+    setPending("submit");
+    setSubmitError(undefined);
+
+    try {
+      const payload = buildPayload();
+      payload.set("intent", "review");
+
+      const result = await onFinish(payload);
+      if (!result.ok) {
+        void requirementsQuery.refetch();
+        setSubmitError(result.message || "Profile could not be sent for review. Try again.");
+        return;
+      }
+
+      const snapshot = result.data?.snapshot;
+      applySnapshot(snapshot);
+      const remainingRequirements = missingSnapshotDocumentRequirements(snapshot, activeRole);
+
+      if (result.data?.applicationStatus === "none" && remainingRequirements.length > 0) {
+        setLockedDocumentStage(true);
+        setRequirementDocumentErrors((current) => ({
+          ...current,
+          ...requirementErrorEntries(remainingRequirements),
+        }));
+        setSubmitError(result.message || "Upload all required documents before sending the profile for review.");
+      } else if (result.data?.applicationStatus === "none") {
+        const waitingForTrust = activeRole === "institution" && snapshot?.institution?.institutionType === "MAT_SCHOOL" && snapshot.signatoryApproval?.status !== "APPROVED";
+        if (waitingForTrust) {
+          setStatusStage(true);
+          setSubmitError(undefined);
+        } else {
+          setSubmitError(result.message || "This profile is not ready to be submitted for review yet.");
+        }
+      }
+    } catch (error) {
+      setSubmitError(error instanceof Error && error.message ? error.message : "Profile could not be sent for review. Try again.");
+    } finally {
+      mutationPendingRef.current = false;
+      if (mountedRef.current) setPending(null);
+    }
+  }
+
+  async function refreshSignatoryApproval() {
+    if (mutationPendingRef.current) return;
+    mutationPendingRef.current = true;
+    setPending("status");
+    setSubmitError(undefined);
+
+    try {
+      const result = await onboardingStatusQuery.refetch();
+      if (result.error) throw result.error;
+      setSignatoryApproval(result.data?.signatoryApproval ?? null);
+    } catch (error) {
+      setSubmitError(error instanceof Error && error.message ? error.message : "Trust approval status could not be checked.");
+    } finally {
+      mutationPendingRef.current = false;
+      if (mountedRef.current) setPending(null);
+    }
+  }
+
+  async function requestSignatoryApproval() {
+    if (!lockedDocumentStage || activeRole !== "institution" || form.institutionType !== "MAT_SCHOOL" || mutationPendingRef.current) return;
+    if (!validateStep(3)) return;
+
+    mutationPendingRef.current = true;
+    setPending("submit");
+    setSubmitError(undefined);
+
+    try {
+      const payload = buildPayload();
+      payload.set("intent", "signatory");
+      const result = await onFinish(payload);
+      applySnapshot(result.data?.snapshot);
+      if (!result.ok) setSubmitError(result.message || "The trust approval request could not be sent.");
+    } catch (error) {
+      setSubmitError(error instanceof Error && error.message ? error.message : "The trust approval request could not be sent.");
+    } finally {
+      mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);
     }
   }
@@ -585,19 +811,35 @@ export function useOnboardingForm({
     errors,
     form,
     isLastStep,
+    lockedDocumentStage,
     pending,
+    phoneVerificationPending,
+    phoneVerified: currentUserQuery.data?.phoneVerified ?? initialSnapshot?.user?.phoneVerified ?? false,
+    savedPhone: currentUserQuery.data?.phone ?? initialSnapshot?.user?.phone ?? "",
     progress,
-    retryDocumentRequirements,
+    requirementDocumentErrors,
+    requirementDocuments,
+    requirementUploadPending,
+    requirementViewPending,
+    refreshSignatoryApproval,
+    requestSignatoryApproval,
     reviewGroups,
+    signatoryApproval,
+    statusStage,
+    returnToDocuments: () => setStatusStage(false),
+    retryDocumentRequirements,
     setStep,
     steps,
+    submitDocumentsForReview,
     submitError,
     submitSignup,
     uploadDocument,
     uploadPending,
+    uploadRequirementDocument,
     updateField,
     viewDocument,
     viewPending,
+    viewRequirementDocument,
   };
 }
 

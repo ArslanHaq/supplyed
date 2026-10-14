@@ -13,9 +13,9 @@ export function ReviewStep({ controller }: StepComponentProps) {
             <Icon name="checkCircle" size={20} />
           </div>
           <div>
-            <div className="font-semibold text-brand-dark">Ready to submit</div>
+            <div className="font-semibold text-brand-dark">Ready to create profile</div>
             <p className="mt-1 text-sm leading-6 text-brand-dark/80">
-              Review the details below. Each section can be edited without losing the information you already entered.
+              Review the details below. After you confirm, your profile will be created and any required documents will be handled on the next screen.
             </p>
           </div>
         </div>

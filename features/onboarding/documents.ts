@@ -1,13 +1,13 @@
 import "server-only";
 
-import { api, ApiError } from "@/lib/server/api-client";
+import { api } from "@/lib/server/api-client";
 import type { AppRole } from "@/types/supplyed";
+import { profileDocumentContext } from "./document-requirements";
 
 import {
   backendProfileRole,
   contentTypeForFile,
   documentFileValidationError,
-  isProfileRequirementContext,
   missingRequiredDocuments,
 } from "./document-utils";
 import type {
@@ -22,10 +22,10 @@ import type {
  *
  *   GET  /document-requirements/profile      what the profile must upload
  *   POST /documents                          create an empty document for a requirement
- *   POST /documents/:id/upload-url           presigned PUT for the next file version
+ *   POST /documents/:id/upload-url           presigned PUT for a replacement file
  *   PUT  <signed url>                        the bytes go straight to S3
- *   POST /documents/:id/upload-complete      record the version and make it current
- *   GET  /documents                          paginated list with the current version
+ *   POST /documents/:id/upload-complete      make the uploaded file current
+ *   GET  /documents                          paginated list with current file details
  */
 
 export type DocumentRequestAuth = {
@@ -33,6 +33,7 @@ export type DocumentRequestAuth = {
 };
 
 type RequestOptions = {
+  cache?: RequestCache;
   auth?: boolean;
   headers?: HeadersInit;
   query?: Record<string, number | string | undefined>;
@@ -58,25 +59,20 @@ type BackendDocumentRequirement = {
   requiresReview?: boolean;
 };
 
-type BackendDocumentVersion = {
-  contentType?: string;
-  createdAt?: Date | string;
-  id?: string;
-  originalName?: string | null;
-  sizeBytes?: unknown;
-  versionNumber?: unknown;
-};
-
 type BackendDocument = {
   applicationId?: string | null;
+  contentType?: string | null;
   createdAt?: Date | string;
-  currentVersion?: BackendDocumentVersion | null;
-  currentVersionId?: string | null;
   deletedAt?: Date | string | null;
+  fileKey?: string | null;
   id?: string;
+  originalName?: string | null;
+  rejectionComment?: string | null;
   requirement?: BackendDocumentRequirement | null;
   requirementId?: string;
+  sizeBytes?: unknown;
   status?: string;
+  uploadedAt?: Date | string | null;
 };
 
 type BackendUploadUrl = {
@@ -170,16 +166,12 @@ function readStringArray(value: unknown) {
 }
 
 /**
- * Right after the profile is created the session token still carries the USER
- * role, so callers can pass a freshly refreshed token instead.
+ * Callers may pass a freshly refreshed access token immediately after profile
+ * creation so the backend sees the latest authenticated account state.
  */
 function requestOptions(auth: DocumentRequestAuth, extra: RequestOptions = {}): RequestOptions {
   if (!auth.accessToken) return extra;
   return { ...extra, auth: false, headers: { Authorization: `Bearer ${auth.accessToken}` } };
-}
-
-function notFoundOrForbidden(error: unknown) {
-  return error instanceof ApiError && (error.status === 403 || error.status === 404);
 }
 
 function normalizeRequirement(requirement: BackendDocumentRequirement): OnboardingDocumentRequirement | undefined {
@@ -203,20 +195,16 @@ function normalizeRequirement(requirement: BackendDocumentRequirement): Onboardi
 function normalizeDocument(document: BackendDocument): OnboardingDocumentSnapshot | undefined {
   if (!document.id || !document.requirementId) return undefined;
 
-  const version = document.currentVersion ?? undefined;
-  const versionNumber = readNumber(version?.versionNumber);
-
   return {
     code: readString(document.requirement?.documentType?.code) ?? null,
     id: document.id,
-    name: readString(version?.originalName) ?? (versionNumber ? `document-v${versionNumber}` : ""),
+    name: readString(document.originalName) ?? "",
+    rejectionComment: readString(document.rejectionComment) ?? null,
     requirementId: document.requirementId,
-    size: readNumber(version?.sizeBytes) ?? 0,
+    size: readNumber(document.sizeBytes) ?? 0,
     status: readString(document.status) ?? null,
-    type: readString(version?.contentType) ?? "",
-    uploadedAt: version ? (readIsoDate(version.createdAt) ?? readIsoDate(document.createdAt) ?? null) : null,
-    versionId: readString(document.currentVersionId) ?? readString(version?.id) ?? null,
-    versionNumber: versionNumber ?? null,
+    type: readString(document.contentType) ?? "",
+    uploadedAt: readString(document.fileKey) ? (readIsoDate(document.uploadedAt) ?? null) : null,
   };
 }
 
@@ -224,21 +212,26 @@ export async function getProfileDocumentRequirements(
   role: AppRole | null | undefined,
   auth: DocumentRequestAuth = {},
 ): Promise<OnboardingDocumentRequirement[]> {
-  const profileRole = backendProfileRole(role);
-  if (!profileRole) return [];
+  if (!backendProfileRole(role)) return [];
   if (!backendEnabled()) return role === "teacher" ? localInstructorRequirements : [];
 
   const response = await api.get<unknown>(
     "/document-requirements/profile",
-    requestOptions(auth, { query: { role: profileRole } }),
+    requestOptions(auth, { cache: "no-store" }),
   );
-  if (!Array.isArray(response)) return [];
+  if (!Array.isArray(response)) throw new Error("Document requirements could not be verified. Try again.");
+  if (response.some((item) => !isRecord(item) || !item.id || !isRecord(item.documentType) || !item.documentType.id)) {
+    throw new Error("Document requirements are incomplete. Try again.");
+  }
+  if (response.some((item) => item.context !== profileDocumentContext(role))) {
+    throw new Error("Document requirements do not match your profile. Retry the check.");
+  }
 
   return response
     .filter(isRecord)
     .map((item) => normalizeRequirement(item as BackendDocumentRequirement))
     .filter(
-      (item): item is OnboardingDocumentRequirement => Boolean(item) && isProfileRequirementContext(item?.context),
+      (item): item is OnboardingDocumentRequirement => Boolean(item) && item?.context === profileDocumentContext(role),
     );
 }
 
@@ -252,21 +245,24 @@ async function listProfileDocuments(auth: DocumentRequestAuth): Promise<BackendD
     for (let page = 1; page <= documentsMaxPages; page += 1) {
       const response = await api.get<unknown>(
         "/documents",
-        requestOptions(auth, { query: { limit: documentsPageSize, page } }),
+        requestOptions(auth, { cache: "no-store", query: { limit: documentsPageSize, page } }),
       );
       const batch = Array.isArray(response)
         ? response
         : isRecord(response) && Array.isArray(response.documents)
           ? response.documents
           : [];
+      if (!Array.isArray(response) && !(isRecord(response) && Array.isArray(response.documents))) {
+        throw new Error("Your uploaded documents could not be verified. Try again.");
+      }
 
       documents.push(...(batch.filter(isRecord) as BackendDocument[]));
 
       const hasNextPage = isRecord(response) && isRecord(response.pagination) && response.pagination.hasNextPage === true;
       if (!hasNextPage) break;
+      if (page === documentsMaxPages) throw new Error("Your complete document list could not be verified.");
     }
   } catch (error) {
-    if (notFoundOrForbidden(error)) return [];
     throw error;
   }
 
@@ -281,7 +277,7 @@ export async function getDocumentSnapshots(auth: DocumentRequestAuth = {}): Prom
 
   (await listProfileDocuments(auth)).forEach((document) => {
     const snapshot = normalizeDocument(document);
-    if (!snapshot?.uploadedAt) return;
+    if (!snapshot?.uploadedAt || !snapshot.requirementId) return;
 
     const current = documents[snapshot.requirementId];
     if (!current || snapshot.uploadedAt > (current.uploadedAt ?? "")) {
@@ -325,16 +321,20 @@ function safeOriginalName(name: string) {
 }
 
 /**
- * Reuse the document row for a requirement so a replacement lands as the next
- * file version rather than a second document. A row created by an earlier
+ * Reuse the document row for a requirement so a replacement updates its current
+ * file rather than creating a second document. A row created by an earlier
  * attempt that never completed its upload is picked up here too.
  */
 async function findExistingDocument(requirementId: string, auth: DocumentRequestAuth) {
   const candidates = (await listProfileDocuments(auth)).filter((document) => document.requirementId === requirementId);
-  const withFile = candidates.filter((document) => Boolean(document.currentVersionId));
+  const withFile = candidates.filter((document) => Boolean(document.fileKey));
   const pool = withFile.length > 0 ? withFile : candidates;
 
-  return pool.sort((left, right) => (readIsoDate(right.createdAt) ?? "").localeCompare(readIsoDate(left.createdAt) ?? ""))[0];
+  return pool.sort((left, right) =>
+    (readIsoDate(right.uploadedAt) ?? readIsoDate(right.createdAt) ?? "").localeCompare(
+      readIsoDate(left.uploadedAt) ?? readIsoDate(left.createdAt) ?? "",
+    ),
+  )[0];
 }
 
 async function createDocument(requirementId: string, auth: DocumentRequestAuth) {
@@ -357,6 +357,9 @@ export async function uploadProfileDocument({
   file: File;
   requirement: OnboardingDocumentRequirement;
 }): Promise<OnboardingDocumentSnapshot> {
+  const validationError = validateDocumentFile(file, requirement);
+  if (validationError) throw new Error(validationError);
+
   const contentType = contentTypeForFile(file, requirement.allowedMimes);
   const existing = await findExistingDocument(requirement.id, auth);
   const documentId = existing?.id ?? (await createDocument(requirement.id, auth));

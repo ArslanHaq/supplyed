@@ -3,7 +3,9 @@ import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 export type OnboardingSnapshot = {
   applicationStatus: ApplicationStatus;
   completed: boolean;
+  verified: boolean;
   role: AppRole | null;
+  signatoryApproval?: SignatoryApprovalSnapshot | null;
   step: number;
 };
 
@@ -19,25 +21,42 @@ export type OnboardingSubmitResult = {
   ticket?: string;
 };
 
-/** A profile document requirement from GET /document-requirements/profile, flattened with its document type. */
-export type OnboardingDocumentRequirement = {
-  allowedMimes: string[];
-  code: string;
-  context: string;
-  description: string | null;
+export type OnboardingDocumentKind = "addressProof" | "dbs" | "id" | "qualification";
+export type OnboardingDocumentContext =
+  | "INSTRUCTOR_PROFILE"
+  | "INSTITUTION_PROFILE"
+ ;
+
+export type InstitutionType = "MAT_SCHOOL" | "SINGLE_SCHOOL";
+export type SignatoryApprovalStatus = "APPROVED" | "DECLINED" | "EXPIRED" | "PENDING" | "REVOKED";
+
+export type InstitutionTrustSnapshot = {
+  companyNumber: string | null;
   id: string;
-  isRequired: boolean;
-  maxSizeBytes: number;
   name: string;
-  requiresReview: boolean;
 };
 
-/** The current file version of one of the user's documents, keyed to the requirement it satisfies. */
+export type SignatoryApprovalSnapshot = {
+  approvedByAdmin: boolean;
+  createdAt: string;
+  decidedAt: string | null;
+  declineReason: string | null;
+  expiresAt: string;
+  id: string;
+  signatoryEmail: string;
+  signatoryJobTitle: string;
+  signatoryName: string;
+  status: SignatoryApprovalStatus;
+  termsVersion: string | null;
+};
+
 export type OnboardingDocumentSnapshot = {
   code?: string | null;
+  dbsNumber?: string | null;
   id: string;
   name: string;
-  requirementId: string;
+  rejectionComment?: string | null;
+  requirementId?: string | null;
   size: number;
   status?: string | null;
   type: string;
@@ -46,7 +65,33 @@ export type OnboardingDocumentSnapshot = {
   versionNumber?: number | null;
 };
 
-/** Documents keyed by requirement id. */
+export type OnboardingDocumentRequirementSnapshot = {
+  context: OnboardingDocumentContext | string;
+  documentType: {
+    allowedMimes: string[];
+    code: string;
+    id?: string;
+    maxSizeBytes: number;
+    name: string;
+  };
+  documentTypeId?: string;
+  id: string;
+  isRequired: boolean;
+  requiresReview: boolean;
+};
+
+export type OnboardingDocumentRequirement = {
+  allowedMimes: string[];
+  code: string;
+  context: OnboardingDocumentContext | string;
+  description?: string | null;
+  id: string;
+  isRequired: boolean;
+  maxSizeBytes: number;
+  name: string;
+  requiresReview: boolean;
+};
+
 export type OnboardingDocumentMap = Record<string, OnboardingDocumentSnapshot>;
 
 export type OnboardingDocumentState = {
@@ -56,6 +101,8 @@ export type OnboardingDocumentState = {
 
 export type OnboardingUserSnapshot = {
   email: string;
+  emailVerified: boolean;
+  phoneVerified: boolean;
   fullName: string;
   phone: string;
   postcode: string;
@@ -63,6 +110,8 @@ export type OnboardingUserSnapshot = {
 
 export type OnboardingInstructorSnapshot = {
   bio: string;
+  city: string;
+  countryCode: string;
   currency: string;
   dailyRate: string;
   fullName: string;
@@ -87,36 +136,28 @@ export type OnboardingInstitutionSnapshot = {
   county: string;
   domain: string;
   id: string;
+  institutionType: InstitutionType;
   name: string;
   postalCode: string;
   registrationId: string;
   safeguardingConfirmed: boolean;
   status: ApplicationStatus;
   staffingNeeds: string;
+  trust: InstitutionTrustSnapshot | null;
   typicalPupilCount: string;
   userRole: string;
   verified: boolean;
 };
 
-export type OnboardingRecruiterSnapshot = {
-  address: string;
-  bio: string;
-  city: string;
-  countryCode: string;
-  county: string;
-  displayName: string;
-  id: string;
-  imageUrl: string;
-  postalCode: string;
-  status: ApplicationStatus;
-};
-
-export type OnboardingProfileSnapshot = OnboardingDocumentState & {
+export type OnboardingProfileSnapshot = {
   applicationStatus: ApplicationStatus;
+  documentRequirements: OnboardingDocumentRequirementSnapshot[];
+  documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>;
   institution?: OnboardingInstitutionSnapshot;
   instructor?: OnboardingInstructorSnapshot;
-  recruiter?: OnboardingRecruiterSnapshot;
+  requirementDocuments: Record<string, OnboardingDocumentSnapshot>;
   role: AppRole | null;
+  signatoryApproval?: SignatoryApprovalSnapshot | null;
   user?: OnboardingUserSnapshot;
 };
 
@@ -127,7 +168,8 @@ export type OnboardingProgressResult = OnboardingSubmitResult & {
 
 export type OnboardingDocumentUploadResult = {
   document: OnboardingDocumentSnapshot;
-  documents: OnboardingDocumentMap;
+  documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>;
+  requirementDocuments: Record<string, OnboardingDocumentSnapshot>;
 };
 
 export type OnboardingDocumentDownloadResult = {

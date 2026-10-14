@@ -29,8 +29,13 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
 
     if (sessionUser.authErrorMessage) {
       void signOut({ redirect: false }).finally(() => {
-        const params = new URLSearchParams({ auth_error: sessionUser.authErrorMessage ?? "Social sign-in failed." });
-        router.replace(`/${authSource}?${params.toString()}`);
+        const googleNeedsRole = sessionUser.authErrorProvider === "google" && /role is required to create an account with google/i.test(sessionUser.authErrorMessage ?? "");
+        const params = new URLSearchParams({
+          auth_error: googleNeedsRole
+            ? "Choose whether you are a teacher or a school, then continue with Google again."
+            : sessionUser.authErrorMessage ?? "Social sign-in failed.",
+        });
+        router.replace(`/${googleNeedsRole ? "signup" : authSource}?${params.toString()}`);
       });
       return;
     }

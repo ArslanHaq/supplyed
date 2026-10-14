@@ -1,6 +1,5 @@
 import { Field } from "../../../atoms";
-import { SelectDropdown } from "../../../molecules/OptionDropdowns";
-import { countryCodes } from "../constants";
+import { CountryCityFields } from "../CountryCityFields";
 import type { AccountStepProps } from "../step-types";
 import { fieldClass } from "../utils";
 import { AccountBasicsStep } from "./AccountBasicsStep";
@@ -10,9 +9,9 @@ export function InstitutionProfileStep(props: AccountStepProps) {
 
   return (
     <AccountBasicsStep {...props}>
-      <div className="space-y-6 rounded-xl border border-border bg-chalk p-4 sm:p-5">
+      <div className="onboarding-field-section space-y-6">
         <div>
-          <h3 className="font-serif text-2xl leading-tight">Institution profile</h3>
+          <h3 className="font-heading text-2xl leading-tight">Institution profile</h3>
           <p className="mt-1 text-sm leading-6 text-muted">
             These fields create the school or MAT profile in the backend before review.
           </p>
@@ -46,24 +45,29 @@ export function InstitutionProfileStep(props: AccountStepProps) {
               placeholder="1 School Lane"
             />
           </Field>
-          <Field label="City" htmlFor="institution-city" error={errors.institutionCity} required>
+          <Field label="Postal code" htmlFor="institution-postcode" error={errors.postcode} required>
             <input
-              id="institution-city"
-              className={fieldClass(errors.institutionCity)}
-              value={form.institutionCity}
-              onChange={(event) => updateField("institutionCity", event.target.value)}
-              placeholder="Manchester"
+              id="institution-postcode"
+              className={fieldClass(errors.postcode)}
+              value={form.postcode}
+              onChange={(event) => updateField("postcode", event.target.value)}
+              placeholder="M1 1AE"
             />
           </Field>
-          <Field label="Country" error={errors.institutionCountryCode}>
-            <SelectDropdown
-              error={Boolean(errors.institutionCountryCode)}
-              options={countryCodes}
-              placeholder="Select country"
-              value={form.institutionCountryCode}
-              onChange={(value) => updateField("institutionCountryCode", value)}
-            />
-          </Field>
+          <CountryCityFields
+            city={form.institutionCity}
+            cityError={errors.institutionCity}
+            cityId="institution-city"
+            cityRequired
+            countryCode={form.institutionCountryCode}
+            countryError={errors.institutionCountryCode}
+            countryRequired
+            onCityChange={(value) => updateField("institutionCity", value)}
+            onCountryChange={(value) => {
+              updateField("institutionCountryCode", value);
+              updateField("institutionCity", "");
+            }}
+          />
         </div>
       </div>
     </AccountBasicsStep>

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { getSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
+import { useOnboardingSnapshot } from "@/features/onboarding/use-onboarding";
+
 import { buttonClassName } from "../atoms";
 import { PublicAccountMenu } from "../molecules/PublicAccountMenu";
 
@@ -15,6 +17,7 @@ type PublicHeaderAccount = {
 
 export function PublicHeaderAccountSlot() {
   const [account, setAccount] = useState<PublicHeaderAccount | null>(null);
+  const verification = useOnboardingSnapshot(account?.email ?? "", { enabled: Boolean(account?.email) });
 
   useEffect(() => {
     let mounted = true;
@@ -35,16 +38,16 @@ export function PublicHeaderAccountSlot() {
   }, []);
 
   if (account) {
-    return <PublicAccountMenu email={account.email} name={account.name} role={account.role} />;
+    return <PublicAccountMenu email={account.email} name={account.name} role={account.role} verified={verification.data?.verified === true} />;
   }
 
   return (
     <>
-      <Link className={buttonClassName({ variant: "ghost", className: "h-10 rounded-full px-4 text-sm sm:h-11 sm:px-5 sm:text-[15px]" })} href="/login">
+      <Link className={buttonClassName({ variant: "ghost", size: "sm", className: "max-sm:px-2 max-sm:text-[11px]" })} href="/login">
         Log in
       </Link>
-      <Link className={buttonClassName({ className: "h-10 rounded-full px-5 text-sm text-white! sm:h-11 sm:px-6 sm:text-[15px]" })} href="/signup">
-        Get started
+      <Link className={buttonClassName({ size: "sm", className: "max-sm:px-2.5 max-sm:text-[11px]" })} href="/signup">
+        Sign up
       </Link>
     </>
   );

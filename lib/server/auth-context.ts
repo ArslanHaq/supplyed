@@ -9,7 +9,6 @@ export type ServerAuthContext = {
   email?: string | null;
   instructorProfileId?: string | null;
   institutionProfileId?: string | null;
-  recruiterProfileId?: string | null;
   refreshToken?: string | null;
   role?: string | null;
   userId: string;
@@ -55,7 +54,6 @@ export async function getServerAuthContext(): Promise<ServerAuthContext> {
     email: session.user.email,
     instructorProfileId: readString(token?.instructorProfileId),
     institutionProfileId: readString(token?.institutionProfileId),
-    recruiterProfileId: readString(token?.recruiterProfileId),
     refreshToken: readString(token?.refreshToken),
     role: session.user.role,
     userId: session.user.id,

@@ -10,12 +10,12 @@ export function PageHead({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 className="font-serif text-[34px] leading-tight text-ink">{title}</h1>
-        {subtitle ? <div className="mt-1 text-sm text-muted">{subtitle}</div> : null}
+    <div className="page-head">
+      <div className="min-w-0">
+        <h1 className="page-head-title">{title}</h1>
+        {subtitle ? <p className="page-head-description">{subtitle}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="page-head-actions">{actions}</div> : null}
     </div>
   );
 }

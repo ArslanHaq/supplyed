@@ -29,6 +29,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly payload?: unknown,
     readonly code?: string,
+    readonly requestId?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -202,6 +203,8 @@ async function request<Data>(
   }
 
   const payload = await parseResponse(response);
+  const requestId = response.headers.get("X-Request-Id") ||
+    (isRecord(payload) && isRecord(payload.meta) && typeof payload.meta.requestId === "string" ? payload.meta.requestId : undefined);
 
   if (!response.ok) {
     if (options.auth !== false && isBackendAuthError(response.status, payload)) {
@@ -219,6 +222,7 @@ async function request<Data>(
       response.status,
       payload,
       readErrorCode(payload),
+      requestId,
     );
   }
 

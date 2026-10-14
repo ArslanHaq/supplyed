@@ -9,6 +9,7 @@ import { validateEmail } from "@/features/auth/schemas";
 import { readVerifiedEmailSessionTicket } from "@/features/auth/session-ticket";
 import type { BackendAuthResponse } from "@/features/auth/types";
 import { readUnverifiedJwtExpiresAt, readUnverifiedJwtPayload } from "@/lib/server/jwt";
+import { cookies } from "next/headers";
 
 export const authSecret =
   process.env.AUTH_SECRET ||
@@ -48,7 +49,6 @@ function toAuthUser(response: BackendAuthResponse) {
     id: user.id,
     instructorProfileId: user.instructorProfileId,
     institutionProfileId: user.institutionProfileId,
-    recruiterProfileId: user.recruiterProfileId,
     name: user.name ?? user.email.split("@")[0],
     refreshToken: response.refreshToken,
     role: normalizeRole(user.role),
@@ -62,7 +62,6 @@ function assignBackendSession(token: Record<string, unknown>, response: BackendA
   token.appEmailVerified = response.user.emailVerified;
   token.instructorProfileId = response.user.instructorProfileId;
   token.institutionProfileId = response.user.institutionProfileId;
-  token.recruiterProfileId = response.user.recruiterProfileId;
   if (response.accessToken) token.accessToken = response.accessToken;
   if (response.refreshToken) token.refreshToken = response.refreshToken;
   if (response.accessTokenExpiresAt) token.accessTokenExpiresAt = response.accessTokenExpiresAt;
@@ -83,7 +82,6 @@ function assignBackendAuthError(token: Record<string, unknown>, provider: string
   delete token.applicationStatus;
   delete token.instructorProfileId;
   delete token.institutionProfileId;
-  delete token.recruiterProfileId;
 }
 
 function assignRefreshAuthError(token: Record<string, unknown>, message = "Your session expired. Sign in again to continue.") {
@@ -100,13 +98,39 @@ function clearBackendAuthError(token: Record<string, unknown>) {
   delete token.backendAuthErrorProvider;
 }
 
+function readJwtSubject(payload: Record<string, unknown> | undefined) {
+  return readString(payload?.sub);
+}
+
+function readJwtTokenKind(payload: Record<string, unknown> | undefined): "access" | "refresh" | undefined {
+  const rawKind =
+    readString(payload?.tokenType) ??
+    readString(payload?.token_type) ??
+    readString(payload?.tokenUse) ??
+    readString(payload?.token_use) ??
+    readString(payload?.type) ??
+    readString(payload?.typ) ??
+    readString(payload?.kind);
+  const kind = rawKind?.replace(/[\s_-]/g, "").toLowerCase();
+
+  if (kind === "access" || kind === "accesstoken") return "access";
+  if (kind === "refresh" || kind === "refreshtoken") return "refresh";
+
+  return undefined;
+}
+
+function hasUnexpectedJwtTokenKind(payload: Record<string, unknown> | undefined, expected: "access" | "refresh") {
+  const kind = readJwtTokenKind(payload);
+  return Boolean(kind && kind !== expected);
+}
+
 function canApplyBackendTokenUpdate(token: Record<string, unknown>, accessToken: string, refreshToken?: string) {
   const userId = readString(token.userId) ?? readString(token.sub);
   const accessPayload = readUnverifiedJwtPayload(accessToken);
   const refreshPayload = refreshToken ? readUnverifiedJwtPayload(refreshToken) : undefined;
 
-  if (!userId || accessPayload?.sub !== userId || accessPayload.tokenType !== "access") return false;
-  if (refreshToken && (refreshPayload?.sub !== userId || refreshPayload.tokenType !== "refresh")) return false;
+  if (!userId || readJwtSubject(accessPayload) !== userId || hasUnexpectedJwtTokenKind(accessPayload, "access")) return false;
+  if (refreshToken && (readJwtSubject(refreshPayload) !== userId || hasUnexpectedJwtTokenKind(refreshPayload, "refresh"))) return false;
 
   return true;
 }
@@ -188,7 +212,6 @@ export const {
         token.accessTokenExpiresAt = user.accessTokenExpiresAt;
         token.instructorProfileId = user.instructorProfileId;
         token.institutionProfileId = user.institutionProfileId;
-        token.recruiterProfileId = user.recruiterProfileId;
       }
 
       if (account && account.provider !== "credentials") {
@@ -201,6 +224,10 @@ export const {
         }
 
         try {
+          const cookieStore = await cookies();
+          const requestedRole = normalizeRole(cookieStore.get("supplyed_signup_role")?.value);
+          const signupRole = requestedRole === "teacher" || requestedRole === "institution" ? requestedRole : null;
+          cookieStore.delete("supplyed_signup_role");
           const response = await exchangeOAuthAccount({
             email,
             image: user?.image ?? token.picture ?? null,
@@ -209,6 +236,7 @@ export const {
             providerAccessToken: account.access_token,
             providerAccountId: account.providerAccountId,
             providerIdToken: account.id_token,
+            role: signupRole,
           });
 
           assignBackendSession(token, response);
@@ -236,8 +264,6 @@ export const {
         typeof token.instructorProfileId === "string" ? token.instructorProfileId : undefined;
       session.user.institutionProfileId =
         typeof token.institutionProfileId === "string" ? token.institutionProfileId : undefined;
-      session.user.recruiterProfileId =
-        typeof token.recruiterProfileId === "string" ? token.recruiterProfileId : undefined;
       session.user.authErrorMessage =
         typeof token.backendAuthErrorMessage === "string" ? token.backendAuthErrorMessage : undefined;
       session.user.authErrorProvider =

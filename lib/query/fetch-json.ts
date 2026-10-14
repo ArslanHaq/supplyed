@@ -29,6 +29,8 @@ export async function fetchJson<Data>(path: string, options: FetchJsonOptions = 
     const payload = await readErrorPayload(response);
     const message = readErrorMessage(payload, `Request failed with status ${response.status}`);
     const code = readErrorCode(payload);
+    const requestId = response.headers.get("X-Request-Id") ||
+      (isRecord(payload) && isRecord(payload.meta) && typeof payload.meta.requestId === "string" ? payload.meta.requestId : undefined);
 
     if (response.status === 401 || code === "SESSION_EXPIRED") {
       startRouteLoading();
@@ -37,7 +39,7 @@ export async function fetchJson<Data>(path: string, options: FetchJsonOptions = 
       });
     }
 
-    throw new Error(message);
+    throw new Error(requestId ? `${message} (Support reference: ${requestId})` : message);
   }
 
   return response.json() as Promise<Data>;

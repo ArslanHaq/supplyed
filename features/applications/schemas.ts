@@ -6,7 +6,6 @@ const APPLICATION_STATUSES: JobApplicationStatus[] = [
   "SHORTLISTED",
   "INTERVIEW",
   "HIRED",
-  "COMPLETED",
   "REJECTED",
 ];
 

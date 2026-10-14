@@ -4,6 +4,7 @@ import { siteConfig } from "@/lib/seo";
 const privateRoutes = [
   "/applications",
   "/billing",
+  "/bookings",
   "/calendar",
   "/dashboard",
   "/find-jobs",

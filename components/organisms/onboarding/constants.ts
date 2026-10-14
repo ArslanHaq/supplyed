@@ -19,22 +19,29 @@ export const initialForm: SignupForm = {
   institutionDomain: "",
   institutionProfileId: "",
   institutionRegistrationId: "",
+  institutionType: "SINGLE_SCHOOL",
   keyStages: [],
   localAuthority: "",
   maxTravelDistance: "",
   password: "",
   phone: "",
+  profileCity: "",
+  profileCountryCode: "GB",
   postcode: "",
-  recruiterProfileId: "",
   safeguardingConfirmed: false,
   schoolName: "",
   skills: [],
   staffingNeeds: "",
+  signatoryEmail: "",
+  signatoryJobTitle: "",
+  signatoryName: "",
   subjects: [],
   teacherProfileId: "",
   teachingReferenceNumber: "",
   termsAccepted: false,
   typicalPupilCount: "",
+  trustCompanyNumber: "",
+  trustName: "",
   yearsExperience: "",
 };
 
@@ -56,15 +63,7 @@ export function stepContent(role: SignupRole) {
   if (role === "teacher") {
     return [
       { label: "Teacher profile", description: "Contact details, subjects, rates, travel, and teaching style" },
-      { label: "Required documents", description: "Upload the verification documents SupplyED requires for instructors" },
-      { label: "Review", description: "Confirm your teacher profile" },
-    ];
-  }
-
-  if (role === "individual") {
-    return [
-      { label: "Your profile", description: "Create your hiring profile with basic contact details" },
-      { label: "Review", description: "Confirm your profile before opening the hiring workspace" },
+      { label: "Full review", description: "Review everything before creating the profile" },
     ];
   }
 
@@ -72,6 +71,6 @@ export function stepContent(role: SignupRole) {
     { label: "Contact details", description: "Add contact details for your verified account" },
     { label: "School details", description: "Organisation, cover needs, and authority" },
     { label: "Compliance", description: "Safeguarding contact and approval details" },
-    { label: "Review", description: "Confirm your school workspace" },
+    { label: "Full review", description: "Review everything before creating the profile" },
   ];
 }

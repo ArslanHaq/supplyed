@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { resendSignupVerification, signupAction, verifySignupEmail } from "@/app/(auth)/signup/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
 import { readAuthSessionTicketPayload } from "@/lib/auth-session-routing";
+import { nextCodeResendAvailableAt } from "@/lib/code-resend-cooldown";
 import {
   clearFoundingSignupIntent,
   type FoundingSignupType,
@@ -23,12 +24,6 @@ import { SignupAccessPage } from "./SignupAccessPage";
 import { SignupVerifyPage } from "./SignupVerifyPage";
 
 type SignupStage = "account" | "verify";
-
-function readCooldownUntil(expiresInMinutes: unknown) {
-  return typeof expiresInMinutes === "number" && Number.isFinite(expiresInMinutes) && expiresInMinutes > 0
-    ? Date.now() + expiresInMinutes * 60 * 1000
-    : undefined;
-}
 
 function socialUnavailableMessage(provider: "google" | "microsoft-entra-id") {
   return provider === "google"
@@ -79,11 +74,11 @@ function SignupRouteClientInner({
     return data;
   }
 
-  async function startVerification(email: string, password: string) {
+  async function startVerification(email: string, password: string, role: string) {
     let result: Awaited<ReturnType<typeof signupAction>>;
 
     try {
-      result = await signupAction(null, formData({ email, password }));
+      result = await signupAction(null, formData({ email, password, role }));
     } catch (error) {
       const message = readUnknownAuthErrorMessage(error, "We could not create this account.");
       showAuthError(message);
@@ -104,7 +99,7 @@ function SignupRouteClientInner({
     setSignupEmail(signupEmail);
     setVerificationToken(result.data.otpToken);
     setVerificationNotice(passwordNotice);
-    setResendAvailableAt(readCooldownUntil(result.data.expiresInMinutes));
+    setResendAvailableAt(nextCodeResendAvailableAt());
     setStage("verify");
     return { ok: true as const };
   }
@@ -204,7 +199,7 @@ function SignupRouteClientInner({
     if (!result.data.emailVerified) {
       setVerificationToken(result.data.otpToken);
       setVerificationNotice(result.message);
-      setResendAvailableAt(readCooldownUntil(result.data.expiresInMinutes));
+      setResendAvailableAt(nextCodeResendAvailableAt());
     }
 
     return { ok: true as const };
