@@ -80,6 +80,31 @@ workflow from GitHub Actions. The workflow rebuilds and force-recreates the
 container on the server so updated env values, including `FRONTEND_PORT`, are
 applied.
 
+### Docker Hub authentication failures
+
+If the image build reports `failed to fetch oauth token` with `401 Unauthorized`
+while pulling `node:24-alpine`, Docker Hub has rejected the registry
+authentication used by the server's SSH deployment user. The failure happens
+before `npm ci` runs inside the image.
+
+The dev workflow retries this authentication failure once using a temporary
+Docker configuration with anonymous access to the public Node image. It retains
+the selected Docker context and installed plugins, leaves the user's saved
+registry credentials intact, and removes the temporary configuration when the
+step exits. Other build errors stop deployment without restarting the frontend.
+
+If anonymous access also fails or encounters a pull limit, log in to Docker Hub
+on the development server as the same user configured in `DEV_SERVER_USER`:
+
+```sh
+docker login --username YOUR_DOCKER_HUB_USERNAME
+docker pull node:24-alpine
+```
+
+Enter a Docker Hub personal access token at the password prompt, then rerun
+`Dev CI/CD`. Logging in on the GitHub runner or your laptop does not update the
+server user's credentials.
+
 ## Main deployment
 
 The `main` branch compose file is ready for production, but this repository does
