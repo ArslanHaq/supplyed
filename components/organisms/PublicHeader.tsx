@@ -10,12 +10,13 @@ type PublicHeaderProps = {
 };
 
 const navItems = [
-  { id: "founding-schools", label: "For schools", href: "/founding-schools" },
-  {
-    id: "founding-teachers",
-    label: "For teachers",
-    href: "/founding-teachers",
-  },
+  // Hidden while only the waitlist is live
+  // { id: "founding-schools", label: "For schools", href: "/founding-schools" },
+  // {
+  //   id: "founding-teachers",
+  //   label: "For teachers",
+  //   href: "/founding-teachers",
+  // },
   {
     id: "how-it-works",
     label: "How it works",

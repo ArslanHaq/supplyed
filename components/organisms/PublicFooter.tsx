@@ -3,8 +3,9 @@ import Link from "next/link";
 import { Icon, Logo } from "@/components/atoms";
 
 const footerLinks = [
-  ["For schools", "/founding-schools"],
-  ["For teachers", "/founding-teachers"],
+  // Hidden while only the waitlist is live
+  // ["For schools", "/founding-schools"],
+  // ["For teachers", "/founding-teachers"],
   ["How it works", "/how-it-works"],
   ["Join the waitlist", "/#register-interest"],
 ] as const;

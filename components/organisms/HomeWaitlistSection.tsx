@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+// import Link from "next/link"; // used by the commented-out programmes section
 import { useState } from "react";
 import { buttonClassName, Icon } from "@/components/atoms";
 import { FoundingInterestForm } from "./FoundingInterestForm";
@@ -43,6 +43,7 @@ const journeys = [
     ],
   },
 ];
+/* Used by the commented-out FAQ section
 const questions = [
   [
     "What happens after I join the waitlist?",
@@ -69,6 +70,7 @@ const questions = [
     "No, not to join the waitlist. If you sign up with the first teacher cohort, SupplyED pays for your Enhanced DBS and compliance checks then.",
   ],
 ];
+*/
 
 export function HomeWaitlistSection() {
   const [audience, setAudience] = useState<"SCHOOL" | "TEACHER">("SCHOOL");
@@ -188,6 +190,7 @@ export function HomeWaitlistSection() {
             ))}
           </div>
         </section>
+        {/* Hidden for now: founding programmes, checks, FAQ and closing CTA
         <section className="waitlist-section waitlist-programmes">
           <div className="supplyed-content-wrap">
             <div className="waitlist-section-heading">
@@ -300,6 +303,7 @@ export function HomeWaitlistSection() {
             </div>
           </div>
         </section>
+        */}
       </div>
     </>
   );

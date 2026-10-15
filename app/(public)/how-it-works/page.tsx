@@ -37,12 +37,15 @@ const workflow = [
   { label: "Booking", icon: "calendar", copy: "Messages, booking notes, and next actions stay in one workspace." },
 ];
 
+// Dummy stats, hidden for now
+/*
 const metrics = [
   ["2 min", "to post urgent cover"],
   ["94%", "dummy same-day fill rate"],
   ["8.4k", "example verified teachers"],
   ["4.9", "average teacher rating"],
 ];
+*/
 
 export default function HowItWorksPage() {
   const actionHref = "/#register-interest";
@@ -76,6 +79,7 @@ export default function HowItWorksPage() {
               </div>
             </div>
 
+            {/* Dummy stats, hidden for now
             <div className="marketing-process-metrics grid grid-cols-2 gap-3">
               {metrics.map(([value, label]) => (
                 <div key={label} className="rounded-xl border border-white/10 bg-white/5 p-5">
@@ -84,6 +88,7 @@ export default function HowItWorksPage() {
                 </div>
               ))}
             </div>
+            */}
           </div>
         </section>
 

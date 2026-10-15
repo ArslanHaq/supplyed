@@ -1,9 +1,10 @@
-import Link from "next/link";
-
-import { buttonClassName, Icon, Tag } from "../atoms";
+// Old landing sections are commented out below; restore these imports with them.
+// import Link from "next/link";
+// import { buttonClassName, Icon, Tag } from "../atoms";
 import { PublicHeader } from "./PublicHeader";
 import { HomeWaitlistSection } from "./HomeWaitlistSection";
 
+/*
 const heroSignals = [
   { title: "Schools & MATs", copy: "Post staffing needs, manage compliance, and join the founding-schools programme from one verified workspace.", icon: "building" },
   { title: "Supply teachers", copy: "Create a trusted profile with availability, Enhanced DBS status, and placement history.", icon: "user" },
@@ -24,12 +25,14 @@ const pathways = [
   { tag: "Freelance briefs", title: "Long-term roles, properly staffed", icon: "calendar", steps: ["Post brief", "Receive proposals", "Hire best match"] },
   { tag: "Learner support", title: "Verified teachers for learners", icon: "users", steps: ["Create a learner request", "Review verified matches", "Message from your account"] },
 ];
+*/
 
 export function LandingPage() {
   return (
     <div className="marketing-page marketing-home">
       <PublicHeader active="home" />
       <main>
+        {/* Old landing sections, hidden for the waitlist launch page
         <section className="marketing-hero">
           <div className="supplyed-content-wrap marketing-hero-grid">
             <div className="marketing-hero-copy">
@@ -122,6 +125,7 @@ export function LandingPage() {
             </div>
           </div>
         </section>
+        */}
 
         <HomeWaitlistSection />
       </main>
