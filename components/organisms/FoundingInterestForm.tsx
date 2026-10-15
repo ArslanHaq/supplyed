@@ -313,7 +313,7 @@ function WaitlistForm({
         </Button>
         <p className="waitlist-form-privacy">
           We&apos;ll only email you about SupplyED&apos;s launch and first
-          cohort. See our <Link href="#waitlist-privacy">privacy information</Link>
+          cohort. See our <Link href="/terms#privacy">privacy information</Link>
           .
         </p>
       </fieldset>

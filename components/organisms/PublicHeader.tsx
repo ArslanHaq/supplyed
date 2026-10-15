@@ -3,7 +3,10 @@
 import Link from "next/link";
 import type { MouseEvent } from "react";
 
+import { QueryProvider } from "@/lib/query/query-client";
+
 import { Icon, Logo, buttonClassName } from "../atoms";
+import { PublicHeaderAccountSlot } from "./PublicHeaderAccountSlot";
 
 type PublicHeaderProps = {
   active?: "founding-schools" | "founding-teachers" | "home" | "how-it-works";
@@ -19,8 +22,9 @@ const navItems = [
   {
     id: "how-it-works",
     label: "How it works",
-    href: "/how-it-works",
+    href: "/#waitlist-how-it-works",
   },
+  { id: "faq", label: "FAQ", href: "/#faq" },
 ] as const;
 
 export function PublicHeader({ active = "home" }: PublicHeaderProps) {
@@ -79,6 +83,9 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
           >
             Join the waitlist
           </Link>
+          <QueryProvider>
+            <PublicHeaderAccountSlot />
+          </QueryProvider>
         </div>
         <details className="marketing-mobile-nav">
           <summary aria-label="Navigation menu">

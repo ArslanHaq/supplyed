@@ -138,8 +138,7 @@
 }
 @media (max-width: 640px) {
   .marketing-account .marketing-nav-waitlist {
-    display: inline-flex;
-    margin-right: 0;
+    display: none;
   }
   .waitlist-school-intro > p {
     font-size: 15px;

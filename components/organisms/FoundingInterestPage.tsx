@@ -90,7 +90,7 @@ const schoolContent: PageContent = {
   ),
   howItWorksSubtitle: "Registrations are reviewed in order received before we confirm places.",
   howItWorksTitle: "Three simple steps before launch.",
-  primaryCta: "Join the waitlist",
+  primaryCta: "Reserve Your School's Place",
   programmeSubtitle: "Both tiers are founding places within the cap of 20.",
   programmeTitle: "What founding schools get",
   rightCardCopy:
@@ -154,7 +154,7 @@ const teacherContent: PageContent = {
   ),
   howItWorksSubtitle: "Registering takes two minutes and costs nothing.",
   howItWorksTitle: "How joining works.",
-  primaryCta: "Join the waitlist",
+  primaryCta: "Apply for Founding Status",
   programmeSubtitle: "Founding benefits are for the first cohort only.",
   programmeTitle: "Why join before launch",
   rightCardCopy:

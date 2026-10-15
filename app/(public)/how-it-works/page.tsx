@@ -45,7 +45,7 @@ const metrics = [
 ];
 
 export default function HowItWorksPage() {
-  const actionHref = "/#register-interest";
+  const actionHref = "/signup";
 
   return (
     <div className="marketing-page marketing-how-it-works min-h-screen bg-chalk">
@@ -63,15 +63,15 @@ export default function HowItWorksPage() {
                 Schools post staffing needs, MAT schools collect trust approval, teachers build trusted profiles, and each side moves through matching, messaging, and booking.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href="/founding-schools#school-registration">
-                  Join the school waitlist
+                <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href={actionHref}>
+                  Start as school
                 </Link>
                 <Link
                   className={buttonClassName({ variant: "secondary", className: "rounded-full px-6 py-3" })}
-                  href="/founding-teachers#teacher-registration"
+                  href={actionHref}
                   style={{ background: "transparent", borderColor: "rgba(255,255,255,0.28)", color: "#fff" }}
                 >
-                  Join the teacher waitlist
+                  Start as teacher
                 </Link>
               </div>
             </div>
@@ -168,7 +168,7 @@ export default function HowItWorksPage() {
               <h2 className="mt-2 font-heading text-3xl">Create a workspace and test the full flow.</h2>
             </div>
             <Link className={buttonClassName({ className: "rounded-full px-6 py-3 text-white!" })} href={actionHref}>
-              Join the waitlist
+              Get started
             </Link>
           </div>
         </section>
