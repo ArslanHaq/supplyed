@@ -1,4 +1,6 @@
 export { Modal } from "./Modal";
+export { SelectDropdown, MultiSelectDropdown } from "./OptionDropdowns";
+export type { SelectOption } from "./OptionDropdowns";
 export { AppAccountMenu } from "./AppAccountMenu";
 export { FormattedJobDescription } from "./FormattedJobDescription";
 export { ProposalContent } from "./ProposalContent";

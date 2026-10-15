@@ -2,8 +2,11 @@ import { useMemo } from "react";
 import { City, Country, type ICity } from "country-state-city";
 
 import { Field } from "../../atoms";
+import { SelectDropdown } from "../../molecules/OptionDropdowns";
 
-const countryOptions = Country.getAllCountries().sort((first, second) => first.name.localeCompare(second.name));
+const countryOptions = Country.getAllCountries()
+  .sort((first, second) => first.name.localeCompare(second.name))
+  .map((country) => ({ label: country.name, value: country.isoCode }));
 
 function uniqueCities(cities: ICity[]) {
   const seen = new Set<string>();
@@ -16,10 +19,6 @@ function uniqueCities(cities: ICity[]) {
       return true;
     })
     .sort((first, second) => first.name.localeCompare(second.name));
-}
-
-function selectClass(error?: string) {
-  return `select${error ? " border-danger bg-danger-tint" : ""}`;
 }
 
 export function CountryCityFields({
@@ -43,37 +42,37 @@ export function CountryCityFields({
   onCityChange: (value: string) => void;
   onCountryChange: (value: string) => void;
 }) {
-  const cityOptions = useMemo(() => uniqueCities(City.getCitiesOfCountry(countryCode) ?? []), [countryCode]);
-  const currentCityInOptions = cityOptions.some((option) => option.name === city);
+  const cityOptions = useMemo(
+    () => uniqueCities(City.getCitiesOfCountry(countryCode) ?? []).map((cityOption) => cityOption.name),
+    [countryCode],
+  );
+  const currentCityInOptions = cityOptions.includes(city);
 
   return (
     <>
       <Field label="Country" error={countryError} required={countryRequired}>
-        <select className={selectClass(countryError)} onChange={(event) => onCountryChange(event.target.value)} value={countryCode}>
-          <option value="">Select country</option>
-          {countryOptions.map((country) => (
-            <option key={country.isoCode} value={country.isoCode}>
-              {country.name}
-            </option>
-          ))}
-        </select>
+        <SelectDropdown
+          className={countryError ? "border-danger bg-danger-tint" : undefined}
+          error={Boolean(countryError)}
+          onChange={onCountryChange}
+          options={countryOptions}
+          placeholder="Select country"
+          searchable
+          value={countryCode}
+        />
       </Field>
       <Field label="City" htmlFor={cityId} error={cityError} required={cityRequired}>
-        <select
-          id={cityId}
-          className={selectClass(cityError)}
+        <SelectDropdown
+          className={cityError ? "border-danger bg-danger-tint" : undefined}
           disabled={!countryCode}
-          onChange={(event) => onCityChange(event.target.value)}
+          error={Boolean(cityError)}
+          id={cityId}
+          onChange={onCityChange}
+          options={city && !currentCityInOptions ? [city, ...cityOptions] : cityOptions}
+          placeholder={countryCode ? "Select city" : "Select country first"}
+          searchable
           value={city}
-        >
-          <option value="">{countryCode ? "Select city" : "Select country first"}</option>
-          {city && !currentCityInOptions ? <option value={city}>{city}</option> : null}
-          {cityOptions.map((cityOption) => (
-            <option key={cityOption.name} value={cityOption.name}>
-              {cityOption.name}
-            </option>
-          ))}
-        </select>
+        />
       </Field>
     </>
   );

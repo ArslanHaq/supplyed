@@ -1,7 +1,7 @@
 import { Field } from "../../../atoms";
 import { CountryCityFields } from "../CountryCityFields";
 import { PostcodeLookup } from "../../../molecules";
-import { MultiSelectDropdown } from "../../../molecules/OptionDropdowns";
+import { MultiSelectDropdown, SelectDropdown } from "../../../molecules/OptionDropdowns";
 import { coverTypes } from "../constants";
 import type { StepComponentProps } from "../step-types";
 import { fieldClass } from "../utils";
@@ -12,12 +12,17 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
   return (
     <div className="space-y-6">
       <Field label="School type" htmlFor="institution-type" error={errors.institutionType} required>
-        <select
+        <SelectDropdown
           id="institution-type"
-          className={fieldClass(errors.institutionType)}
+          className={errors.institutionType ? "border-danger bg-danger-tint" : undefined}
+          error={Boolean(errors.institutionType)}
+          options={[
+            { label: "Single school", value: "SINGLE_SCHOOL" },
+            { label: "Part of a multi-academy trust", value: "MAT_SCHOOL" },
+          ]}
           value={form.institutionType}
-          onChange={(event) => {
-            const value = event.target.value === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL";
+          onChange={(selected) => {
+            const value = selected === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL";
             updateField("institutionType", value);
             if (value === "SINGLE_SCHOOL") {
               updateField("trustName", "");
@@ -27,10 +32,7 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
               updateField("signatoryJobTitle", "");
             }
           }}
-        >
-          <option value="SINGLE_SCHOOL">Single school</option>
-          <option value="MAT_SCHOOL">Part of a multi-academy trust</option>
-        </select>
+        />
       </Field>
 
       {form.institutionType === "MAT_SCHOOL" ? (

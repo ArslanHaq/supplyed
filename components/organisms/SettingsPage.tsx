@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { City, Country, type ICity } from "country-state-city";
+import { useEffect, useState } from "react";
 
 import { usePhoneVerificationPending } from "@/features/auth/use-phone-verification";
 import { useSettingsProfile, useUpdateSettings, useUploadSettingsProfileImage } from "@/features/settings/use-settings";
@@ -17,6 +16,7 @@ import type { AppRole, ApplicationStatus, RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, Checkbox, Field, Icon, Tag } from "../atoms";
 import { PageHead, PostcodeLookup, SectionLoader } from "../molecules";
 import { NotificationSettings } from "./NotificationSettings";
+import { CountryCityFields } from "./onboarding/CountryCityFields";
 import { PayoutSettings } from "./PayoutSettings";
 import { PhoneVerification } from "../molecules/PhoneVerification";
 
@@ -61,7 +61,6 @@ function profileImageUrlForRole(form: SettingsForm, role: AppRole | null | undef
 
   return "";
 }
-const countryOptions = Country.getAllCountries().sort((first, second) => first.name.localeCompare(second.name));
 
 const emptyInstructor: SettingsInstructorUpdateInput = {
   address: "",
@@ -109,19 +108,6 @@ function arrayToText(values: string[]) {
 
 function textToArray(value: string) {
   return Array.from(new Set(value.split(",").map((item) => item.trim()).filter(Boolean)));
-}
-
-function uniqueCities(cities: ICity[]) {
-  const seen = new Set<string>();
-
-  return cities
-    .filter((city) => {
-      const key = city.name.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((first, second) => first.name.localeCompare(second.name));
 }
 
 function roleLabel(role: AppRole | null | undefined) {
@@ -289,55 +275,6 @@ function ProfileImageField({
     </div>
   );
 }
-function CountryCityFields({
-  city,
-  cityError,
-  cityRequired,
-  countryCode,
-  countryError,
-  countryRequired,
-  onCityChange,
-  onCountryChange,
-}: {
-  city: string;
-  cityError?: string;
-  cityRequired?: boolean;
-  countryCode: string;
-  countryError?: string;
-  countryRequired?: boolean;
-  onCityChange: (value: string) => void;
-  onCountryChange: (value: string) => void;
-}) {
-  const cityOptions = useMemo(() => uniqueCities(City.getCitiesOfCountry(countryCode) ?? []), [countryCode]);
-  const currentCityInOptions = cityOptions.some((option) => option.name === city);
-
-  return (
-    <>
-      <Field error={countryError} label="Country" required={countryRequired}>
-        <select className="select" onChange={(event) => onCountryChange(event.target.value)} value={countryCode}>
-          <option value="">Select country</option>
-          {countryOptions.map((country) => (
-            <option key={country.isoCode} value={country.isoCode}>
-              {country.name}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field error={cityError} label="City" required={cityRequired}>
-        <select className="select" disabled={!countryCode} onChange={(event) => onCityChange(event.target.value)} value={city}>
-          <option value="">{countryCode ? "Select city" : "Select country first"}</option>
-          {city && !currentCityInOptions ? <option value={city}>{city}</option> : null}
-          {cityOptions.map((cityOption) => (
-            <option key={cityOption.name} value={cityOption.name}>
-              {cityOption.name}
-            </option>
-          ))}
-        </select>
-      </Field>
-    </>
-  );
-}
-
 export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "go" | "state" | "toast"> & { verified: boolean }) {
   const profileQuery = useSettingsProfile();
   const phoneVerificationPending = usePhoneVerificationPending();

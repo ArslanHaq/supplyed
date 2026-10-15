@@ -5,7 +5,7 @@ import { useTeacherDirectory } from "@/features/teachers/use-teachers";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Checkbox, Field, Icon, Stars, Tag, VerifyBadge } from "../atoms";
-import { PageHead, SectionLoader } from "../molecules";
+import { PageHead, SectionLoader, SelectDropdown } from "../molecules";
 
 const PAGE_SIZE = 12;
 const stageOptions = ["", "KS1", "KS2", "KS3", "KS4", "KS5"];
@@ -112,9 +112,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
               <input className="input" onChange={(event) => update("subject", event.target.value)} placeholder="e.g. Mathematics" value={draft.subject} />
             </Field>
             <Field label="Key stage">
-              <select className="select" onChange={(event) => update("keyStage", event.target.value)} value={draft.keyStage}>
-                {stageOptions.map((stage) => <option key={stage || "all"} value={stage}>{stage || "All key stages"}</option>)}
-              </select>
+              <SelectDropdown onChange={(value) => update("keyStage", value)} options={stageOptions.map((stage) => ({ label: stage || "All key stages", value: stage }))} placeholder="All key stages" value={draft.keyStage} />
             </Field>
             <Field label="Skill">
               <input className="input" onChange={(event) => update("skill", event.target.value)} placeholder="e.g. SEN" value={draft.skill} />
@@ -126,12 +124,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
               <input className="input" min={0} onChange={(event) => update("minExperience", event.target.value)} placeholder="Years" type="number" value={draft.minExperience} />
             </Field>
             <Field label="Minimum rating">
-              <select className="select" onChange={(event) => update("minRating", event.target.value)} value={draft.minRating}>
-                <option value="">Any rating</option>
-                <option value="3">3+ stars</option>
-                <option value="4">4+ stars</option>
-                <option value="4.5">4.5+ stars</option>
-              </select>
+              <SelectDropdown onChange={(value) => update("minRating", value)} options={[{ label: "Any rating", value: "" }, { label: "3+ stars", value: "3" }, { label: "4+ stars", value: "4" }, { label: "4.5+ stars", value: "4.5" }]} placeholder="Any rating" value={draft.minRating} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Max hourly rate">

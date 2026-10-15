@@ -14,7 +14,7 @@ import type { Invoice, PayableInvoice } from "@/features/payments/types";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, buttonClassName, Icon, Tag } from "../atoms";
-import { Modal, PageHead, SectionLoader } from "../molecules";
+import { Modal, PageHead, SectionLoader, SelectDropdown } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { PayInvoiceModal } from "./PayInvoiceModal";
 
@@ -171,12 +171,7 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
             </label>
             <label className="block text-xs font-semibold text-graphite">
               Invoice
-              <select className="select mt-2" value={filterDraft.invoice ?? ""} onChange={(event) => setFilterDraft((current) => ({ ...current, invoice: (event.target.value || undefined) as BookingInvoiceFilter | undefined }))}>
-                <option value="">Any invoice state</option>
-                <option value="none">No invoice</option>
-                <option value="unpaid">Unpaid</option>
-                <option value="paid">Paid</option>
-              </select>
+              <SelectDropdown aria-label="Invoice" className="mt-2" id="booking-invoice-filter" options={[{ label: "Any invoice state", value: "" }, { label: "No invoice", value: "none" }, { label: "Unpaid", value: "unpaid" }, { label: "Paid", value: "paid" }]} placeholder="Any invoice state" value={filterDraft.invoice ?? ""} onChange={(value) => setFilterDraft((current) => ({ ...current, invoice: (value || undefined) as BookingInvoiceFilter | undefined }))} />
             </label>
           </div>
           {filterError ? <p className="mt-3 text-sm font-medium text-danger" role="alert">{filterError}</p> : null}

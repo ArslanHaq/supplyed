@@ -56,6 +56,7 @@
   --purple: #7c3aed;
   --purple-tint: #f5f3ff;
   --radius-sm: 6px;
+  --radius-check: 4px;
   --radius: 10px;
   --radius-lg: 12px;
   --radius-xl: 18px;
@@ -2199,4 +2200,23 @@ button.card:hover {
   .proposal-editor .ql-editor {
     min-height: 220px;
   }
+}
+
+/* Quill's pickers highlight in a fixed blue from unlayered CSS; follow the brand theme instead. */
+:is(.proposal-editor, .role-description-editor) .ql-toolbar.ql-snow :is(.ql-picker-label:hover, .ql-picker-label.ql-active, .ql-picker-item:hover, .ql-picker-item.ql-selected) {
+  color: var(--se-dark);
+}
+
+:is(.proposal-editor, .role-description-editor) .ql-toolbar.ql-snow :is(.ql-picker-label:hover, .ql-picker-label.ql-active) .ql-stroke {
+  stroke: var(--se-dark);
+}
+
+:is(.proposal-editor, .role-description-editor) .ql-toolbar.ql-snow .ql-picker.ql-expanded .ql-picker-label {
+  border-color: var(--se);
+  color: var(--se-dark);
+}
+
+:is(.proposal-editor, .role-description-editor) .ql-toolbar.ql-snow .ql-picker:not(.ql-color-picker) .ql-picker-item:is(:hover, .ql-selected) {
+  border-radius: 5px;
+  background: var(--se-tint);
 }

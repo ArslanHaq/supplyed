@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Button, Field, Icon } from "@/components/atoms";
+import { SelectDropdown } from "@/components/molecules/OptionDropdowns";
 import {
   type FoundingInterestActionState,
   type WaitlistField,
@@ -120,24 +121,17 @@ function WaitlistForm({
         error={errors?.[name]}
         required
       >
-        <select
-          aria-invalid={Boolean(errors?.[name])}
-          className="select"
+        <SelectDropdown
+          error={Boolean(errors?.[name])}
           id={fieldId(name)}
           name={name}
-          onChange={(e) =>
-            setValues((current) => ({ ...current, [name]: e.target.value }))
+          onChange={(value) =>
+            setValues((current) => ({ ...current, [name]: value }))
           }
+          options={options}
           required
           value={values[name] ?? ""}
-        >
-          <option value="">Select an option</option>
-          {options.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
+        />
       </Field>
     );
   }
