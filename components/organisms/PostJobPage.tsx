@@ -338,15 +338,14 @@ function PostJobEditor({
               </Field>
             </div>
           </div>
-          {form.payType === "hourly" ? <HourlyWorkSchedule startDate={form.startDate} endDate={form.endDate} errors={errors} minDate={earliestWorkStart.slice(0, 10)} onChange={updateForm} /> : <>
-          <Field error={errors.startDate} hint="When the teacher starts work, in UK local time. Must be after Live from, with the listing closed by this time." label="Work start">
-            <input className="input" min={earliestWorkStart} type="datetime-local" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
-          </Field>
-          <Field error={errors.endDate} hint="UK local time. Must be on or after the work start." label="Work end">
-            <input className="input" min={form.startDate > earliestWorkStart ? form.startDate : earliestWorkStart} type="datetime-local" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
-          </Field>
-          </>}
-          <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[220px_minmax(0,1fr)]">
+            <Field label="Pay basis">
+              <DynamicSelect
+                collection="payType"
+                value={form.payType}
+                onChange={(value) => updateForm("payType", value as JobFormState["payType"])}
+              />
+            </Field>
             <Field error={errors.payAmount} label="Pay amount (£)">
               <input
                 className="input"
@@ -357,15 +356,22 @@ function PostJobEditor({
                 onChange={(event) => updateForm("payAmount", event.target.value)}
               />
             </Field>
-            <Field label="Pay basis">
-              <DynamicSelect
-                collection="payType"
-                value={form.payType}
-                onChange={(value) => updateForm("payType", value as JobFormState["payType"])}
-              />
-            </Field>
           </div>
-          <div className="md:col-span-2"><PlannedWorkUnitsField payType={form.payType} hours={form.hours} days={form.days} errors={errors} onChange={updateForm} /></div>
+          {form.payType === "hourly" ? <HourlyWorkSchedule startDate={form.startDate} endDate={form.endDate} errors={errors} minDate={earliestWorkStart.slice(0, 10)} onChange={updateForm} /> : <>
+          <Field error={errors.startDate} hint="When the teacher starts work, in UK local time. Must be after Live from, with the listing closed by this time." label="Work start">
+            <input className="input" min={earliestWorkStart} type="datetime-local" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
+          </Field>
+          <Field error={errors.endDate} hint="UK local time. Must be on or after the work start." label="Work end">
+            <input className="input" min={form.startDate > earliestWorkStart ? form.startDate : earliestWorkStart} type="datetime-local" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
+          </Field>
+          </>}
+          {form.payType === "hourly" || form.payType === "daily" ? <div className="md:col-span-2"><PlannedWorkUnitsField payType={form.payType} hours={form.hours} days={form.days} errors={errors} onChange={updateForm} /></div> : null}
+          <Field error={errors.liveFrom} hint="Teachers can see and apply for the published job from midnight on this UK date. Leave blank to open when published. Must be before Work start." label="Live from">
+            <input className="input" min={todayDate} max={form.startDate ? (form.startDate.endsWith("T00:00") ? shiftCalendarDay(form.startDate, -1) : form.startDate.slice(0, 10)) : undefined} type="date" value={form.liveFrom} onChange={(event) => updateForm("liveFrom", event.target.value)} />
+          </Field>
+          <Field error={errors.expiresAt} hint={editingJob?.expiresAt ? `Applications currently close ${formatUkListingInstant(editingJob.expiresAt)}. Choose a replacement date to keep applications open through that UK day. The final listing day must be before work starts.` : "Optional. Teachers can apply through this entire UK date, then the listing closes. Choose a final listing day before work starts."} label="Listing expiry">
+            <input className="input" min={form.liveFrom > todayDate ? form.liveFrom : todayDate} max={latestListingDay} type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
+          </Field>
           <Field error={errors.minExperienceYears} label="Minimum experience (years)">
             <input
               className="input"
@@ -405,12 +411,6 @@ function PostJobEditor({
               value={form.keyStages}
               onChange={(value) => updateForm("keyStages", value)}
             />
-          </Field>
-          <Field error={errors.liveFrom} hint="Teachers can see and apply for the published job from midnight on this UK date. Leave blank to open when published. Must be before Work start." label="Live from">
-            <input className="input" min={todayDate} max={form.startDate ? (form.startDate.endsWith("T00:00") ? shiftCalendarDay(form.startDate, -1) : form.startDate.slice(0, 10)) : undefined} type="date" value={form.liveFrom} onChange={(event) => updateForm("liveFrom", event.target.value)} />
-          </Field>
-          <Field error={errors.expiresAt} hint={editingJob?.expiresAt ? `Applications currently close ${formatUkListingInstant(editingJob.expiresAt)}. Choose a replacement date to keep applications open through that UK day. The final listing day must be before work starts.` : "Optional. Teachers can apply through this entire UK date, then the listing closes. Choose a final listing day before work starts."} label="Listing expiry">
-            <input className="input" min={form.liveFrom > todayDate ? form.liveFrom : todayDate} max={latestListingDay} type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
           </Field>
         </div>
         <Field error={errors.parkingInfo} label="Parking / arrival notes">
@@ -583,9 +583,9 @@ function PostJobEditor({
 
 function validateStep(step: number, form: JobFormState): JobFormErrors {
   if (step === 2) {
-    return pickErrors(validateAll(form), ["address", "city", "countryCode", "county", "description", "endDate", "minExperienceYears", "payAmount", "hours", "days", "postalCode", "requiredSkills", "startDate", "subjects", "otherSubjects", "otherSkills", "title"]);
+    return pickErrors(validateAll(form), ["address", "city", "countryCode", "county", "description", "endDate", "liveFrom", "expiresAt", "minExperienceYears", "payAmount", "hours", "days", "postalCode", "requiredSkills", "startDate", "subjects", "otherSubjects", "otherSkills", "title"]);
   }
-  if (step === 3) return pickErrors(validateAll(form), ["expiresAt", "liveFrom", "parkingInfo", "keyStages"]);
+  if (step === 3) return pickErrors(validateAll(form), ["parkingInfo", "keyStages"]);
   return {};
 }
 
@@ -674,8 +674,8 @@ function pickErrors(errors: JobFormErrors, keys: Array<keyof JobFormState>) {
 }
 
 function firstInvalidStep(errors: JobFormErrors) {
-  if (errors.title || errors.address || errors.city || errors.countryCode || errors.county || errors.subjects || errors.otherSubjects || errors.otherSkills || errors.startDate || errors.endDate || errors.payAmount || errors.hours || errors.days || errors.minExperienceYears || errors.postalCode || errors.description || errors.requiredSkills) return 2;
-  if (errors.expiresAt || errors.liveFrom || errors.parkingInfo || errors.keyStages) return 3;
+  if (errors.title || errors.address || errors.city || errors.countryCode || errors.county || errors.subjects || errors.otherSubjects || errors.otherSkills || errors.startDate || errors.endDate || errors.liveFrom || errors.expiresAt || errors.payAmount || errors.hours || errors.days || errors.minExperienceYears || errors.postalCode || errors.description || errors.requiredSkills) return 2;
+  if (errors.parkingInfo || errors.keyStages) return 3;
   return 4;
 }
 
