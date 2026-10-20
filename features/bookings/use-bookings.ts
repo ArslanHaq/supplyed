@@ -6,7 +6,11 @@ import { fetchJson } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
 
 import { createBookingReviewAction, updateBookingStatusAction } from "./actions";
-import type { BookingListQuery, BookingReviewInput, BookingStatusUpdateInput, PaginatedBookings } from "./types";
+import type { Booking, BookingListQuery, BookingReviewInput, BookingStatusUpdateInput, PaginatedBookings } from "./types";
+
+export function useBooking(id?: string) {
+  return useQuery({ enabled: Boolean(id), queryKey: queryKeys.bookings.detail(id ?? ""), queryFn: () => fetchJson<Booking>(`/api/bookings/${id}`), refetchOnMount: "always" });
+}
 
 type BookingActionResult = Awaited<ReturnType<typeof updateBookingStatusAction>>;
 type ReviewActionResult = Awaited<ReturnType<typeof createBookingReviewAction>>;
@@ -16,8 +20,9 @@ type MutationOptions<Result> = {
   onSuccess?: (result: Result) => void | Promise<void>;
 };
 
-export function useBookings(query: BookingListQuery = {}) {
+export function useBookings(query: BookingListQuery = {}, enabled = true) {
   return useQuery({
+    enabled,
     queryFn: () => fetchJson<PaginatedBookings>("/api/bookings/me", { query }),
     queryKey: queryKeys.bookings.mine(query),
     refetchOnMount: "always",
@@ -33,7 +38,10 @@ export function useUpdateBookingStatus(options: MutationOptions<BookingActionRes
     mutationFn: (input: BookingStatusUpdateInput) => updateBookingStatusAction(input),
     onError: options.onError,
     onSuccess: async (result) => {
-      if (result.ok) await queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all });
+      if (result.ok) await Promise.all(
+        [queryKeys.bookings.all, queryKeys.teachers.all, queryKeys.publicProfiles.all]
+          .map(queryKey => queryClient.invalidateQueries({ queryKey })),
+      );
       await options.onSuccess?.(result);
     },
   });

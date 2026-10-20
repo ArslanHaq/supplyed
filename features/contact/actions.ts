@@ -6,7 +6,6 @@ import {
   type ActionResult,
 } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
-import { foundingSchoolRoles } from "./founding-interest-options";
 import { validateWaitlist, validateWaitlistDetails } from "./validation";
 import { validateUkPhone, validateUkPostcode } from "@/lib/uk-validation";
 
@@ -54,9 +53,6 @@ function read(form: FormData, key: string) {
 function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
-function includes(options: readonly string[], value: string) {
-  return options.includes(value);
-}
 function apiMessage(error: unknown) {
   return error instanceof ApiError && error.status !== 503
     ? error.message
@@ -81,18 +77,7 @@ export async function registerInterestAction(
       "Enter the school or trust name (2–120 characters).";
   if (!validEmail(input.email) || input.email.length > 254)
     fieldErrors.email = "Use a valid work email address.";
-  if (
-    !includes(
-      [
-        ...foundingSchoolRoles,
-        "Deputy Head",
-        "Cover Manager",
-        "HR Lead",
-        "MAT / Trust Lead",
-      ],
-      input.role,
-    )
-  )
+  if (!input.role || input.role.length > 100)
     fieldErrors.role = "Choose your role.";
   if (Object.keys(fieldErrors).length)
     return actionError("Check the highlighted fields.", { fieldErrors });
@@ -107,7 +92,7 @@ export async function registerInterestAction(
       "Thanks. We received your interest and will contact you before launch.",
     );
   } catch (error) {
-    return actionError(apiMessage(error));
+    return actionError(apiMessage(error), { code: error instanceof ApiError ? error.code : undefined });
   }
 }
 
@@ -167,7 +152,7 @@ export async function foundingInterestAction(
         : "You're on the waitlist. No checks, no commitment.",
     );
   } catch (error) {
-    return actionError(apiMessage(error));
+    return actionError(apiMessage(error), { code: error instanceof ApiError ? error.code : undefined });
   }
 }
 
@@ -204,6 +189,6 @@ export async function saveWaitlistDetailsAction(
       "Your extra details have been saved. Thank you!",
     );
   } catch (error) {
-    return actionError(apiMessage(error));
+    return actionError(apiMessage(error), { code: error instanceof ApiError ? error.code : undefined });
   }
 }

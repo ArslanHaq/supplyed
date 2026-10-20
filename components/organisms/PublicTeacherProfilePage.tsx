@@ -7,8 +7,10 @@ import type { RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, Icon, Tag, VerifyBadge } from "../atoms";
 import { PageHead, SectionLoader } from "../molecules";
 import { ProfileReviewsPanel, RatingStars } from "./ProfileReviewsPanel";
+import { TeacherHireActions } from "./TeacherHireActions";
+import { TeacherBookingDates } from "../molecules/TeacherBookingDates";
 
-export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
+export function PublicTeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ctx" | "go" | "role">) {
   const profileQuery = useInstructorPublicProfile(ctx.teacherId);
   const reviewsQuery = useInstructorReviews(ctx.teacherId);
   const profile = profileQuery.data;
@@ -21,7 +23,7 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
 
   return (
     <div className="app-page profile-page teacher-public-profile">
-      <PageHead title="Teacher profile" subtitle="Experience, credentials and verified booking feedback" actions={<Btn icon="arrowLeft" variant="secondary" onClick={() => go("applications")}>Back to applications</Btn>} />
+      <PageHead title="Teacher profile" subtitle="Experience, credentials and verified booking feedback" actions={<Btn icon="arrowLeft" variant="secondary" onClick={() => go(role === "institution" && !ctx.applicationId ? "find-teachers" : "applications")}>{role === "institution" && !ctx.applicationId ? "Back to teachers" : "Back to applications"}</Btn>} />
 
       <section className="profile-hero relative mb-6 overflow-hidden border">
         <div aria-hidden="true" className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-brand/10 blur-3xl" />
@@ -37,6 +39,7 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
                 {profile.dbsVerified ? <VerifyBadge /> : null}
               </div>
               <h1 className="font-heading text-3xl font-semibold leading-tight text-ink sm:text-[40px]">{profile.fullName}</h1>
+              {role === "institution" ? <TeacherHireActions go={go} jobId={ctx.jobId} teacher={{ id: ctx.teacherId, fullName: profile.fullName, imageUrl: profile.imageUrl }} /> : null}
               <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate">
                 <span className="flex items-center gap-1.5"><Icon className="text-brand" name="pin" size={15} />{location}</span>
                 {profile.memberSince ? <span className="flex items-center gap-1.5"><Icon className="text-brand" name="calendar" size={15} />Member since {formatMonth(profile.memberSince)}</span> : null}
@@ -86,6 +89,7 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
             <ProfileFact icon="clock" label="Hourly rate" value={formatMoney(profile.hourlyRate, profile.currency, "hour")} />
             <ProfileFact icon="shield" label="DBS status" value={profile.dbsVerified ? "Verified" : "Not verified"} tone={profile.dbsVerified ? "success" : undefined} />
             <ProfileFact icon="pin" label="Location" value={location} />
+            {role === "institution" ? <TeacherBookingDates bookings={profile.bookings} /> : null}
           </div>
           <div className="border-t border-border bg-success-tint p-5">
             <div className="flex gap-3"><Icon className="mt-0.5 text-success" name="shield" size={20} /><div><div className="text-sm font-semibold text-ink">Trust and transparency</div><p className="mt-1 text-xs leading-5 text-slate">Reviews shown here come from completed bookings on SupplyEd.</p></div></div>

@@ -5,14 +5,16 @@ import { getOnboardingProfileSnapshot } from "@/features/onboarding/actions";
 import { profileEntryStatus } from "@/features/onboarding/profile-progress";
 import { PostAuthRedirectClient } from "@/components/organisms/PostAuthRedirectClient";
 import { noIndexMetadata } from "@/lib/seo";
+import { invitationLoginHref, invitationReturnPath } from "@/lib/invitation-links";
 
 export const metadata = noIndexMetadata("Preparing account");
 
-export default async function PostAuthPage() {
+export default async function PostAuthPage({ searchParams }: { searchParams: Promise<{ returnTo?: string }> }) {
   const session = await auth();
+  const returnTo = invitationReturnPath((await searchParams).returnTo);
 
   if (!session?.user) {
-    redirect("/login");
+    redirect(invitationLoginHref(returnTo));
   }
 
   const snapshot = process.env.API_BASE_URL && session.user.role !== "admin" && session.user.isEmailVerified && !session.user.authErrorMessage

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
+import { hasRichTextMarkup, isEmptyRichText } from "@/features/applications/rich-text";
+import { ProposalContent } from "./ProposalContent";
 
 type DescriptionBlock =
   | { text: string; type: "heading" }
@@ -85,9 +87,12 @@ export function FormattedJobDescription({
   description: string;
   emptyText?: string;
 }) {
+  if (hasRichTextMarkup(description) && !isEmptyRichText(description)) {
+    return <ProposalContent className={className} value={description} />;
+  }
   const blocks = parseDescription(description.trim());
 
-  if (blocks.length === 0) {
+  if (blocks.length === 0 || isEmptyRichText(description)) {
     return <p className={cn("text-sm leading-6 text-muted", className)}>{emptyText}</p>;
   }
 

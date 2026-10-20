@@ -8,7 +8,7 @@ import { queryKeys } from "@/lib/query/keys";
 import { startRouteLoading } from "@/lib/navigation-loading";
 
 import { createApplicationAction, updateApplicationStatusAction } from "./actions";
-import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplication, JobApplicationsQuery, PaginatedApplications } from "./types";
+import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplication, JobApplicationsQuery, PaginatedApplicationHistory, PaginatedApplications } from "./types";
 
 type CreateApplicationResult = Awaited<ReturnType<typeof createApplicationAction>>;
 
@@ -33,8 +33,17 @@ export function useApplication(applicationId: string | undefined) {
   });
 }
 
-export function useMyApplications(query: JobApplicationsQuery = {}) {
+export function useApplicationHistory(applicationId: string | undefined) {
   return useQuery({
+    enabled: Boolean(applicationId),
+    queryFn: () => fetchJson<PaginatedApplicationHistory>(`/api/applications/${applicationId}/history`, { query: { page: 1, limit: 100 } }),
+    queryKey: queryKeys.applications.history(applicationId ?? ""),
+  });
+}
+
+export function useMyApplications(query: JobApplicationsQuery = {}, enabled = true) {
+  return useQuery({
+    enabled,
     queryFn: () => fetchJson<PaginatedApplications>("/api/applications/me", { query }),
     queryKey: queryKeys.applications.mine(query),
   });
@@ -58,9 +67,22 @@ export function useUpdateApplicationStatus(options: UseCreateApplicationOptions 
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
           ...(result.data.status === "HIRED" ? [
+            queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.publicProfiles.all }),
             queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
             queryClient.invalidateQueries({ queryKey: queryKeys.payments.all }),
           ] : []),
+        ]);
+      } else if (result.status === 409 || result.status === 400) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.publicProfiles.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
         ]);
       }
       await options.onSuccess?.(result);
@@ -84,7 +106,10 @@ export function useCreateApplication(options: UseCreateApplicationOptions = {}) 
       }
 
       if (result.ok) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
+        ]);
       }
 
       await options.onSuccess?.(result);

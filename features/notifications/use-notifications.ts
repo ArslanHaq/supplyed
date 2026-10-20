@@ -14,12 +14,28 @@ import type {
   NotificationCountPayload,
   NotificationEventPayload,
   NotificationPreferences,
+  NotificationType,
   NotificationsPage,
 } from "./types";
 
 type ListData = InfiniteData<NotificationsPage, number>;
 
 const PAGE_SIZE = 15;
+
+/** Refresh the same query families used by workspace pages and their dashboard summaries. */
+const NOTIFICATION_QUERY_KEYS: Record<NotificationType, readonly (readonly string[])[]> = {
+  APPLICATION_RECEIVED: [queryKeys.applications.all],
+  APPLICATION_STATUS: [queryKeys.applications.all, queryKeys.bookings.all, queryKeys.matching.all, queryKeys.jobs.all, queryKeys.conversations.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
+  BOOKING_CANCELLED: [queryKeys.bookings.all, queryKeys.matching.all, queryKeys.payments.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
+  BOOKING_COMPLETED: [queryKeys.bookings.all, queryKeys.matching.all, queryKeys.payments.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
+  BOOKING_CONFIRMED: [queryKeys.bookings.all, queryKeys.applications.all, queryKeys.matching.all, queryKeys.jobs.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
+  INVOICE_PAID: [queryKeys.payments.all, queryKeys.bookings.all],
+  JOB_MATCH: [queryKeys.matching.all, queryKeys.jobs.all],
+  JOB_INVITATION: [queryKeys.invitations.all, queryKeys.jobs.all, queryKeys.bookings.all, queryKeys.applications.all, queryKeys.matching.all],
+  JOB_INVITATION_STATUS: [queryKeys.invitations.all, queryKeys.jobs.all, queryKeys.bookings.all, queryKeys.applications.all, queryKeys.matching.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
+  PROFILE_STATUS: [queryKeys.auth.all, queryKeys.onboarding.all, queryKeys.settings.all, queryKeys.publicProfiles.all, queryKeys.matching.all],
+  REVIEW_RECEIVED: [queryKeys.settings.all, queryKeys.reviews.all, queryKeys.publicProfiles.all, queryKeys.bookings.all, queryKeys.teachers.all, queryKeys.matching.all],
+};
 
 /** The inbox, a page at a time, newest first. Fetched when the bell opens. */
 export function useNotifications(enabled: boolean) {
@@ -178,8 +194,8 @@ export function useNotificationStream(enabled: boolean, onOpen: (link: string) =
           .slice(0, data.pagination.limit);
         return { ...data, notifications, unreadCount: payload.unreadCount };
       });
-      if (notification.type === "APPLICATION_RECEIVED") {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
+      for (const queryKey of NOTIFICATION_QUERY_KEYS[notification.type] ?? []) {
+        void queryClient.invalidateQueries({ queryKey });
       }
       showDesktopAlert(notification, (link) => openRef.current(link));
     };
@@ -194,7 +210,11 @@ export function useNotificationStream(enabled: boolean, onOpen: (link: string) =
     // After a reconnect, anything missed while offline is fetched again.
     const onReady = () => {
       connections += 1;
-      if (connections > 1) void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+      if (connections > 1) {
+        const keys = new Map([queryKeys.notifications.all, ...Object.values(NOTIFICATION_QUERY_KEYS).flat()]
+          .map((key) => [key[0], key]));
+        for (const queryKey of keys.values()) void queryClient.invalidateQueries({ queryKey });
+      }
     };
 
     socket?.on("notification", onNotification);

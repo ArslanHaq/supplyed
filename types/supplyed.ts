@@ -1,12 +1,12 @@
 import type { Dispatch, SetStateAction } from "react";
 
 export type Tone = "" | "purple" | "amber" | "green";
-export type ApplicationStage = "applied" | "shortlisted" | "interview" | "hired";
+export type ApplicationStage = "applied" | "shortlisted" | "hired";
 export type MessageAuthor = "me" | "them";
 export type AppRole = "admin" | "institution" | "teacher";
 export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
 export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
-export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED";
+export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED" | "SUSPENDED";
 export type JobPayType = "daily" | "fixed" | "hourly";
 
 export type AppPage =
@@ -14,11 +14,13 @@ export type AppPage =
   | "post-job"
   | "applications"
   | "bookings"
+  | "job-invitations"
   | "find-teachers"
   | "find-jobs"
   | "job-detail"
   | "teacher-profile"
   | "institution-profile"
+  | "my-profile"
   | "messaging"
   | "calendar"
   | "settings"
@@ -62,9 +64,12 @@ export type Job = {
   endDate?: string | null;
   keyStages?: string[];
   parkingInfo?: string | null;
+  hours?: number | null;
+  days?: number | null;
   payAmount?: number | null;
   payType?: JobPayType | string | null;
   status?: JobStatus;
+  liveFrom?: string | null;
   expiresAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -75,6 +80,7 @@ export type Job = {
   urgent: boolean;
   keyStage: string;
   subject: string;
+  subjects?: string[];
   mode: "instant" | "brief";
   postedAt: string;
   matchScore?: number;
@@ -101,6 +107,9 @@ export type Message = {
 };
 
 export type RouteContext = {
+  invitationId?: string;
+  bookingId?: string;
+  conversationId?: string;
   applicationId?: string;
   institutionId?: string;
   jobId?: string;

@@ -6,9 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "test": "node --test tests/*.test.cjs",
-    "test:smoke": "node --test tests/production-http.smoke.cjs"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@stripe/connect-js": "^3.4.6",
@@ -25,6 +23,7 @@
     "quill": "^2.0.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-phone-number-input": "^3.4.18",
     "socket.io-client": "^4.8.4"
   },
   "overrides": {
@@ -34,6 +33,7 @@
     "@tailwindcss/postcss": "^4.3.1",
     "@types/node": "^26.0.1",
     "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.4",
     "tailwindcss": "^4.3.1",

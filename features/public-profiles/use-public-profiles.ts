@@ -12,6 +12,10 @@ export function useInstructorPublicProfile(id: string | undefined) {
     enabled: Boolean(id),
     queryFn: () => fetchJson<InstructorPublicProfile>(`/api/instructors/profile/${id}`),
     queryKey: queryKeys.publicProfiles.instructor(id ?? ""),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 

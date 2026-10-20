@@ -1,4 +1,5 @@
-import type { ChatMessage, Conversation, MessageAttachment, MessagesPage } from "./types";
+import { normalizeWorkUnits } from "@/features/jobs/work-units";
+import type { ChatMessage, Conversation, ConversationParticipant, MessageAttachment, MessagesPage } from "./types";
 
 export const MAX_MESSAGE_LENGTH = 2000;
 export const MAX_ATTACHMENTS = 5;
@@ -40,18 +41,17 @@ export function normalizeMessage(message: Partial<ChatMessage>): ChatMessage {
 
 export function normalizeConversation(conversation: Partial<Conversation>): Conversation {
   return {
-    applicationId: conversation.applicationId ?? "",
-    applicationStatus: conversation.applicationStatus ?? "APPLIED",
-    counterpart: {
-      id: conversation.counterpart?.id ?? null,
-      imageUrl: conversation.counterpart?.imageUrl ?? null,
-      name: conversation.counterpart?.name ?? "Conversation",
-      role: conversation.counterpart?.role === "teacher" ? "teacher" : "school",
+    applicationId: conversation.applicationId || null,
+    applicationStatus: conversation.applicationStatus || null,
+    counterpart: normalizeParticipant(conversation.counterpart),
+    participants: {
+      instructor: normalizeParticipant(conversation.participants?.instructor),
+      poster: normalizeParticipant(conversation.participants?.poster),
     },
     counterpartLastReadAt: readDateIso(conversation.counterpartLastReadAt),
     createdAt: readDateIso(conversation.createdAt),
     id: conversation.id ?? "",
-    job: { id: conversation.job?.id ?? "", title: conversation.job?.title ?? "Job" },
+    job: conversation.job?.id ? { ...normalizeWorkUnits(conversation.job), id: conversation.job.id, title: conversation.job.title || "Job" } : null,
     lastMessage: conversation.lastMessage
       ? {
           body: conversation.lastMessage.body ?? "",
@@ -61,10 +61,15 @@ export function normalizeConversation(conversation: Partial<Conversation>): Conv
         }
       : null,
     lastMessageAt: readDateIso(conversation.lastMessageAt),
-    me: conversation.me === "poster" ? "poster" : "instructor",
-    readOnly: Boolean(conversation.readOnly),
+    me: conversation.me === "poster" || conversation.me === "instructor" ? conversation.me : null,
+    readOnly: conversation.me == null || Boolean(conversation.readOnly),
     unreadCount: Number(conversation.unreadCount ?? 0),
   };
+}
+
+function normalizeParticipant(person: Partial<ConversationParticipant> | null | undefined): ConversationParticipant | null {
+  if (!person) return null;
+  return { id: person.id ?? null, userId: person.userId ?? null, imageUrl: person.imageUrl ?? null, name: person.name || "Account unavailable", role: person.role === "teacher" ? "teacher" : "school" };
 }
 
 export function normalizeMessagesPage(page: Partial<MessagesPage>): MessagesPage {

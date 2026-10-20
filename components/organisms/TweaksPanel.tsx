@@ -1,5 +1,7 @@
+import { useDropdown } from "@/features/dropdowns/use-dropdown";
+import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
 import type { AppState, SetAppState, SetTweaks, Tweaks } from "@/types/supplyed";
-import { brandPalettes, deriveBrandTheme } from "@/lib/theme";
+import { deriveBrandTheme } from "@/lib/theme";
 
 import { Btn, Icon } from "../atoms";
 
@@ -14,6 +16,8 @@ export function TweaksPanel({
   tweaks: Tweaks;
   setTweaks: SetTweaks;
 }) {
+  const choices = useDropdown("themeAccent");
+  const brandPalettes = (choices.data?.options ?? []).map(option => ({ name: option.label, accent: option.value }));
   const safeAccent = deriveBrandTheme(tweaks.accent).accent;
   const selectedPreset = brandPalettes.some((palette) => palette.accent.toLowerCase() === safeAccent.toLowerCase());
 
@@ -39,7 +43,7 @@ export function TweaksPanel({
       </div>
 
       <div className="flex items-center gap-2.5">
-        {brandPalettes.map((palette) => {
+        <DropdownStatus name="themeAccent" />{brandPalettes.map((palette) => {
           const selected = safeAccent.toLowerCase() === palette.accent.toLowerCase();
 
           return (

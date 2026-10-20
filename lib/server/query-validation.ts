@@ -5,6 +5,7 @@ type Rule = { maxLength?: number; min?: number; max?: number; integer?: boolean;
 export function assertValidQuery(params: URLSearchParams, rules: Record<string, Rule> = {}) {
   const errors: Record<string, string> = {};
   const combined: Record<string, Rule> = { page: { min: 1, max: Number.MAX_SAFE_INTEGER, integer: true }, limit: { min: 1, max: 100, integer: true }, ...rules };
+  for (const key of new Set(params.keys())) if (!(key in combined)) errors[key] = "Choose a valid filter.";
   for (const [key, rule] of Object.entries(combined)) {
     const value = params.get(key);
     if (value === null || value === "") continue;

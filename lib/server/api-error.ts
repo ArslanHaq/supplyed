@@ -1,3 +1,5 @@
+import { userFacingError } from "@/lib/user-facing-error";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -6,7 +8,7 @@ export class ApiError extends Error {
     readonly code?: string,
     readonly requestId?: string,
   ) {
-    super(message);
+    super(userFacingError(message, { status, code }));
     this.name = "ApiError";
   }
 }

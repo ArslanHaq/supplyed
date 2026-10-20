@@ -1,3 +1,4 @@
+import { formatPlannedUnits } from "@/features/jobs/work-units";
 import { useState } from "react";
 
 import { useCreateApplication } from "@/features/applications/use-applications";
@@ -15,9 +16,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   const [coverLetter, setCoverLetter] = useState("");
   const [coverLetterTextLength, setCoverLetterTextLength] = useState(0);
   const [coverLetterError, setCoverLetterError] = useState<string>();
-  const [invitation, setInvitation] = useState("Please review this role and let us know if you are interested.");
-  const [invitationError, setInvitationError] = useState<string>();
-  const jobQuery = useJob(ctx.jobId ?? "");
+  const jobQuery = useJob(ctx.jobId ?? "", role === "institution");
   const matchQuery = useJobMatchScore(ctx.jobId ?? "", role === "teacher");
   const job = jobQuery.data;
   const createApplication = useCreateApplication({
@@ -43,10 +42,6 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
     if (!job || role !== "teacher" || createApplication.isPending || applicationSubmitted) return;
 
     const normalizedCoverLetter = coverLetter.trim();
-    if (isEmptyRichText(normalizedCoverLetter)) {
-      setCoverLetterError("Add a proposal before applying.");
-      return;
-    }
     if (normalizedCoverLetter.length > MAX_PROPOSAL_LENGTH) {
       setCoverLetterError("Shorten the proposal or remove some formatting, then try again.");
       return;
@@ -83,7 +78,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
       <div className="app-page job-detail-page">
         <div className="card card-pad-lg text-center">
           <div className="font-heading text-[26px]">Job not available</div>
-          <p className="mx-auto mt-2 max-w-[420px] text-sm leading-6 text-muted">This role may be closed, expired, or no longer visible.</p>
+          <p className="mx-auto mt-2 max-w-[420px] text-sm leading-6 text-muted">This job is not currently available.</p>
           <Btn className="mt-5" onClick={() => go(role === "teacher" ? "find-jobs" : "dashboard")}>Back to jobs</Btn>
         </div>
       </div>
@@ -131,7 +126,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
             </div>
           </section>
           <div className="grid-3 mb-7">
-            <div className="card card-pad text-center"><div className="text-xs text-muted">Day rate</div><div className="font-heading text-[26px] text-brand">£{job.rate}</div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">{job.payType === "hourly" ? "Hourly rate" : job.payType === "fixed" ? "Fixed pay" : "Day rate"}</div><div className="font-heading text-[26px] text-brand">£{job.rate}</div></div>
             <div className="card card-pad text-center"><div className="text-xs text-muted">Duration</div><div className="font-heading text-xl">1 Day</div></div>
             <div className="card card-pad text-center"><div className="text-xs text-muted">Experience</div><div className="font-heading text-xl">{job.minExperienceYears != null ? `${job.minExperienceYears}+ years` : "Not specified"}</div></div>
           </div>
@@ -142,8 +137,8 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
           <div className="card card-pad-lg"><div className="section-title">Requirements</div>{[`Subject: ${job.subject}`, `Key stage: ${job.keyStage}`, job.minExperienceYears != null ? `Minimum experience: ${job.minExperienceYears} years` : "No minimum experience specified", job.parkingInfo || "Arrival details will be shared by the hiring account."].map((item) => <div key={item} className="flex items-center gap-2.5 py-2"><Icon name="checkCircle" size={16} />{item}</div>)}{job.requiredSkills.length ? <div className="mt-3 flex flex-wrap gap-2">{job.requiredSkills.map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div> : null}</div>
         </div>
         <aside aria-label="Job summary and actions" className="sidebar-panel card-pad-lg self-start lg:sticky lg:top-6">
-          <div className="mb-3.5 flex items-center justify-between"><div><div className="text-xs text-muted">Day rate</div><div className="font-heading text-[28px]">£{job.rate}</div></div>{matchQuery.data ? <Tag tone="green">{matchQuery.data.score}% match</Tag> : null}</div>
-          <div className="mb-3.5 flex flex-wrap gap-2"><span className="pill">{job.keyStage}</span><span className="pill">{job.subject}</span><span className="pill">{job.date}</span></div>
+          <div className="mb-3.5 flex items-center justify-between"><div><div className="text-xs text-muted">{job.payType === "hourly" ? "Hourly rate" : job.payType === "fixed" ? "Fixed pay" : "Day rate"}</div><div className="font-heading text-[28px]">£{job.rate}</div></div>{matchQuery.data ? <Tag tone="green">{matchQuery.data.score}% match</Tag> : null}</div>
+          <div className="mb-3.5 flex flex-wrap gap-2"><span className="pill">{job.keyStage}</span><span className="pill">{job.subject}</span><span className="pill">{job.date}</span>{job.hours != null || job.days != null ? <span className="pill">{formatPlannedUnits(job)}</span> : null}</div>
           {role === "teacher" && matchQuery.isLoading ? <div className="mb-4"><SectionLoader rows={1} /></div> : null}
           {role === "teacher" && matchQuery.data ? <div className="mb-4"><MatchScorePanel match={matchQuery.data} /></div> : null}
           {job.institution?.id ? (
@@ -156,7 +151,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
               View school profile
             </Btn>
           ) : null}
-          <Btn className="w-full" disabled={role === "teacher" && applicationSubmitted} size="lg" onClick={() => setOpen(true)}>{role === "teacher" ? (applicationSubmitted ? "Application submitted" : "Apply for job") : "Invite candidates"}</Btn>
+          <Btn className="w-full" disabled={role === "teacher" && applicationSubmitted} size="lg" onClick={() => role === "institution" ? go("find-teachers", { jobId: job.id }) : setOpen(true)}>{role === "teacher" ? (applicationSubmitted ? "Application submitted" : "Apply for job") : "Invite candidates"}</Btn>
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging")}>Message school</Btn>
         </aside>
       </div>
@@ -174,8 +169,8 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
                 {job.keyStage ? <Tag tone="ghost">{job.keyStage}</Tag> : null}
               </div>
               <div className="proposal-dialog-body">
-              <p className="proposal-intro">Introduce yourself, connect your experience to the role, and keep the formatting clear and professional.</p>
-              <Field error={coverLetterError} htmlFor="job-proposal-editor" label="Proposal" required>
+              <p className="proposal-intro">You can add an optional proposal to introduce yourself and connect your experience to the role.</p>
+              <Field error={coverLetterError} htmlFor="job-proposal-editor" label="Proposal (optional)">
                 <ProposalEditor
                   id="job-proposal-editor"
                   invalid={Boolean(coverLetterError)}
@@ -184,7 +179,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
                   onChange={(nextValue, textLength) => {
                     setCoverLetter(nextValue);
                     setCoverLetterTextLength(textLength);
-                    if (coverLetterError) setCoverLetterError(isEmptyRichText(nextValue) ? "Add a proposal before applying." : nextValue.length > MAX_PROPOSAL_LENGTH ? "Shorten the proposal or remove some formatting, then try again." : undefined);
+                    if (coverLetterError) setCoverLetterError(nextValue.length > MAX_PROPOSAL_LENGTH ? "Shorten the proposal or remove some formatting, then try again." : undefined);
                   }}
                 />
               </Field>
@@ -192,7 +187,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
                 <p className={`proposal-format-note${coverLetter.length > MAX_PROPOSAL_LENGTH ? " is-error" : ""}`}>
                   {coverLetter.length > MAX_PROPOSAL_LENGTH
                     ? "The formatted proposal is too long. Shorten it or clear some formatting."
-                    : "Formatting is saved with your application."}
+                    : "Formatting is saved when you include a proposal."}
                 </p>
                 <span className={`proposal-character-count${coverLetter.length > MAX_PROPOSAL_LENGTH ? " is-error" : ""}`}>
                   <strong>{coverLetterTextLength.toLocaleString()}</strong> / {MAX_PROPOSAL_LENGTH.toLocaleString()} text characters
@@ -200,31 +195,15 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
               </div>
               </div>
               <footer className="proposal-dialog-actions">
-                <p className="proposal-submit-note"><Icon name="file" size={16} /><span>Your proposal will be shared with {job.institution?.name || job.school}.</span></p>
+                <p className="proposal-submit-note"><Icon name="file" size={16} /><span>Your application{isEmptyRichText(coverLetter) ? "" : " and proposal"} will be shared with {job.institution?.name || job.school}.</span></p>
                 <div className="proposal-action-buttons">
                 <Btn disabled={createApplication.isPending} variant="ghost" onClick={closeModal}>Cancel</Btn>
                 <Btn disabled={coverLetter.length > MAX_PROPOSAL_LENGTH} iconRight="arrowRight" loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
                 </div>
               </footer>
             </article>
-          ) : (
-            <div className="card-pad-lg">
-              <h2 className="mb-2 font-heading text-[26px]">Invite candidates</h2>
-              <Field error={invitationError} label="Message" required><textarea className="textarea" maxLength={5000} value={invitation} onChange={(event) => { setInvitation(event.target.value); if (invitationError) setInvitationError(validateInvitation(event.target.value)); }} /></Field>
-              <div className="flex items-center justify-between"><Btn variant="ghost" onClick={closeModal}>Cancel</Btn><Btn onClick={() => {
-                const problem = validateInvitation(invitation);
-                setInvitationError(problem);
-                if (problem) return;
-                setOpen(false); toast({ title: "Success", msg: "Top candidates invited." });
-              }}>Confirm</Btn></div>
-            </div>
-          )}
+          ) : null}
       </Modal>
     </div>
   );
-}
-
-function validateInvitation(message: string) {
-  if (!message.trim()) return "Enter a message for the candidates.";
-  if (message.trim().length > 5000) return "Use 5,000 characters or fewer.";
 }

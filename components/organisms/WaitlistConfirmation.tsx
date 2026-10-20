@@ -8,7 +8,8 @@ import {
   type WaitlistDetailsState,
 } from "@/features/contact/actions";
 import { submitWaitlistDetailsAction } from "@/features/contact/waitlist-client";
-import { waitlistPhases } from "@/features/contact/waitlist-options";
+import { useDropdown } from "@/features/dropdowns/use-dropdown";
+import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
 
 export function WaitlistConfirmation({
   result,
@@ -153,6 +154,7 @@ export function WaitlistConfirmation({
 }
 
 function TeacherDetails({ id, token }: { id: string; token: string }) {
+  const phaseChoices = useDropdown("waitlistPhase");
   const [state, action, pending] = useActionState(
     submitWaitlistDetailsAction,
     null as WaitlistDetailsState,
@@ -175,12 +177,12 @@ function TeacherDetails({ id, token }: { id: string; token: string }) {
       <fieldset disabled={pending}>
         <legend>Phases you teach</legend>
         <div className="waitlist-phase-options">
-          {waitlistPhases.map((phase) => (
+          {(phaseChoices.data?.options ?? []).map((option) => { const phase = option.value; return (
             <Checkbox
               key={phase}
               checked={phases.includes(phase)}
               disabled={pending}
-              label={phase}
+              label={option.label}
               name="phases"
               onChange={(checked) =>
                 setPhases((current) =>
@@ -191,7 +193,8 @@ function TeacherDetails({ id, token }: { id: string; token: string }) {
               }
               value={phase}
             />
-          ))}
+          ); })}
+          <DropdownStatus name="waitlistPhase" />
         </div>
         {errors?.phases ? (
           <p className="text-danger" role="alert">

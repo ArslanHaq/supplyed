@@ -1,4 +1,6 @@
 "use client";
+import { catalogueError } from "@/features/teaching-catalogue/selection";
+import { teachingCatalogueKey } from "@/features/teaching-catalogue/use-teaching-catalogue";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
@@ -78,11 +80,13 @@ export function useCreateJob(options: UseCreateJobOptions = {}) {
     mutationFn: (input: JobCreateInput) => createJobAction(input),
     onError: options.onError,
     onSuccess: async (result) => {
+      if (!result.ok && catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
       if (handleSessionExpiredResult(result)) return;
 
       if (result.ok || result.savedJobId) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),
         ]);
       }
@@ -99,11 +103,13 @@ export function useUpdateJob(options: UseUpdateJobOptions = {}) {
     mutationFn: (input: JobUpdateInput) => updateJobAction(input),
     onError: options.onError,
     onSuccess: async (result) => {
+      if (!result.ok && catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
       if (handleSessionExpiredResult(result)) return;
 
       if (result.ok) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),
         ]);
       }
@@ -120,11 +126,13 @@ export function useDeleteJob(options: UseDeleteJobOptions = {}) {
     mutationFn: (id: string) => deleteJobAction(id),
     onError: options.onError,
     onSuccess: async (result) => {
+      if (!result.ok && catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
       if (handleSessionExpiredResult(result)) return;
 
       if (result.ok) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),
         ]);
       }

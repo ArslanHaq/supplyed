@@ -1,3 +1,4 @@
+import { otherSubjectsError, otherSkillsError } from "@/features/teaching-catalogue/selection";
 import { validateEmail } from "@/features/auth/schemas";
 import { validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 
@@ -18,9 +19,16 @@ export function validateOnboardingForm(form: FormData, options: { complete?: boo
   const list = (key: string, required = false) => {
     try {
       const items: unknown = JSON.parse(read(form, key) || "[]");
-      if (!Array.isArray(items) || items.length > (key === "coverTypes" ? 20 : 100) || (required && items.length === 0) || items.some(item => typeof item !== "string" || !item.trim() || item.length > 100)) errors[key] = "Choose valid options.";
+      if (!Array.isArray(items) || items.length > (key === "coverTypes" ? 20 : key === "keyStages" ? 100 : 50) || (required && items.length === 0) || items.some(item => typeof item !== "string" || !item.trim() || item.length > 100)) errors[key] = "Choose valid options.";
     } catch { errors[key] = "Choose valid options."; }
   };
+  try {
+    const subjects = JSON.parse(read(form, role === "teacher" ? "subjects" : "staffingNeeds") || "[]");
+    const custom = form.has("otherSubjects") ? JSON.parse(read(form, "otherSubjects") || "[]") : undefined;
+    const problem = otherSubjectsError(subjects, custom);
+    if (problem) errors.otherSubjects = problem;
+  } catch { errors.otherSubjects = "Enter valid Other subjects."; }
+  if (role === "teacher") { try { const problem = otherSkillsError(JSON.parse(read(form, "skills") || "[]"), form.has("otherSkills") ? JSON.parse(read(form, "otherSkills") || "[]") : undefined); if (problem) errors.otherSkills = problem; } catch { errors.otherSkills = "Enter valid Other skills."; } }
   requiredText("fullName", "your full name", 120);
   check("phone", validateUkPhone(form.get("phone"), { required: true }));
   if (read(form, "email") && !validateEmail(read(form, "email"))) errors.email = "Use a valid email address.";
@@ -29,7 +37,7 @@ export function validateOnboardingForm(form: FormData, options: { complete?: boo
   if (role === "teacher") {
     check("profileCountryCode", validateUkCountry(form.get("profileCountryCode"), { required: true }));
     check("profileCity", validateUkCity(form.get("profileCity"), { required: true }));
-    list("subjects", true); list("keyStages", true); list("skills");
+    list("subjects"); list("keyStages", true); list("skills");
     number("yearsExperience", true, true); number("hourlyRate"); number("dailyRate"); number("maxTravelDistance");
     if (read(form, "currency") && read(form, "currency").toUpperCase() !== "GBP") errors.currency = "Use GBP for UK rates.";
     if (read(form, "bio").length < 40 || read(form, "bio").length > 10000) errors.bio = "Write between 40 and 10,000 characters about your teaching style.";
@@ -46,7 +54,7 @@ export function validateOnboardingForm(form: FormData, options: { complete?: boo
       if (domain.length > 253 || !/^(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,63}$/i.test(domain)) errors.institutionDomain = "Enter a valid institution domain, for example school.org.uk.";
       if (!["SINGLE_SCHOOL", "MAT_SCHOOL"].includes(read(form, "institutionType"))) errors.institutionType = "Choose a valid institution type.";
       list("coverTypes", true);
-      if (read(form, "staffingNeeds").length > 1000) errors.staffingNeeds = "Use 1,000 characters or fewer.";
+      list("staffingNeeds");
       if (read(form, "institutionType") === "MAT_SCHOOL") {
         requiredText("trustName", "the multi-academy trust name");
         const company = read(form, "trustCompanyNumber").replace(/\s+/g, "");

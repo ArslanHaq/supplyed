@@ -57,7 +57,7 @@ export type SettingsInstitutionProfile = {
   postalCode: string;
   registrationId: string;
   safeguardingConfirmed: boolean;
-  staffingNeeds: string;
+  staffingNeeds: string[];
   status: ApplicationStatus;
   typicalPupilCount: string;
   updatedAt: string | null;
@@ -80,6 +80,7 @@ export type SettingsUserUpdateInput = {
 };
 
 export type SettingsInstructorUpdateInput = {
+  otherSubjects?: string[]; otherSkills?: string[];
   address: string;
   bio: string;
   city: string;
@@ -100,6 +101,7 @@ export type SettingsInstructorUpdateInput = {
 };
 
 export type SettingsInstitutionUpdateInput = {
+  otherSubjects?: string[];
   address: string;
   city: string;
   complianceContact: string;
@@ -114,7 +116,7 @@ export type SettingsInstitutionUpdateInput = {
   postalCode: string;
   registrationId: string;
   safeguardingConfirmed: boolean;
-  staffingNeeds: string;
+  staffingNeeds: string[];
   typicalPupilCount: string;
   userRole: string;
 };

@@ -1,13 +1,12 @@
+import { DynamicSelect, DynamicMultiSelect } from "@/components/molecules/DynamicDropdown";
+
+import { TeachingSelectionFields } from "@/components/molecules/TeachingSelectionFields";
 import { Field } from "../../../atoms";
 import { CountryCityFields } from "../CountryCityFields";
 import { PostcodeLookup } from "../../../molecules";
-import { MultiSelectDropdown, SelectDropdown } from "../../../molecules/OptionDropdowns";
-import { coverTypes } from "../constants";
 import type { StepComponentProps } from "../step-types";
 import { fieldClass } from "../utils";
-import { getUkRegions } from "@/lib/uk-validation";
 
-const regionOptions = getUkRegions();
 
 export function InstitutionDetailsStep({ controller }: StepComponentProps) {
   const { errors, form, updateField } = controller;
@@ -15,13 +14,10 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
   return (
     <div className="space-y-6">
       <Field label="School type" htmlFor="institution-type" error={errors.institutionType} required>
-        <SelectDropdown
+        <DynamicSelect
           id="institution-type"
           error={Boolean(errors.institutionType)}
-          options={[
-            { value: "SINGLE_SCHOOL", label: "Single school" },
-            { value: "MAT_SCHOOL", label: "Part of a multi-academy trust" },
-          ]}
+          collection="institutionType"
           value={form.institutionType}
           onChange={(selection) => {
             const value = selection === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL";
@@ -141,7 +137,7 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
           }}
         />
         <Field label="County / region" htmlFor="institution-region" error={errors.localAuthority} hint="Optional">
-          <SelectDropdown id="institution-region" options={[{ label: "Select county / region", value: "" }, ...regionOptions]} searchable value={form.localAuthority} onChange={(value) => updateField("localAuthority", value)} error={Boolean(errors.localAuthority)} />
+          <DynamicSelect id="institution-region" collection="region" emptyLabel="Select county / region" searchable value={form.localAuthority} onChange={(value) => updateField("localAuthority", value)} error={Boolean(errors.localAuthority)} />
         </Field>
         <Field label="Typical pupil count" htmlFor="pupils" error={errors.typicalPupilCount} hint="Optional, helps estimate staffing needs.">
           <input
@@ -155,18 +151,8 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
         </Field>
       </div>
 
-      <Field label="Staffing needs" error={errors.coverTypes} required>
-        <MultiSelectDropdown
-          error={Boolean(errors.coverTypes)}
-          options={coverTypes}
-          placeholder="Select staffing needs"
-          value={form.coverTypes}
-          onChange={(value) => updateField("coverTypes", value)}
-        />
-      </Field>
-      <Field label="Additional staffing details" htmlFor="staffing-details" error={errors.staffingNeeds} hint="Optional, up to 1,000 characters.">
-        <textarea id="staffing-details" className="textarea" maxLength={1000} value={form.staffingNeeds} onChange={(event) => updateField("staffingNeeds", event.target.value)} />
-      </Field>
+      <Field label="Cover types" error={errors.coverTypes} required><DynamicMultiSelect error={Boolean(errors.coverTypes)} collection="coverType" placeholder="Select cover types" value={form.coverTypes} onChange={value => updateField("coverTypes", value)} /></Field>
+      <TeachingSelectionFields otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjectLabel="Staffing needs" subjects={form.staffingNeeds} subjectError={errors.staffingNeeds} onChange={(subjects, _skills, otherSubjects) => { updateField("staffingNeeds", subjects); updateField("otherSubjects", otherSubjects); }} />
     </div>
   );
 }

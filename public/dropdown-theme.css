@@ -1,0 +1,37 @@
+/* Retained standalone forms read the same SupplyEd accent saved by the app. */
+:root {
+  --cyan: var(--se, #008cc4);
+  --cyan-dim: var(--se-dark, #006d99);
+  --cyan-light: var(--se, #008cc4);
+  --cyan-bg: var(--se-tint, #e6f4f9);
+  --cyan-glow: var(--se-tint, #e6f4f9);
+  --cyan-border: var(--se-tint-2, #c7e6f2);
+}
+select[data-dropdown] {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--black);
+  color: var(--white);
+  font: inherit;
+  accent-color: var(--cyan-dim);
+}
+select[data-dropdown]:not(:disabled):hover { border-color: var(--cyan); }
+select[data-dropdown]:focus, select[data-dropdown]:focus-visible {
+  border-color: var(--cyan);
+  outline: 2px solid var(--cyan-dim);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--cyan-bg);
+}
+select[data-dropdown]:disabled { background: var(--black-3); color: var(--gray-400); cursor: not-allowed; opacity: .65; }
+select[data-dropdown] option { background: var(--black); color: var(--white); padding: 10px 12px; }
+select[data-dropdown] option:checked, select[data-dropdown] option:hover { background: var(--cyan-bg); color: var(--cyan-dim); }
+select[data-dropdown]::picker-icon { color: var(--cyan-dim); }
+@supports (appearance: base-select) {
+  select[data-dropdown], select[data-dropdown]::picker(select) { appearance: base-select; }
+  select[data-dropdown]::picker(select) { border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; background: var(--black); color: var(--white); box-shadow: var(--shadow-lg); }
+}
+[data-dropdown-notice] { margin-top: 8px; color: var(--gray-300); font-size: 12px; line-height: 1.6; }
+[data-dropdown-notice] button { border: 0; border-radius: var(--radius-sm); padding: 4px 8px; color: var(--cyan-dim); background: var(--cyan-bg); font: inherit; font-weight: 600; cursor: pointer; }
+[data-dropdown-notice] button:focus-visible { outline: 2px solid var(--cyan-dim); outline-offset: 2px; }
+@media (max-width: 640px) { select[data-dropdown] { font-size: 16px; } }

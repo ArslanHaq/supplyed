@@ -450,6 +450,8 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
 }
 @media (max-width: 560px) { .region-row { flex-wrap: wrap; } }
 </style>
+<link rel="stylesheet" href="/dropdown-theme.css">
+<script src="/theme-bootstrap.js"></script>
 </head>
 <body>
 
@@ -667,17 +669,7 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
           </div>
           <div class="form-group">
             <label class="form-label" for="ft-role">Your role</label>
-            <select id="ft-role" name="role" class="form-select" required>
-              <option value="" disabled selected>Select your role</option>
-              <option>Supply teacher (qualified)</option>
-              <option>ECT</option>
-              <option>Teaching assistant</option>
-              <option>HLTA</option>
-              <option>SEN / SEND specialist</option>
-              <option>Cover supervisor</option>
-              <option>Nursery practitioner</option>
-              <option>Other school support role</option>
-            </select>
+            <select id="ft-role" name="role" class="form-select" required data-dropdown="legacyTeacherRole" disabled><option value="">Loading choices…</option></select>
           </div>
         </div>
         <div class="grid-2">
@@ -687,7 +679,7 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
           </div>
           <div class="form-group">
             <label class="form-label" for="ft-phone">Phone <span style="text-transform:none;font-weight:400">(optional)</span></label>
-            <input id="ft-phone" name="phone" type="tel" inputmode="numeric" class="form-input" placeholder="07700 000000" autocomplete="tel">
+            <input id="ft-phone" name="phone" type="tel" inputmode="tel" class="form-input" placeholder="07400 123456" autocomplete="tel">
           </div>
         </div>
         <div class="grid-2">
@@ -698,24 +690,12 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
           </div>
           <div class="form-group">
             <label class="form-label" for="ft-phase">Phase you work in</label>
-            <select id="ft-phase" name="phase" class="form-select" required>
-              <option value="" disabled selected>Select phase</option>
-              <option>Primary</option>
-              <option>Secondary</option>
-              <option>SEND / Special</option>
-              <option>Early years</option>
-              <option>Any / flexible</option>
-            </select>
+            <select id="ft-phase" name="phase" class="form-select" required data-dropdown="legacyTeacherPhase" disabled><option value="">Loading choices…</option></select>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label" for="ft-availability">Availability you're looking for</label>
-          <select id="ft-availability" name="availability" class="form-select">
-            <option selected>Day-to-day supply</option>
-            <option>Long-term cover</option>
-            <option>Both</option>
-            <option>Not sure yet</option>
-          </select>
+          <select id="ft-availability" name="availability" class="form-select" data-dropdown="availability" disabled><option value="">Loading choices…</option></select>
         </div>
         <div class="form-group">
           <label class="form-label" for="ft-message">Anything you'd like us to know <span style="text-transform:none;font-weight:400">(optional)</span></label>
@@ -782,6 +762,8 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
   <button class="btn-primary" style="font-size:12px;padding:8px 16px" onclick="document.getElementById('cookieBar').style.display='none'">Accept all</button>
 </div>
 
+<script src="/vendor/libphonenumber-max.js"></script>
+<script src="/uk-phone-validation.js"></script>
 <script>
 /* ── Configuration ──
    Replace with your Google Apps Script web app URL. Point this at its own
@@ -792,9 +774,8 @@ const SCRIPT_URL = "REPLACE_WITH_YOUR_APPS_SCRIPT_URL";
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const postcodeRegex = /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i;
 
-document.getElementById('ft-phone').addEventListener('input', function () {
-  this.value = this.value.replace(/[^0-9+ ]/g, '');
-});
+const phoneInput = document.getElementById('ft-phone');
+const phoneControl = SupplyEdPhone.bind(phoneInput, document.getElementById('submitBtn'));
 
 function showError(message) {
   const el = document.getElementById('errorMsg');
@@ -808,6 +789,11 @@ document.getElementById('ftForm').addEventListener('submit', async function (e) 
   const form = this;
   const btn = document.getElementById('submitBtn');
   document.getElementById('errorMsg').classList.remove('visible');
+  if (!phoneControl.update()) {
+    showError('Enter a valid UK phone number.');
+    phoneInput.focus();
+    return;
+  }
 
   const data = {
     name:         document.getElementById('ft-name').value.trim(),
@@ -836,7 +822,7 @@ document.getElementById('ftForm').addEventListener('submit', async function (e) 
   }
 
   btn.textContent = 'Submitting...';
-  btn.disabled = true;
+  phoneControl.setSubmitting(true);
   btn.style.opacity = '.6';
   btn.style.cursor = 'not-allowed';
 
@@ -853,7 +839,7 @@ document.getElementById('ftForm').addEventListener('submit', async function (e) 
       </div>`;
   } catch (err) {
     btn.textContent = 'Join the founding cohort →';
-    btn.disabled = false;
+    phoneControl.setSubmitting(false);
     btn.style.opacity = '';
     btn.style.cursor = '';
     showError('Something went wrong. Please try again, or email us directly.');
@@ -861,5 +847,6 @@ document.getElementById('ftForm').addEventListener('submit', async function (e) 
 });
 </script>
 
+<script src="/dynamic-dropdowns.js" defer></script>
 </body>
 </html>

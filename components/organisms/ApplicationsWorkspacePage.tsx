@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useDropdown } from "@/features/dropdowns/use-dropdown";
+import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
+import { useState } from "react";
 
 import type { ApplicantSummary, JobApplication, JobApplicationStatus } from "@/features/applications/types";
-import { useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
+import { useApplicationHistory, useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
 import { applicationPipeline, canTransitionApplication } from "@/features/applications/workflow";
 import type { Job } from "@/features/jobs/types";
 import { useJob, useUpdateJob } from "@/features/jobs/use-jobs";
@@ -12,7 +14,7 @@ import { useInstructorReviews } from "@/features/reviews/use-reviews";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Tag } from "../atoms";
-import { MatchScorePanel, Modal, PageHead, ProposalContent, SectionLoader } from "../molecules";
+import { FormattedJobDescription, MatchScorePanel, Modal, PageHead, ProposalContent, SectionLoader } from "../molecules";
 import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 import { ProposalPreview } from "../molecules/ProposalPreviewModal";
 import { ApplicationsJobList } from "./ApplicationsJobList";
@@ -27,8 +29,8 @@ type ApplicationRow = {
 
 export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ctx" | "toast">) {
   const [jobsPage, setJobsPage] = useState(1);
+  const [jobsFilter, setJobsFilter] = useState<"ACTIVE" | "INVITED">("ACTIVE");
   const [hireTarget, setHireTarget] = useState<JobApplication | null>(null);
-  const autoViewedApplicationIds = useRef<Set<string>>(new Set());
   const selectedJobId = ctx.jobId;
   const jobQuery = useJob(selectedJobId ?? "", true);
   const job = jobQuery.data ?? null;
@@ -53,28 +55,16 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
   const updateStatus = useUpdateApplicationStatus({
     onSuccess: (result) => {
       const hired = result.ok && result.data.status === "HIRED";
-      const autoViewed = result.ok && result.data.status === "VIEWED" && autoViewedApplicationIds.current.has(result.data.id);
-      if (autoViewed && result.ok) autoViewedApplicationIds.current.delete(result.data.id);
-      if (!autoViewed) {
-        toast({
-          title: hired ? "Teacher hired" : result.ok ? "Application updated" : "Could not update application",
-          msg: hired
-            ? "Your booking is ready. Once completed, create its Stripe invoice from Bookings."
-            : result.message ?? "The application status was updated.",
-          tone: result.ok ? "success" : "danger",
-        });
-      }
+      toast({
+        title: hired ? "Teacher hired" : result.ok ? "Application updated" : "Could not update application",
+        msg: hired
+          ? "Your booking is ready. Once completed, create its Stripe invoice from Bookings."
+          : result.message ?? "The application status was updated.",
+        tone: result.ok ? "success" : "danger",
+      });
       if (result.ok) setHireTarget(null);
     },
   });
-
-  useEffect(() => {
-    const applicationId = selectedRow?.application.id;
-    if (!applicationId || selectedRow.application.status !== "APPLIED") return;
-    if (autoViewedApplicationIds.current.has(applicationId)) return;
-    autoViewedApplicationIds.current.add(applicationId);
-    updateStatus.mutate({ id: applicationId, status: "VIEWED" });
-  }, [selectedRow?.application.id, selectedRow?.application.status, updateStatus]);
 
   function openApplication(application: JobApplication) {
     if (!selectedJobId) return;
@@ -110,6 +100,8 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
           actions={<Btn icon="plus" onClick={() => go("post-job")}>Post a job</Btn>}
         />
         <ApplicationsJobList
+          filter={jobsFilter}
+          onFilterChange={(filter) => { setJobsFilter(filter); setJobsPage(1); }}
           onOpenJob={(jobId) => go("applications", { jobId })}
           onPageChange={setJobsPage}
           page={jobsPage}
@@ -165,7 +157,6 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
             {!loading && !error ? <WorkspaceSummary label="Current applications" items={[
               { label: "To review", value: rows.filter(({ application }) => application.status === "APPLIED" || application.status === "VIEWED").length },
               { label: "Shortlisted", value: rows.filter(({ application }) => application.status === "SHORTLISTED").length },
-              { label: "Interview", value: rows.filter(({ application }) => application.status === "INTERVIEW").length },
               { label: "Hired", value: rows.filter(({ application }) => application.status === "HIRED").length },
             ]} /> : null}
             <div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -303,6 +294,7 @@ function ApplicationDetail({
   const { application, instructor, match } = applicationRow;
   const canHire = canTransitionApplication(application.status, "HIRED");
   const reviewsQuery = useInstructorReviews(instructor?.id);
+  const historyQuery = useApplicationHistory(application.id);
 
   return (
     <>
@@ -367,6 +359,13 @@ function ApplicationDetail({
           </section>
 
           <StatusWorkflow application={application} onHire={onHire} onStatusChange={onStatusChange} pending={pending} />
+          <section className="card card-pad-lg">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div><div className="section-title mb-1">Status history</div><p className="text-sm text-muted">Recorded decisions for this application, oldest first.</p></div>
+              {historyQuery.isFetching ? <span className="text-xs text-muted">Refreshing...</span> : null}
+            </div>
+            {historyQuery.isLoading ? <SectionLoader rows={3} /> : historyQuery.error ? <div className="rounded-xl border border-danger/30 bg-danger-tint p-4 text-sm" role="alert"><p>We could not load the application history.</p><Btn className="mt-3" size="sm" variant="secondary" onClick={() => void historyQuery.refetch()}>Try again</Btn></div> : historyQuery.data?.history.length ? <ol className="space-y-3">{historyQuery.data.history.map((entry) => <li className="flex gap-3 rounded-xl border border-border bg-chalk p-4" key={entry.id}><span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-tint text-brand"><Icon name="checkCircle" size={15} /></span><div className="min-w-0"><p className="text-sm font-semibold text-ink">{entry.fromStatus === null ? `Application ${formatStatus(entry.toStatus)}` : entry.fromStatus === entry.toStatus ? `${formatStatus(entry.toStatus)} retained during status migration` : `${formatStatus(entry.fromStatus)} to ${formatStatus(entry.toStatus)}`}</p><p className="mt-1 text-xs text-muted">{formatDate(entry.createdAt)}</p></div></li>)}</ol> : <p className="text-sm text-muted">No status history is available yet.</p>}
+          </section>
           <JobDetailPanel job={job} />
         </div>
 
@@ -501,39 +500,42 @@ function StatusWorkflow({
   onStatusChange: (application: JobApplication, status: JobApplicationStatus) => void;
   pending: boolean;
 }) {
+  const choices = useDropdown("applicationStatus");
+  const formatStatus = (value: JobApplicationStatus) => choices.data?.options.find(option => option.value === value)?.label ?? value.toLowerCase();
+  const enabled = (value: JobApplicationStatus) => !choices.isError && Boolean(choices.data?.options.some(option => option.value === value));
   const [draggingStatus, setDraggingStatus] = useState<JobApplicationStatus | null>(null);
   const currentIndex = workflowIndex(application.status);
   const rejected = application.status === "REJECTED";
 
   function moveTo(status: JobApplicationStatus) {
-    if (!canTransitionApplication(application.status, status) || pending) return;
+    if (!enabled(status) || !canTransitionApplication(application.status, status) || pending) return;
     if (status === "HIRED") onHire(application);
     else onStatusChange(application, status);
   }
 
   return (
-    <section aria-busy={pending} className="card card-pad-lg">
+    <section aria-busy={pending} className="card card-pad-lg"><DropdownStatus name="applicationStatus" />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="section-title mb-1">Application progress</div>
           <p className="text-sm leading-6 text-muted">{rejected ? "This application was rejected. Its stages are locked." : application.status === "HIRED" ? "This teacher has been hired. Earlier stages are locked." : "Choose any later stage, or drag the current stage forward. You can skip stages; earlier stages stay locked."}</p>
         </div>
-        <Btn disabled={!canTransitionApplication(application.status, "REJECTED") || pending} size="sm" variant="danger" onClick={() => moveTo("REJECTED")}>
+        <Btn disabled={!enabled("REJECTED") || !canTransitionApplication(application.status, "REJECTED") || pending} size="sm" variant="danger" onClick={() => moveTo("REJECTED")}>
           Reject application
         </Btn>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 2xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
         {applicationPipeline.map((status, index) => {
           const active = application.status === status;
           const complete = currentIndex > index || application.status === "HIRED";
-          const available = canTransitionApplication(application.status, status) && !pending;
+          const available = enabled(status) && canTransitionApplication(application.status, status) && !pending;
           const dropActive = draggingStatus === application.status && available;
 
           return (
             <div
               key={status}
-              className={`flex min-h-[132px] min-w-0 flex-col overflow-hidden rounded-xl border transition last:col-span-2 2xl:last:col-span-1 ${
+              className={`flex min-h-[132px] min-w-0 flex-col overflow-hidden rounded-xl border transition ${
                 active
                   ? "border-brand bg-brand-tint"
                   : dropActive
@@ -618,7 +620,7 @@ function JobDetailPanel({ job }: { job: Job | null }) {
       {job.description ? (
         <div className="mt-5 rounded-xl border border-border bg-chalk p-5">
           <div className="section-title mb-2">Description</div>
-          <p className="text-sm leading-7 text-muted">{stripHtml(job.description)}</p>
+          <FormattedJobDescription description={job.description} />
         </div>
       ) : null}
 
@@ -654,14 +656,13 @@ function workflowIndex(status: JobApplicationStatus) {
 function statusHelp(status: JobApplicationStatus) {
   if (status === "APPLIED") return "Application received.";
   if (status === "VIEWED") return "Reviewed by your team.";
-  if (status === "SHORTLISTED") return "Ready for interview.";
-  if (status === "INTERVIEW") return "Interview selected.";
+  if (status === "SHORTLISTED") return "Selected for final review.";
   if (status === "HIRED") return "Booking ready.";
   return "";
 }
 
 function ApplicationStatusTag({ status }: { status: JobApplicationStatus }) {
-  const tone = status === "HIRED" ? "green" : status === "INTERVIEW" || status === "SHORTLISTED" ? "purple" : status === "REJECTED" ? "red" : "ghost";
+  const tone = status === "HIRED" ? "green" : status === "SHORTLISTED" ? "purple" : status === "REJECTED" ? "red" : "ghost";
   return <Tag tone={tone}>{formatStatus(status)}</Tag>;
 }
 

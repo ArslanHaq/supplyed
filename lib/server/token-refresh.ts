@@ -14,7 +14,11 @@ type RefreshResult = {
 // Share only the upstream request, never a caller's cookie-writing context.
 // A short grace period lets parallel requests and the first client request after
 // server rendering persist the same rotated pair. This cache is process-local.
-const refreshes = new Map<string, { promise: Promise<RefreshResult | null>; expiresAt: number }>();
+type RefreshCache = Map<string, { promise: Promise<RefreshResult | null>; expiresAt: number }>;
+// Next can load separate copies of this module for RSC and route handlers.
+// A process-wide store lets both persist the same rotated token pair.
+const refreshGlobal = globalThis as typeof globalThis & { __supplyedBackendRefreshes?: RefreshCache };
+const refreshes: RefreshCache = refreshGlobal.__supplyedBackendRefreshes ??= new Map();
 const MAX_REFRESHES = 1000;
 const REFRESH_GRACE_MS = 30_000;
 

@@ -1,18 +1,22 @@
 "use client";
+import { useDropdown } from "@/features/dropdowns/use-dropdown";
+import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
+
 
 import { useEffect, useRef, useState } from "react";
 
-import { defaultTweaks } from "@/data/supplyed";
-import { loadTweaks, saveTweaks } from "@/lib/supplyed-preferences";
-import { applyBrandTheme, brandPalettes, deriveBrandTheme } from "@/lib/theme";
+import { useTweaks } from "@/lib/use-tweaks";
+import { applyBrandTheme, deriveBrandTheme } from "@/lib/theme";
 import { Icon } from "../atoms";
 
 export function PublicThemeControls() {
-  const [accent, setAccent] = useState(() => deriveBrandTheme(defaultTweaks.accent).accent);
+  const choices = useDropdown("themeAccent");
+  const brandPalettes = (choices.data?.options ?? []).map(option => ({ name: option.label, accent: option.value }));
+  const [tweaks, setTweaks] = useTweaks();
   const [open, setOpen] = useState(false);
   const controlsRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const safeAccent = deriveBrandTheme(accent).accent;
+  const safeAccent = deriveBrandTheme(tweaks.accent).accent;
 
   function closeControls() {
     setOpen(false);
@@ -29,18 +33,13 @@ export function PublicThemeControls() {
     return () => document.removeEventListener("pointerdown", dismiss);
   }, [open]);
   function openControls() {
-    setAccent(deriveBrandTheme(loadTweaks().accent).accent);
     setOpen(true);
   }
 
   function selectAccent(nextAccent: string) {
     const normalizedAccent = deriveBrandTheme(nextAccent).accent;
-    const savedTweaks = loadTweaks();
-    const nextTweaks = { ...savedTweaks, accent: normalizedAccent };
-
-    setAccent(normalizedAccent);
     applyBrandTheme(normalizedAccent);
-    saveTweaks(nextTweaks);
+    setTweaks(current => ({ ...current, accent: normalizedAccent }));
   }
 
   if (!open) {
@@ -75,7 +74,7 @@ export function PublicThemeControls() {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
       }}
     >
-      {brandPalettes.map((palette) => {
+      <DropdownStatus name="themeAccent" />{brandPalettes.map((palette) => {
         const selected = safeAccent.toLowerCase() === palette.accent.toLowerCase();
 
         return (

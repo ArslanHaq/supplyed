@@ -1,10 +1,9 @@
-import type { ApplicationCreateInput, JobApplication, JobApplicationsQuery, JobApplicationStatus, PaginatedApplications } from "./types";
+import type { ApplicationCreateInput, ApplicationHistoryEntry, JobApplication, JobApplicationsQuery, JobApplicationStatus, PaginatedApplicationHistory, PaginatedApplications } from "./types";
 
 const APPLICATION_STATUSES: JobApplicationStatus[] = [
   "APPLIED",
   "VIEWED",
   "SHORTLISTED",
-  "INTERVIEW",
   "HIRED",
   "REJECTED",
 ];
@@ -32,9 +31,30 @@ export function normalizePaginatedApplications(payload: PaginatedApplications): 
   };
 }
 
-export function normalizeApplicationCreateInput(input: ApplicationCreateInput): ApplicationCreateInput {
+export function normalizeApplicationHistory(payload: PaginatedApplicationHistory): PaginatedApplicationHistory {
+  const pagination = payload.pagination ?? { hasNextPage: false, limit: 20, page: 1, total: 0, totalPages: 0 };
   return {
-    coverLetter: input.coverLetter.trim(),
+    history: (payload.history ?? []).map(normalizeHistoryEntry),
+    pagination: {
+      hasNextPage: Boolean(pagination.hasNextPage), limit: pagination.limit, page: pagination.page,
+      total: pagination.total, totalPages: pagination.totalPages,
+    },
+  };
+}
+
+function normalizeHistoryEntry(entry: ApplicationHistoryEntry): ApplicationHistoryEntry {
+  return {
+    ...entry,
+    createdAt: readDateIso(entry.createdAt) ?? entry.createdAt,
+    fromStatus: entry.fromStatus === null ? null : normalizeApplicationStatus(entry.fromStatus),
+    toStatus: normalizeApplicationStatus(entry.toStatus),
+  };
+}
+
+export function normalizeApplicationCreateInput(input: ApplicationCreateInput): ApplicationCreateInput {
+  const coverLetter = input.coverLetter?.trim();
+  return {
+    ...(coverLetter ? { coverLetter } : {}),
     jobId: input.jobId.trim(),
   };
 }
@@ -42,6 +62,8 @@ export function normalizeApplicationCreateInput(input: ApplicationCreateInput): 
 export function normalizeApplication(application: JobApplication): JobApplication {
   return {
     ...application,
+    status: normalizeApplicationStatus(application.status),
+    jobName: typeof application.jobName === "string" ? application.jobName.trim() || null : null,
     createdAt: readDateIso(application.createdAt),
     updatedAt: readDateIso(application.updatedAt),
     instructor: application.instructor
@@ -53,6 +75,11 @@ export function normalizeApplication(application: JobApplication): JobApplicatio
         }
       : undefined,
   };
+}
+
+export function normalizeApplicationStatus(value: unknown): JobApplicationStatus {
+  if (typeof value === "string" && APPLICATION_STATUSES.includes(value as JobApplicationStatus)) return value as JobApplicationStatus;
+  throw new Error("The application has an unsupported status.");
 }
 
 function normalizePage(value: unknown) {

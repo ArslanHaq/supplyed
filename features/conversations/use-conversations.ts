@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { fetchJson } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
 
-import { markConversationReadAction, openConversationForApplicationAction, sendMessageAction } from "./actions";
+import { markConversationReadAction, openConversationForApplicationAction, sendMessageAction, startConversationAction } from "./actions";
 import { acquireConversationSocket, releaseConversationSocket, useConversationConnected } from "./socket";
 import type {
   ChatMessage,
@@ -17,6 +17,7 @@ import type {
   MessagesPage,
   ReadEventPayload,
   SendMessageInput,
+  StartConversationInput,
   TypingEventPayload,
   TypingState,
 } from "./types";
@@ -29,6 +30,7 @@ const FALLBACK_REFETCH_MS = 30_000;
 
 /** The thread opened from an application is cached separately from the list; both must see the same updates. */
 const applicationEntries = { queryKey: [...queryKeys.conversations.all, "application"] as const };
+const detailEntries = { queryKey: [...queryKeys.conversations.all, "detail"] as const };
 
 type MessagesData = InfiniteData<MessagesPage, string | undefined>;
 type ConversationsData = InfiniteData<ConversationsPage, number>;
@@ -84,6 +86,25 @@ export function useConversationForApplication(applicationId: string | undefined)
   });
 }
 
+export function useConversation(id?: string) {
+  return useQuery({ enabled: Boolean(id), queryKey: queryKeys.conversations.detail(id ?? ""), queryFn: () => fetchJson<Conversation>(`/api/conversations/${id}`) });
+}
+
+export function useStartConversation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: StartConversationInput) => {
+      const result = await startConversationAction(input);
+      if (!result.ok) throw new Error(result.message);
+      return result.data;
+    },
+    onSuccess: (conversation) => {
+      client.setQueryData(queryKeys.conversations.detail(conversation.id), conversation);
+      void client.invalidateQueries({ queryKey: queryKeys.conversations.list() });
+    },
+  });
+}
+
 /** A thread's messages: the newest page first, with older pages loaded on demand. */
 export function useMessages(conversationId: string | undefined) {
   const connected = useConversationConnected();
@@ -100,7 +121,8 @@ export function useMessages(conversationId: string | undefined) {
 
 /** All loaded messages of a thread, oldest first. */
 export function flattenMessages(data: InfiniteData<MessagesPage, unknown> | undefined): ChatMessage[] {
-  return (data?.pages ?? []).slice().reverse().flatMap((page) => page.messages);
+  const seen = new Set<string>();
+  return (data?.pages ?? []).slice().reverse().flatMap((page) => page.messages).filter(message => { if (seen.has(message.id)) return false; seen.add(message.id); return true; });
 }
 
 /** Adds a message to its cached thread. False when the thread is not cached yet, so the caller can refetch instead. */
@@ -122,6 +144,7 @@ function patchConversation(queryClient: ReturnType<typeof useQueryClient>, conve
     data ? { ...data, pages: data.pages.map((page) => ({ ...page, conversations: page.conversations.map(apply) })) } : data,
   );
   queryClient.setQueriesData<Conversation>(applicationEntries, (item) => (item ? apply(item) : item));
+  queryClient.setQueriesData<Conversation>(detailEntries, (item) => (item ? apply(item) : item));
 }
 
 export function useSendMessage(options: { onError?: (message: string) => void } = {}) {
@@ -185,6 +208,7 @@ export function useConversationStream(enabled: boolean) {
     const typingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     const onMessage = (payload: MessageEventPayload) => {
+      void queryClient.fetchQuery({ queryKey: queryKeys.conversations.detail(payload.conversationId), queryFn: () => fetchJson<Conversation>(`/api/conversations/${payload.conversationId}`), staleTime: 0 }).catch(() => undefined);
       // A thread still loading its first page is refetched instead, so the new message is not lost.
       if (!appendMessage(queryClient, payload.message)) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.messages(payload.conversationId) });

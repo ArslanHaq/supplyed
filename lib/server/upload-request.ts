@@ -42,7 +42,8 @@ export async function readLimitedFormData(request: Request, maxFileBytes: number
       if (typeof value !== "string") files += 1;
       else fields += 1;
     }
-    if (files !== 1 || fields > 20) throw new ApiError("Choose one file to upload.", 400);
+    if (files !== 1) throw new ApiError("Choose one file to upload.", 400);
+    if (fields > 20) throw new ApiError("The upload contains too many form fields. Refresh the page and try again.", 400);
     return form;
   } catch (error) {
     if (error instanceof ApiError) throw error;

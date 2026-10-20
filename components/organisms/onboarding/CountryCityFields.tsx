@@ -1,9 +1,8 @@
-import { getUkCities, UK_COUNTRY_CODE, UK_COUNTRY_NAME, validateUkCity, validateUkCountry } from "@/lib/uk-validation";
+import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
+import { UK_COUNTRY_CODE, UK_COUNTRY_NAME, validateUkCity, validateUkCountry } from "@/lib/uk-validation";
 
 import { Field } from "../../atoms";
-import { SelectDropdown } from "../../molecules/OptionDropdowns";
 
-const cityOptions = getUkCities();
 
 export function CountryCityFields({
   city,
@@ -34,24 +33,21 @@ export function CountryCityFields({
   return (
     <>
       <Field label="Country" error={shownCountryError} required={countryRequired} hint="SupplyED currently supports United Kingdom addresses.">
-        <SelectDropdown
+        <DynamicSelect
           error={Boolean(shownCountryError)}
           onChange={onCountryChange}
-          options={[{ label: "Select country", value: "" }, { label: UK_COUNTRY_NAME, value: UK_COUNTRY_CODE }]}
+          collection="country"
           placeholder="Select country"
           value={countryCode}
         />
       </Field>
       <Field label="City / town" htmlFor={cityId} error={shownCityError} required={cityRequired}>
-        <SelectDropdown
+        <DynamicSelect
           id={cityId}
           error={Boolean(shownCityError)}
           disabled={!countryValidation.valid || !countryCode}
           onChange={onCityChange}
-          options={[
-            { label: countryCode ? "Select city" : "Select country first", value: "" },
-            ...cityOptions,
-          ]}
+          collection="city" emptyLabel="Select city or town"
           placeholder={countryCode ? "Select city" : "Select country first"}
           searchable
           value={city}

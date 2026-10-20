@@ -1,3 +1,5 @@
+import { normalizeWorkUnits } from "@/features/jobs/work-units";
+import { cleanOtherSubjects, jobSubjects } from "@/features/teaching-catalogue/selection";
 import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 import type { JobStatus } from "@/types/supplyed";
 
@@ -15,7 +17,7 @@ import type {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-const JOB_STATUSES: JobStatus[] = ["DRAFT", "ACTIVE", "EXPIRED", "CLOSED"];
+const JOB_STATUSES: JobStatus[] = ["DRAFT", "ACTIVE", "EXPIRED", "CLOSED", "SUSPENDED"];
 
 export function normalizeJobFilters(filters: JobListFilters = {}): JobListFilters {
   return {
@@ -72,6 +74,7 @@ export function normalizeMyJobs(result: { jobs?: BackendJobResponse[]; paginatio
       CLOSED: counts.CLOSED ?? 0,
       DRAFT: counts.DRAFT ?? 0,
       EXPIRED: counts.EXPIRED ?? 0,
+      SUSPENDED: counts.SUSPENDED ?? 0,
     },
   };
 }
@@ -82,7 +85,7 @@ function wholeNumberBetween(value: number | undefined, min: number, max: number)
 
 export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
   return {
-    ...input,
+    ...Object.fromEntries(Object.entries(input).filter(([key]) => key !== "subject")),
     address: input.address?.trim() || undefined,
     city: validateUkCity(input.city).value || undefined,
     countryCode: validateUkCountry(input.countryCode).value || "GB",
@@ -90,6 +93,7 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
     description: input.description.trim(),
     endDate: input.endDate?.trim() || undefined,
     expiresAt: input.expiresAt?.trim() || undefined,
+    liveFrom: input.liveFrom?.trim() || undefined,
     keyStages: normalizeStringList(input.keyStages ?? []),
     minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
@@ -97,14 +101,16 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
     postalCode: validateUkPostcode(input.postalCode).value || undefined,
     requiredSkills: normalizeStringList(input.requiredSkills ?? []),
     startDate: input.startDate?.trim() || undefined,
-    subject: input.subject?.trim() || undefined,
+    otherSubjects: input.otherSubjects === undefined ? undefined : cleanOtherSubjects(input.otherSubjects),
+    otherSkills: input.otherSkills === undefined ? undefined : cleanOtherSubjects(input.otherSkills),
+    subjects: input.subjects === undefined ? undefined : normalizeStringList(input.subjects),
     title: input.title.trim(),
   };
 }
 
 export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
-  return withoutEmptyJobFields({
-    ...input,
+  const normalized = withoutEmptyJobFields({
+    ...Object.fromEntries(Object.entries(input).filter(([key]) => key !== "subject")),
     address: input.address?.trim() || undefined,
     city: validateUkCity(input.city).value || undefined,
     countryCode: validateUkCountry(input.countryCode).value || undefined,
@@ -113,6 +119,7 @@ export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
     endDate: input.endDate?.trim() || undefined,
     expiresAt: input.expiresAt?.trim() || undefined,
     id: input.id.trim(),
+    liveFrom: input.liveFrom === null ? null : input.liveFrom?.trim() || undefined,
     keyStages: input.keyStages ? normalizeStringList(input.keyStages) : undefined,
     minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
@@ -120,9 +127,12 @@ export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
     postalCode: validateUkPostcode(input.postalCode).value || undefined,
     requiredSkills: input.requiredSkills ? normalizeStringList(input.requiredSkills) : undefined,
     startDate: input.startDate?.trim() || undefined,
-    subject: input.subject?.trim() || undefined,
+    otherSubjects: input.otherSubjects === undefined ? undefined : cleanOtherSubjects(input.otherSubjects),
+    otherSkills: input.otherSkills === undefined ? undefined : cleanOtherSubjects(input.otherSkills),
+    subjects: input.subjects === undefined ? undefined : normalizeStringList(input.subjects),
     title: input.title?.trim() || undefined,
   }) as JobUpdateInput;
+  return input.liveFrom === null ? { ...normalized, liveFrom: null } : normalized;
 }
 
 export function normalizeBackendJob(job: BackendJobResponse): Job {
@@ -131,9 +141,11 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
   const startDate = readDateIso(job.startDate);
   const endDate = readDateIso(job.endDate);
   const expiresAt = readDateIso(job.expiresAt);
+  const liveFrom = readDateIso(job.liveFrom);
   const keyStages = normalizeStringList(job.keyStages ?? []);
   const requiredSkills = normalizeStringList(job.requiredSkills ?? []);
-  const subject = job.subject?.trim() || "General cover";
+  const subjects = jobSubjects(job);
+  const subject = subjects.join(", ") || "General cover";
   const city = job.city?.trim() || "Location TBC";
 
   return {
@@ -147,6 +159,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     description: job.description,
     endDate,
     expiresAt,
+    liveFrom,
     keyStage: keyStages[0] ?? "All stages",
     keyStages,
     institution: job.institution?.id
@@ -166,6 +179,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
       readPostingModeFromDescription(job.description) ??
       derivePostingMode(startDate, endDate),
     parkingInfo: job.parkingInfo ?? null,
+    ...normalizeWorkUnits(job),
     payAmount,
     payType: job.payType ?? null,
     postedAt: formatRelativeTime(createdAt),
@@ -177,6 +191,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     startDate,
     status: job.status,
     subject,
+    subjects,
     title: job.title,
     updatedAt: readDateIso(job.updatedAt),
     urgent: isUrgent(expiresAt),
@@ -190,7 +205,9 @@ export function toCreateJobPayload(input: JobCreateInput) {
 
 export function toUpdateJobPayload(input: JobUpdateInput) {
   const { id: _id, ...payload } = normalizeJobUpdateInput(input);
-  return withoutEmptyJobFields(payload);
+  const normalized = withoutEmptyJobFields(payload);
+  if (input.liveFrom === null) return { ...normalized, liveFrom: null };
+  return normalized;
 }
 
 function normalizeStringList(value: string[]) {
@@ -281,10 +298,11 @@ function isUrgent(expiresAt: string | null) {
 
 function withoutEmptyJobFields<Input extends Record<string, unknown>>(input: Input) {
   return Object.fromEntries(
-    Object.entries(input).filter(([, value]) => {
+    Object.entries(input).filter(([key, value]) => {
+      if (value === null && (key === "hours" || key === "days")) return true;
       if (value === undefined || value === null) return false;
       if (typeof value === "string" && !value.trim()) return false;
-      if (Array.isArray(value) && value.length === 0) return false;
+
       return true;
     }),
   ) as Partial<Input>;

@@ -1,4 +1,11 @@
 "use client";
+import { formatPlannedUnits } from "@/features/jobs/work-units";
+
+import { useDropdown } from "@/features/dropdowns/use-dropdown";
+import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
+
+import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
+
 
 import { WorkspaceEmptyState } from "./WorkspacePanels";
 
@@ -7,14 +14,14 @@ import { useMemo, useState } from "react";
 
 import type { Booking, BookingInvoiceFilter, BookingListQuery, BookingStatus } from "@/features/bookings/types";
 import { bookingDays, invoiceUnitsLimit } from "@/features/bookings/schemas";
-import { useBookings, useCreateBookingReview, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
+import { useBooking, useBookings, useCreateBookingReview, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
 import { formatPence } from "@/features/payments/schemas";
 import { useCreateInvoice, useInvoice } from "@/features/payments/use-payments";
 import type { Invoice, PayableInvoice } from "@/features/payments/types";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, buttonClassName, Field, Icon, Tag } from "../atoms";
-import { Modal, PageHead, SectionLoader, SelectDropdown } from "../molecules";
+import { Modal, PageHead, SectionLoader } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { PayInvoiceModal } from "./PayInvoiceModal";
 
@@ -28,20 +35,15 @@ const tabStatus: Record<Tab, BookingStatus | undefined> = {
   "no-show": "NO_SHOW",
 };
 
-const tabs: Array<{ label: string; value: Tab }> = [
-  { label: "All", value: "all" },
-  { label: "Active", value: "active" },
-  { label: "Completed", value: "completed" },
-  { label: "Cancelled", value: "cancelled" },
-  { label: "No-show", value: "no-show" },
-];
 
 type BookingFilters = Pick<BookingListQuery, "from" | "invoice" | "search" | "to">;
 
 const emptyFilters: BookingFilters = { from: "", invoice: undefined, search: "", to: "" };
 
-export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role" | "toast">) {
-  const [tab, setTab] = useState<Tab>("active");
+export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "role" | "toast"> & { ctx?: RouteProps["ctx"] }) {
+  const choices = useDropdown("bookingStatus");
+  const tabs: Array<{ label: string; value: Tab }> = [{ label: "All", value: "all" }, ...(choices.data?.options ?? []).flatMap(option => { const value = (Object.keys(tabStatus) as Tab[]).find(key => tabStatus[key] === option.value); return value ? [{ label: option.label, value }] : []; })];
+  const [tab, setTab] = useState<Tab>(ctx?.jobId ? "all" : "active");
   const [page, setPage] = useState(1);
   const [filterDraft, setFilterDraft] = useState<BookingFilters>(emptyFilters);
   const [filters, setFilters] = useState<BookingFilters>(emptyFilters);
@@ -52,7 +54,9 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
   const [invoiceDetailsId, setInvoiceDetailsId] = useState<string | null>(null);
   const [payTarget, setPayTarget] = useState<PayableInvoice | null>(null);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
-  const bookingsQuery = useBookings({ limit: 20, page, status: tabStatus[tab], ...filters });
+  const listQuery = useBookings({ jobId: ctx?.jobId, limit: 20, page, status: tabStatus[tab], ...filters }, !ctx?.bookingId);
+  const detailQuery = useBooking(ctx?.bookingId);
+  const bookingsQuery = ctx?.bookingId ? { ...detailQuery, data: detailQuery.data ? { bookings: [detailQuery.data], pagination: { total: 1, totalPages: 1, page: 1, hasNextPage: false, limit: 1 } } : undefined } : listQuery;
   const bookings = bookingsQuery.data?.bookings ?? [];
   const updateBooking = useUpdateBookingStatus({
     onSuccess: (result) => {
@@ -84,7 +88,7 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
     onSuccess: (result) => {
       toast({
         title: result.ok ? "Invoice sent" : "Could not create invoice",
-        msg: !result.ok && result.requestId ? `${result.message} Support reference: ${result.requestId}` : result.message ?? "The school has been sent the invoice.",
+        msg: result.message ?? "The school has been sent the invoice.",
         tone: result.ok ? "success" : "danger",
       });
       if (result.ok) {
@@ -92,7 +96,7 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
         setInvoiceError(null);
         setInvoiceDetailsId(result.data.id);
       } else {
-        setInvoiceError(result.requestId ? `${result.message} Support reference: ${result.requestId}` : result.message);
+        setInvoiceError(result.message);
       }
     },
   });
@@ -129,12 +133,14 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
     <>
       <div className="app-page bookings-page">
         <PageHead
-          title="Bookings"
+          title={ctx?.bookingId ? "Booking details" : "Bookings"}
           subtitle={subtitle}
           actions={<><Tag tone="ghost">{bookingsQuery.data?.pagination.total ?? 0} bookings</Tag><Btn loading={bookingsQuery.isFetching} loadingLabel="Refreshing" size="sm" variant="ghost" onClick={() => { void bookingsQuery.refetch(); }}>Refresh</Btn></>}
         />
 
-        <div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center gap-3">
+        {ctx?.bookingId ? <div className="mb-5"><Btn icon="arrowLeft" variant="secondary" onClick={() => go("bookings")}>All bookings</Btn></div> : <><div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center gap-3">
+          {ctx?.jobId ? <><Tag tone="ghost">Bookings for this job</Tag><Btn size="sm" variant="ghost" onClick={() => go("bookings")}>Show all jobs</Btn></> : null}
+          <DropdownStatus name="bookingStatus" />
           {tabs.map((item) => (
             <Btn
               key={item.value}
@@ -171,7 +177,7 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
             </label>
             <div className="text-xs font-semibold text-graphite">
               <label htmlFor="booking-invoice-filter">Invoice</label>
-              <SelectDropdown aria-label="Invoice" className="mt-2" id="booking-invoice-filter" options={[{ label: "Any invoice state", value: "" }, { label: "No invoice", value: "none" }, { label: "Unpaid", value: "unpaid" }, { label: "Paid", value: "paid" }]} placeholder="Any invoice state" value={filterDraft.invoice ?? ""} onChange={(value) => setFilterDraft((current) => ({ ...current, invoice: (value || undefined) as BookingInvoiceFilter | undefined }))} />
+              <DynamicSelect aria-label="Invoice" className="mt-2" id="booking-invoice-filter" collection="bookingInvoiceState" emptyLabel="Any invoice state" placeholder="Any invoice state" value={filterDraft.invoice ?? ""} onChange={(value) => setFilterDraft((current) => ({ ...current, invoice: (value || undefined) as BookingInvoiceFilter | undefined }))} />
             </div>
           </div>
           {filterError ? <p className="mt-3 text-sm font-medium text-danger" role="alert">{filterError}</p> : null}
@@ -179,7 +185,7 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
             <Btn size="sm" variant="ghost" onClick={clearFilters}>Clear filters</Btn>
             <Btn size="sm" type="submit">Apply filters</Btn>
           </div>
-        </form>
+        </form></>}
 
         {bookingsQuery.isLoading ? <SectionLoader rows={4} /> : null}
         {bookingsQuery.error && !bookingsQuery.isLoading ? (
@@ -308,6 +314,8 @@ function BookingCard({
   const reviewable = isReviewableBookingStatus(booking.status);
   const canReview = reviewable && !ownReview;
   const location = [booking.job.city, booking.job.county, booking.job.postalCode].filter(Boolean).join(", ") || "Location TBC";
+  const address = [booking.job.address, booking.job.city, booking.job.county, booking.job.postalCode]
+    .map(part => part?.trim()).filter(Boolean).join(", ") || "Address not provided";
 
   return (
     <article className="booking-card card card-pad-lg">
@@ -317,6 +325,7 @@ function BookingCard({
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-heading text-2xl leading-tight">{booking.job.title}</h2>
             <BookingStatusTag status={booking.status} />
+            {booking.source === "DIRECT_HIRE" ? <Tag tone="ghost">Direct hire</Tag> : null}
           </div>
           <div className="mt-1 text-sm text-muted">
             <button className="font-semibold text-ink hover:text-brand hover:underline disabled:cursor-default disabled:text-muted disabled:no-underline" disabled={!otherParty.id} onClick={() => onOpenProfile(booking)} type="button">
@@ -334,7 +343,9 @@ function BookingCard({
       <div className="booking-facts mt-5 grid gap-3 text-sm sm:grid-cols-3">
         <Detail icon="calendar" label="Dates" value={formatDateRange(booking.startDate, booking.endDate)} />
         <Detail icon="pound" label="Pay" value={formatPay(booking.payAmount, booking.payType)} />
+        {booking.hours != null || booking.days != null ? <Detail icon="calendar" label="Planned work" value={formatPlannedUnits(booking)} /> : null}
         <Detail icon="pin" label="Arrival" value={booking.job.parkingInfo || "Shared by the school"} />
+        <div className="sm:col-span-3"><Detail icon="pin" label="Booking address" value={address} /></div>
       </div>
 
       {booking.cancelReason ? <p className="mt-4 rounded-lg bg-danger-tint px-3 py-2 text-sm text-danger">{booking.cancelReason}</p> : null}
@@ -631,7 +642,7 @@ function ReviewBookingModal({
               onClick={() => setRating(value)}
               type="button"
             >
-              <Icon name="star" size={16} />
+              <Icon className={rating >= value ? "fill-current" : "fill-none"} name="star" size={16} />
             </button>
           ))}
         </div>
@@ -654,7 +665,7 @@ function ReviewBookingModal({
 }
 
 function Detail({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return <div className="rounded-lg bg-chalk p-3"><div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted"><Icon name={icon} size={13} />{label}</div><div className="font-medium">{value}</div></div>;
+  return <div className="min-w-0 rounded-lg bg-chalk p-3"><div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted"><Icon name={icon} size={13} />{label}</div><div className="whitespace-pre-line break-words font-medium">{value}</div></div>;
 }
 
 function validateCancellationReason(reason: string) {

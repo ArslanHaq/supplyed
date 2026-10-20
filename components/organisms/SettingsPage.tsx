@@ -1,10 +1,14 @@
 "use client";
+import { DynamicMultiSelect, DynamicSelect } from "@/components/molecules/DynamicDropdown";
+
+
+import { TeachingSelectionFields, CatalogueKeyStages } from "@/components/molecules/TeachingSelectionFields";
 
 import { useEffect, useState } from "react";
 
 import { usePhoneVerificationPending } from "@/features/auth/use-phone-verification";
 import { validateSettingsInput } from "@/features/settings/validation";
-import { getUkCities, getUkRegions, validateUkCity, validateUkCountry, validateUkPhone, validateUkRegion } from "@/lib/uk-validation";
+import { validateUkCity, validateUkCountry, validateUkPhone, validateUkRegion } from "@/lib/uk-validation";
 import { useSettingsProfile, useUpdateSettings, useUploadSettingsProfileImage } from "@/features/settings/use-settings";
 import type {
   SettingsInstitutionUpdateInput,
@@ -16,7 +20,7 @@ import type {
 import type { AppRole, ApplicationStatus, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, buttonClassName, Checkbox, Field, Icon, Tag } from "../atoms";
-import { PageHead, PostcodeLookup, SectionLoader, SelectDropdown } from "../molecules";
+import { PageHead, PostcodeLookup, SectionLoader } from "../molecules";
 import { NotificationSettings } from "./NotificationSettings";
 import { PayoutSettings } from "./PayoutSettings";
 import { PhoneVerification } from "../molecules/PhoneVerification";
@@ -63,8 +67,6 @@ function profileImageUrlForRole(form: SettingsForm, role: AppRole | null | undef
 
   return "";
 }
-const cityOptions = getUkCities();
-const regionOptions = getUkRegions();
 
 const emptyInstructor: SettingsInstructorUpdateInput = {
   address: "",
@@ -101,7 +103,7 @@ const emptyInstitution: SettingsInstitutionUpdateInput = {
   postalCode: "",
   registrationId: "",
   safeguardingConfirmed: false,
-  staffingNeeds: "",
+  staffingNeeds: [],
   typicalPupilCount: "",
   userRole: "",
 };
@@ -304,10 +306,10 @@ function CountryCityFields({
   return (
     <>
       <Field error={countryError} hint={!country.valid && countryCode ? `Saved country: ${countryCode}. Select United Kingdom to correct it.` : "United Kingdom addresses only."} label="Country" required={countryRequired}>
-        <SelectDropdown onChange={onCountryChange} options={[{ label: "United Kingdom", value: "GB" }]} placeholder="Select United Kingdom" value={country.valid ? country.value : countryCode} />
+        <DynamicSelect onChange={onCountryChange} collection="country" placeholder="Select United Kingdom" value={country.valid ? country.value : countryCode} />
       </Field>
       <Field error={cityError} hint={!selectedCity.valid && city ? `Saved location: ${city}. Select a UK city or town to correct it.` : undefined} label="City or town" required={cityRequired}>
-        <SelectDropdown onChange={onCityChange} options={[{ label: "Select city or town", value: "" }, ...cityOptions]} placeholder="Select a UK city or town" searchable value={selectedCity.valid ? selectedCity.value : city} />
+        <DynamicSelect onChange={onCityChange} collection="city" emptyLabel="Select city or town" placeholder="Select a UK city or town" searchable value={selectedCity.valid ? selectedCity.value : city} />
       </Field>
     </>
   );
@@ -331,9 +333,10 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   const [submitError, setSubmitError] = useState<string>();
   const [phoneEdited, setPhoneEdited] = useState(false);
   const cachedForm = formCache.snapshotKey === snapshotKey ? formCache.form : createForm(profile);
-  const form = { ...cachedForm, user: { ...cachedForm.user, phone: phoneEdited ? cachedForm.user.phone : profile?.user.phone ?? cachedForm.user.phone } };
+  const form = { ...cachedForm, user: { ...cachedForm.user, phone: phoneEdited && !profile?.user.phoneVerified ? cachedForm.user.phone : profile?.user.phone ?? cachedForm.user.phone } };
   const role = profile?.role ?? state.role;
   const canSave = Boolean(profile && role && profileExists(profile, role));
+  const enteredPhone = validateUkPhone(form.user.phone);
   const [profileImageError, setProfileImageError] = useState<string>();
   const [activeSection, setActiveSection] = useState("settings-profile");
   const profileImageUrl = profileImageUrlForRole(form, role);
@@ -402,13 +405,18 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
       }
 
       setErrors({});
+      setPhoneEdited(false);
       setSubmitError(undefined);
       toast({ title: "Settings saved", msg: "Your profile details were updated.", tone: "success" });
     },
   });
 
   function updateUser<Field extends keyof SettingsUserUpdateInput>(field: Field, value: SettingsUserUpdateInput[Field]) {
-    if (field === "phone") setPhoneEdited(true);
+    if (field === "phone") {
+      if (profile?.user.phoneVerified) return;
+      setPhoneEdited(true);
+      setErrors((current) => ({ ...current, phone: undefined }));
+    }
     setForm((current) => ({ ...current, user: { ...current.user, [field]: value } }));
     setSubmitError(undefined);
   }
@@ -465,6 +473,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   function saveSettings(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (phoneVerificationPending || updateSettings.isPending) return;
+    const formElement = event.currentTarget;
 
     if (!profile || !role) {
       setSubmitError("Profile settings are not ready yet.");
@@ -472,21 +481,27 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
     }
 
     const payload: SettingsUpdateInput = {
+      // The selector emits Other payloads when edited. Keep untouched saved names
+      // verbatim so unrelated edits can omit even legacy aliases/invalid skills.
       institution: role === "institution" ? form.institution : undefined,
       instructor: role === "teacher" ? form.instructor : undefined,
 
       role,
-      // Phone changes are committed only by successful SMS verification.
-      user: { ...form.user, phone: profile.user.phone },
+      user: form.user,
     };
 
-    const nextErrors = validateSettingsInput(payload);
-    const enteredPhone = validateUkPhone(form.user.phone);
+    const nextErrors = validateSettingsInput(payload, role === "teacher" ? profile.instructor : profile.institution);
     if (!enteredPhone.valid) nextErrors.phone = enteredPhone.error!;
-    else if (enteredPhone.value !== validateUkPhone(profile.user.phone).value) nextErrors.phone = "Verify your UK phone number before saving these changes.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setSubmitError("Check the highlighted fields before saving.");
+      // Validation must explain the problem rather than silently disabling Save.
+      // Wait for the inline errors to render before focusing the first control.
+      requestAnimationFrame(() => {
+        const invalid = formElement.querySelector<HTMLElement>('[aria-invalid="true"]');
+        invalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+        invalid?.focus({ preventScroll: true });
+      });
       return;
     }
     setSubmitError(undefined);
@@ -583,7 +598,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
             </Field>
             <div className="sm:col-span-2">
               <PhoneVerification
-                disabled={updateSettings.isPending}
+                disabled={updateSettings.isPending || profile.user.phoneVerified}
                 error={errors.phone}
                 onChange={(phone) => updateUser("phone", phone)}
                 onVerified={() => setPhoneEdited(false)}
@@ -591,7 +606,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                 savedPhone={profile.user.phone}
                 verified={profile.user.phoneVerified}
               />
-              <p className="mb-4 text-xs text-muted">Phone changes take effect after you confirm the SMS code.</p>
+              <p className="mb-4 text-xs text-muted">{profile.user.phoneVerified ? "This number is verified and cannot be edited." : "Save your phone number with Save settings. Verification is optional; once verified, the number cannot be changed."}</p>
             </div>
 
             {role === "teacher" ? (
@@ -634,7 +649,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCountryChange={updateInstructorCountry}
                 />
                 <Field error={errors.county} hint={form.instructor.county && !validateUkRegion(form.instructor.county).valid ? `Saved region: ${form.instructor.county}. Select a UK county or region to correct it.` : undefined} label="County or region (optional)">
-                  <SelectDropdown onChange={(value) => updateInstructor("county", value)} options={[{ label: "No county or region", value: "" }, ...regionOptions]} searchable value={validateUkRegion(form.instructor.county).value} />
+                  <DynamicSelect onChange={(value) => updateInstructor("county", value)} collection="region" emptyLabel="No county or region" searchable value={validateUkRegion(form.instructor.county).value} />
                 </Field>
                 <div className="settings-section-heading settings-section-heading-small"><span>03</span><div><h2>Work preferences</h2><p>Experience, travel and your preferred rates.</p></div></div>
                 <Field error={errors.currency} label="Currency">
@@ -690,29 +705,9 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     />
                   </Field>
                 </div>
-                <ArrayField
-                  error={errors.subjects}
-                  label="Subjects"
-                  onChange={(value) => updateInstructor("subjects", value)}
-                  placeholder="Mathematics, Physics"
-                  value={form.instructor.subjects}
-                />
-                <ArrayField
-                  error={errors.keyStages}
-                  label="Key stages"
-                  onChange={(value) => updateInstructor("keyStages", value)}
-                  placeholder="KS2, KS3"
-                  value={form.instructor.keyStages}
-                />
-                <div className="sm:col-span-2">
-                  <ArrayField
-                    error={errors.skills}
-                    label="Skills"
-                    onChange={(value) => updateInstructor("skills", value)}
-                    placeholder="Classroom management, SEN"
-                    value={form.instructor.skills}
-                  />
-                </div>
+                <div className="sm:col-span-2"><TeachingSelectionFields otherSkills={form.instructor.otherSkills} otherSkillError={errors.otherSkills} otherSubjects={form.instructor.otherSubjects} otherError={errors.otherSubjects} subjects={form.instructor.subjects} skills={form.instructor.skills} subjectError={errors.subjects} skillError={errors.skills} onChange={(subjects, skills, otherSubjects, otherSkills) => { updateInstructor("subjects", subjects); updateInstructor("skills", skills); updateInstructor("otherSkills", otherSkills); updateInstructor("otherSubjects", otherSubjects); }} /></div>
+                <Field error={errors.keyStages} label="Key stages"><CatalogueKeyStages value={form.instructor.keyStages} onChange={value => updateInstructor("keyStages", value)} /></Field>
+
               </>
             ) : null}
 
@@ -771,7 +766,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   onCountryChange={updateInstitutionCountry}
                 />
                 <Field error={errors.county} hint={form.institution.county && !validateUkRegion(form.institution.county).valid ? `Saved region: ${form.institution.county}. Select a UK county or region to correct it.` : undefined} label="County or region (optional)">
-                  <SelectDropdown onChange={(value) => updateInstitution("county", value)} options={[{ label: "No county or region", value: "" }, ...regionOptions]} searchable value={validateUkRegion(form.institution.county).value} />
+                  <DynamicSelect onChange={(value) => updateInstitution("county", value)} collection="region" emptyLabel="No county or region" searchable value={validateUkRegion(form.institution.county).value} />
                 </Field>
                 <div className="settings-section-heading settings-section-heading-small"><span>03</span><div><h2>Staffing and compliance</h2><p>Your team, hiring needs and safeguarding contacts.</p></div></div>
                 <Field error={errors.userRole} label="Your role">
@@ -805,22 +800,10 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   />
                 </Field>
                 <div className="sm:col-span-2">
-                  <Field error={errors.staffingNeeds} label="Staffing needs">
-                    <textarea
-                      className="textarea"
-                      onChange={(event) => updateInstitution("staffingNeeds", event.target.value)}
-                      value={form.institution.staffingNeeds}
-                    />
-                  </Field>
+                  <TeachingSelectionFields otherSubjects={form.institution.otherSubjects} otherError={errors.otherSubjects} subjectLabel="Staffing needs" subjects={form.institution.staffingNeeds} subjectError={errors.staffingNeeds} onChange={(subjects, _skills, otherSubjects) => { updateInstitution("staffingNeeds", subjects); updateInstitution("otherSubjects", otherSubjects); }} />
                 </div>
                 <div className="sm:col-span-2">
-                  <ArrayField
-                    error={errors.coverTypes}
-                    label="Cover types"
-                    onChange={(value) => updateInstitution("coverTypes", value)}
-                    placeholder="Same-day cover, Long-term roles"
-                    value={form.institution.coverTypes}
-                  />
+                  <Field label="Cover types" error={errors.coverTypes}><DynamicMultiSelect collection="coverType" searchable value={form.institution.coverTypes} onChange={value => updateInstitution("coverTypes", value)} /></Field>
                 </div>
                 <div className="sm:col-span-2 rounded-lg border border-border bg-chalk px-4 py-3">
                   <Checkbox
@@ -840,7 +823,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
         {role === "teacher" || role === "institution" ? <div className="mt-6"><NotificationSettings role={role} toast={toast} /></div> : null}
 
         {submitError ? (
-          <div className="mt-5 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
+          <div className="mt-5 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger" role="alert">
             {submitError}
           </div>
         ) : null}
@@ -849,6 +832,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
           <Btn onClick={() => go("dashboard")} variant="ghost">
             Cancel
           </Btn>
+          {phoneVerificationPending ? <p className="text-sm text-muted" role="status">Please wait for phone verification to finish.</p> : null}
           <Btn disabled={!canSave || phoneVerificationPending} iconRight="check" loading={updateSettings.isPending} loadingLabel="Saving" size="lg" type="submit">
             Save settings
           </Btn>

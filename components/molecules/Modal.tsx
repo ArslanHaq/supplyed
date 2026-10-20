@@ -74,7 +74,7 @@ export function Modal({
         "modal-overlay fixed inset-0 z-50 flex justify-center p-4 sm:p-6",
         scrollMode === "viewport" ? "items-start overflow-y-auto" : "items-center",
       )}
-      onClick={onClose}
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <div
         ref={panelRef}

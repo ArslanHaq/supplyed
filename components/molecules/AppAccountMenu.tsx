@@ -10,6 +10,7 @@ type AppAccountMenuProps = {
   onDashboard: () => void;
   onLanding: () => void;
   onLogout: () => void | Promise<void>;
+  onProfile?: () => void;
   onSecurity: () => void;
   onSettings: () => void;
   roleLabel: string;
@@ -62,6 +63,7 @@ export function AppAccountMenu({
   onDashboard,
   onLanding,
   onLogout,
+  onProfile,
   onSecurity,
   onSettings,
   roleLabel,
@@ -171,8 +173,10 @@ export function AppAccountMenu({
       {open ? (
         <div
           className="absolute right-0 z-50 mt-2 max-h-[calc(100dvh-100px)] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-xl border border-border bg-surface shadow-panel"
+          id={menuId} role="menu" aria-label="Account actions"
         >
-          <div className="border-b border-border bg-chalk p-4">
+          <div className="relative border-b border-border bg-chalk p-4">
+            {onProfile ? <button aria-label="My Profile" className="absolute inset-0 z-10 rounded-t-xl transition hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand" onClick={() => closeThen(onProfile)} role="menuitem" type="button" /> : null}
             <div className="flex min-w-0 items-center gap-3">
               <Avatar name={displayName} />
               <div className="min-w-0">
@@ -181,11 +185,12 @@ export function AppAccountMenu({
                   {roleLabel}
                 </div>
                 {verified ? <Tag className="ml-2" tone="green">Verified</Tag> : null}
+                {onProfile ? <span className="mt-2 flex items-center gap-1 text-xs font-semibold text-brand">My Profile <Icon name="arrowRight" size={13} /></span> : null}
               </div>
             </div>
           </div>
 
-          <div className="p-2" id={menuId} role="menu" aria-label="Account actions">
+          <div className="p-2">
             {actions.map((action) => (
               <AppAccountMenuItem key={action.label} {...action} />
             ))}

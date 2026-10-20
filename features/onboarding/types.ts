@@ -142,7 +142,7 @@ export type OnboardingInstitutionSnapshot = {
   registrationId: string;
   safeguardingConfirmed: boolean;
   status: ApplicationStatus;
-  staffingNeeds: string;
+  staffingNeeds: string[];
   trust: InstitutionTrustSnapshot | null;
   typicalPupilCount: string;
   userRole: string;

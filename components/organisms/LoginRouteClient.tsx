@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { invitationReturnPath } from "@/lib/invitation-links";
 import { signIn } from "next-auth/react";
 
 import { loginAction, resendLoginVerification, verifyLoginEmail, verifyLoginTwoFactor } from "@/app/(auth)/login/actions";
@@ -65,6 +66,7 @@ function isSocialProviderAvailable(provider: "google" | "microsoft-entra-id", so
 
 function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
   const router = useRouter();
+  const returnTo = invitationReturnPath(useSearchParams().get("returnTo"));
   const [stage, setStage] = useState<LoginStage>("login");
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationNotice, setVerificationNotice] = useState<string>();
@@ -172,7 +174,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       result = await signIn("credentials", {
         flow: "verified-email-session",
         redirect: false,
-        redirectTo: sessionPayload.nextHref,
+        redirectTo: returnTo ?? sessionPayload.nextHref,
         ticket: sessionPayload.ticket,
       });
     } catch (error) {
@@ -191,7 +193,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     startRouteLoading();
-    router.replace(sessionPayload.nextHref);
+    router.replace(returnTo ?? sessionPayload.nextHref);
     router.refresh();
     return { ok: true as const };
   }
@@ -246,7 +248,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       signInResult = await signIn("credentials", {
         flow: "verified-email-session",
         redirect: false,
-        redirectTo: sessionPayload.nextHref,
+        redirectTo: returnTo ?? sessionPayload.nextHref,
         ticket: sessionPayload.ticket,
       });
     } catch (error) {
@@ -265,7 +267,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     startRouteLoading();
-    router.replace(sessionPayload.nextHref);
+    router.replace(returnTo ?? sessionPayload.nextHref);
     router.refresh();
     return { ok: true as const };
   }
@@ -309,7 +311,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
       signInResult = await signIn("credentials", {
         flow: "verified-email-session",
         redirect: false,
-        redirectTo: sessionPayload.nextHref,
+        redirectTo: returnTo ?? sessionPayload.nextHref,
         ticket: sessionPayload.ticket,
       });
     } catch (error) {
@@ -328,7 +330,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     startRouteLoading();
-    router.replace(sessionPayload.nextHref);
+    router.replace(returnTo ?? sessionPayload.nextHref);
     router.refresh();
     return { ok: true as const };
   }
@@ -368,7 +370,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     startRouteLoading();
-    void signIn(provider, { redirectTo: "/post-auth?authSource=login" }).catch((error) => {
+    void signIn(provider, { redirectTo: `/post-auth?authSource=login${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}` }).catch((error) => {
       showAuthError(readUnknownAuthErrorMessage(error, "Social sign-in could not start."));
     });
   }

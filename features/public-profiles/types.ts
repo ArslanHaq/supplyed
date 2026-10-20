@@ -1,4 +1,7 @@
+import type { InstructorBookingDates } from "./booking-dates";
+
 export type InstructorPublicProfile = {
+  bookings: InstructorBookingDates[] | null;
   bio: string | null;
   city: string | null;
   county: string | null;
@@ -29,7 +32,7 @@ export type InstitutionPublicProfile = {
   memberSince: string | null;
   name: string;
   postalCode: string | null;
-  staffingNeeds: string | null;
+  staffingNeeds: string[];
   trust: { name: string } | null;
   typicalPupilCount: number | null;
   verified: boolean;

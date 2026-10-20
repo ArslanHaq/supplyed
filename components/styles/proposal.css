@@ -68,6 +68,8 @@
 }
 .proposal-editor:focus-within { border-color: var(--se); box-shadow: 0 0 0 3px rgb(var(--se-rgb) / .1); }
 .proposal-editor[data-invalid="true"] { border-color: var(--red); }
+.editor-appearance-controls { display: grid; grid-template-columns: minmax(160px, 1.5fr) minmax(100px, 1fr) minmax(130px, 1fr); gap: 12px; padding: 12px; border-bottom: 1px solid var(--border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface-2); }
+.editor-appearance-controls > div { min-width: 0; }
 .proposal-editor > [role="toolbar"] { min-height: 55px; }
 .proposal-editor .ql-toolbar.ql-snow {
   display: flex;
@@ -91,6 +93,11 @@
 .proposal-editor .ql-toolbar.ql-snow button.ql-active .ql-stroke, .proposal-editor .ql-toolbar.ql-snow button:hover .ql-stroke { stroke: var(--se-dark); }
 .proposal-editor .ql-toolbar.ql-snow button.ql-active .ql-fill, .proposal-editor .ql-toolbar.ql-snow button:hover .ql-fill { fill: var(--se-dark); }
 .proposal-editor .ql-toolbar.ql-snow button:focus-visible, .proposal-editor .ql-picker-label:focus-visible, .proposal-editor .ql-picker-item:focus-visible { outline: 2px solid var(--se); outline-offset: 2px; }
+.proposal-editor .ql-toolbar.ql-snow button:focus { color: var(--se-dark); }
+.proposal-editor .ql-toolbar.ql-snow button:focus .ql-stroke { stroke: var(--se-dark); }
+.proposal-editor .ql-toolbar.ql-snow button:focus .ql-fill { fill: var(--se-dark); }
+.proposal-editor .ql-snow .ql-tooltip { border-color: var(--border); border-radius: var(--radius); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-lg); }
+.proposal-editor .ql-snow .ql-tooltip a { color: var(--se-dark); }
 .proposal-editor .ql-snow .ql-picker { flex: 0 0 auto; float: none; height: 34px; color: var(--graphite); font-family: var(--sans); font-size: 12px; font-weight: 550; line-height: 1; }
 .proposal-editor .ql-snow .ql-picker.ql-font { width: 159px; }
 .proposal-editor .ql-snow .ql-picker.ql-size { width: 62px; }
@@ -120,6 +127,8 @@
 .proposal-editor .ql-snow .ql-font [data-value="Times New Roman"]::before { content: "Times New Roman"; font-family: "Times New Roman", serif; }
 
 @media (max-width: 640px) {
+  .editor-appearance-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .editor-appearance-controls > div:first-child { grid-column: 1 / -1; }
   .proposal-editor .ql-toolbar.ql-snow { gap: 7px 0; padding: 9px 8px; }
   .proposal-editor .ql-toolbar.ql-snow .ql-formats { padding: 0 6px; }
   .proposal-editor .ql-toolbar.ql-snow .proposal-font-controls { flex-basis: 100%; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--border); }

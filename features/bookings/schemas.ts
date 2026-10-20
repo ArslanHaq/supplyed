@@ -1,3 +1,5 @@
+import { normalizeWorkUnits } from "@/features/jobs/work-units";
+import { jobSubjects } from "@/features/teaching-catalogue/selection";
 import type {
   Booking,
   BookingInvoiceFilter,
@@ -81,6 +83,8 @@ function normalizeInvoiceSummary(invoice: BookingInvoiceSummary | null | undefin
 export function normalizeBooking(booking: Booking): Booking {
   return {
     ...booking,
+    ...normalizeWorkUnits(booking),
+    source: booking.source === "DIRECT_HIRE" ? "DIRECT_HIRE" : "APPLICATION",
     cancelReason: booking.cancelReason ?? null,
     cancelledAt: readDateIso(booking.cancelledAt),
     completedAt: readDateIso(booking.completedAt),
@@ -96,7 +100,8 @@ export function normalizeBooking(booking: Booking): Booking {
       keyStages: readStringArray(booking.job?.keyStages),
       parkingInfo: booking.job?.parkingInfo ?? null,
       postalCode: booking.job?.postalCode ?? null,
-      subject: booking.job?.subject ?? null,
+      subject: jobSubjects(booking.job ?? {}).join(", ") || null,
+      subjects: jobSubjects(booking.job ?? {}),
       title: booking.job?.title ?? "Booking",
     },
     institution: {

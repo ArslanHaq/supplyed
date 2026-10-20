@@ -1,6 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
+import { invitationReturnPath } from "@/lib/invitation-links";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { AppNotification, NotificationType } from "@/features/notifications/types";
@@ -26,6 +29,8 @@ const ICON_BY_TYPE: Record<NotificationType, string> = {
   BOOKING_CONFIRMED: "checkCircle",
   INVOICE_PAID: "pound",
   JOB_MATCH: "zap",
+  JOB_INVITATION: "mail",
+  JOB_INVITATION_STATUS: "file",
   PROFILE_STATUS: "shield",
   REVIEW_RECEIVED: "star",
 };
@@ -37,6 +42,7 @@ const ICON_BY_TYPE: Record<NotificationType, string> = {
  */
 export function NotificationBell({ live, onSettings }: { live: boolean; onSettings: () => void }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const mounted = useMounted();
   const [open, setOpen] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("unsupported");
@@ -47,7 +53,10 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
   const listQuery = useNotifications(open);
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
-  const openLink = useCallback((link: string) => router.push(link), [router]);
+  const openLink = useCallback((link: string) => {
+    if (invitationReturnPath(link)) void queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
+    router.push(link);
+  }, [router, queryClient]);
   useNotificationStream(live, openLink);
 
   const unread = mounted ? unreadQuery.data?.total ?? 0 : 0;
@@ -81,7 +90,7 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
   function select(notification: AppNotification) {
     if (!notification.readAt) markRead.mutate(notification);
     setOpen(false);
-    if (notification.link) router.push(notification.link);
+    if (notification.link) openLink(notification.link);
   }
 
   async function enableDesktopAlerts() {

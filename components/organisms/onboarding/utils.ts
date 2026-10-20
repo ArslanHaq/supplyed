@@ -1,3 +1,4 @@
+import { toSkillEditor, toSubjectEditor } from "@/features/teaching-catalogue/selection";
 import { cn } from "@/lib/cn";
 import { validateUkPhone, validateUkPostcode, validateUkCountry, validateUkCity, validateUkRegion } from "@/lib/uk-validation";
 import {
@@ -178,7 +179,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     safeguardingConfirmed: institution?.safeguardingConfirmed ?? false,
     schoolName: institution?.name ?? "",
     skills: instructor?.skills ?? [],
-    staffingNeeds: institution?.staffingNeeds ?? "",
+    staffingNeeds: institution?.staffingNeeds ?? [],
     signatoryEmail: signatoryApproval?.signatoryEmail ?? "",
     signatoryJobTitle: signatoryApproval?.signatoryJobTitle ?? "",
     signatoryName: signatoryApproval?.signatoryName ?? "",
@@ -191,7 +192,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
   };
 }
 
-export function buildOnboardingPayload(form: SignupForm, role: string, step: number, accountEmail?: string) {
+export function buildOnboardingPayload(form: SignupForm, role: string, step: number, accountEmail?: string, catalogue?: import("@/features/teaching-catalogue/types").TeachingCatalogue) {
   const data = new FormData();
   data.set("role", role);
   data.set("step", String(step));
@@ -212,7 +213,7 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("institutionDomain", form.institutionDomain.trim());
   data.set("institutionRegistrationId", form.institutionRegistrationId.trim());
   data.set("localAuthority", validateUkRegion(form.localAuthority).value);
-  data.set("staffingNeeds", form.staffingNeeds.trim());
+  data.set("staffingNeeds", JSON.stringify(toSubjectEditor(catalogue, form.staffingNeeds, form.otherSubjects).subjects));
   data.set("trustName", form.trustName.trim());
   data.set("trustCompanyNumber", form.trustCompanyNumber.trim());
   data.set("signatoryName", form.signatoryName.trim());
@@ -223,9 +224,13 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("complianceContact", form.complianceContact.trim());
   data.set("complianceEmail", form.complianceEmail.trim());
   data.set("safeguardingConfirmed", String(form.safeguardingConfirmed));
-  data.set("subjects", JSON.stringify(form.subjects));
+  data.set("subjects", JSON.stringify(toSubjectEditor(catalogue, form.subjects, form.otherSubjects).subjects));
   data.set("keyStages", JSON.stringify(form.keyStages));
-  data.set("skills", JSON.stringify(form.skills));
+  const editor = toSubjectEditor(catalogue, role === "teacher" ? form.subjects : form.staffingNeeds, form.otherSubjects);
+  if (editor.otherSubjects !== undefined) data.set("otherSubjects", JSON.stringify(editor.otherSubjects));
+  const skillEditor = toSkillEditor(catalogue, form.skills, form.otherSkills);
+  data.set("skills", JSON.stringify(skillEditor.skills));
+  if (skillEditor.otherSkills !== undefined) data.set("otherSkills", JSON.stringify(skillEditor.otherSkills));
   data.set("yearsExperience", form.yearsExperience.trim());
   data.set("hourlyRate", form.hourlyRate.trim());
   data.set("dailyRate", form.dailyRate.trim());

@@ -12,6 +12,7 @@ import {
   Circle,
   CircleHelp,
   Clock,
+  Copy,
   Download,
   Eye,
   EyeOff,
@@ -26,12 +27,14 @@ import {
   LockKeyhole,
   LucideIcon,
   MapPin,
+  Mail,
   MessageCircle,
   MoreHorizontal,
   Pencil,
   Palette,
   Plus,
   PoundSterling,
+  RefreshCw,
   Search,
   Send,
   Settings,
@@ -89,6 +92,9 @@ const icons: Record<string, LucideIcon> = {
   pound: PoundSterling,
   award: Award,
   filter: Filter,
+  copy: Copy,
+  mail: Mail,
+  refresh: RefreshCw,
 };
 
 type IconProps = {

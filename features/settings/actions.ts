@@ -1,5 +1,7 @@
 "use server";
 
+import { actualSubjects, catalogueError, cleanOtherSubjects } from "@/features/teaching-catalogue/selection";
+import { omitUnchangedDropdownFields, omitUnchangedTeachingFields } from "@/features/teaching-catalogue/patch";
 import { backendEnabled } from "@/lib/server/backend-config";
 
 import { revalidateTag } from "next/cache";
@@ -65,10 +67,17 @@ function actionFailure(error: unknown, fallback: string) {
   return actionError(fallback);
 }
 
-function userPayload(input: SettingsUserUpdateInput) {
-  // Phone changes are saved by the verification endpoint, including across tabs.
+function userPayload(input: SettingsUserUpdateInput, current: SettingsProfileSnapshot) {
+  const phone = validateUkPhone(input.phone);
+  const savedPhone = validateUkPhone(current.user.phone);
+  const phoneChanged = input.phone !== undefined && phone.value !== savedPhone.value;
+  if (current.user.phoneVerified && phoneChanged) {
+    throw new Error("Your verified phone number cannot be changed.");
+  }
   return {
     name: text(input.name),
+    // Verification is optional. The backend resets verification on a changed number.
+    ...(phoneChanged ? { phone: phone.value } : {}),
   };
 }
 
@@ -98,7 +107,9 @@ function instructorPayload(input: SettingsInstructorUpdateInput) {
     maxTravelDistance,
     postalCode: validateUkPostcode(input.postalCode).value,
     skills: normalizeStringArray(input.skills),
+    otherSkills: input.otherSkills,
     subjects: normalizeStringArray(input.subjects),
+    otherSubjects: input.otherSubjects,
   });
 }
 
@@ -122,27 +133,33 @@ function institutionPayload(input: SettingsInstitutionUpdateInput) {
     postalCode: validateUkPostcode(input.postalCode).value,
     registrationId: optionalText(input.registrationId),
     safeguardingConfirmed: input.safeguardingConfirmed,
-    staffingNeeds: optionalText(input.staffingNeeds),
+    staffingNeeds: normalizeStringArray(input.staffingNeeds),
+    otherSubjects: input.otherSubjects,
     typicalPupilCount,
     userRole: optionalText(input.userRole),
   });
 }
 
 function mergeLocalSnapshot(current: SettingsProfileSnapshot, input: SettingsUpdateInput): SettingsProfileSnapshot {
+  const { otherSubjects: teacherOther, otherSkills: teacherSkills, ...teacher } = input.instructor ?? {};
+  const { otherSubjects: schoolOther, ...school } = input.institution ?? {};
   return {
     ...current,
     institution:
       input.role === "institution" && input.institution && current.institution
-        ? { ...current.institution, ...input.institution }
+        ? { ...current.institution, ...school, staffingNeeds: actualSubjects(input.institution.staffingNeeds, schoolOther === undefined ? undefined : cleanOtherSubjects(schoolOther)) }
         : current.institution,
     instructor:
       input.role === "teacher" && input.instructor && current.instructor
-        ? { ...current.instructor, ...input.instructor }
+        ? { ...current.instructor, ...teacher, skills: actualSubjects(input.instructor.skills, teacherSkills), subjects: actualSubjects(input.instructor.subjects, teacherOther === undefined ? undefined : cleanOtherSubjects(teacherOther)) }
         : current.instructor,
     role: input.role,
     user: {
       ...current.user,
       name: text(input.user.name),
+      ...(input.user.phone !== undefined && validateUkPhone(input.user.phone).value !== validateUkPhone(current.user.phone).value
+        ? { phone: validateUkPhone(input.user.phone).value, phoneVerified: false }
+        : {}),
     },
   };
 }
@@ -269,7 +286,7 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
   try {
     if (!input || !input.user || typeof input.user !== "object") return actionError("Check your settings and try again.");
     const fieldErrors = validateSettingsInput(input);
-    if (Object.keys(fieldErrors).length > 0) {
+    if (Object.keys(fieldErrors).some(key => !["subjects", "skills", "staffingNeeds", "otherSubjects", "otherSkills"].includes(key))) {
       return actionError("Check the highlighted settings and try again.", { fieldErrors });
     }
     // Validate both payloads before starting the existing two-request save.
@@ -277,8 +294,15 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
       ? instructorPayload(input.instructor)
       : input.role === "institution" && input.institution ? institutionPayload(input.institution) : undefined;
     const current = await getSettingsProfileSnapshot();
+    const selectionErrors = validateSettingsInput(input, input.role === "teacher" ? current.instructor : current.institution);
+    if (Object.keys(selectionErrors).length) return actionError("Check the highlighted settings and try again.", { fieldErrors: selectionErrors });
+    if (profilePayload) { omitUnchangedTeachingFields(profilePayload, input.role === "teacher" ? current.instructor : current.institution); omitUnchangedDropdownFields(profilePayload, input.role === "teacher" ? current.instructor : current.institution); }
+    const enteredPhone = validateUkPhone(input.user.phone);
     const savedPhone = validateUkPhone(current.user.phone);
-    if (!savedPhone.valid) return actionError("Update and verify your saved UK phone number before saving your profile.", { fieldErrors: { phone: savedPhone.error! } });
+    if (current.user.phoneVerified && input.user.phone !== undefined && enteredPhone.value !== savedPhone.value) {
+      return actionError("Your verified phone number cannot be changed.", { code: "PHONE_VERIFIED_LOCKED", fieldErrors: { phone: "This number is verified and cannot be edited." } });
+    }
+    const accountPayload = userPayload(input.user, current);
 
     if (!backendEnabled()) {
       return actionOk(mergeLocalSnapshot(current, input), "Settings saved locally for backend-disabled development.");
@@ -298,7 +322,7 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
       return actionError("Institution profile was not found.");
     }
 
-    await api.patch("/users/me", userPayload(input.user));
+    await api.patch("/users/me", accountPayload);
     userSaved = true;
 
     if (input.role === "teacher") {
@@ -322,6 +346,7 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
 
     return actionOk(await getSettingsProfileSnapshot(), "Settings saved.");
   } catch (error) {
+    if (error instanceof ApiError && catalogueError(error.code)) return actionFailure(error, "Review your subjects and skills.");
     if (userSaved && !(error instanceof ApiError && error.status === 401)) {
       revalidateTag("settings", "max");
       revalidateTag("auth", "max");

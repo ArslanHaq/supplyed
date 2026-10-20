@@ -1,11 +1,11 @@
 "use client";
 
-import { type AriaAttributes, type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, type AriaAttributes, type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { Icon } from "../atoms";
 
-export type SelectOption = { description?: string | null; label: string; value: string };
+export type SelectOption = { group?: string; keywords?: string; description?: string | null; label: string; value: string };
 type DropdownProps = AriaAttributes & {
   id?: string;
   name?: string;
@@ -16,6 +16,7 @@ type DropdownProps = AriaAttributes & {
   disabled?: boolean;
   required?: boolean;
   searchable?: boolean;
+  maxSelections?: number;
 };
 type SelectDropdownProps = DropdownProps & { value: string; onChange: (value: string) => void };
 type MultiSelectDropdownProps = DropdownProps & { value: string[]; onChange: (value: string[]) => void };
@@ -27,7 +28,7 @@ function normalizeOption(option: string | SelectOption): SelectOption {
 /** One control, menu and keyboard model for single, multiple and searchable selections. */
 function OptionDropdown({
   id, name, className, value, options, onChange, placeholder, error,
-  disabled = false, required, searchable = false, multiple = false, ...aria
+  disabled = false, required, searchable = false, multiple = false, maxSelections, ...aria
 }: DropdownProps & { value: string[]; onChange: (value: string[]) => void; placeholder: string; multiple?: boolean }) {
   const generatedId = useId();
   const controlId = id ?? generatedId;
@@ -43,7 +44,7 @@ function OptionDropdown({
   const clearRef = useRef<HTMLButtonElement>(null);
   const typeaheadRef = useRef({ text: "", time: 0 });
   const normalizedOptions = options.map(normalizeOption);
-  const filteredOptions = normalizedOptions.filter((option) => option.label.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+  const filteredOptions = normalizedOptions.filter((option) => `${option.label} ${option.keywords ?? ""}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   const labels = value.map((item) => normalizedOptions.find((option) => option.value === item)?.label ?? item);
   const summary = labels.length > 2 ? `${labels.slice(0, 2).join(", ")} +${labels.length - 2} more` : labels.join(", ");
   const activeOptionId = filteredOptions[activeIndex] ? `${listId}-${activeIndex}` : undefined;
@@ -64,6 +65,7 @@ function OptionDropdown({
     onChange(next);
   }
   function choose(option: SelectOption) {
+    if (multiple && maxSelections && value.length >= maxSelections && !value.includes(option.value)) return;
     if (multiple) change(value.includes(option.value) ? value.filter((item) => item !== option.value) : [...value, option.value]);
     else { change([option.value]); close(true); }
   }
@@ -228,6 +230,8 @@ function OptionDropdown({
             {filteredOptions.map((option, index) => {
               const selected = value.includes(option.value);
               return (
+                <Fragment key={option.value}>
+                {option.group && option.group !== filteredOptions[index - 1]?.group ? <div role="presentation" className="px-3 py-2 text-xs font-semibold text-muted">{option.group}</div> : null}
                 <button
                   key={option.value} id={`${listId}-${index}`} aria-selected={selected} className="option-item"
                   data-active={activeIndex === index || undefined} onMouseDown={(event) => event.preventDefault()}
@@ -236,6 +240,7 @@ function OptionDropdown({
                   <span className="option-indicator" data-multiple={multiple || undefined} aria-hidden="true">{selected ? <Icon name="check" size={12} /> : null}</span>
                   <span className="option-copy"><span>{option.label}</span>{option.description ? <span className="option-description">{option.description}</span> : null}</span>
                 </button>
+                </Fragment>
               );
             })}
             {filteredOptions.length === 0 ? <div className="option-empty" role="status">No options found</div> : null}

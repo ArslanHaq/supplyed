@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { getAuthenticatedEntryHref, hasSubmittedApplicationStatus } from "./lib/routes";
 import type { AppRole, ApplicationStatus } from "./types/supplyed";
+import { invitationReturnPath } from "./lib/invitation-links";
 
 const appRoles = new Set<AppRole>(["admin", "institution", "teacher"]);
 const appStatuses = new Set<ApplicationStatus>(["none", "pending_review", "approved", "rejected", "suspended"]);
@@ -26,6 +27,8 @@ function redirectTo(request: NextRequest, pathname: string) {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
   url.search = "";
+  const invitation = invitationReturnPath(request.nextUrl.pathname) ?? invitationReturnPath(request.nextUrl.searchParams.get("returnTo"));
+  if (invitation && ["/login", "/post-auth", "/onboarding"].includes(pathname)) url.searchParams.set("returnTo", invitation);
   return NextResponse.redirect(url);
 }
 
@@ -63,6 +66,8 @@ export async function proxy(request: NextRequest) {
   const isOnboardingRoute = pathname.startsWith("/onboarding");
 
   if (isGuestOnlyRoute) {
+    const invitation = invitationReturnPath(request.nextUrl.searchParams.get("returnTo"));
+    if (invitation) return redirectTo(request, invitation);
     return redirectTo(request, getAuthenticatedEntryHref({ applicationStatus, role }));
   }
 
@@ -90,8 +95,10 @@ export const config = {
     "/find-teachers/:path*",
     "/forgot-password",
     "/job-detail/:path*",
+    "/job-invitations/:path*",
     "/login",
     "/messaging/:path*",
+    "/my-profile/:path*",
     "/onboarding/:path*",
     "/payouts/:path*",
     "/post-job/:path*",

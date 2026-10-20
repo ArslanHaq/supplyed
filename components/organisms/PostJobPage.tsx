@@ -1,14 +1,26 @@
+import { PlannedWorkUnitsField } from "@/components/molecules/PlannedWorkUnitsField";
+import { plannedUnitsInput, formatPlannedUnits } from "@/features/jobs/work-units";
+import { syncWorkSchedule, validateScheduleUnits } from "@/features/jobs/schedule-editor";
+import { validateJobDateOrder } from "@/features/jobs/date-validation";
+import { DynamicSelect, DynamicMultiSelect } from "@/components/molecules/DynamicDropdown";
+
+import { RoleDescriptionEditor } from "@/components/molecules/RoleDescriptionEditor";
+import { HourlyWorkSchedule } from "@/components/molecules/HourlyWorkSchedule";
+import { TeachingSelectionFields } from "@/components/molecules/TeachingSelectionFields";
+import { useTeachingCatalogue } from "@/features/teaching-catalogue/use-teaching-catalogue";
+import { toSkillEditor, otherSkillsError, toSubjectEditor, actualSubjects, otherSubjectsError, jobSubjects } from "@/features/teaching-catalogue/selection";
 import { useRef, useState } from "react";
 
 import { useCreateJob, useJob, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
+import { formatUkListingInstant, getJobVisibilityLabel, ukCalendarDate, ukDateTimeInput, shiftCalendarDay } from "@/features/jobs/listing-window";
 import { isEmptyRichText, richTextToPlainText } from "@/features/applications/rich-text";
-import { getUkCities, getUkRegions, validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
+import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
+import { zonedDateTimeToIso } from "@/lib/zoned-date-time";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field, Tag } from "../atoms";
-import { FormattedJobDescription, PageHead, PostcodeLookup, TagInput } from "../molecules";
-import { MultiSelectDropdown, SelectDropdown } from "../molecules/OptionDropdowns";
+import { FormattedJobDescription, PageHead, PostcodeLookup } from "../molecules";
 
 type PostingMode = "instant" | "brief";
 
@@ -20,15 +32,21 @@ type JobFormState = {
   description: string;
   endDate: string;
   expiresAt: string;
+  liveFrom: string;
+  originalLiveFrom?: string | null;
+  originalExpiresAt?: string | null;
   keyStages: string[];
   minExperienceYears: string;
   parkingInfo: string;
+  hours: string;
+  days: string;
   payAmount: string;
   payType: "daily" | "fixed" | "hourly";
   postalCode: string;
   qtsRequired: boolean;
   startDate: string;
-  subject: string;
+  subjects: string[];
+  otherSubjects?: string[]; otherSkills?: string[];
   requiredSkills: string[];
   title: string;
   urgent: boolean;
@@ -36,9 +54,6 @@ type JobFormState = {
 
 type JobFormErrors = Partial<Record<keyof JobFormState, string>>;
 
-const keyStageOptions = ["EYFS", "KS1", "KS2", "KS3", "KS4", "KS5"];
-const subjectOptions = ["Maths", "English", "Science", "All Primary", "SEN", "Humanities", "Modern Languages"];
-const payTypeOptions = ["Daily", "Hourly", "Fixed"];
 
 const initialForm: JobFormState = {
   address: "",
@@ -48,15 +63,18 @@ const initialForm: JobFormState = {
   description: "",
   endDate: "",
   expiresAt: "",
+  liveFrom: "",
   keyStages: [],
   minExperienceYears: "",
   parkingInfo: "",
+  hours: "",
+  days: "",
   payAmount: "",
   payType: "daily",
   postalCode: "",
   qtsRequired: false,
   startDate: "",
-  subject: "",
+  subjects: [],
   requiredSkills: [],
   title: "",
   urgent: false,
@@ -115,16 +133,19 @@ function PostJobEditor({
   initialMode: PostingMode;
   initialValues: JobFormState;
 }) {
+  const catalogue = useTeachingCatalogue();
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<PostingMode>(initialMode);
   const [form, setForm] = useState<JobFormState>(initialValues);
   const [errors, setErrors] = useState<JobFormErrors>({});
   const [savingIntent, setSavingIntent] = useState<"draft" | "publish" | null>(null);
-  const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const savedJobIdRef = useRef<string | undefined>(editingJob?.id);
   const savingRef = useRef(false);
   const isEditing = Boolean(editingJob);
   const todayDate = getTodayDateInput();
+  const savedExpiryUnchanged = Boolean(form.originalExpiresAt && form.expiresAt === ukCalendarDate(form.originalExpiresAt, true));
+  const earliestWorkStart = [todayDate + "T00:00", form.liveFrom ? form.liveFrom + "T00:01" : "", savedExpiryUnchanged ? ukDateTimeInput(form.originalExpiresAt) : form.expiresAt ? shiftCalendarDay(form.expiresAt, 1) + "T00:00" : ""].sort().at(-1)!;
+  const latestListingDay = form.startDate ? savedExpiryUnchanged && Date.parse(form.originalExpiresAt!) <= Date.parse(toWorkIso(form.startDate) ?? "") ? form.expiresAt : shiftCalendarDay(form.startDate, -1) : undefined;
 
   const createJob = useCreateJob({
     onSuccess: async (result) => {
@@ -141,9 +162,10 @@ function PostJobEditor({
       }
 
       const published = result.data.status === "ACTIVE";
+      const scheduled = published && getJobVisibilityLabel(result.data) === "scheduled";
       toast({
-        title: published ? "Job published" : "Draft saved",
-        msg: published ? "The role is active and ready for applications." : "You can finish and publish this role later.",
+        title: scheduled ? "Job scheduled" : published ? "Job published" : "Draft saved",
+        msg: scheduled ? `The listing will open ${formatUkListingInstant(result.data.liveFrom)}.` : published ? "The role is live and ready for applications." : "You can finish and publish this role later.",
         tone: "success",
       });
       setSavingIntent(null);
@@ -169,9 +191,10 @@ function PostJobEditor({
       }
 
       const published = result.data?.status === "ACTIVE";
+      const scheduled = published && result.data && getJobVisibilityLabel(result.data) === "scheduled";
       toast({
-        title: published ? "Job updated" : "Draft saved",
-        msg: published ? "The role details are updated." : "Your draft changes were saved.",
+        title: scheduled ? "Job scheduled" : published ? "Job updated" : "Draft saved",
+        msg: scheduled && result.data ? `The listing will open ${formatUkListingInstant(result.data.liveFrom)}.` : published ? "The live role details are updated." : "Your draft changes were saved.",
         tone: "success",
       });
       setSavingIntent(null);
@@ -187,8 +210,15 @@ function PostJobEditor({
   const saving = createJob.isPending || updateJob.isPending;
 
   function updateForm<Key extends keyof JobFormState>(key: Key, value: JobFormState[Key]) {
-    setForm((current) => ({ ...current, [key]: value }));
-    setErrors((current) => current[key] ? { ...current, [key]: validateAll({ ...form, [key]: value })[key] } : current);
+    setForm((current) => syncWorkSchedule(current, key, value));
+    setErrors((current) => {
+      const nextForm = syncWorkSchedule(form, key, value);
+      if (["startDate", "endDate", "liveFrom", "expiresAt", "payType", "hours", "days"].includes(key)) {
+        const dates = { ...validateJobDates(nextForm), ...validateScheduleUnits(nextForm) };
+        return { ...current, hours: dates.hours, days: dates.days, startDate: dates.startDate, endDate: dates.endDate, liveFrom: dates.liveFrom, expiresAt: dates.expiresAt };
+      }
+      return current[key] ? { ...current, [key]: validateAll(nextForm)[key] } : current;
+    });
   }
 
   function nextStep() {
@@ -199,7 +229,7 @@ function PostJobEditor({
   }
 
   function saveDraft() {
-    const draftErrors = validateDraft(form);
+    const draftErrors = { ...validateDraft(form), ...expiryClearError(editingJob, form) };
     setErrors(draftErrors);
     if (Object.keys(draftErrors).length > 0) {
       if (!isEditing) setStep(firstInvalidStep(draftErrors));
@@ -210,7 +240,7 @@ function PostJobEditor({
   }
 
   function publish() {
-    const nextErrors = validateAll(form);
+    const nextErrors = { ...validateAll(form), ...expiryClearError(editingJob, form) };
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       if (!isEditing) setStep(firstInvalidStep(nextErrors));
@@ -223,32 +253,15 @@ function PostJobEditor({
   function saveJob(status: Extract<JobCreateInput["status"], "ACTIVE" | "DRAFT">) {
     if (savingRef.current) return;
     savingRef.current = true;
-    const payload = toJobCreateInput(form, mode, status);
+    const payload = toJobCreateInput(form, mode, status, catalogue.data);
     setSavingIntent(status === "ACTIVE" ? "publish" : "draft");
 
     if (savedJobIdRef.current) {
-      updateJob.mutate({ ...payload, id: savedJobIdRef.current } satisfies JobUpdateInput);
+      updateJob.mutate(toChangedJobUpdateInput(payload, toJobCreateInput(initialValues, initialMode, status, catalogue.data), savedJobIdRef.current));
       return;
     }
 
     createJob.mutate(payload);
-  }
-
-  function formatDescription(format: "bold" | "bullet" | "heading") {
-    const textarea = descriptionRef.current;
-    const value = form.description;
-    const start = textarea?.selectionStart ?? value.length;
-    const end = textarea?.selectionEnd ?? value.length;
-    const selected = value.slice(start, end);
-    const replacement = buildFormattedDescription(format, selected, start > 0 && !value.endsWith("\n"));
-    const nextValue = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
-
-    updateForm("description", nextValue);
-    window.requestAnimationFrame(() => {
-      descriptionRef.current?.focus();
-      const cursor = start + replacement.length;
-      descriptionRef.current?.setSelectionRange(cursor, cursor);
-    });
   }
 
   function renderPostingTypeSection() {
@@ -294,9 +307,7 @@ function PostJobEditor({
               onChange={(event) => updateForm("title", event.target.value)}
             />
           </Field>
-          <Field error={errors.subject} label="Subject">
-            <SelectDropdown options={subjectOptions} placeholder="Select a subject" value={form.subject} onChange={(value) => updateForm("subject", value)} />
-          </Field>
+
           <div className="md:col-span-2 rounded-xl border border-border bg-chalk/40 p-4">
             <div className="mb-3 text-sm font-semibold">Role location</div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -317,22 +328,24 @@ function PostJobEditor({
                 <input className="input" maxLength={250} placeholder="School or street address" value={form.address} onChange={(event) => updateForm("address", event.target.value)} />
               </Field>
               <Field error={errors.city} label="City or town">
-                <SelectDropdown options={[{ label: "Not specified", value: "" }, ...getUkCities()]} placeholder="Select a UK city or town" searchable value={form.city} onChange={(value) => updateForm("city", value)} />
+                <DynamicSelect collection="city" emptyLabel="Not specified" placeholder="Select a UK city or town" searchable value={form.city} onChange={(value) => updateForm("city", value)} />
               </Field>
               <Field error={errors.county} label="County or region">
-                <SelectDropdown options={[{ label: "Not specified", value: "" }, ...getUkRegions()]} placeholder="Select a UK county or region" searchable value={form.county} onChange={(value) => updateForm("county", value)} />
+                <DynamicSelect collection="region" emptyLabel="Not specified" placeholder="Select a UK county or region" searchable value={form.county} onChange={(value) => updateForm("county", value)} />
               </Field>
               <Field error={errors.countryCode} hint="United Kingdom addresses only, including Northern Ireland." label="Country">
-                <SelectDropdown options={[{ label: "United Kingdom", value: "GB" }]} value={form.countryCode} onChange={(value) => updateForm("countryCode", value)} />
+                <DynamicSelect collection="country" value={form.countryCode} onChange={(value) => updateForm("countryCode", value)} />
               </Field>
             </div>
           </div>
-          <Field error={errors.startDate} label="Start date">
-            <input className="input" min={todayDate} type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
+          {form.payType === "hourly" ? <HourlyWorkSchedule startDate={form.startDate} endDate={form.endDate} errors={errors} minDate={earliestWorkStart.slice(0, 10)} onChange={updateForm} /> : <>
+          <Field error={errors.startDate} hint="When the teacher starts work, in UK local time. Must be after Live from, with the listing closed by this time." label="Work start">
+            <input className="input" min={earliestWorkStart} type="datetime-local" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
           </Field>
-          <Field error={errors.endDate} label="End date">
-            <input className="input" min={form.startDate || todayDate} type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
+          <Field error={errors.endDate} hint="UK local time. Must be on or after the work start." label="Work end">
+            <input className="input" min={form.startDate > earliestWorkStart ? form.startDate : earliestWorkStart} type="datetime-local" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
           </Field>
+          </>}
           <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[minmax(0,1fr)_220px]">
             <Field error={errors.payAmount} label="Pay amount (£)">
               <input
@@ -345,13 +358,14 @@ function PostJobEditor({
               />
             </Field>
             <Field label="Pay basis">
-              <SelectDropdown
-                options={payTypeOptions}
-                value={formatPayTypeLabel(form.payType)}
-                onChange={(value) => updateForm("payType", readPayTypeLabel(value))}
+              <DynamicSelect
+                collection="payType"
+                value={form.payType}
+                onChange={(value) => updateForm("payType", value as JobFormState["payType"])}
               />
             </Field>
           </div>
+          <div className="md:col-span-2"><PlannedWorkUnitsField payType={form.payType} hours={form.hours} days={form.days} errors={errors} onChange={updateForm} /></div>
           <Field error={errors.minExperienceYears} label="Minimum experience (years)">
             <input
               className="input"
@@ -364,23 +378,15 @@ function PostJobEditor({
             />
           </Field>
           <div className="md:col-span-2">
-            <Field error={errors.requiredSkills} htmlFor="job-required-skills" hint="Optional. Press Enter or comma after each skill." label="Required skills">
-              <TagInput id="job-required-skills" value={form.requiredSkills} onChange={(value) => updateForm("requiredSkills", value)} />
-            </Field>
+            <TeachingSelectionFields otherSkills={form.otherSkills} otherSkillError={errors.otherSkills} otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjects={form.subjects} skills={form.requiredSkills} skillLabel="Required skills" subjectError={errors.subjects} skillError={errors.requiredSkills} onChange={(subjects, requiredSkills, otherSubjects, otherSkills) => setForm(current => ({ ...current, subjects, requiredSkills, otherSubjects, otherSkills }))} />
           </div>
         </div>
         <Field error={errors.description} label="Role description" required>
-          <div className="mb-2 flex flex-wrap gap-2">
-            <Btn size="sm" variant="secondary" onClick={() => formatDescription("heading")}>Heading</Btn>
-            <Btn size="sm" variant="secondary" onClick={() => formatDescription("bullet")}>Bullet list</Btn>
-            <Btn size="sm" variant="secondary" onClick={() => formatDescription("bold")}>Bold</Btn>
-          </div>
-          <textarea
-            ref={descriptionRef}
-            className="textarea"
-            placeholder="Describe the class, cover expectations, timetable notes, support needs, and arrival instructions."
+          <RoleDescriptionEditor
+            id="job-description"
+            invalid={Boolean(errors.description)}
             value={form.description}
-            onChange={(event) => updateForm("description", event.target.value)}
+            onChange={value => updateForm("description", value)}
           />
         </Field>
       </div>
@@ -392,16 +398,19 @@ function PostJobEditor({
       <div>
         <div className="grid-2">
           <Field error={errors.keyStages} htmlFor="job-key-stages" label="Key stages">
-            <MultiSelectDropdown
+            <DynamicMultiSelect
               id="job-key-stages"
-              options={keyStageOptions}
+              collection="keyStage"
               placeholder="Select key stages"
               value={form.keyStages}
               onChange={(value) => updateForm("keyStages", value)}
             />
           </Field>
-          <Field error={errors.expiresAt} hint="Optional. If set, the job stops appearing publicly after this date." label="Listing expiry">
-            <input className="input" min={todayDate} type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
+          <Field error={errors.liveFrom} hint="Teachers can see and apply for the published job from midnight on this UK date. Leave blank to open when published. Must be before Work start." label="Live from">
+            <input className="input" min={todayDate} max={form.startDate ? (form.startDate.endsWith("T00:00") ? shiftCalendarDay(form.startDate, -1) : form.startDate.slice(0, 10)) : undefined} type="date" value={form.liveFrom} onChange={(event) => updateForm("liveFrom", event.target.value)} />
+          </Field>
+          <Field error={errors.expiresAt} hint={editingJob?.expiresAt ? `Applications currently close ${formatUkListingInstant(editingJob.expiresAt)}. Choose a replacement date to keep applications open through that UK day. The final listing day must be before work starts.` : "Optional. Teachers can apply through this entire UK date, then the listing closes. Choose a final listing day before work starts."} label="Listing expiry">
+            <input className="input" min={form.liveFrom > todayDate ? form.liveFrom : todayDate} max={latestListingDay} type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
           </Field>
         </div>
         <Field error={errors.parkingInfo} label="Parking / arrival notes">
@@ -440,12 +449,15 @@ function PostJobEditor({
           <FormattedJobDescription className="mt-2 max-w-[760px]" description={previewDescription} />
           <div className="mt-3 flex flex-wrap gap-2">
             {form.keyStages.map((stage) => <span key={stage} className="pill">{stage}</span>)}
-            {form.subject ? <span className="pill">{form.subject}</span> : null}
+            {actualSubjects(form.subjects, form.otherSubjects).map(subject => <span key={subject} className="pill">{subject}</span>)}
             <span className="pill">{formatFormLocation(form)}</span>
             <span className="pill">{formatPay(form)}</span>
             <span className="pill">{formatDateRange(form.startDate, form.endDate)}</span>
+            {form.payType !== "fixed" ? <span className="pill">{formatPlannedUnits(plannedUnitsInput(form.payType, form.hours, form.days))}</span> : null}
+            {form.liveFrom ? <span className="pill">Live from {form.liveFrom}</span> : <span className="pill">Live when published</span>}
+            {form.expiresAt ? <span className="pill">Applications through {form.expiresAt}</span> : null}
             {form.minExperienceYears ? <span className="pill">{form.minExperienceYears}+ years experience</span> : null}
-            {form.requiredSkills.map((skill) => <span key={skill} className="pill">{skill}</span>)}
+            {actualSubjects(form.requiredSkills, form.otherSkills).map((skill) => <span key={skill} className="pill">{skill}</span>)}
             {form.qtsRequired ? <span className="pill">QTS required</span> : null}
           </div>
         </div>
@@ -571,9 +583,9 @@ function PostJobEditor({
 
 function validateStep(step: number, form: JobFormState): JobFormErrors {
   if (step === 2) {
-    return pickErrors(validateAll(form), ["address", "city", "countryCode", "county", "description", "endDate", "minExperienceYears", "payAmount", "postalCode", "requiredSkills", "startDate", "subject", "title"]);
+    return pickErrors(validateAll(form), ["address", "city", "countryCode", "county", "description", "endDate", "minExperienceYears", "payAmount", "hours", "days", "postalCode", "requiredSkills", "startDate", "subjects", "otherSubjects", "otherSkills", "title"]);
   }
-  if (step === 3) return pickErrors(validateAll(form), ["expiresAt", "parkingInfo", "keyStages"]);
+  if (step === 3) return pickErrors(validateAll(form), ["expiresAt", "liveFrom", "parkingInfo", "keyStages"]);
   return {};
 }
 
@@ -601,6 +613,11 @@ function validateDraft(form: JobFormState): JobFormErrors {
 
 function validateOptionalJobFields(form: JobFormState): JobFormErrors {
   const errors: JobFormErrors = {};
+  Object.assign(errors, validateScheduleUnits(form));
+  const skillCustomError = otherSkillsError(form.requiredSkills, form.otherSkills);
+  if (skillCustomError) errors.otherSkills = skillCustomError;
+  const otherError = otherSubjectsError(form.subjects, form.otherSubjects);
+  if (otherError) errors.otherSubjects = otherError;
   const postcode = validateUkPostcode(form.postalCode);
   const country = validateUkCountry(form.countryCode, { required: true });
   const city = validateUkCity(form.city);
@@ -609,10 +626,10 @@ function validateOptionalJobFields(form: JobFormState): JobFormErrors {
   if (!country.valid) errors.countryCode = country.error;
   if (!city.valid) errors.city = city.error;
   if (!county.valid) errors.county = county.error;
-  for (const [key, limit] of [["title", 200], ["address", 250], ["subject", 100], ["description", 10000], ["parkingInfo", 1000]] as const) {
+  for (const [key, limit] of [["title", 200], ["address", 250], ["description", 10000], ["parkingInfo", 1000]] as const) {
     if (form[key].trim().length > limit) errors[key] = `Use ${limit} characters or fewer.`;
   }
-  for (const [key, limit] of [["requiredSkills", 50], ["keyStages", 100]] as const) {
+  for (const [key, limit] of [["subjects", 50], ["requiredSkills", 50], ["keyStages", 100]] as const) {
     if (form[key].length > limit || form[key].some(value => !value.trim() || value.length > 100)) errors[key] = `Choose up to ${limit} values, each with 1 to 100 characters.`;
   }
 
@@ -631,19 +648,20 @@ function validateJobDates(form: JobFormState): JobFormErrors {
   const errors: JobFormErrors = {};
   const todayDate = getTodayDateInput();
 
-  for (const key of ["startDate", "endDate", "expiresAt"] as const) {
+  for (const key of ["liveFrom", "expiresAt"] as const) {
     if (form[key] && (!/^\d{4}-\d{2}-\d{2}$/.test(form[key]) || !Number.isFinite(Date.parse(form[key])) || new Date(form[key]).toISOString().slice(0, 10) !== form[key])) errors[key] = "Enter a valid date.";
   }
 
-  if (form.startDate && form.startDate < todayDate) {
+  for (const key of ["startDate", "endDate"] as const) if (form[key] && !zonedDateTimeToIso(form[key], "Europe/London")) errors[key] = "Enter an unambiguous UK date and time.";
+
+  if (form.startDate && form.startDate.slice(0, 10) < todayDate) {
     errors.startDate = "Start date cannot be before today.";
   }
-  if (form.startDate && form.endDate && form.endDate < form.startDate) {
-    errors.endDate = "End date cannot be before the start date.";
-  }
-  if (form.expiresAt && form.expiresAt < todayDate) {
-    errors.expiresAt = "Listing expiry cannot be before today.";
-  }
+  const liveFrom = form.originalLiveFrom && form.liveFrom === ukCalendarDate(form.originalLiveFrom) ? form.originalLiveFrom : form.liveFrom;
+  const expiresAt = form.originalExpiresAt && form.expiresAt === ukCalendarDate(form.originalExpiresAt, true) ? form.originalExpiresAt : form.expiresAt;
+  const orderErrors = validateJobDateOrder({ startDate: toWorkIso(form.startDate), endDate: toWorkIso(form.endDate), liveFrom, expiresAt });
+  Object.assign(errors, orderErrors);
+  if (form.expiresAt && form.expiresAt < todayDate) errors.expiresAt = "Listing expiry cannot be before today.";
 
   return errors;
 }
@@ -656,32 +674,56 @@ function pickErrors(errors: JobFormErrors, keys: Array<keyof JobFormState>) {
 }
 
 function firstInvalidStep(errors: JobFormErrors) {
-  if (errors.title || errors.address || errors.city || errors.countryCode || errors.county || errors.subject || errors.startDate || errors.endDate || errors.payAmount || errors.minExperienceYears || errors.postalCode || errors.description || errors.requiredSkills) return 2;
-  if (errors.expiresAt || errors.parkingInfo || errors.keyStages) return 3;
+  if (errors.title || errors.address || errors.city || errors.countryCode || errors.county || errors.subjects || errors.otherSubjects || errors.otherSkills || errors.startDate || errors.endDate || errors.payAmount || errors.hours || errors.days || errors.minExperienceYears || errors.postalCode || errors.description || errors.requiredSkills) return 2;
+  if (errors.expiresAt || errors.liveFrom || errors.parkingInfo || errors.keyStages) return 3;
   return 4;
 }
 
-function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract<JobCreateInput["status"], "ACTIVE" | "DRAFT">): JobCreateInput {
+function expiryClearError(editingJob: Job | undefined, form: JobFormState): JobFormErrors {
+  return editingJob?.expiresAt && !form.expiresAt
+    ? { expiresAt: "Replace the existing listing expiry with another date. Clearing it is not supported." }
+    : {};
+}
+
+function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract<JobCreateInput["status"], "ACTIVE" | "DRAFT">, catalogue?: import("@/features/teaching-catalogue/types").TeachingCatalogue): JobCreateInput {
   return {
     address: form.address || undefined,
     city: validateUkCity(form.city).value || undefined,
     countryCode: validateUkCountry(form.countryCode).value,
     county: validateUkRegion(form.county).value || undefined,
     description: buildDescription(form, mode),
-    endDate: toIsoDate(form.endDate),
-    expiresAt: toIsoDate(form.expiresAt),
+    endDate: toWorkIso(form.endDate),
+    expiresAt: form.expiresAt || undefined,
+    liveFrom: form.liveFrom || undefined,
     keyStages: form.keyStages,
     minExperienceYears: form.minExperienceYears ? Number(form.minExperienceYears) : undefined,
     parkingInfo: form.parkingInfo,
     payAmount: form.payAmount ? Number(form.payAmount) : undefined,
     payType: form.payType,
+    ...plannedUnitsInput(form.payType, form.hours, form.days),
     postalCode: validateUkPostcode(form.postalCode).value || undefined,
-    requiredSkills: form.requiredSkills,
-    startDate: toIsoDate(form.startDate),
+    requiredSkills: toSkillEditor(catalogue, form.requiredSkills, form.otherSkills).skills,
+    otherSkills: toSkillEditor(catalogue, form.requiredSkills, form.otherSkills).otherSkills,
+    startDate: toWorkIso(form.startDate),
     status,
-    subject: form.subject,
+    ...toSubjectEditor(catalogue, form.subjects, form.otherSubjects),
     title: form.title,
   };
+}
+
+function toChangedJobUpdateInput(current: JobCreateInput, initial: JobCreateInput, id: string): JobUpdateInput {
+  const update: Record<string, unknown> = { id, status: current.status };
+  for (const key of Object.keys(current) as Array<keyof JobCreateInput>) {
+    if (key === "status") continue;
+    const currentValue = current[key];
+    const initialValue = initial[key];
+    if (JSON.stringify(currentValue) === JSON.stringify(initialValue)) continue;
+    if (key === "liveFrom" && currentValue === undefined) update.liveFrom = null;
+    else if (key === "expiresAt" && currentValue === undefined && initialValue !== undefined) continue;
+    else update[key] = currentValue;
+  }
+  if ("subjects" in update || "requiredSkills" in update || "otherSubjects" in update || "otherSkills" in update) { update.subjects = current.subjects; update.requiredSkills = current.requiredSkills; update.otherSubjects = current.otherSubjects; update.otherSkills = current.otherSkills; }
+  return update as JobUpdateInput;
 }
 
 function buildDescription(form: JobFormState, mode: PostingMode) {
@@ -696,36 +738,13 @@ function buildDescription(form: JobFormState, mode: PostingMode) {
   return notes.join("\n\n");
 }
 
-function buildFormattedDescription(format: "bold" | "bullet" | "heading", selected: string, needsLeadingBreak: boolean) {
-  const prefix = needsLeadingBreak ? "\n\n" : "";
-  const text = selected.trim();
-
-  if (format === "heading") return `${prefix}## ${text || "Section heading"}\n`;
-  if (format === "bullet") {
-    if (!text) return `${prefix}- `;
-    return `${prefix}${text
-      .split("\n")
-      .map((line) => (line.trim() ? `- ${line.replace(/^-\s*/, "").trim()}` : ""))
-      .join("\n")}`;
-  }
-
-  return text ? `**${text}**` : "**important detail**";
-}
-
-function toIsoDate(value: string) {
+function toWorkIso(value: string) {
   if (!value) return undefined;
-  return new Date(`${value}T09:00:00.000Z`).toISOString();
+  return zonedDateTimeToIso(value, "Europe/London") || undefined;
 }
 
 function getTodayDateInput() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
-
-function toDateInput(value?: string | null) {
-  if (!value) return "";
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return "";
-  return new Date(parsed).toISOString().slice(0, 10);
 }
 
 function toFormState(job: Job): JobFormState {
@@ -735,17 +754,22 @@ function toFormState(job: Job): JobFormState {
     countryCode: job.countryCode ?? "GB",
     county: job.county ?? "",
     description: readEditableDescription(job.description ?? ""),
-    endDate: toDateInput(job.endDate),
-    expiresAt: toDateInput(job.expiresAt),
+    endDate: ukDateTimeInput(job.endDate),
+    expiresAt: ukCalendarDate(job.expiresAt, true),
+    liveFrom: ukCalendarDate(job.liveFrom),
+    originalLiveFrom: job.liveFrom,
+    originalExpiresAt: job.expiresAt,
     keyStages: job.keyStages?.length ? job.keyStages : [],
     minExperienceYears: job.minExperienceYears != null ? String(job.minExperienceYears) : "",
     parkingInfo: job.parkingInfo ?? "",
     payAmount: job.payAmount != null && job.payAmount > 0 ? String(job.payAmount) : job.rate ? String(job.rate) : "",
+    hours: job.hours == null ? "" : String(job.hours),
+    days: job.days == null ? "" : String(job.days),
     payType: isPayType(job.payType) ? job.payType : "daily",
     postalCode: job.postalCode ?? "",
     qtsRequired: job.description?.includes("QTS requested.") ?? false,
-    startDate: toDateInput(job.startDate),
-    subject: job.subject === "General cover" ? "" : job.subject,
+    startDate: ukDateTimeInput(job.startDate),
+    subjects: jobSubjects(job),
     requiredSkills: job.requiredSkills,
     title: job.title,
     urgent: job.description?.includes("Marked urgent by the hiring account.") || job.urgent,

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    assertValidQuery(searchParams, { status: { values: ["APPLIED", "HIRED", "INTERVIEW", "REJECTED", "SHORTLISTED", "VIEWED"] } });
+    assertValidQuery(searchParams, { status: { values: ["APPLIED", "HIRED", "REJECTED", "SHORTLISTED", "VIEWED"] } });
     const status = searchParams.get("status");
 
     const query: JobApplicationsQuery = {
@@ -17,7 +17,6 @@ export async function GET(request: Request) {
       status:
         status === "APPLIED" ||
         status === "HIRED" ||
-        status === "INTERVIEW" ||
         status === "REJECTED" ||
         status === "SHORTLISTED" ||
         status === "VIEWED"

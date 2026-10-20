@@ -1,10 +1,10 @@
+import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
+
+import { TeachingSelectionFields } from "@/components/molecules/TeachingSelectionFields";
 import { Field, Icon } from "../../../atoms";
 import type { StepComponentProps } from "../step-types";
-import { areaClass, fieldClass } from "../utils";
-import { SelectDropdown } from "../../../molecules/OptionDropdowns";
-import { getUkRegions } from "@/lib/uk-validation";
+import { fieldClass } from "../utils";
 
-const regionOptions = getUkRegions();
 
 export function InstitutionStaffingStep({ controller }: StepComponentProps) {
   const { errors, form, updateField } = controller;
@@ -45,9 +45,9 @@ export function InstitutionStaffingStep({ controller }: StepComponentProps) {
           />
         </Field>
         <Field label="County / region" htmlFor="authority" error={errors.localAuthority} hint="Optional">
-          <SelectDropdown
+          <DynamicSelect
             id="authority"
-            options={[{ label: "Select county / region", value: "" }, ...regionOptions]}
+            collection="region" emptyLabel="Select county / region"
             searchable
             error={Boolean(errors.localAuthority)}
             value={form.localAuthority}
@@ -56,21 +56,7 @@ export function InstitutionStaffingStep({ controller }: StepComponentProps) {
         </Field>
       </div>
 
-      <Field
-        label="Staffing needs"
-        htmlFor="staffing-needs"
-        error={errors.staffingNeeds}
-        hint="Maximum 1000 characters."
-        required
-      >
-        <textarea
-          id="staffing-needs"
-          className={areaClass(errors.staffingNeeds)}
-          value={form.staffingNeeds}
-          onChange={(event) => updateField("staffingNeeds", event.target.value)}
-          placeholder="Example: Same-day cover for primary classes, long-term maths supply, intervention support, and occasional SEN cover."
-        />
-      </Field>
+      <TeachingSelectionFields otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjectLabel="Staffing needs" subjects={form.staffingNeeds} subjectError={errors.staffingNeeds} onChange={(subjects, _skills, otherSubjects) => { updateField("staffingNeeds", subjects); updateField("otherSubjects", otherSubjects); }} />
     </div>
   );
 }

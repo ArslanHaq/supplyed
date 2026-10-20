@@ -4,6 +4,7 @@ import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 
 import type { JobApplication, JobApplicationStatus } from "@/features/applications/types";
 import { useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
+import { applicationPipeline, canTransitionApplication } from "@/features/applications/workflow";
 import type { Job } from "@/features/jobs/types";
 import { useJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { MatchedInstructor } from "@/features/matching/types";
@@ -111,20 +112,15 @@ function CandidateHeader({ instructor, status, onOpen }: { instructor?: MatchedI
 }
 
 function StatusActions({ application, onOpen, pending, onHire, onUpdate }: { application: JobApplication; onOpen?: (application: JobApplication) => void; pending: boolean; onHire: (application: JobApplication) => void; onUpdate: (status: JobApplicationStatus) => void }) {
-  const transitions: Partial<Record<JobApplicationStatus, JobApplicationStatus[]>> = {
-    APPLIED: ["VIEWED", "SHORTLISTED", "REJECTED"],
-    VIEWED: ["SHORTLISTED", "REJECTED"],
-    SHORTLISTED: ["INTERVIEW", "REJECTED"],
-    INTERVIEW: ["HIRED", "REJECTED"],
-  };
-  const actions = transitions[application.status] ?? [];
+  const actionCandidates: readonly JobApplicationStatus[] = [...applicationPipeline, "REJECTED"];
+  const actions = actionCandidates.filter((status) => canTransitionApplication(application.status, status));
   if (actions.length === 0) return null;
 
   return <div className="mt-4 flex flex-wrap gap-2">{onOpen ? <Btn iconRight="arrow" size="sm" onClick={() => onOpen(application)}>Open application</Btn> : null}{actions.map((status) => <Btn key={status} disabled={pending} size="sm" variant={status === "REJECTED" ? "danger" : "secondary"} onClick={() => status === "HIRED" ? onHire(application) : onUpdate(status)}>{status === "HIRED" ? "Hire & create booking" : formatStatus(status)}</Btn>)}</div>;
 }
 
 function ApplicationStatusTag({ status }: { status: JobApplicationStatus }) {
-  const tone = status === "HIRED" ? "green" : status === "INTERVIEW" || status === "SHORTLISTED" ? "purple" : status === "REJECTED" ? "red" : "ghost";
+  const tone = status === "HIRED" ? "green" : status === "SHORTLISTED" ? "purple" : status === "REJECTED" ? "red" : "ghost";
   return <Tag tone={tone}>{formatStatus(status)}</Tag>;
 }
 

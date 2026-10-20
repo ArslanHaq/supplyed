@@ -1,6 +1,8 @@
 import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
+import { invitationLoginHref } from "@/lib/invitation-links";
+import { userFacingError } from "@/lib/user-facing-error";
 
 type QueryValue = boolean | number | string | null | undefined;
 
@@ -21,10 +23,15 @@ function withQuery(path: string, query?: FetchJsonOptions["query"]) {
 }
 
 export async function fetchJson<Data>(path: string, options: FetchJsonOptions = {}): Promise<Data> {
-  const response = await fetch(withQuery(path, options.query), {
-    credentials: "same-origin",
-    signal: AbortSignal.timeout(60_000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(withQuery(path, options.query), {
+      credentials: "same-origin",
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch (error) {
+    throw new Error(userFacingError(error instanceof Error ? error.message : "Failed to fetch"));
+  }
 
   if (!response.ok) {
     const payload = await readErrorPayload(response);
@@ -36,14 +43,18 @@ export async function fetchJson<Data>(path: string, options: FetchJsonOptions = 
     if (response.status === 401 || code === "SESSION_EXPIRED") {
       startRouteLoading();
       void signOut({ redirect: false }).finally(() => {
-        window.location.assign("/login");
+        window.location.assign(invitationLoginHref(window.location.pathname));
       });
     }
 
-    throw new Error(requestId ? `${message} (Support reference: ${requestId})` : message);
+    throw Object.assign(new Error(userFacingError(message, { status: response.status, code })), { status: response.status, code, requestId });
   }
 
-  return response.json() as Promise<Data>;
+  try {
+    return await response.json() as Data;
+  } catch {
+    throw new Error("We couldn't load this information. Please refresh the page and try again.");
+  }
 }
 
 async function readErrorPayload(response: Response) {
@@ -68,5 +79,9 @@ function readErrorCode(payload: unknown): string | undefined {
 
 function readErrorMessage(payload: unknown, fallback: string) {
   if (isRecord(payload) && typeof payload.message === "string" && payload.message.trim()) return payload.message;
+  if (isRecord(payload) && Array.isArray(payload.message)) {
+    const message = payload.message.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).join(" ");
+    if (message) return message;
+  }
   return fallback;
 }

@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react";
+import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { TeacherDirectoryFilters, TeacherDirectoryItem } from "@/features/teachers/types";
 import { useTeacherDirectory } from "@/features/teachers/use-teachers";
-import { getUkCities, validateUkCity } from "@/lib/uk-validation";
+import { validateUkCity } from "@/lib/uk-validation";
 import type { RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Checkbox, Field, Icon, Stars, Tag, VerifyBadge } from "../atoms";
-import { PageHead, SectionLoader, SelectDropdown } from "../molecules";
+import { PageHead, SectionLoader } from "../molecules";
+import { TeacherHireActions } from "./TeacherHireActions";
+import { TeacherBookingDates } from "../molecules/TeacherBookingDates";
 
 const PAGE_SIZE = 12;
-const stageOptions = ["", "KS1", "KS2", "KS3", "KS4", "KS5"];
 
 type DirectoryForm = {
   availableToday: boolean;
@@ -46,6 +48,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
   const [applied, setApplied] = useState<DirectoryForm>(() => ({ ...emptyFilters, search: (ctx.search ?? "").trim().length <= 100 ? ctx.search ?? "" : "" }));
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const resultsRef = useRef<HTMLElement>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof DirectoryForm, string>>>(() => (ctx.search ?? "").trim().length > 100 ? { search: "Use 100 characters or fewer." } : {});
   const filters = useMemo<TeacherDirectoryFilters>(() => ({
     availableToday: applied.availableToday || undefined,
@@ -67,6 +70,10 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
   const instructors = teachersQuery.data?.instructors ?? [];
   const pagination = teachersQuery.data?.pagination;
   const hasDraftFilters = Object.entries(draft).some(([, value]) => value === true || (typeof value === "string" && Boolean(value.trim())));
+
+  useEffect(() => {
+    if (resultsRef.current) resultsRef.current.scrollTop = 0;
+  }, [applied, page]);
 
   function update<Key extends keyof DirectoryForm>(key: Key, value: DirectoryForm[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -101,7 +108,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
         <span>{filtersOpen ? "Hide filters" : "Show filters"}</span>
       </button>
       <div className="directory-layout three-panel">
-        <aside aria-label="Teacher filters" className="directory-filters sidebar-panel card-pad self-start" data-open={filtersOpen} id="teacher-directory-filters">
+        <aside aria-label="Teacher filters" className="directory-filters sidebar-panel card-pad self-start" data-open={filtersOpen} id="teacher-directory-filters" tabIndex={0}>
           <div className="sidebar-heading">
             <span className="flex items-center gap-2"><Icon name="filter" size={17} /> Filters</span>
             <button
@@ -119,19 +126,19 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
               <input className="input" maxLength={100} onChange={(event) => update("subject", event.target.value)} placeholder="e.g. Mathematics" value={draft.subject} />
             </Field>
             <Field label="Key stage">
-              <SelectDropdown onChange={(value) => update("keyStage", value)} options={stageOptions.map((stage) => ({ label: stage || "All key stages", value: stage }))} placeholder="All key stages" value={draft.keyStage} />
+              <DynamicSelect onChange={(value) => update("keyStage", value)} collection="keyStage" emptyLabel="All stages" placeholder="All key stages" value={draft.keyStage} />
             </Field>
             <Field error={errors.skill} label="Skill">
               <input className="input" maxLength={100} onChange={(event) => update("skill", event.target.value)} placeholder="e.g. SEN" value={draft.skill} />
             </Field>
             <Field error={errors.city} label="City or town">
-              <SelectDropdown onChange={(value) => update("city", value)} options={[{ label: "Any UK city or town", value: "" }, ...getUkCities()]} placeholder="Any UK city or town" searchable value={draft.city} />
+              <DynamicSelect onChange={(value) => update("city", value)} collection="city" emptyLabel="Any UK city or town" placeholder="Any UK city or town" searchable value={draft.city} />
             </Field>
             <Field error={errors.minExperience} label="Minimum experience">
               <input className="input" min={0} onChange={(event) => update("minExperience", event.target.value)} placeholder="Years" type="number" value={draft.minExperience} />
             </Field>
             <Field error={errors.minRating} label="Minimum rating">
-              <SelectDropdown onChange={(value) => update("minRating", value)} options={[{ label: "Any rating", value: "" }, { label: "3+ stars", value: "3" }, { label: "4+ stars", value: "4" }, { label: "4.5+ stars", value: "4.5" }]} placeholder="Any rating" value={draft.minRating} />
+              <DynamicSelect onChange={(value) => update("minRating", value)} collection="teacherRating" emptyLabel="Any rating" placeholder="Any rating" value={draft.minRating} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field error={errors.maxHourlyRate} label="Max hourly rate">
@@ -151,7 +158,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
           <Btn className="mt-5 w-full" icon="filter" onClick={applyFilters}>Apply filters</Btn>
         </aside>
 
-        <div className="min-w-0">
+        <section aria-label="Teacher results" className="directory-results min-w-0" ref={resultsRef} tabIndex={0}>
           <form
             className="directory-search mb-5 flex flex-wrap items-center gap-3"
             onSubmit={(event) => { event.preventDefault(); applyFilters(); }}
@@ -193,7 +200,7 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
               </div>
             ) : null}
             {instructors.map((teacher) => (
-              <TeacherDirectoryCard key={teacher.id} teacher={teacher} onOpen={() => go("teacher-profile", { teacherId: teacher.id })} />
+              <TeacherDirectoryCard key={teacher.id} teacher={teacher} go={go} jobId={ctx.jobId} onOpen={() => go("teacher-profile", { teacherId: teacher.id, jobId: ctx.jobId })} />
             ))}
             {!teachersQuery.isLoading && !teachersQuery.isError && instructors.length === 0 ? (
               <div className="card card-pad-lg text-center">
@@ -223,22 +230,22 @@ export function FindTeachersPage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
               <Btn disabled={!pagination.hasNextPage || teachersQuery.isFetching} size="sm" variant="ghost" onClick={() => setPage((current) => current + 1)}>Next</Btn>
             </nav>
           ) : null}
-        </div>
+        </section>
       </div>
     </div>
   );
 }
 
-function TeacherDirectoryCard({ teacher, onOpen }: { teacher: TeacherDirectoryItem; onOpen: () => void }) {
+function TeacherDirectoryCard({ teacher, onOpen, go, jobId }: { teacher: TeacherDirectoryItem; onOpen: () => void; go: RouteProps["go"]; jobId?: string }) {
   const location = [teacher.city, teacher.county].filter(Boolean).join(", ") || "Location not provided";
   const tags = [...teacher.subjects, ...teacher.keyStages, ...teacher.skills].slice(0, 6);
 
   return (
-    <button className="teacher-directory-card card card-pad flex w-full flex-wrap items-start gap-4 text-left transition hover:border-brand hover:shadow-card" onClick={onOpen} type="button">
+    <article className="teacher-directory-card card card-pad flex w-full flex-wrap items-start gap-4 text-left transition hover:border-brand hover:shadow-card">
       <Avatar name={teacher.fullName} size="lg" src={teacher.imageUrl} />
-      <span className="teacher-directory-copy min-w-0 flex-1">
+      <div className="teacher-directory-copy min-w-0 flex-1">
         <span className="mb-1 flex flex-wrap items-center gap-2">
-          <span className="font-heading text-lg">{teacher.fullName}</span>
+          <button className="font-heading text-lg hover:text-brand hover:underline" onClick={onOpen} type="button">{teacher.fullName}</button>
           {teacher.dbsVerified ? <VerifyBadge /> : null}
           {teacher.qtsQualified ? <Tag tone="ghost">QTS</Tag> : null}
           {teacher.availableToday ? <Tag tone="green">Available today</Tag> : null}
@@ -250,13 +257,15 @@ function TeacherDirectoryCard({ teacher, onOpen }: { teacher: TeacherDirectoryIt
           {teacher.experience !== null ? <span className="text-muted">{teacher.experience} years experience</span> : null}
         </span>
         {tags.length ? <span className="mt-3 flex flex-wrap gap-1.5">{tags.map((tag) => <Tag key={tag} tone="ghost">{tag}</Tag>)}</span> : null}
-      </span>
-      <span className="teacher-directory-rate">
+        <TeacherBookingDates bookings={teacher.bookings} compact />
+      </div>
+      <div className="teacher-directory-rate">
         {teacher.dailyRate !== null ? <span className="block"><span className="font-heading text-lg">{formatMoney(teacher.dailyRate, teacher.currency)}</span><span className="block text-xs text-muted">per day</span></span> : null}
         {teacher.hourlyRate !== null ? <span className="mt-2 block text-sm font-semibold">{formatMoney(teacher.hourlyRate, teacher.currency)}<span className="font-normal text-muted"> / hour</span></span> : null}
-        <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand">View profile <Icon name="arrowRight" size={13} /></span>
-      </span>
-    </button>
+        <button className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline" onClick={onOpen} type="button">View profile <Icon name="arrowRight" size={13} /></button>
+        <TeacherHireActions teacher={teacher} go={go} jobId={jobId} />
+      </div>
+    </article>
   );
 }
 

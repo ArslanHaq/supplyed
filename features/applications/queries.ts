@@ -6,8 +6,8 @@ import { seedApplications, seedTeachers } from "@/data/supplyed";
 import { listMyJobs } from "@/features/jobs/queries";
 import { api, ApiError } from "@/lib/server/api-client";
 
-import { normalizeApplication, normalizeApplicationsQuery, normalizePaginatedApplications } from "./schemas";
-import type { JobApplication, JobApplicationsQuery, PaginatedApplications } from "./types";
+import { normalizeApplication, normalizeApplicationHistory, normalizeApplicationsQuery, normalizePaginatedApplications } from "./schemas";
+import type { JobApplication, JobApplicationsQuery, PaginatedApplicationHistory, PaginatedApplications } from "./types";
 
 
 export async function getApplicationById(applicationId: string): Promise<JobApplication | null> {
@@ -19,6 +19,16 @@ export async function getApplicationById(applicationId: string): Promise<JobAppl
 
   const application = seedApplications.find((item) => item.id === applicationId);
   return application ? toJobApplication(application) : null;
+}
+
+export async function listApplicationHistory(applicationId: string, query: { limit?: number; page?: number } = {}): Promise<PaginatedApplicationHistory> {
+  const page = Number.isInteger(query.page) && Number(query.page) > 0 ? Number(query.page) : 1;
+  const limit = Number.isInteger(query.limit) && Number(query.limit) > 0 ? Math.min(Number(query.limit), 100) : 20;
+  const result = await api.get<PaginatedApplicationHistory>(`/applications/${applicationId}/history`, {
+    cache: "no-store",
+    query: { page, limit },
+  });
+  return normalizeApplicationHistory(result);
 }
 
 export async function listApplicationsByJob(jobId: string, query: JobApplicationsQuery = {}): Promise<PaginatedApplications> {

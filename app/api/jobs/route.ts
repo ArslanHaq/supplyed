@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    assertValidQuery(new URL(request.url).searchParams, { search: { maxLength: 100 }, subject: { maxLength: 100 }, keyStage: { maxLength: 100 }, status: { values: ["DRAFT", "ACTIVE", "EXPIRED", "CLOSED"] }, urgent: { values: ["true", "false"] } });
+    assertValidQuery(new URL(request.url).searchParams, { search: { maxLength: 100 }, subject: { maxLength: 100 }, keyStage: { maxLength: 100 }, urgent: { values: ["true", "false"] } });
     return Response.json(await listJobs(readJobFilters(new URL(request.url).searchParams)));
   } catch (error) {
     return routeError(error);

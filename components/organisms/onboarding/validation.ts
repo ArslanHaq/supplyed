@@ -1,3 +1,4 @@
+import { otherSubjectsError, otherSkillsError } from "@/features/teaching-catalogue/selection";
 import { validateUkPhone, validateUkPostcode, validateUkCountry, validateUkCity, validateUkRegion } from "@/lib/uk-validation";
 import type { SignupErrors, SignupForm, SignupRole, SignupStep } from "./types";
 
@@ -12,6 +13,11 @@ export function validateOnboardingStep(form: SignupForm, activeRole: SignupRole,
       if (typeof value === "string" && value.trim().length > limit) nextErrors[field] = `Use ${limit.toLocaleString("en-GB")} characters or fewer.`;
     };
 
+    if ((targetStep === 1 && activeRole === "teacher") || (targetStep === 2 && activeRole === "institution")) {
+      const problem = otherSubjectsError(activeRole === "teacher" ? form.subjects : form.staffingNeeds, form.otherSubjects);
+      if (problem) nextErrors.otherSubjects = problem;
+      if (activeRole === "teacher") { const skillProblem = otherSkillsError(form.skills, form.otherSkills); if (skillProblem) nextErrors.otherSkills = skillProblem; }
+    }
     if (targetStep === 1) {
       if (!roleSelected) nextErrors.accountRole = "Choose how you want to use SupplyED.";
       if (!form.fullName.trim()) nextErrors.fullName = "Enter your full name.";
@@ -30,10 +36,9 @@ export function validateOnboardingStep(form: SignupForm, activeRole: SignupRole,
       }
 
       if (activeRole === "teacher") {
-        if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
         if (form.keyStages.length === 0) nextErrors.keyStages = "Choose at least one key stage.";
         for (const field of ["subjects", "keyStages", "skills"] as const) {
-          if (form[field].length > 100 || form[field].some((item) => !item.trim() || item.length > 100)) nextErrors[field] = "Choose valid options.";
+          if (form[field].length > (field === "keyStages" ? 100 : 50) || form[field].some((item) => !item.trim() || item.length > 100)) nextErrors[field] = "Choose valid options.";
         }
         if (!form.yearsExperience.trim()) nextErrors.yearsExperience = "Enter your years of experience.";
         else if (!/^\d+$/.test(form.yearsExperience.trim()) || !Number.isFinite(Number(form.yearsExperience))) nextErrors.yearsExperience = "Enter a whole number of years, zero or more.";
@@ -69,7 +74,7 @@ export function validateOnboardingStep(form: SignupForm, activeRole: SignupRole,
       maxLength("institutionAddress", 250);
       maxLength("institutionRegistrationId", 100);
       maxLength("institutionDomain", 253);
-      maxLength("staffingNeeds", 1000);
+      if (form.staffingNeeds.length > 50 || form.staffingNeeds.some(item => !item.trim() || item.length > 100)) nextErrors.staffingNeeds = "Choose up to 50 subjects, each with 1 to 100 characters.";
       if (form.institutionType === "MAT_SCHOOL") {
         if (!form.trustName.trim()) nextErrors.trustName = "Enter the multi-academy trust name.";
         else if (form.trustName.trim().length > 200) nextErrors.trustName = "Trust name must be 200 characters or fewer.";

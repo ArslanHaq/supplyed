@@ -18,6 +18,7 @@ import {
   uploadAttachment,
   flattenConversations,
   useConversationForApplication,
+  useConversation,
   useConversations,
   useMarkConversationRead,
   useMessages,
@@ -31,6 +32,7 @@ import type { RouteProps, ToastFn } from "@/types/supplyed";
 import { Avatar, Btn, Icon, Tag } from "../atoms";
 import { PageHead, SectionLoader } from "../molecules";
 import { ProposalPreviewModal } from "../molecules/ProposalPreviewModal";
+import { TeacherHireActions } from "./TeacherHireActions";
 import { MessageAttachmentPreview } from "./MessageAttachmentPreview";
 
 type PendingFile = {
@@ -42,24 +44,27 @@ type PendingFile = {
 };
 
 /**
- * Conversations between a school and a teacher, one per job application.
+ * Direct, job and application conversations between schools and teachers.
  * New messages, read receipts and typing notices arrive live over the shared
  * socket (see useConversationStream in AppChrome).
  */
 export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" | "go" | "role" | "toast">) {
   const conversationsQuery = useConversations();
-  const fromApplication = useConversationForApplication(ctx.applicationId);
+  const fromApplication = useConversationForApplication(ctx.conversationId ? undefined : ctx.applicationId);
+  const fromId = useConversation(ctx.conversationId);
+  const linked = ctx.conversationId ? fromId : fromApplication;
+  const contextId = ctx.conversationId ?? ctx.applicationId;
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } = conversationsQuery;
   // undefined follows a direct application link, null explicitly returns to the inbox.
   const [selection, setSelection] = useState<{ applicationId?: string; selectedId: string | null | undefined }>({ selectedId: undefined });
-  const selectedId = selection.applicationId === ctx.applicationId ? selection.selectedId : undefined;
+  const selectedId = selection.applicationId === contextId ? selection.selectedId : undefined;
 
   // A thread opened from an application may not be in the list yet.
   const conversations = useMemo(() => {
     const list = flattenConversations(conversationsQuery.data);
-    const opened = fromApplication.data;
-    return opened && !list.some((item) => item.id === opened.id) ? [opened, ...list] : list;
-  }, [conversationsQuery.data, fromApplication.data]);
+    const opened = linked.data;
+    return opened ? [opened, ...list.filter(item => item.id !== opened.id)] : list;
+  }, [conversationsQuery.data, linked.data]);
 
   // Fill the inbox without making the user page through older conversations.
   useEffect(() => {
@@ -77,15 +82,15 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
     isFetchingNextPage,
   ]);
 
-  const activeId = selectedId === undefined ? fromApplication.data?.id ?? null : selectedId;
+  const activeId = selectedId === undefined ? linked.data?.id ?? null : selectedId;
   const active = conversations.find((item) => item.id === activeId) ?? null;
-  const applicationQuery = useApplication(active?.applicationId);
-  const jobQuery = useJob(active?.job.id ?? "", role === "institution");
+  const applicationQuery = useApplication(active?.applicationId ?? undefined);
+  const jobQuery = useJob(active?.job?.id ?? "", role === "institution");
   const total = Math.max(conversationsQuery.data?.pages[0]?.pagination.total ?? 0, conversations.length);
   const unread = conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0);
 
   function returnToInbox() {
-    setSelection({ applicationId: ctx.applicationId, selectedId: null });
+    setSelection({ applicationId: contextId, selectedId: null });
   }
 
   return (
@@ -99,18 +104,18 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
         }
       />
 
-      {conversationsQuery.isLoading || fromApplication.isLoading ? <SectionLoader rows={4} /> : null}
-      {fromApplication.error ? (
-        <p className="mb-4 rounded-lg bg-danger-tint px-4 py-3 text-sm text-danger">{fromApplication.error.message}</p>
+      {conversationsQuery.isLoading || linked.isLoading ? <SectionLoader rows={4} /> : null}
+      {linked.error ? (
+        <p className="mb-4 rounded-lg bg-danger-tint px-4 py-3 text-sm text-danger">{linked.error.message}</p>
       ) : null}
 
-      {!conversationsQuery.isLoading && !fromApplication.isLoading && conversations.length === 0 ? (
+      {!conversationsQuery.isLoading && !linked.isLoading && conversations.length === 0 ? (
         <div className="card card-pad-lg text-center">
           <div className="font-heading text-[24px]">No conversations yet</div>
           <p className="mx-auto mt-2 max-w-[480px] text-sm leading-6 text-muted">
             {role === "teacher"
-              ? "Once you apply for a job, choose Message school on the application to start a conversation."
-              : "Choose Message on an applicant to start a conversation with them."}
+              ? "Schools can contact you directly or about an application. Their conversations appear here so you can reply."
+              : "Choose Message on a teacher profile or applicant to start a conversation."}
           </p>
         </div>
       ) : null}
@@ -124,7 +129,7 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
             hasMore={conversationsQuery.hasNextPage}
             loadingMore={conversationsQuery.isFetchingNextPage}
             onLoadMore={() => void conversationsQuery.fetchNextPage()}
-            onSelect={(nextId) => setSelection({ applicationId: ctx.applicationId, selectedId: nextId })}
+            onSelect={(nextId) => setSelection({ applicationId: contextId, selectedId: nextId })}
             total={total}
           />
           {active ? (
@@ -190,10 +195,10 @@ function ConversationList({
               onClick={() => onSelect(conversation.id)}
               type="button"
             >
-              <Avatar name={conversation.counterpart.name} size="sm" src={conversation.counterpart.imageUrl} />
+              <Avatar name={conversationPerson(conversation).name} size="sm" src={conversationPerson(conversation).imageUrl} />
               <div className="min-w-0 flex-1">
-                <div className={`truncate ${conversation.unreadCount ? "font-bold" : "font-medium"}`}>{conversation.counterpart.name}</div>
-                <div className="truncate text-xs text-muted">{conversation.job.title}</div>
+                <div className={`truncate ${conversation.unreadCount ? "font-bold" : "font-medium"}`}>{conversationPerson(conversation).name}</div>
+                <div className="truncate text-xs text-muted">{(conversation.job?.title ?? "Direct conversation")}</div>
                 <div className={`truncate text-xs ${conversation.unreadCount ? "font-semibold text-ink" : "text-muted"}`}>{preview}</div>
               </div>
               <div className="flex flex-col items-end gap-1">
@@ -289,18 +294,18 @@ function Thread({ conversation, onBack, toast }: { conversation: Conversation; o
     <section className="messaging-thread card card-pad-lg flex min-h-[620px] flex-col overflow-hidden">
       <header className="mb-4 flex items-center gap-3 border-b border-border pb-4">
         <Btn className="messaging-back-button" size="sm" variant="ghost" onClick={onBack}>Inbox</Btn>
-        <Avatar name={conversation.counterpart.name} size="md" src={conversation.counterpart.imageUrl} />
+        <Avatar name={conversationPerson(conversation).name} size="md" src={conversationPerson(conversation).imageUrl} />
         <div className="min-w-0 flex-1">
-          <div className="font-semibold">{conversation.counterpart.name}</div>
+          <div className="font-semibold">{conversationPerson(conversation).name}</div>
           <div className="truncate text-xs text-muted" aria-live="polite">
             {counterpartTyping ? (
-              <span className="text-brand">{conversation.counterpart.name} is typing…</span>
+              <span className="text-brand">{conversationPerson(conversation).name} is typing…</span>
             ) : (
-              <>{conversation.counterpart.role === "school" ? "School" : "Teacher"} · {conversation.job.title}</>
+              <>{conversationPerson(conversation).role === "school" ? "School" : "Teacher"} · {(conversation.job?.title ?? "Direct conversation")}</>
             )}
           </div>
         </div>
-        <Tag tone="ghost">{conversation.applicationStatus.toLowerCase().replace(/_/g, " ")}</Tag>
+        <Tag tone="ghost">{conversation.applicationStatus?.toLowerCase().replace(/_/g, " ") ?? (conversation.job ? "Job conversation" : "Direct message")}</Tag>
       </header>
 
       <div className="message-timeline flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
@@ -319,7 +324,7 @@ function Thread({ conversation, onBack, toast }: { conversation: Conversation; o
         {messagesQuery.isLoading ? <SectionLoader rows={3} /> : null}
         {!messagesQuery.isLoading && messages.length === 0 ? (
           <p className="m-auto max-w-[360px] text-center text-sm text-muted">
-            Say hello to {conversation.counterpart.name}. Messages here are only visible to the two of you.
+            Say hello to {conversationPerson(conversation).name}. Messages here are only visible to the two of you.
           </p>
         ) : null}
         {messages.map((message) => (
@@ -327,7 +332,7 @@ function Thread({ conversation, onBack, toast }: { conversation: Conversation; o
             key={message.id}
             conversationId={conversation.id}
             message={message}
-            mine={message.senderSide === conversation.me}
+            mine={conversation.me !== null && message.senderSide === conversation.me}
             seen={message.id === seenId}
             toast={toast}
           />
@@ -337,7 +342,7 @@ function Thread({ conversation, onBack, toast }: { conversation: Conversation; o
 
       {conversation.readOnly ? (
         <p className="mt-4 rounded-lg bg-chalk px-4 py-3 text-sm text-muted">
-          This application was not successful, so the conversation is closed. You can still read and download what was shared.
+          This conversation is read-only. You can still read and download what was shared.
         </p>
       ) : (
         <Composer key={conversation.id} conversationId={conversation.id} toast={toast} />
@@ -373,43 +378,43 @@ function ConversationContextPanel({
       <div className="border-b border-border p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="context-label">Application details</p>
+            <p className="context-label">{conversation.applicationId ? "Application details" : "Direct conversation"}</p>
             <h2 className="mt-1 font-heading text-lg font-bold text-ink">Conversation context</h2>
           </div>
-          <Tag tone={applicationStatusTone(status)}>{formatStatus(status)}</Tag>
+          {status ? <Tag tone={applicationStatusTone(status)}>{formatStatus(status)}</Tag> : null}
         </div>
       </div>
 
       <div className="space-y-5 p-5">
         <div className="flex items-center gap-3 rounded-xl border border-border bg-chalk p-3.5">
           <Avatar
-            name={conversation.counterpart.name}
+            name={conversationPerson(conversation).name}
             size="lg"
-            src={conversation.counterpart.imageUrl}
+            src={conversationPerson(conversation).imageUrl}
           />
           <div className="min-w-0">
             <button
               className="block max-w-full truncate text-left font-bold text-ink hover:text-brand hover:underline disabled:cursor-default disabled:no-underline"
-              disabled={!conversation.counterpart.id}
-              onClick={() => conversation.counterpart.role === "school"
-                ? go("institution-profile", { institutionId: conversation.counterpart.id ?? undefined, jobId: conversation.job.id })
-                : go("teacher-profile", { applicationId: conversation.applicationId, jobId: conversation.job.id, teacherId: conversation.counterpart.id ?? undefined })}
+              disabled={!conversationPerson(conversation).id}
+              onClick={() => conversationPerson(conversation).role === "school"
+                ? go("institution-profile", { institutionId: conversationPerson(conversation).id ?? undefined, jobId: conversation.job?.id })
+                : go("teacher-profile", { applicationId: conversation.applicationId ?? undefined, jobId: conversation.job?.id, teacherId: conversationPerson(conversation).id ?? undefined })}
               type="button"
             >
-              {conversation.counterpart.name}
+              {conversationPerson(conversation).name}
             </button>
             <p className="mt-0.5 text-xs text-muted">
-              {role === "teacher" ? "Hiring school" : "Teaching applicant"}
+              {role === "teacher" ? "Hiring school" : (conversation.applicationId ? "Teaching applicant" : "Teacher")}
             </p>
           </div>
         </div>
 
         {loading ? <SectionLoader rows={2} /> : null}
 
-        <section>
+        {conversation.job ? <section>
           <p className="context-label">Job</p>
           <h3 className="mt-2 text-base font-bold leading-snug text-ink">
-            {job?.title ?? conversation.job.title}
+            {job?.title ?? (conversation.job?.title ?? "Direct conversation")}
           </h3>
           <div className="mt-3 space-y-2.5">
             <ContextRow icon="pin" text={formatJobLocation(job)} />
@@ -422,7 +427,7 @@ function ConversationContextPanel({
               {job.keyStages?.slice(0, 3).map((stage) => <Tag key={stage} tone="ghost">{stage}</Tag>)}
             </div>
           ) : null}
-        </section>
+        </section> : <p className="text-sm leading-6 text-muted">A direct conversation between a teacher and school. No job or application is required.</p>}
 
         {role === "institution" && applicant ? (
           <section className="border-t border-border pt-5">
@@ -475,22 +480,23 @@ function ConversationContextPanel({
         ) : null}
 
         <div className="grid gap-2 border-t border-border pt-5">
-          <Btn
+          {conversation.applicationId ? <Btn
             icon="arrow"
-            onClick={() => go("applications", { applicationId: conversation.applicationId, jobId: conversation.job.id })}
+            onClick={() => go("applications", { applicationId: conversation.applicationId ?? undefined, jobId: conversation.job?.id })}
           >
             View application
-          </Btn>
-          <Btn icon="file" variant="secondary" onClick={() => go("job-detail", { jobId: conversation.job.id })}>
+          </Btn> : null}
+          {conversation.job ? <Btn icon="file" variant="secondary" onClick={() => go("job-detail", { jobId: conversation.job?.id })}>
             View job
-          </Btn>
+          </Btn> : null}
+          {role === "institution" && conversation.me === "poster" && !conversation.readOnly && conversation.applicationStatus !== "HIRED" && conversation.participants.instructor?.id ? <TeacherHireActions go={go} hideMessage jobId={conversation.job?.id} teacher={{ id: conversation.participants.instructor.id, fullName: conversation.participants.instructor.name, imageUrl: conversation.participants.instructor.imageUrl }} /> : null}
         </div>
       </div>
     </aside>
     <ProposalPreviewModal
       applicantImage={applicant?.imageUrl}
-      applicantName={applicant?.fullName ?? conversation.counterpart.name}
-      jobTitle={job?.title ?? conversation.job.title}
+      applicantName={applicant?.fullName ?? conversationPerson(conversation).name}
+      jobTitle={job?.title ?? (conversation.job?.title ?? "Direct conversation")}
       onClose={() => setProposalOpen(false)}
       open={proposalOpen}
       submittedAt={application?.createdAt}
@@ -520,7 +526,7 @@ function ContextStat({ label, value }: { label: string; value: string }) {
 
 function applicationStatusTone(status: string): "" | "green" | "purple" | "amber" | "red" {
   if (status === "HIRED") return "green";
-  if (status === "INTERVIEW" || status === "SHORTLISTED") return "purple";
+  if (status === "SHORTLISTED") return "purple";
   if (status === "VIEWED") return "amber";
   if (status === "REJECTED") return "red";
   return "";
@@ -766,4 +772,8 @@ function formatWhen(value: string) {
   const sameDay = date.toDateString() === new Date().toDateString();
 
   return sameDay ? formatTime(value) : new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(date);
+}
+
+function conversationPerson(conversation: Conversation) {
+  return conversation.counterpart ?? { id: null, imageUrl: null, role: "teacher" as const, name: [conversation.participants.instructor?.name, conversation.participants.poster?.name].filter(Boolean).join(" / ") || "Conversation" };
 }

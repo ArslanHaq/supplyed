@@ -6,12 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 
 import { defaultState } from "@/data/supplyed";
+import { WorkspaceAccountProvider } from "@/features/auth/workspace-account";
 import { useOnboardingSnapshot } from "@/features/onboarding/use-onboarding";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref, shouldShowApplicationStatusPage } from "@/lib/routes";
-import { loadTweaks, saveTweaks } from "@/lib/supplyed-preferences";
-import { applyBrandTheme } from "@/lib/theme";
-import type { AppPage, AppRole, ApplicationStatus, AppState, GoFn, RouteProps, ToastFn, Tweaks } from "@/types/supplyed";
+import { useTweaks } from "@/lib/use-tweaks";
+import type { AppPage, AppRole, ApplicationStatus, AppState, GoFn, RouteContext, RouteProps, ToastFn } from "@/types/supplyed";
+import { JobInvitationsPage } from "./JobInvitationsPage";
 
 import { ToastStack } from "../molecules";
 import { ApplicationStatusPage } from "./ApplicationStatusPage";
@@ -27,6 +28,7 @@ import { InstitutionDashboard } from "./InstitutionDashboard";
 import { InstitutionProfilePage } from "./InstitutionProfilePage";
 import { JobDetailPage } from "./JobDetailPage";
 import { MessagingPage } from "./MessagingPage";
+import { MyProfilePage } from "./MyProfilePage";
 import { PostJobPage } from "./PostJobPage";
 import { SecurityPage } from "./SecurityPage";
 import { SettingsPage } from "./SettingsPage";
@@ -38,6 +40,8 @@ import { TweaksPanel } from "./TweaksPanel";
 function readContext(searchParams: URLSearchParams) {
   return {
     applicationId: searchParams.get("applicationId") || undefined,
+    bookingId: searchParams.get("bookingId") || undefined,
+    conversationId: searchParams.get("conversationId") || undefined,
     institutionId: searchParams.get("institutionId") || undefined,
     jobId: searchParams.get("jobId") || undefined,
     search: searchParams.get("search") || undefined,
@@ -46,6 +50,7 @@ function readContext(searchParams: URLSearchParams) {
 }
 
 type SessionRouteState = {
+  id: string;
   applicationStatus: ApplicationStatus;
   email: string;
   name?: string | null;
@@ -68,7 +73,7 @@ function createInitialRouteState(page: AppPage, sessionState: SessionRouteState)
   };
 }
 
-function RouteShell({ page, sessionState }: { page: AppPage; sessionState: SessionRouteState }) {
+function RouteShell({ page, sessionState, initialContext }: { page: AppPage; sessionState: SessionRouteState; initialContext?: RouteContext }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [localState, setState] = useState<AppState>(() => createInitialRouteState(page, sessionState));
@@ -82,21 +87,16 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     role: sessionState.role === "admin" ? "admin" : onboarding?.role ?? sessionState.role,
     signupEmail: sessionState.email,
   };
-  const [tweaks, setTweaks] = useState<Tweaks>(loadTweaks);
-  const routeCtx = useMemo(() => readContext(searchParams), [searchParams]);
+  const [tweaks, setTweaks] = useTweaks();
+  const routeCtx = useMemo(() => ({ ...readContext(searchParams), ...initialContext }), [searchParams, initialContext]);
   const activePage = page;
 
   useEffect(() => {
     if (sessionState.role !== "admin" && onboarding?.completed === false) {
       startRouteLoading();
-      router.replace("/onboarding");
+      router.replace(page === "job-invitations" ? `/onboarding?returnTo=${encodeURIComponent(buildAppHref(page, initialContext))}` : "/onboarding");
     }
-  }, [onboarding?.completed, router, sessionState.role]);
-
-  useEffect(() => {
-    applyBrandTheme(tweaks.accent);
-    saveTweaks(tweaks);
-  }, [tweaks]);
+  }, [onboarding?.completed, router, sessionState.role, page, initialContext]);
 
   const dismissToast = useCallback((id: string) => {
     setState((current) => ({ ...current, toasts: current.toasts.filter((item) => item.id !== id) }));
@@ -141,13 +141,17 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
   }
 
   let content: ReactNode = null;
-  if (activePage === "settings") {
+  if (activePage === "job-invitations") {
+    content = <JobInvitationsPage key={routeCtx.invitationId ?? "all"} {...routeProps} />;
+  } else if (activePage === "settings") {
     content = <SettingsPage {...routeProps} verified={onboarding?.verified === true} />;
+  } else if (activePage === "my-profile" && state.role !== "admin") {
+    content = <MyProfilePage {...routeProps} />;
   } else if (state.role === "institution") {
     if (activePage === "dashboard") content = <InstitutionDashboard {...routeProps} />;
     else if (activePage === "post-job") content = <PostJobPage {...routeProps} />;
     else if (activePage === "applications") content = <ApplicationsPage {...routeProps} />;
-    else if (activePage === "bookings") content = <BookingsPage {...routeProps} />;
+    else if (activePage === "bookings") content = <BookingsPage key={routeCtx.bookingId ?? routeCtx.jobId ?? "all-bookings"} {...routeProps} />;
     else if (activePage === "find-teachers") content = <FindTeachersPage key={routeCtx.search ?? "all-teachers"} {...routeProps} />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
     else if (activePage === "institution-profile") content = <InstitutionProfilePage {...routeProps} />;
@@ -160,7 +164,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
     if (activePage === "dashboard") content = <TeacherDashboard {...routeProps} />;
     else if (activePage === "find-jobs") content = <FindJobsPage {...routeProps} />;
     else if (activePage === "applications") content = <TeacherApplicationsPage {...routeProps} />;
-    else if (activePage === "bookings") content = <BookingsPage {...routeProps} />;
+    else if (activePage === "bookings") content = <BookingsPage key={routeCtx.bookingId ?? routeCtx.jobId ?? "all-bookings"} {...routeProps} />;
     else if (activePage === "job-detail") content = <JobDetailPage {...routeProps} />;
     else if (activePage === "calendar") content = <CalendarPage />;
     else if (activePage === "teacher-profile") content = <TeacherProfilePage {...routeProps} />;
@@ -186,7 +190,7 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
   }
 
   return (
-    <>
+    <WorkspaceAccountProvider key={sessionState.id} value={{ id: sessionState.id, role: state.role, applicationStatus: state.applicationStatus }}>
       <AppChrome
         verified={onboarding?.verified === true}
         state={routeProps.state}
@@ -199,10 +203,10 @@ function RouteShell({ page, sessionState }: { page: AppPage; sessionState: Sessi
       </AppChrome>
       <TweaksPanel state={routeProps.state} setState={setState} tweaks={tweaks} setTweaks={setTweaks} />
       <ToastStack autoCloseMs={3200} onDismiss={dismissToast} toasts={state.toasts} />
-    </>
+    </WorkspaceAccountProvider>
   );
 }
 
-export function AppRouteShellClient({ page, sessionState }: { page: AppPage; sessionState: SessionRouteState }) {
-  return <RouteShell page={page} sessionState={sessionState} />;
+export function AppRouteShellClient({ page, sessionState, initialContext }: { page: AppPage; sessionState: SessionRouteState; initialContext?: RouteContext }) {
+  return <RouteShell page={page} sessionState={sessionState} initialContext={initialContext} />;
 }

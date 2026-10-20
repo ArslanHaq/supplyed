@@ -24,6 +24,7 @@ export type BookingJobSummary = {
   parkingInfo?: string | null;
   postalCode?: string | null;
   subject?: string | null;
+  subjects?: string[];
   title: string;
 };
 
@@ -45,6 +46,7 @@ export type BookingInvoiceSummary = {
 };
 
 export type Booking = {
+  source?: "APPLICATION" | "DIRECT_HIRE";
   applicationId: string;
   cancelReason?: string | null;
   cancelledAt?: string | null;
@@ -57,6 +59,8 @@ export type Booking = {
   instructor: BookingPartySummary;
   invoice: BookingInvoiceSummary | null;
   job: BookingJobSummary;
+  hours?: number | null;
+  days?: number | null;
   payAmount?: number | null;
   payType?: string | null;
   reviews: BookingReview[];

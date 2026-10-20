@@ -79,6 +79,7 @@ export async function getTeacher(id: string): Promise<Teacher | null> {
 
 function toDirectoryItem(teacher: Teacher): TeacherDirectoryItem {
   return {
+    bookings: null,
     availableToday: teacher.availability.toLowerCase().includes("today"),
     bio: teacher.role,
     city: teacher.city,

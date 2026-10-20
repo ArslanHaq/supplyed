@@ -418,6 +418,8 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
   .hero { padding-top: 52px; padding-bottom: 48px; }
 }
 </style>
+<link rel="stylesheet" href="/dropdown-theme.css">
+<script src="/theme-bootstrap.js"></script>
 </head>
 <body>
 
@@ -626,15 +628,7 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
           </div>
           <div class="form-group">
             <label class="form-label" for="loi-role">Role</label>
-            <select id="loi-role" name="role" class="form-select" required>
-              <option value="" disabled selected>Select your role</option>
-              <option>Head Teacher</option>
-              <option>Deputy / Assistant Head</option>
-              <option>Cover Coordinator</option>
-              <option>School Business Manager</option>
-              <option>MAT / Trust leadership</option>
-              <option>Other</option>
-            </select>
+            <select id="loi-role" name="role" class="form-select" required data-dropdown="legacySchoolRole" disabled><option value="">Loading choices…</option></select>
           </div>
         </div>
         <div class="grid-2">
@@ -644,7 +638,7 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
           </div>
           <div class="form-group">
             <label class="form-label" for="loi-phone">Phone <span style="text-transform:none;font-weight:400">(optional)</span></label>
-            <input id="loi-phone" name="phone" type="tel" inputmode="numeric" class="form-input" placeholder="07700 000000" autocomplete="tel">
+            <input id="loi-phone" name="phone" type="tel" inputmode="tel" class="form-input" placeholder="07400 123456" autocomplete="tel">
           </div>
         </div>
         <div class="grid-2">
@@ -654,24 +648,12 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
           </div>
           <div class="form-group">
             <label class="form-label" for="loi-type">School type</label>
-            <select id="loi-type" name="schoolType" class="form-select" required>
-              <option value="" disabled selected>Select type</option>
-              <option>Primary</option>
-              <option>Secondary</option>
-              <option>Special / Alternative provision</option>
-              <option>Multi-academy trust</option>
-              <option>Independent</option>
-              <option>Other</option>
-            </select>
+            <select id="loi-type" name="schoolType" class="form-select" required data-dropdown="legacySchoolType" disabled><option value="">Loading choices…</option></select>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label" for="loi-tier">Tier of interest</label>
-          <select id="loi-tier" name="tier" class="form-select">
-            <option selected>Not sure yet, tell me more</option>
-            <option>Founding School</option>
-            <option>Founding School Enhanced</option>
-          </select>
+          <select id="loi-tier" name="tier" class="form-select" data-dropdown="legacySchoolTier" disabled><option value="">Loading choices…</option></select>
         </div>
         <div class="form-group">
           <label class="form-label" for="loi-message">Anything you'd like us to know <span style="text-transform:none;font-weight:400">(optional)</span></label>
@@ -738,6 +720,8 @@ footer { background: #FFFFFF; border-top: 1px solid var(--border); padding: 44px
   <button class="btn-primary" style="font-size:12px;padding:8px 16px" onclick="document.getElementById('cookieBar').style.display='none'">Accept all</button>
 </div>
 
+<script src="/vendor/libphonenumber-max.js"></script>
+<script src="/uk-phone-validation.js"></script>
 <script>
 /* ── Configuration ──
    Replace with your Google Apps Script web app URL (same pattern as the
@@ -761,9 +745,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const postcodeRegex = /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i;
 
 const phoneInput = document.getElementById('loi-phone');
-phoneInput.addEventListener('input', function () {
-  this.value = this.value.replace(/[^0-9+ ]/g, '');
-});
+const phoneControl = SupplyEdPhone.bind(phoneInput, document.getElementById('submitBtn'));
 
 function showError(message) {
   const el = document.getElementById('errorMsg');
@@ -777,6 +759,11 @@ document.getElementById('loiForm').addEventListener('submit', async function (e)
   const form = this;
   const btn = document.getElementById('submitBtn');
   document.getElementById('errorMsg').classList.remove('visible');
+  if (!phoneControl.update()) {
+    showError('Enter a valid UK phone number.');
+    phoneInput.focus();
+    return;
+  }
 
   const data = {
     school:     document.getElementById('loi-school').value.trim(),
@@ -806,7 +793,7 @@ document.getElementById('loiForm').addEventListener('submit', async function (e)
   }
 
   btn.textContent = 'Submitting...';
-  btn.disabled = true;
+  phoneControl.setSubmitting(true);
   btn.style.opacity = '.6';
   btn.style.cursor = 'not-allowed';
 
@@ -823,7 +810,7 @@ document.getElementById('loiForm').addEventListener('submit', async function (e)
       </div>`;
   } catch (err) {
     btn.textContent = 'Register interest →';
-    btn.disabled = false;
+    phoneControl.setSubmitting(false);
     btn.style.opacity = '';
     btn.style.cursor = '';
     showError('Something went wrong. Please try again, or email us directly.');
@@ -831,5 +818,6 @@ document.getElementById('loiForm').addEventListener('submit', async function (e)
 });
 </script>
 
+<script src="/dynamic-dropdowns.js" defer></script>
 </body>
 </html>

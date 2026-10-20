@@ -1,3 +1,5 @@
+
+import { selectionValues } from "@/features/teaching-catalogue/selection";
 import "server-only";
 
 import { backendEnabled } from "@/lib/server/backend-config";
@@ -153,7 +155,7 @@ function normalizeInstitution(payload: unknown): SettingsInstitutionProfile | un
     postalCode: readString(record.postalCode),
     registrationId: readString(record.registrationId),
     safeguardingConfirmed: readBoolean(record.safeguardingConfirmed),
-    staffingNeeds: readString(record.staffingNeeds),
+    staffingNeeds: selectionValues(record.staffingNeeds),
     status: normalizeStatus(record.status),
     typicalPupilCount: numberString(record.typicalPupilCount),
     updatedAt: readDate(record.updatedAt),

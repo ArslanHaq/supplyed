@@ -65,7 +65,7 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
       <div className="profile-detail-grid grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
           <ProfileSection description="What this school looks for when hiring" icon="search" title="Staffing needs">
-            <p className="whitespace-pre-line text-[15px] leading-7 text-slate">{profile.staffingNeeds || "This school has not added a public staffing summary yet. School details and preferred cover types are shown below."}</p>
+            <p className="whitespace-pre-line text-[15px] leading-7 text-slate">{profile.staffingNeeds.join(", ") || "This school has not added a public staffing summary yet. School details and preferred cover types are shown below."}</p>
           </ProfileSection>
 
           <section className="card mt-6 overflow-hidden">

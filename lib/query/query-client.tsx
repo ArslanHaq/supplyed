@@ -1,6 +1,7 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { refreshDropdownsAfterFailure } from "@/features/dropdowns/refresh";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -8,6 +9,7 @@ export function QueryProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        mutationCache: new MutationCache({ onSuccess: refreshDropdownsAfterFailure, onError: refreshDropdownsAfterFailure }),
         defaultOptions: {
           mutations: {
             retry: 0,

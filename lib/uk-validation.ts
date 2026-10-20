@@ -1,4 +1,3 @@
-import { City, State } from "country-state-city";
 import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 
 export const UK_COUNTRY_CODE = "GB";
@@ -22,6 +21,9 @@ export function validateUkPhone(value: unknown, options: ValidationOptions = {})
   const error = "Enter a valid UK phone number.";
   if (optionalEmpty(value, options)) return { valid: true, value: "" };
   if (!raw || raw.length > 40 || !/^[+\d\s().-]+$/.test(raw)) return result(raw, false, error);
+  // Require an explicit UK prefix instead of guessing a country for bare digits.
+  const compact = raw.replace(/[\s().-]/g, "");
+  if (!/^(?:\+44|0044|0(?!0))\d+$/.test(compact)) return result(raw, false, error);
   const phone = parsePhoneNumberFromString(raw.replace(/^00/, "+"), { defaultCountry: "GB", extract: false });
   return phone?.country === "GB" && phone.isValid() && !phone.ext
     ? { valid: true, value: phone.number }
@@ -46,34 +48,15 @@ export function validateUkCountry(value: unknown, options: ValidationOptions = {
   return result(valid ? UK_COUNTRY_CODE : raw, valid, "Only United Kingdom addresses are supported.");
 }
 
-function locationKey(value: string) {
-  return value.normalize("NFKC").replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLocaleLowerCase("en-GB");
-}
-const cityNames = [...new Set((City.getCitiesOfCountry("GB") ?? []).map(city => city.name))].sort((a, b) => a.localeCompare(b, "en-GB"));
-const cityByName = new Map(cityNames.map(name => [locationKey(name), name]));
-// These two overseas subdivisions are incorrectly grouped under GB in v3.2.1.
-const regions = State.getStatesOfCountry("GB").filter(state => !state.isoCode.startsWith("SH-") && state.name !== "United Kingdom");
-const regionNames = [...new Set([...regions.map(state => state.name), "Greater London", "Greater Manchester", "Merseyside", "South Yorkshire", "West Yorkshire", "West Midlands", "Tyne and Wear"])].sort((a, b) => a.localeCompare(b, "en-GB"));
-const regionByName = new Map(regionNames.map(name => [locationKey(name), name]));
-for (const name of regionNames) {
-  const alias = name.replace(/^(?:City and County of |City of |Royal Borough of |London Borough of |Metropolitan Borough of )/, "").replace(/ (?:County Borough|Borough Council|District Council|City Council|district)$/, "");
-  if (!regionByName.has(locationKey(alias))) regionByName.set(locationKey(alias), name);
-}
-
-export function getUkCities(): string[] { return [...cityNames]; }
-export function getUkRegions(): string[] { return [...regionNames]; }
-
-/** Dataset membership, not address verification; never infer a town from a district. */
+/** Shape checks only. Active city/region membership is owned by the dropdown API.
+ * Preserve exact option.value: label changes and new administrator choices must round-trip. */
 export function validateUkCity(value: unknown, options: ValidationOptions = {}): UkValidationResult {
   const raw = inputText(value);
   if (optionalEmpty(value, options)) return { valid: true, value: "" };
-  const canonical = cityByName.get(locationKey(raw));
-  return result(canonical ?? raw, Boolean(canonical), "Select a valid UK city or town.");
+  return result(raw, Boolean(raw) && raw.length <= 100 && !/\p{Cc}/u.test(raw), "Select a UK city or town.");
 }
-
 export function validateUkRegion(value: unknown, options: ValidationOptions = {}): UkValidationResult {
   const raw = inputText(value);
   if (optionalEmpty(value, options)) return { valid: true, value: "" };
-  const canonical = regionByName.get(locationKey(raw));
-  return result(canonical ?? raw, Boolean(canonical), "Select a valid UK county or region.");
+  return result(raw, Boolean(raw) && raw.length <= 100 && !/\p{Cc}/u.test(raw), "Select a UK county or region.");
 }

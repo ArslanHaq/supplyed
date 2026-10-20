@@ -6,7 +6,7 @@ import type { PhoneOtpChallenge } from "@/features/auth/phone-types";
 import { useSendPhoneOtp, useVerifyPhoneOtp } from "@/features/auth/use-phone-verification";
 import { validateUkPhone } from "@/lib/uk-validation";
 
-import { Btn, Field, Tag } from "../atoms";
+import { Btn, Field, Icon, Tag } from "../atoms";
 import { PhoneInput } from "./PhoneInput";
 
 type ActiveChallenge = PhoneOtpChallenge & { expiresAt: number; resendAt: number };
@@ -49,6 +49,7 @@ export function PhoneVerification({
   const isVerified = verified && savedPhoneValidation.valid && phoneValidation.valid && phoneValidation.value === savedPhoneValidation.value;
   const resendSeconds = Math.max(0, Math.ceil((Math.max(challenge?.resendAt ?? 0, rateLimitUntil) - now) / 1000));
   const expirySeconds = Math.max(0, Math.ceil(((challenge?.expiresAt ?? 0) - now) / 1000));
+  const codeRejected = failure?.field === "otp" && /code|otp/i.test(failure.message) && /invalid|incorrect|expired/i.test(failure.message);
 
   useEffect(() => {
     if (!challenge && !rateLimitUntil) return;
@@ -108,7 +109,7 @@ export function PhoneVerification({
   }
 
   const verificationButton = isVerified ? <Tag tone="green">Phone verified</Tag> : (
-    <Btn className="phone-verification-action" style={{ minHeight: "var(--phone-control-height, var(--control-height))" }} disabled={disabled || verify.isPending || !phone.trim() || resendSeconds > 0}
+    <Btn className="phone-verification-action" style={{ minHeight: "var(--phone-control-height, var(--control-height))" }} disabled={disabled || verify.isPending || !phoneValidation.valid || resendSeconds > 0}
       loading={send.isPending} loadingLabel="Sending code" onClick={() => void sendCode()}>
       {resendSeconds > 0 ? `Resend in ${resendSeconds}s` : challenge ? "Resend code" : "Verify phone"}
     </Btn>
@@ -166,9 +167,17 @@ export function PhoneVerification({
       ) : null}
 
       {failure ? (
-        <div id={`${id}-failure`} className="mb-4 text-sm text-danger" role="alert">
-          {failure.message}
-          {failure.requestId ? <span className="mt-1 block text-xs">Support reference: {failure.requestId}</span> : null}
+        <div id={`${id}-failure`} className="mb-4 flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-tint p-4 text-sm" role="alert">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-danger" aria-hidden="true">
+            <Icon name="help" size={18} />
+          </span>
+          <div className="min-w-0">
+            <p className="font-semibold text-danger">{failure.field === "otp" ? "Let's check your verification code" : "We couldn't send your code"}</p>
+            <p className="mt-1 leading-6 text-ink">
+              {codeRejected ? "That code is incorrect or has expired. Enter the latest 6-digit code from your SMS, or select Resend code to get a new one." : failure.message}
+            </p>
+
+          </div>
         </div>
       ) : null}
       {verified && savedPhoneValidation.valid && !isVerified ? (

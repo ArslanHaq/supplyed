@@ -1,4 +1,4 @@
-export type JobApplicationStatus = "APPLIED" | "HIRED" | "INTERVIEW" | "REJECTED" | "SHORTLISTED" | "VIEWED";
+export type JobApplicationStatus = "APPLIED" | "HIRED" | "REJECTED" | "SHORTLISTED" | "VIEWED";
 
 export type ApplicantSummary = {
   city?: string | null;
@@ -22,12 +22,14 @@ export type JobApplication = {
   instructor?: ApplicantSummary;
   instructorId: string;
   jobId: string;
+  /** The backend saves the job's title when the application is submitted. */
+  jobName?: string | null;
   status: JobApplicationStatus;
   updatedAt?: string | null;
 };
 
 export type ApplicationCreateInput = {
-  coverLetter: string;
+  coverLetter?: string;
   jobId: string;
 };
 
@@ -43,6 +45,20 @@ export type ApplicationsPagination = {
 
 export type PaginatedApplications = {
   applications: JobApplication[];
+  pagination: ApplicationsPagination;
+};
+
+export type ApplicationHistoryEntry = {
+  applicationId: string;
+  changedBy: string;
+  createdAt: string;
+  fromStatus: JobApplicationStatus | null;
+  id: string;
+  toStatus: JobApplicationStatus;
+};
+
+export type PaginatedApplicationHistory = {
+  history: ApplicationHistoryEntry[];
   pagination: ApplicationsPagination;
 };
 

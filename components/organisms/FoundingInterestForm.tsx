@@ -3,23 +3,15 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Button, Checkbox, Field, Icon } from "@/components/atoms";
-import { SelectDropdown } from "@/components/molecules/OptionDropdowns";
+import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
+import type { DropdownName } from "@/features/dropdowns/types";
+import { PhoneInput } from "@/components/molecules/PhoneInput";
+import { validateUkPhone } from "@/lib/uk-validation";
 import {
   type FoundingInterestActionState,
   type WaitlistField,
 } from "@/features/contact/actions";
 import { submitWaitlistAction } from "@/features/contact/waitlist-client";
-import {
-  coverBookingOptions,
-  currentSupplyOptions,
-  daysPerWeekOptions,
-  supplyDaysOptions,
-  waitlistSchoolAreas,
-  waitlistSchoolRoles,
-  waitlistSchoolTypes,
-  waitlistTeacherAreas,
-  waitlistTeacherRoles,
-} from "@/features/contact/waitlist-options";
 import { WaitlistConfirmation } from "./WaitlistConfirmation";
 
 type InterestType = "SCHOOL" | "TEACHER";
@@ -71,6 +63,7 @@ function WaitlistForm({
   const [consent, setConsent] = useState(false);
   const [founding, setFounding] = useState(false);
   const school = type === "SCHOOL";
+  const invalidPhone = !school && !validateUkPhone(values.phone).valid;
   const errors = state && !state.ok ? state.fieldErrors : undefined;
   const fieldId = (field: string) => `${id}-${field}`;
   function input(
@@ -112,7 +105,7 @@ function WaitlistForm({
   function select(
     name: WaitlistField,
     label: string,
-    options: readonly string[],
+    collection: DropdownName,
   ) {
     return (
       <Field
@@ -121,7 +114,7 @@ function WaitlistForm({
         error={errors?.[name]}
         required
       >
-        <SelectDropdown
+        <DynamicSelect
           aria-invalid={Boolean(errors?.[name])}
           disabled={pending}
           error={Boolean(errors?.[name])}
@@ -130,7 +123,7 @@ function WaitlistForm({
           onChange={(value) =>
             setValues((current) => ({ ...current, [name]: value }))
           }
-          options={options}
+          collection={collection}
           required
           value={values[name] ?? ""}
         />
@@ -150,7 +143,7 @@ function WaitlistForm({
       />
     );
   return (
-    <form action={action} className="waitlist-form" id={id} noValidate>
+    <form action={action} className="waitlist-form" id={id} noValidate onSubmit={(event) => { if (invalidPhone) event.preventDefault(); }}>
       <input name="type" type="hidden" value={type} />
       <input
         name="source"
@@ -212,7 +205,7 @@ function WaitlistForm({
               {input("name", "Your name", "Full name", {
                 autoComplete: "name",
               })}
-              {select("role", "Your role", waitlistSchoolRoles)}
+              {select("role", "Your role", "waitlistSchoolRole")}
             </div>
             {input("email", "Work email", "name@school.org.uk", {
               type: "email",
@@ -220,18 +213,18 @@ function WaitlistForm({
               maxLength: 254,
             })}
             <div className="waitlist-field-grid">
-              {select("area", "Area", waitlistSchoolAreas)}
-              {select("schoolType", "School type", waitlistSchoolTypes)}
+              {select("area", "Area", "waitlistSchoolArea")}
+              {select("schoolType", "School type", "waitlistSchoolType")}
             </div>
             {select(
               "supplyDaysPerTerm",
               "Supply days per term (roughly)",
-              supplyDaysOptions,
+              "supplyDaysPerTerm",
             )}
             {select(
               "coverBookingMethod",
               "How you book cover now",
-              coverBookingOptions,
+              "coverBookingMethod",
             )}
             <Checkbox
               checked={founding}
@@ -259,25 +252,29 @@ function WaitlistForm({
               autoComplete: "email",
               maxLength: 254,
             })}
-            {input("phone", "UK phone number (optional)", "e.g. 07400 123456 or 020 7946 0018", {
-              type: "tel",
-              autoComplete: "tel",
-              optional: true,
-              maxLength: 32,
-            })}
+            <PhoneInput
+              disabled={pending}
+              error={errors?.phone}
+              id={fieldId("phone")}
+              label="UK phone number (optional)"
+              name="phone"
+              onChange={(phone) => setValues((current) => ({ ...current, phone }))}
+              placeholder="e.g. 07400 123456 or 020 7946 0018"
+              value={values.phone ?? ""}
+            />
             <div className="waitlist-field-grid">
-              {select("role", "I work as a", waitlistTeacherRoles)}
-              {select("area", "Where you’ll work", waitlistTeacherAreas)}
+              {select("role", "I work as a", "waitlistTeacherRole")}
+              {select("area", "Where you’ll work", "waitlistTeacherArea")}
             </div>
             {select(
               "currentSupply",
               "Are you doing supply now?",
-              currentSupplyOptions,
+              "currentSupply",
             )}
             {select(
               "daysPerWeek",
               "How many days a week would you want?",
-              daysPerWeekOptions,
+              "daysPerWeek",
             )}
             <Checkbox
               aria-invalid={Boolean(errors?.emailConsent)}
@@ -303,6 +300,7 @@ function WaitlistForm({
         ) : null}
         <Button
           className="w-full"
+          disabled={invalidPhone}
           loading={pending}
           loadingLabel="Joining the waitlist"
           iconRight="arrow"

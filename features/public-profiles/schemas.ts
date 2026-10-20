@@ -1,3 +1,6 @@
+
+import { selectionValues } from "@/features/teaching-catalogue/selection";
+import { normalizeInstructorBookingDates } from "./booking-dates";
 import type { InstitutionPublicProfile, InstructorPublicProfile } from "./types";
 
 function strings(value: unknown): string[] {
@@ -17,6 +20,7 @@ function dateOrNull(value: unknown): string | null {
 
 export function normalizeInstructorPublicProfile(profile: InstructorPublicProfile): InstructorPublicProfile {
   return {
+    bookings: normalizeInstructorBookingDates(profile.bookings),
     bio: profile.bio ?? null,
     city: profile.city ?? null,
     county: profile.county ?? null,
@@ -49,7 +53,7 @@ export function normalizeInstitutionPublicProfile(profile: InstitutionPublicProf
     memberSince: dateOrNull(profile.memberSince),
     name: profile.name || "School",
     postalCode: profile.postalCode ?? null,
-    staffingNeeds: profile.staffingNeeds ?? null,
+    staffingNeeds: selectionValues(profile.staffingNeeds),
     trust: profile.trust?.name ? { name: profile.trust.name } : null,
     typicalPupilCount: numberOrNull(profile.typicalPupilCount),
     verified: Boolean(profile.verified),

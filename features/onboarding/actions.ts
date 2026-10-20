@@ -1,5 +1,8 @@
 "use server";
 
+import { omitUnchangedDropdownFields, omitUnchangedTeachingFields } from "@/features/teaching-catalogue/patch";
+import { selectionValues } from "@/features/teaching-catalogue/selection";
+
 import { backendEnabled } from "@/lib/server/backend-config";
 
 import { revalidateTag } from "next/cache";
@@ -53,6 +56,7 @@ function readNumber(value: unknown): number | undefined {
 }
 
 type InstructorProfilePayload = {
+  otherSubjects?: string[]; otherSkills?: string[];
   bio?: string;
   city?: string;
   countryCode?: string;
@@ -69,6 +73,7 @@ type InstructorProfilePayload = {
 };
 
 type InstitutionProfilePayload = {
+  otherSubjects?: string[];
   address: string;
   city: string;
   complianceContact?: string;
@@ -82,7 +87,7 @@ type InstitutionProfilePayload = {
   postalCode?: string;
   registrationId?: string;
   safeguardingConfirmed?: boolean;
-  staffingNeeds?: string;
+  staffingNeeds?: string[];
   typicalPupilCount?: number;
   trust?: {
     companyNumber?: string;
@@ -144,7 +149,7 @@ type BackendInstitutionProfile = {
   registrationId?: string | null;
   safeguardingConfirmed?: boolean | null;
   status?: unknown;
-  staffingNeeds?: string | null;
+  staffingNeeds?: string[] | string | null;
   typicalPupilCount?: unknown;
   trust?: {
     companyNumber?: string | null;
@@ -221,7 +226,7 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
     registrationId: profile.registrationId || "",
     safeguardingConfirmed: Boolean(profile.safeguardingConfirmed),
     status: normalizeStatus(profile.status),
-    staffingNeeds: profile.staffingNeeds || "",
+    staffingNeeds: selectionValues(profile.staffingNeeds),
     trust: profile.trust?.id && profile.trust.name
       ? { companyNumber: profile.trust.companyNumber ?? null, id: profile.trust.id, name: profile.trust.name }
       : null,
@@ -330,7 +335,9 @@ function buildInstructorProfilePayload(formData: FormData): InstructorProfilePay
     maxTravelDistance: readFormNumber(formData, "maxTravelDistance"),
     postalCode: postalCode || undefined,
     skills: readFormStringArray(formData, "skills"),
+    otherSkills: formData.has("otherSkills") ? readFormStringArray(formData, "otherSkills") : undefined,
     subjects: readFormStringArray(formData, "subjects"),
+    otherSubjects: formData.has("otherSubjects") ? readFormStringArray(formData, "otherSubjects") : undefined,
   };
 
   return profile;
@@ -359,7 +366,8 @@ function buildInstitutionProfilePayload(formData: FormData): InstitutionProfileP
     postalCode: readFormString(formData, "postcode") || undefined,
     registrationId: readFormString(formData, "institutionRegistrationId") || undefined,
     safeguardingConfirmed: readFormBoolean(formData, "safeguardingConfirmed"),
-    staffingNeeds: readFormString(formData, "staffingNeeds") || undefined,
+    staffingNeeds: readFormStringArray(formData, "staffingNeeds"),
+    otherSubjects: formData.has("otherSubjects") ? readFormStringArray(formData, "otherSubjects") : undefined,
     typicalPupilCount: readFormNumber(formData, "typicalPupilCount"),
     trust: institutionType === "MAT_SCHOOL"
       ? { name: trustName, ...(trustCompanyNumber ? { companyNumber: trustCompanyNumber } : {}) }
@@ -638,7 +646,10 @@ async function saveInstructorProfile(formData: FormData, accessToken: string) {
   const existing = await getCurrentInstructorSnapshot(accessToken);
   if (existing) {
     if (!["none", "rejected"].includes(existing.status)) return existing;
-    return normalizeInstructorSnapshot(await api.patch<BackendInstructorProfile>(`/instructors/${existing.id}`, buildInstructorProfilePayload(formData), { auth: false, headers: buildBearerHeaders(accessToken) }));
+    const payload = buildInstructorProfilePayload(formData);
+    omitUnchangedTeachingFields(payload, existing);
+    omitUnchangedDropdownFields(payload, existing);
+    return normalizeInstructorSnapshot(await api.patch<BackendInstructorProfile>(`/instructors/${existing.id}`, payload, { auth: false, headers: buildBearerHeaders(accessToken) }));
   }
 
   try {
@@ -658,7 +669,10 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string) {
   const existing = await getInstitutionSnapshot(accessToken);
   if (existing) {
     if (!["none", "rejected"].includes(existing.status)) return existing;
-    return normalizeInstitutionSnapshot(await api.patch<BackendInstitutionProfile>(`/institutions/${existing.id}`, buildInstitutionProfilePayload(formData), { auth: false, headers: buildBearerHeaders(accessToken) }));
+    const payload = buildInstitutionProfilePayload(formData);
+    omitUnchangedTeachingFields(payload, existing);
+    omitUnchangedDropdownFields(payload, existing);
+    return normalizeInstitutionSnapshot(await api.patch<BackendInstitutionProfile>(`/institutions/${existing.id}`, payload, { auth: false, headers: buildBearerHeaders(accessToken) }));
   }
 
   try {
@@ -881,7 +895,7 @@ async function submitInstructorOnboarding(formData: FormData) {
 
       const user = normalizeUserSnapshot(sessionAuth.user, sessionAuth.user.email, readFormString(formData, "postcode"));
       const savedPhone = validateUkPhone(sessionAuth.user.phone, { required: true });
-      if (!savedPhone.valid) return actionError("Update and verify your saved UK phone number before review.", { fieldErrors: { phone: savedPhone.error! } });
+      if (!savedPhone.valid) return actionError("Update your saved UK phone number before review.", { fieldErrors: { phone: savedPhone.error! } });
       const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
       if (missingDocuments.length > 0) {
         return actionOk<OnboardingProgressResult>(
@@ -1039,7 +1053,7 @@ async function submitInstitutionOnboarding(formData: FormData) {
 
       const user = normalizeUserSnapshot(sessionAuth.user, sessionAuth.user.email, readFormString(formData, "postcode"));
       const savedPhone = validateUkPhone(sessionAuth.user.phone, { required: true });
-      if (!savedPhone.valid) return actionError("Update and verify your saved UK phone number before review.", { fieldErrors: { phone: savedPhone.error! } });
+      if (!savedPhone.valid) return actionError("Update your saved UK phone number before review.", { fieldErrors: { phone: savedPhone.error! } });
       const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
       if (missingDocuments.length > 0 || (institution.institutionType === "MAT_SCHOOL" && signatoryApproval?.status !== "APPROVED")) {
         return actionOk<OnboardingProgressResult>(

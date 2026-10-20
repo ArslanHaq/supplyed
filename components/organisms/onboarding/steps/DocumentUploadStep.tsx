@@ -17,7 +17,7 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
     retryDocumentRequirements,
     requirementDocumentErrors,
     requirementDocuments,
-    requirementUploadPending,
+    pendingRequirementIds,
     requirementViewPending,
     uploadRequirementDocument,
     viewRequirementDocument,
@@ -64,10 +64,10 @@ export function DocumentUploadStep({ controller }: StepComponentProps) {
                 accept={acceptAttribute(requirement.documentType.allowedMimes)}
                 meta={`${describeAllowedMimes(requirement.documentType.allowedMimes)} - Up to ${formatByteLimit(requirement.documentType.maxSizeBytes)}`}
                 required={requirement.isRequired}
-                disabled={Boolean(pending || requirementUploadPending)}
+                disabled={Boolean(pending)}
                 file={file}
                 error={requirementDocumentErrors[requirement.id] || (document?.uploadedAt && !isDocumentReadyForReview(document) ? "This document needs to be uploaded again before you can resubmit." : undefined)}
-                pending={requirementUploadPending === requirement.id}
+                pending={pendingRequirementIds.has(requirement.id)}
                 rejectionComment={document?.rejectionComment}
                 status={document?.status}
                 viewPending={requirementViewPending === requirement.id}

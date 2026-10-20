@@ -131,6 +131,7 @@
 .teacher-directory-rate { align-self: stretch; min-width: 120px; text-align: right; padding: 4px 0 4px 22px; border-left: 1px solid var(--border); }
 .teacher-directory-rate > span:first-child .font-heading { color: var(--ink); font-size: 25px; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .teacher-directory-card:hover { transform: translateY(-2px); }
+.teacher-directory-rate .teacher-hire-actions > .flex { justify-content: flex-end; }
 .jobs-discovery .two-col { align-items: start; grid-template-columns: minmax(0, 1fr) 285px; gap: 25px; }
 .job-result-card { min-width: 0; position: relative; transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
 .job-result-card:hover { border-color: var(--se-tint-2); box-shadow: 0 8px 24px rgb(var(--se-rgb) / .07); transform: translateY(-2px); }
@@ -281,9 +282,24 @@
 .admin-dashboard > .card h2 { font-size: 27px; letter-spacing: -.035em; }
 
 @media (min-width: 1200px) {
-  .directory-filters { position: sticky; top: 100px; max-height: calc(100dvh - 125px); overflow-y: auto; scrollbar-width: thin; }
   .jobs-map-panel { position: sticky; top: 100px; }
   .job-detail-page aside, .profile-page .profile-overview { top: 100px; }
+}
+
+@media (min-width: 1024px) {
+  .workspace-main:has(.teacher-discovery) { display: flex; flex-direction: column; height: 100dvh; }
+}
+
+@media (min-width: 901px) {
+  .workspace-frame:has(.teacher-discovery) { height: 100dvh; }
+  .workspace-frame:has(.teacher-discovery) .workspace-topbar { flex-shrink: 0; }
+  .workspace-content:has(.teacher-discovery) { flex: 1; min-height: 0; }
+  .teacher-discovery { display: flex; flex-direction: column; height: 100%; min-height: 0; padding-bottom: 24px; }
+  .teacher-discovery > .page-head { flex-shrink: 0; }
+  .teacher-discovery .directory-layout { flex: 1; min-height: 0; }
+  .teacher-discovery .directory-filters,
+  .teacher-discovery .directory-results { position: relative; min-height: 0; max-height: 100%; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; }
+  .teacher-discovery .directory-results { padding: 4px; margin: -4px; }
 }
 
 @media (max-width: 1550px) {
@@ -302,7 +318,9 @@
 @media (max-width: 1100px) {
   .workspace-callout { flex-wrap: wrap; }
   .workspace-callout-action { padding-left: 76px; }
-  .teacher-directory-rate { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 15px 0 0; border-left: 0; border-top: 1px solid var(--border); text-align: left; }
+  .teacher-directory-rate { width: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px; padding: 15px 0 0; border-left: 0; border-top: 1px solid var(--border); text-align: left; }
+  .teacher-directory-rate > .teacher-hire-actions { width: 100%; margin-top: 0; }
+  .teacher-directory-rate .teacher-hire-actions > .flex { justify-content: flex-start; }
   .teacher-directory-rate > span { margin: 0; }
   .calendar-day { padding: 9px; }
 }

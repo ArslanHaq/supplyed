@@ -1,4 +1,9 @@
 "use client";
+import { useDropdown } from "@/features/dropdowns/use-dropdown";
+import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
+
+import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
+
 
 import { WorkspaceEmptyState } from "./WorkspacePanels";
 
@@ -21,7 +26,7 @@ import {
 import type { AppRole, RouteProps, ToastFn } from "@/types/supplyed";
 
 import { Btn, buttonClassName, Stat, Tag } from "../atoms";
-import { Modal, PageHead, SectionLoader, SelectDropdown } from "../molecules";
+import { Modal, PageHead, SectionLoader } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { PayInvoiceModal, usePaymentReturn } from "./PayInvoiceModal";
 import { PayoutSettings } from "./PayoutSettings";
@@ -380,7 +385,7 @@ function RefundModal({
         {invalid ? <p className="mt-2 text-sm text-danger">Enter an amount between £0.01 and {formatPence(refundable)}.</p> : null}
         <div className="mt-4 text-sm font-semibold">
           <label htmlFor="invoice-refund-reason">Reason</label>
-          <SelectDropdown aria-label="Reason" className="mt-2" id="invoice-refund-reason" onChange={(value) => setReason(value as RefundReason)} options={[{ label: "Requested by the school", value: "requested_by_customer" }, { label: "Duplicate payment", value: "duplicate" }, { label: "Fraudulent", value: "fraudulent" }]} value={reason} />
+          <DynamicSelect aria-label="Reason" className="mt-2" id="invoice-refund-reason" onChange={(value) => setReason(value as RefundReason)} collection="refundReason" value={reason} />
         </div>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Btn disabled={loading} variant="ghost" onClick={onClose}>
@@ -450,13 +455,16 @@ function InvoiceList({
   renderActions?: (invoice: Invoice) => ReactNode;
   role: AppRole;
 }) {
+  const choices = useDropdown("invoiceStatus");
+  const visibleFilters = [{ label: "All", value: "all" as Filter }, ...(choices.data?.options ?? []).flatMap(option => { const item = filters.find(item => item.status === option.value); return item && (role === "admin" || item.value !== "pending") ? [{ label: option.label, value: item.value }] : []; })];
   const invoices = query.data?.invoices ?? [];
   const pagination = query.data?.pagination;
 
   return (
     <>
       <div className="workspace-toolbar card card-pad mb-4 flex flex-wrap items-center gap-3">
-        {filters.filter((item) => role === "admin" || item.value !== "pending").map((item) => (
+        <DropdownStatus name="invoiceStatus" />
+        {visibleFilters.map((item) => (
           <Btn key={item.value} aria-pressed={filter === item.value} size="sm" variant={filter === item.value ? "secondary" : "ghost"} onClick={() => onFilter(item.value)}>
             {item.label}
           </Btn>
@@ -582,7 +590,7 @@ function notify(toast: ToastFn, result: { message?: string; ok: boolean; request
 
 function actionMessage(result: { message?: string; ok: boolean; requestId?: string }) {
   const message = result.message ?? (result.ok ? "Done." : "Please try again.");
-  return !result.ok && result.requestId ? `${message} Support reference: ${result.requestId}` : message;
+  return message;
 }
 
 function mutationFailure(toast: ToastFn) {

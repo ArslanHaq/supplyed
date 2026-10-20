@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { getAuthenticatedEntryHref } from "@/lib/routes";
+import { invitationReturnPath, invitationLoginHref } from "@/lib/invitation-links";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 import { AuthFlowLoader } from "../molecules";
@@ -25,6 +26,7 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
 
   useEffect(() => {
     const authSource = searchParams.get("authSource") === "signup" ? "signup" : "login";
+    const returnTo = invitationReturnPath(searchParams.get("returnTo"));
     startRouteLoading();
 
     if (sessionUser.authErrorMessage) {
@@ -35,6 +37,7 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
             ? "Choose whether you are a teacher or a school, then continue with Google again."
             : sessionUser.authErrorMessage ?? "Social sign-in failed.",
         });
+        if (returnTo) params.set("returnTo", returnTo);
         router.replace(`/${googleNeedsRole ? "signup" : authSource}?${params.toString()}`);
       });
       return;
@@ -42,12 +45,12 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
 
     if (!sessionUser.emailVerified) {
       void signOut({ redirect: false }).finally(() => {
-        router.replace("/login");
+        router.replace(invitationLoginHref(returnTo));
       });
       return;
     }
 
-    router.replace(getAuthenticatedEntryHref(sessionUser));
+    router.replace(returnTo ?? getAuthenticatedEntryHref(sessionUser));
   }, [router, searchParams, sessionUser]);
 
   return (

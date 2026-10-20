@@ -1,3 +1,4 @@
+import { normalizeInstructorBookingDates } from "@/features/public-profiles/booking-dates";
 import type {
   TeacherDirectoryFilters,
   TeacherDirectoryItem,
@@ -56,6 +57,7 @@ function normalizeTeacherDirectoryItem(value: unknown): TeacherDirectoryItem {
   const instructor = record(value);
   return {
     availableToday: Boolean(instructor.availableToday),
+    bookings: normalizeInstructorBookingDates(instructor.bookings),
     bio: textOrNull(instructor.bio),
     city: textOrNull(instructor.city),
     county: textOrNull(instructor.county),
