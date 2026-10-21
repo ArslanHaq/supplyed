@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Button, Checkbox, Field, Icon } from "@/components/atoms";
 import { SelectDropdown } from "@/components/molecules/OptionDropdowns";
+import { trackMetaEvent } from "@/lib/meta-pixel";
 import {
   type FoundingInterestActionState,
   type WaitlistField,
@@ -72,6 +73,10 @@ function WaitlistForm({
   const [founding, setFounding] = useState(false);
   const school = type === "SCHOOL";
   const errors = state && !state.ok ? state.fieldErrors : undefined;
+  const joined = Boolean(state?.ok);
+  useEffect(() => {
+    if (joined) trackMetaEvent("Lead", { content_category: school ? "school" : "teacher" });
+  }, [joined, school]);
   const fieldId = (field: string) => `${id}-${field}`;
   function input(
     name: WaitlistField,

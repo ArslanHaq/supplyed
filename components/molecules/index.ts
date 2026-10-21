@@ -15,6 +15,7 @@ export {
   passwordMismatchMessage,
 } from "./PasswordFeedback";
 export { PublicThemeControls } from "./PublicThemeControls";
+export { CookieSettingsButton, MetaPixel } from "./MetaPixel";
 export { RouteLoader } from "./RouteLoader";
 export { RouteErrorState } from "./RouteErrorState";
 export { SocialAuthButtons } from "./SocialAuthButtons";

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Icon, Logo } from "@/components/atoms";
+import { CookieSettingsButton } from "@/components/molecules";
 
 const footerLinks = [
   // Hidden while only the waitlist is live
@@ -21,11 +22,13 @@ export function PublicFooter() {
         </div>
         <nav aria-label="Footer navigation">
           {footerLinks.map(([label, href]) => <Link href={href} key={href}>{label}</Link>)}
+          <CookieSettingsButton />
         </nav>
       </div>
       <section className="mx-auto max-w-[1180px] px-4 py-5 text-xs leading-6 text-muted" id="waitlist-privacy" aria-labelledby="waitlist-privacy-heading">
         <h2 className="font-semibold text-ink" id="waitlist-privacy-heading">Waitlist privacy</h2>
         <p>We use the details you submit to manage your waitlist interest and contact you about SupplyED’s launch and first cohort. Joining the waitlist does not create a marketplace account or commit you to a booking.</p>
+        <p>If you accept marketing cookies, these pages use Meta&apos;s (Facebook) pixel to measure which of our adverts bring people to SupplyED, including when someone joins the waitlist. You can change your choice at any time using Cookie settings above.</p>
       </section>
       <div className="marketing-footer-base">
         <span>SupplyED · Built around better education.</span>

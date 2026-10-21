@@ -88,8 +88,8 @@
 .marketing-footer-main p { font-size: 13px; color: var(--slate); margin-top: 16px; }
 .marketing-footer-location { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 11px; margin-top: 8px; }
 .marketing-footer-main nav { display: flex; flex-wrap: wrap; justify-content: end; column-gap: 28px; row-gap: 14px; max-width: 680px; padding-top: 5px; }
-.marketing-footer-main nav a { color: var(--slate); font-size: 12px; font-weight: 500; }
-.marketing-footer-main nav a:hover { color: var(--se-dark); }
+.marketing-footer-main nav a, .marketing-footer-main nav button { color: var(--slate); font-size: 12px; font-weight: 500; }
+.marketing-footer-main nav a:hover, .marketing-footer-main nav button:hover { color: var(--se-dark); }
 .marketing-footer-base { display: flex; justify-content: space-between; gap: 20px; border-top: 1px solid var(--border); padding-block: 19px; font-size: 10px; color: var(--muted); }
 .marketing-footer-base > span:last-child { display: flex; align-items: center; gap: 6px; }
 .marketing-founding-hero { padding-bottom: 70px; }
