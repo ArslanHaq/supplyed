@@ -1,4 +1,3 @@
-import { formatPlannedUnits } from "@/features/jobs/work-units";
 import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
 import { CatalogueSubjectFilter } from "@/components/molecules/TeachingSelectionFields";
 import { useState } from "react";
@@ -8,8 +7,8 @@ import { useJobs } from "@/features/jobs/use-jobs";
 import { useRecommendedJobs } from "@/features/matching/use-matching";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Btn, Field, Icon, Tag } from "../atoms";
-import { MatchScorePanel, PageHead, SectionLoader } from "../molecules";
+import { Btn, Field, Icon } from "../atoms";
+import { JobListingPreview, jobListingPreviewData, MatchScorePanel, PageHead, SectionLoader } from "../molecules";
 import { WorkspaceEmptyState } from "./WorkspacePanels";
 
 export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
@@ -76,17 +75,21 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
           {activeLoading ? <SectionLoader rows={3} /> : null}
           {activeError ? <div className="card card-pad text-center" role="alert"><div className="font-semibold">Jobs could not be loaded</div><p className="mt-1 text-sm text-muted">{activeError.message}</p></div> : null}
           {tab === "all" ? jobs.map((job) => (
-            <div key={job.id} className="job-result-card card card-pad-lg flex cursor-pointer flex-wrap items-center gap-5" onClick={() => go("job-detail", { jobId: job.id })}>
-              <div className="flex-1">
-                <div className="mb-1.5 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag>{job.subjects?.map(subject => <Tag key={subject} tone="ghost">{subject}</Tag>)}<span className="text-xs text-muted">Posted {job.postedAt}</span></div>
-                <div className="mb-1 font-heading text-xl">{job.title}</div>
-                <div className="mb-3 text-[15px] text-muted">{job.school} - {[job.city, job.county, job.postalCode].filter(Boolean).join(", ")} - {job.date}</div>
-                <div className="mb-3 flex flex-wrap gap-1">{job.requiredSkills.map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.hours != null || job.days != null ? <span className="pill">{formatPlannedUnits(job)}</span> : null}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div>
-                <div className="flex flex-wrap gap-4 text-xs text-muted"><div className="flex items-center gap-1"><Icon name="pound" size={12} />£{job.rate}/day</div></div>
-              </div>
-              <Btn aria-label={`View ${job.title}`} iconRight="arrowRight" size="sm" onClick={(event) => { event.stopPropagation(); go("job-detail", { jobId: job.id }); }}>View</Btn>
-            </div>
-          )) : recommendedJobs.map(({ job, match }) => <div key={job.id} className="job-result-card card card-pad-lg cursor-pointer" onClick={() => go("job-detail", { jobId: job.id })}><div className="mb-4 flex flex-wrap items-start gap-4"><div className="job-result-copy flex-1"><div className="mb-1 flex flex-wrap gap-1.5">{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<Tag tone="ghost">{job.keyStage}</Tag>{job.subjects?.map(subject => <Tag key={subject} tone="ghost">{subject}</Tag>)}{job.requiredSkills.slice(0, 3).map((skill) => <Tag key={skill} tone="ghost">{skill}</Tag>)}</div><div className="font-heading text-xl">{job.title}</div><div className="text-sm text-muted">{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"} · {job.date}{job.minExperienceYears != null ? ` · ${job.minExperienceYears}+ years experience` : ""}</div></div><div className="text-right"><div className="font-heading text-lg">£{job.rate}<span className="font-sans text-xs text-muted">{job.payType === "hourly" ? "/hour" : job.payType === "fixed" ? " fixed" : "/day"}</span></div><Btn aria-label={`View and apply for ${job.title}`} className="mt-2" iconRight="arrowRight" size="sm" onClick={(event) => { event.stopPropagation(); go("job-detail", { jobId: job.id }); }}>View & apply</Btn></div></div><div onClick={(event) => event.stopPropagation()}><MatchScorePanel match={match} /></div></div>)}
+            <JobListingPreview
+              key={job.id}
+              action={<Btn aria-label={`View and apply for ${job.title}`} iconRight="arrowRight" size="sm" onClick={() => go("job-detail", { jobId: job.id })}>View &amp; apply</Btn>}
+              data={jobListingPreviewData(job, { label: "Open role", tone: "green" })}
+              onOpen={() => go("job-detail", { jobId: job.id })}
+            />
+          )) : recommendedJobs.map(({ job, match }) => (
+            <JobListingPreview
+              key={job.id}
+              action={<Btn aria-label={`View and apply for ${job.title}`} iconRight="arrowRight" size="sm" onClick={() => go("job-detail", { jobId: job.id })}>View &amp; apply</Btn>}
+              data={jobListingPreviewData(job, { label: `${match.score}% match`, tone: "green" })}
+              match={<MatchScorePanel match={match} />}
+              onOpen={() => go("job-detail", { jobId: job.id })}
+            />
+          ))}
           {!activeLoading && !activeError && activeCount === 0 ? (
             <WorkspaceEmptyState icon="search" title="No jobs match these filters" message="Try a different subject, key stage, or match score to discover more opportunities." />
           ) : null}

@@ -79,6 +79,7 @@ export type PaginatedApplicationHistory = {
 };
 
 export type JobApplicationsQuery = {
+  jobId?: string;
   limit?: number;
   page?: number;
   status?: JobApplicationStatus;

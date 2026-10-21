@@ -11,7 +11,7 @@ import { formatPence } from "@/features/payments/schemas";
 import { getFirstName } from "@/lib/user-display";
 import type { RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, Icon, Tag, buttonClassName } from "../atoms";
-import { MatchScorePanel, SectionLoader } from "../molecules";
+import { JobListingPreview, jobListingPreviewData, MatchScorePanel, SectionLoader } from "../molecules";
 import { DashboardMessages } from "./DashboardMessages";
 import { RecentNotifications } from "./RecentNotifications";
 
@@ -83,7 +83,15 @@ export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">
           </Panel>
 
           <Panel title="Recommended for you" subtitle="Roles matched to your experience and preferences" action={<Btn variant="ghost" size="sm" onClick={() => go("find-jobs")}>Explore roles <Icon name="arrowRight" size={14} /></Btn>}>
-            <QueryContent query={jobsQuery} label="recommended roles">{jobsQuery.data?.jobs.length ? <div className="teacher-jobs">{jobsQuery.data.jobs.map(({ job, match }) => <article className="teacher-job" key={job.id}><div className="teacher-job-top"><div><div className="teacher-job-tags">{job.urgent ? <Tag tone="amber">Urgent cover</Tag> : null}{job.subject ? <Tag tone="ghost">{job.subject}</Tag> : null}{job.keyStage ? <Tag tone="ghost">{job.keyStage}</Tag> : null}</div><h3><button type="button" onClick={() => go("job-detail", { jobId: job.id })}>{job.title}</button></h3><p>{job.school === "Hiring account" ? "School details in role" : job.school} · {[job.city, job.county].filter(Boolean).join(", ") || "Location to confirm"}</p></div><strong className="teacher-job-pay">{formatRate(job.payAmount, job.payType)}</strong></div><div className="teacher-job-bottom"><span><Icon name="calendar" size={14} /> {dateRange(job.startDate, job.endDate)}</span><Btn size="sm" variant="ghost" iconRight="arrowRight" onClick={() => go("job-detail", { jobId: job.id })}>View role</Btn></div><MatchScorePanel match={match} /></article>)}</div> : <Empty icon="search" title="No recommendations just yet" message="Check available roles or update your subjects and travel preferences to help us find suitable matches." action={<Btn size="sm" variant="secondary" onClick={() => go("find-jobs")}>Browse available roles</Btn>} />}</QueryContent>
+            <QueryContent query={jobsQuery} label="recommended roles">{jobsQuery.data?.jobs.length ? <div className="flex flex-col gap-4">{jobsQuery.data.jobs.map(({ job, match }) => (
+              <JobListingPreview
+                key={job.id}
+                action={<Btn size="sm" iconRight="arrowRight" onClick={() => go("job-detail", { jobId: job.id })}>View &amp; apply</Btn>}
+                data={jobListingPreviewData(job, { label: `${match.score}% match`, tone: "green" })}
+                match={<MatchScorePanel match={match} />}
+                onOpen={() => go("job-detail", { jobId: job.id })}
+              />
+            ))}</div> : <Empty icon="search" title="No recommendations just yet" message="Check available roles or update your subjects and travel preferences to help us find suitable matches." action={<Btn size="sm" variant="secondary" onClick={() => go("find-jobs")}>Browse available roles</Btn>} />}</QueryContent>
           </Panel>
         </div>
 

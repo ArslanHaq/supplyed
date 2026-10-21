@@ -10,6 +10,7 @@ const APPLICATION_STATUSES: JobApplicationStatus[] = [
 
 export function normalizeApplicationsQuery(query: JobApplicationsQuery = {}): JobApplicationsQuery {
   return {
+    jobId: typeof query.jobId === "string" && query.jobId.trim() ? query.jobId.trim() : undefined,
     limit: normalizePageSize(query.limit),
     page: normalizePage(query.page),
     status: query.status && APPLICATION_STATUSES.includes(query.status) ? query.status : undefined,

@@ -10,6 +10,8 @@ import { TeachingSelectionFields } from "@/components/molecules/TeachingSelectio
 import { useTeachingCatalogue } from "@/features/teaching-catalogue/use-teaching-catalogue";
 import { toSkillEditor, otherSkillsError, toSubjectEditor, actualSubjects, otherSubjectsError, jobSubjects } from "@/features/teaching-catalogue/selection";
 import { useRef, useState } from "react";
+import { useSettingsProfile } from "@/features/settings/use-settings";
+import type { SettingsInstitutionProfile } from "@/features/settings/types";
 
 import { useCreateJob, useJob, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
@@ -19,10 +21,11 @@ import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion
 import { zonedDateTimeToIso } from "@/lib/zoned-date-time";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Btn, Checkbox, Field, Tag } from "../atoms";
-import { FormattedJobDescription, PageHead, PostcodeLookup } from "../molecules";
+import { Btn, Checkbox, Field } from "../atoms";
+import { JobListingPreview, type JobListingPreviewData, PageHead, PostcodeLookup, previewDateRange } from "../molecules";
 
 type PostingMode = "instant" | "brief";
+type AddressMode = "school" | "different";
 
 type JobFormState = {
   address: string;
@@ -53,6 +56,8 @@ type JobFormState = {
 };
 
 type JobFormErrors = Partial<Record<keyof JobFormState, string>>;
+type JobAddress = Pick<JobFormState, "address" | "city" | "countryCode" | "county" | "postalCode">;
+const addressKeys: Array<keyof JobAddress> = ["address", "city", "countryCode", "county", "postalCode"];
 
 
 const initialForm: JobFormState = {
@@ -83,13 +88,15 @@ const initialForm: JobFormState = {
 export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "role" | "toast">) {
   const isEditing = Boolean(ctx.jobId);
   const editingJobQuery = useJob(ctx.jobId ?? "", true);
+  const profileQuery = useSettingsProfile();
   const editingJob = ctx.jobId ? editingJobQuery.data : undefined;
+  const schoolProfile = profileQuery.data?.institution;
 
-  if (isEditing && editingJobQuery.isLoading) {
+  if ((isEditing && editingJobQuery.isLoading) || (role === "institution" && profileQuery.isLoading)) {
     return (
       <div className="app-page post-job-page">
-        <PageHead title="Loading job" subtitle="Preparing the role editor." />
-        <div className="card card-pad-lg max-w-[1040px] text-sm text-muted">Loading your job draft...</div>
+        <PageHead title="Loading job form" subtitle="Preparing the role and school address." />
+        <div className="card card-pad-lg max-w-[1040px] text-sm text-muted">Loading your job details...</div>
       </div>
     );
   }
@@ -108,14 +115,28 @@ export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "
     );
   }
 
+  const schoolAddress = addressFromSchoolProfile(schoolProfile);
+  const initialValues = editingJob
+    ? toFormState(editingJob)
+    : schoolAddress
+      ? { ...initialForm, ...schoolAddress }
+      : initialForm;
+  const initialAddressMode: AddressMode = schoolAddress && (!editingJob || sameAddress(initialValues, schoolAddress))
+    ? "school"
+    : "different";
+
   return (
     <PostJobEditor
       key={editingJob?.id ?? "new-job"}
       editingJob={editingJob}
       go={go}
       initialMode={editingJob?.mode ?? "instant"}
-      initialValues={editingJob ? toFormState(editingJob) : initialForm}
+      initialAddressMode={initialAddressMode}
+      initialValues={initialValues}
       role={role}
+      schoolAddress={schoolAddress}
+      schoolImageUrl={schoolProfile?.imageUrl}
+      schoolName={schoolProfile?.name}
       toast={toast}
     />
   );
@@ -124,19 +145,31 @@ export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "
 function PostJobEditor({
   editingJob,
   go,
+  initialAddressMode,
   initialMode,
   initialValues,
   role,
+  schoolAddress,
+  schoolImageUrl,
+  schoolName,
   toast,
 }: Pick<RouteProps, "go" | "role" | "toast"> & {
   editingJob?: Job;
+  initialAddressMode: AddressMode;
   initialMode: PostingMode;
   initialValues: JobFormState;
+  schoolAddress: JobAddress | null;
+  schoolImageUrl?: string;
+  schoolName?: string;
 }) {
   const catalogue = useTeachingCatalogue();
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<PostingMode>(initialMode);
   const [form, setForm] = useState<JobFormState>(initialValues);
+  const [addressMode, setAddressMode] = useState<AddressMode>(initialAddressMode);
+  const [differentAddress, setDifferentAddress] = useState<JobAddress>(
+    initialAddressMode === "different" ? pickAddress(initialValues) : emptyAddress(),
+  );
   const [errors, setErrors] = useState<JobFormErrors>({});
   const [savingIntent, setSavingIntent] = useState<"draft" | "publish" | null>(null);
   const savedJobIdRef = useRef<string | undefined>(editingJob?.id);
@@ -210,6 +243,9 @@ function PostJobEditor({
   const saving = createJob.isPending || updateJob.isPending;
 
   function updateForm<Key extends keyof JobFormState>(key: Key, value: JobFormState[Key]) {
+    if (addressMode === "different" && isAddressKey(key)) {
+      setDifferentAddress((current) => ({ ...current, [key]: value as string }));
+    }
     setForm((current) => syncWorkSchedule(current, key, value));
     setErrors((current) => {
       const nextForm = syncWorkSchedule(form, key, value);
@@ -219,6 +255,23 @@ function PostJobEditor({
       }
       return current[key] ? { ...current, [key]: validateAll(nextForm)[key] } : current;
     });
+  }
+
+  function chooseAddressMode(nextMode: AddressMode) {
+    if (nextMode === addressMode || (nextMode === "school" && !schoolAddress)) return;
+    const nextAddress = nextMode === "school" ? schoolAddress : differentAddress;
+    if (!nextAddress) return;
+
+    setAddressMode(nextMode);
+    setForm((current) => ({ ...current, ...nextAddress }));
+    setErrors((current) => ({
+      ...current,
+      address: undefined,
+      city: undefined,
+      countryCode: undefined,
+      county: undefined,
+      postalCode: undefined,
+    }));
   }
 
   function nextStep() {
@@ -309,8 +362,37 @@ function PostJobEditor({
           </Field>
 
           <div className="md:col-span-2 rounded-xl border border-border bg-chalk/40 p-4">
-            <div className="mb-3 text-sm font-semibold">Role location</div>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="text-sm font-semibold">Role location</div>
+            <p className="mt-1 text-xs leading-5 text-muted">Choose whether this role takes place at your saved school address or somewhere else.</p>
+            <div aria-label="Choose the role address" className="mt-4 grid gap-3 sm:grid-cols-2" role="group">
+              <button
+                aria-pressed={addressMode === "school"}
+                className={`rounded-xl border p-4 text-left transition ${addressMode === "school" ? "border-brand bg-brand-tint text-ink" : "border-border bg-surface text-muted hover:border-brand"}`}
+                disabled={!schoolAddress}
+                onClick={() => chooseAddressMode("school")}
+                type="button"
+              >
+                <span className="block font-semibold text-ink">Use school address</span>
+                <span className="mt-1 block text-xs leading-5">{schoolAddress ? formatAddress(schoolAddress) : "Add a complete school address in Settings first."}</span>
+              </button>
+              <button
+                aria-pressed={addressMode === "different"}
+                className={`rounded-xl border p-4 text-left transition ${addressMode === "different" ? "border-brand bg-brand-tint text-ink" : "border-border bg-surface text-muted hover:border-brand"}`}
+                onClick={() => chooseAddressMode("different")}
+                type="button"
+              >
+                <span className="block font-semibold text-ink">Use a different address</span>
+                <span className="mt-1 block text-xs leading-5">Enter the complete location for this role.</span>
+              </button>
+            </div>
+            {addressMode === "school" && schoolAddress ? (
+              <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.1em] text-brand">Saved school address</div>
+                {schoolName ? <div className="mt-2 font-semibold text-ink">{schoolName}</div> : null}
+                <div className="mt-1 text-sm leading-6 text-muted">{formatAddress(schoolAddress)}</div>
+              </div>
+            ) : null}
+            {addressMode === "different" ? <div className="mt-4 grid gap-4 md:grid-cols-2">
               <PostcodeLookup
                 error={errors.postalCode}
                 hint="Check the postcode area, then select the city or town."
@@ -336,7 +418,7 @@ function PostJobEditor({
               <Field error={errors.countryCode} hint="United Kingdom addresses only, including Northern Ireland." label="Country">
                 <DynamicSelect collection="country" value={form.countryCode} onChange={(value) => updateForm("countryCode", value)} />
               </Field>
-            </div>
+            </div> : null}
           </div>
           <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[220px_minmax(0,1fr)]">
             <Field label="Pay basis">
@@ -435,32 +517,32 @@ function PostJobEditor({
 
   function renderReviewSummary(eyebrow = "Step 4 - Review") {
     const previewDescription = readEditableDescription(form.description);
+    const preview: JobListingPreviewData = {
+      date: previewDateRange(toWorkIso(form.startDate), toWorkIso(form.endDate)),
+      description: richTextToPlainText(previewDescription),
+      experience: form.minExperienceYears ? `${form.minExperienceYears}+ years experience` : undefined,
+      keyStages: form.keyStages,
+      listingDetails: [
+        form.liveFrom ? `Opens ${formatPreviewCalendarDate(form.liveFrom)}` : "Opens when published",
+        ...(form.expiresAt ? [`Applications close ${formatPreviewCalendarDate(form.expiresAt)}`] : []),
+      ],
+      location: formatAddress(pickAddress(form)) || "Location TBC",
+      mode,
+      pay: formatPay(form),
+      plannedWork: form.payType !== "fixed" ? formatPlannedUnits(plannedUnitsInput(form.payType, form.hours, form.days)) : undefined,
+      schoolImageUrl,
+      schoolName: schoolName || "Your school",
+      skills: [...actualSubjects(form.requiredSkills, form.otherSkills), ...(form.qtsRequired ? ["QTS required"] : [])],
+      status: { label: isEditing ? "Current preview" : "Ready to publish", tone: "green" },
+      subjects: actualSubjects(form.subjects, form.otherSubjects),
+      title: form.title || "Untitled teaching role",
+      urgent: form.urgent,
+    };
 
     return (
       <div>
         <div className="eyebrow mb-2.5">{eyebrow}</div>
-        <div className="sidebar-panel card-pad bg-chalk">
-          <div className="mb-2.5 flex flex-wrap gap-2">
-            <Tag tone={mode === "instant" ? "" : "purple"}>{mode === "instant" ? "Instant matching" : "Open brief"}</Tag>
-            <Tag tone="green">{isEditing ? "Current preview" : "Ready to publish"}</Tag>
-            {form.urgent ? <Tag tone="red">Urgent</Tag> : null}
-          </div>
-          <div className="font-heading text-[22px]">{form.title || "Untitled teaching role"}</div>
-          <FormattedJobDescription className="mt-2 max-w-[760px]" description={previewDescription} />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {form.keyStages.map((stage) => <span key={stage} className="pill">{stage}</span>)}
-            {actualSubjects(form.subjects, form.otherSubjects).map(subject => <span key={subject} className="pill">{subject}</span>)}
-            <span className="pill">{formatFormLocation(form)}</span>
-            <span className="pill">{formatPay(form)}</span>
-            <span className="pill">{formatDateRange(form.startDate, form.endDate)}</span>
-            {form.payType !== "fixed" ? <span className="pill">{formatPlannedUnits(plannedUnitsInput(form.payType, form.hours, form.days))}</span> : null}
-            {form.liveFrom ? <span className="pill">Live from {form.liveFrom}</span> : <span className="pill">Live when published</span>}
-            {form.expiresAt ? <span className="pill">Applications through {form.expiresAt}</span> : null}
-            {form.minExperienceYears ? <span className="pill">{form.minExperienceYears}+ years experience</span> : null}
-            {actualSubjects(form.requiredSkills, form.otherSkills).map((skill) => <span key={skill} className="pill">{skill}</span>)}
-            {form.qtsRequired ? <span className="pill">QTS required</span> : null}
-          </div>
-        </div>
+        <JobListingPreview data={preview} />
       </div>
     );
   }
@@ -813,12 +895,52 @@ function formatPay(form: JobFormState) {
   return `£${amount}/day`;
 }
 
-function formatDateRange(startDate: string, endDate: string) {
-  if (!startDate) return "Date TBC";
-  if (!endDate || startDate === endDate) return startDate;
-  return `${startDate} - ${endDate}`;
+function formatPreviewCalendarDate(value: string) {
+  const parsed = Date.parse(`${value.slice(0, 10)}T12:00:00Z`);
+  return Number.isFinite(parsed)
+    ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" }).format(new Date(parsed))
+    : "Date TBC";
 }
 
-function formatFormLocation(form: JobFormState) {
-  return [form.city, form.county, form.postalCode].map((part) => part.trim()).filter(Boolean).join(", ") || "Location TBC";
+function addressFromSchoolProfile(profile?: SettingsInstitutionProfile): JobAddress | null {
+  if (!profile?.address.trim() || !profile.city.trim()) return null;
+  return {
+    address: profile.address.trim(),
+    city: profile.city.trim(),
+    countryCode: profile.countryCode.trim() || "GB",
+    county: profile.county.trim(),
+    postalCode: profile.postalCode.trim(),
+  };
+}
+
+function emptyAddress(): JobAddress {
+  return { address: "", city: "", countryCode: "GB", county: "", postalCode: "" };
+}
+
+function pickAddress(form: JobFormState): JobAddress {
+  return {
+    address: form.address,
+    city: form.city,
+    countryCode: form.countryCode,
+    county: form.county,
+    postalCode: form.postalCode,
+  };
+}
+
+function isAddressKey(key: keyof JobFormState): key is keyof JobAddress {
+  return addressKeys.includes(key as keyof JobAddress);
+}
+
+function sameAddress(left: JobAddress, right: JobAddress) {
+  const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-GB");
+  return (Object.keys(right) as Array<keyof JobAddress>).every((key) => normalize(left[key]) === normalize(right[key]));
+}
+
+function formatAddress(address: JobAddress) {
+  const locationParts = [address.address, address.city, address.county, address.postalCode]
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!locationParts.length) return "";
+  const country = address.countryCode.toUpperCase() === "GB" ? "United Kingdom" : address.countryCode;
+  return [...locationParts, country.trim()].filter(Boolean).join(", ");
 }

@@ -1,7 +1,7 @@
 import { formatPlannedUnits } from "@/features/jobs/work-units";
 import { useState } from "react";
 
-import { useCreateApplication } from "@/features/applications/use-applications";
+import { useCreateApplication, useMyApplications } from "@/features/applications/use-applications";
 import { isEmptyRichText, MAX_PROPOSAL_LENGTH } from "@/features/applications/rich-text";
 import { useJob } from "@/features/jobs/use-jobs";
 import { useJobMatchScore } from "@/features/matching/use-matching";
@@ -19,10 +19,22 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   const jobQuery = useJob(ctx.jobId ?? "", "accessible");
   const job = jobQuery.data;
   const positionFilled = job?.status === "FILLED";
+  const existingApplicationQuery = useMyApplications(
+    { jobId: ctx.jobId, limit: 1, page: 1 },
+    role === "teacher" && Boolean(ctx.jobId),
+  );
+  const existingApplication = existingApplicationQuery.data?.applications[0];
+  const hasApplied = applicationSubmitted || Boolean(existingApplication);
   const matchQuery = useJobMatchScore(ctx.jobId ?? "", role === "teacher" && job?.status === "ACTIVE");
   const createApplication = useCreateApplication({
     onSuccess: (result) => {
       if (!result.ok) {
+        if (result.status === 409) {
+          setApplicationSubmitted(true);
+          setOpen(false);
+          toast({ title: "Already applied", msg: "Your application for this job is already on record.", tone: "success" });
+          return;
+        }
         setCoverLetterError(result.fieldErrors?.coverLetter);
         toast({ title: "Could not apply", msg: result.message, tone: "danger" });
         return;
@@ -40,7 +52,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   });
 
   function submitApplication() {
-    if (!job || job.status !== "ACTIVE" || role !== "teacher" || createApplication.isPending || applicationSubmitted) return;
+    if (!job || job.status !== "ACTIVE" || role !== "teacher" || createApplication.isPending || hasApplied) return;
 
     const normalizedCoverLetter = coverLetter.trim();
     if (normalizedCoverLetter.length > MAX_PROPOSAL_LENGTH) {
@@ -153,7 +165,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
               View school profile
             </Btn>
           ) : null}
-          {job.status === "ACTIVE" ? <Btn className="w-full" disabled={role === "teacher" && applicationSubmitted} size="lg" onClick={() => role === "institution" ? go("find-teachers", { jobId: job.id }) : setOpen(true)}>{role === "teacher" ? (applicationSubmitted ? "Application submitted" : "Apply for job") : "Invite candidates"}</Btn> : null}
+          {job.status === "ACTIVE" ? <Btn className="w-full" disabled={role === "teacher" && (hasApplied || existingApplicationQuery.isLoading)} size="lg" onClick={() => role === "institution" ? go("find-teachers", { jobId: job.id }) : setOpen(true)}>{role === "teacher" ? (hasApplied ? "Applied" : existingApplicationQuery.isLoading ? "Checking application..." : "Apply for job") : "Invite candidates"}</Btn> : null}
           {positionFilled ? <Btn className="w-full" icon="calendar" onClick={() => go("bookings", ctx.bookingId ? { bookingId: ctx.bookingId } : { jobId: job.id })}>{ctx.bookingId ? "View booking" : "View job bookings"}</Btn> : null}
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging", ctx.bookingId ? { bookingId: ctx.bookingId } : undefined)}>Message {role === "teacher" ? "school" : "teacher"}</Btn>
         </aside>

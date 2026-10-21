@@ -1,14 +1,11 @@
 import { useDropdown } from "@/features/dropdowns/use-dropdown";
 import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
-import { useEffect, useId, useRef, useState } from "react";
-
 import { useJobApplications } from "@/features/applications/use-applications";
 import type { Job, JobsPagination, JobStatus, JobStatusCounts } from "@/features/jobs/types";
-import { formatJobVisibilityLabel, formatUkListingInstant, getJobVisibilityLabel, type JobVisibilityLabel } from "@/features/jobs/listing-window";
-import type { Tone } from "@/types/supplyed";
+import { formatJobVisibilityLabel, getJobVisibilityLabel, type JobVisibilityLabel } from "@/features/jobs/listing-window";
 
-import { Btn, Icon, Tag } from "../atoms";
-import { SectionLoader } from "../molecules";
+import { Btn } from "../atoms";
+import { JobListingPreview, jobListingPreviewData, SectionLoader } from "../molecules";
 
 export type JobStatusFilter = "ALL" | JobStatus;
 
@@ -176,129 +173,28 @@ function JobManagementRow({
   const visibility = getJobVisibilityLabel(job);
   const applicationsQuery = useJobApplications(job.id, { limit: 1 });
   const applicantCount = applicationsQuery.data?.pagination.total;
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuTriggerRef = useRef<HTMLButtonElement>(null);
-  const menuId = useId();
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const root = menuRef.current;
-    function dismissOutside(event: PointerEvent) {
-      if (!root?.contains(event.target as Node)) setMenuOpen(false);
-    }
-    function dismissOnEscape(event: KeyboardEvent) {
-      if (event.key !== "Escape" || !root?.contains(event.target as Node)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setMenuOpen(false);
-      menuTriggerRef.current?.focus();
-    }
-    document.addEventListener("pointerdown", dismissOutside);
-    root?.addEventListener("keydown", dismissOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", dismissOutside);
-      root?.removeEventListener("keydown", dismissOnEscape);
-    };
-  }, [menuOpen]);
+  const status = { label: formatJobVisibilityLabel(visibility), tone: visibilityTone(visibility) } as const;
 
   return (
-    <div
-      className="job-management-row"
-      onClick={() => onApplications(job)}
-    >
-      <div aria-hidden="true" className="job-management-icon"><Icon name={job.status === "ACTIVE" ? "file" : job.status === "DRAFT" ? "edit" : "checkCircle"} size={22} /></div>
-      <div className="job-management-copy">
-        <div className="job-management-status"><Tag tone={visibilityTone(visibility)}>{formatJobVisibilityLabel(visibility)}</Tag>{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<span>Posted {job.postedAt}</span></div>
-        <button className="job-management-title" onClick={(event) => { event.stopPropagation(); onApplications(job); }} type="button">{job.title}</button>
-        <div className="job-management-meta"><span><Icon name="pin" size={13} />{[job.city === "Location TBC" ? "" : job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"}</span><span><Icon name="calendar" size={13} />{job.date}</span><span><Icon name="pound" size={13} />{formatPay(job)}</span>{job.liveFrom ? <span>Opens {formatUkListingInstant(job.liveFrom)}</span> : null}{job.expiresAt ? <span>Closes {formatUkListingInstant(job.expiresAt)}</span> : null}</div>
-        <div className="job-management-skills"><Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag>{job.requiredSkills.slice(0, 4).map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div>
-      </div>
-      <button className="job-applicant-action" onClick={(event) => { event.stopPropagation(); onApplications(job); }} type="button">
-        <span aria-label={applicantCount !== undefined ? `${applicantCount} applicants` : applicationsQuery.isError ? "Applicant count unavailable" : "Loading applicant count"} aria-live="polite"><strong>{applicantCount ?? (applicationsQuery.isError ? "-" : "...")}</strong><span>{applicantCount === 1 ? "applicant" : "applicants"}</span></span>
-        <span>Review <Icon name="arrowRight" size={13} /></span>
-      </button>
-      <div ref={menuRef} className="job-management-menu" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMenuOpen(false); }} onClick={(event) => event.stopPropagation()}>
-        <button
-          ref={menuTriggerRef}
-          aria-controls={menuOpen ? menuId : undefined}
-          aria-expanded={menuOpen}
-          aria-label={`Options for ${job.title}`}
-          className="grid h-10 w-10 place-items-center rounded-lg border border-border-strong bg-surface text-slate transition hover:border-brand hover:bg-brand-tint hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-          onClick={() => setMenuOpen((current) => !current)}
-          type="button"
-        >
-          <Icon name="moreH" size={18} />
-        </button>
-        {menuOpen ? (
-          <div id={menuId} className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-border bg-surface p-1.5 shadow-card">
-            <button
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-ink hover:bg-chalk"
-              onClick={() => {
-                setMenuOpen(false);
-                onApplications(job);
-              }}
-              type="button"
-            >
-              <Icon name="users" size={14} />
-              Applications
-            </button>
-            <button
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-ink hover:bg-chalk"
-              onClick={() => {
-                setMenuOpen(false);
-                onEdit(job);
-              }}
-              type="button"
-            >
-              <Icon name="edit" size={14} />
-              Edit
-            </button>
-            {canClose ? (
-              <button
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-ink hover:bg-chalk disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={actionPending}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onClose(job);
-                }}
-                type="button"
-              >
-                <Icon name="x" size={14} />
-                Close
-              </button>
-            ) : null}
-            <button
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-danger hover:bg-danger-tint disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={actionPending}
-              onClick={() => {
-                setMenuOpen(false);
-                onDelete(job);
-              }}
-              type="button"
-            >
-              <Icon name="x" size={14} />
-              Delete
-            </button>
-          </div>
-        ) : null}
+    <div className="border-b border-border p-4 last:border-0 sm:p-5">
+      <JobListingPreview
+        action={<Btn iconRight="arrowRight" size="sm" onClick={() => onApplications(job)}>Review applications</Btn>}
+        data={jobListingPreviewData(job, status)}
+        onOpen={() => onApplications(job)}
+      />
+      <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-chalk px-3 py-2">
+        <span className="mr-auto text-xs text-muted" aria-live="polite">
+          <strong className="text-ink">{applicantCount ?? (applicationsQuery.isError ? "—" : "…")}</strong> {applicantCount === 1 ? "applicant" : "applicants"}
+        </span>
+        <Btn icon="edit" size="sm" variant="ghost" onClick={() => onEdit(job)}>Edit</Btn>
+        {canClose ? <Btn disabled={actionPending} size="sm" variant="ghost" onClick={() => onClose(job)}>Close</Btn> : null}
+        <Btn disabled={actionPending} size="sm" variant="danger" onClick={() => onDelete(job)}>Delete</Btn>
       </div>
     </div>
   );
 }
 
-export function formatPay(job: Job) {
-  if (!job.rate) return "Rate TBC";
-  if (job.payType === "hourly") return `GBP ${job.rate}/hr`;
-  if (job.payType === "fixed") return `GBP ${job.rate} fixed`;
-  return `GBP ${job.rate}/day`;
-}
-
-export function formatJobStatus(status: Job["status"]) {
-  return status ? status.toLowerCase().replace(/_/g, " ") : "draft";
-}
-
-function visibilityTone(status: JobVisibilityLabel): Tone | "ghost" | "red" {
+function visibilityTone(status: JobVisibilityLabel): "amber" | "ghost" | "green" | "red" {
   if (status === "live") return "green";
   if (status === "draft" || status === "scheduled") return "amber";
   if (status === "suspended") return "red";
