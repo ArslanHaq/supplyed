@@ -35,7 +35,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
   const updateJob = useUpdateJob({ onSuccess: (result) => toast({ title: result.ok ? "Job updated" : "Could not update job", msg: result.message ?? "The job status was updated.", tone: result.ok ? "success" : "danger" }) });
   const updateStatus = useUpdateApplicationStatus({ onSuccess: (result) => {
     const createdBooking = result.ok && result.data.status === "HIRED";
-    toast({ title: createdBooking ? "Booking created" : result.ok ? "Application updated" : "Could not update application", msg: createdBooking ? "The teacher is hired and the booking is now available for both sides." : result.message ?? "The application status was updated.", tone: result.ok ? "success" : "danger" });
+    toast({ title: createdBooking ? "Booking created" : result.ok ? "Application updated" : "Could not update application", msg: createdBooking ? `The teacher is hired and the booking is now available for both sides.${result.data.automaticallyRejectedCount ? ` ${result.data.automaticallyRejectedCount} other ${result.data.automaticallyRejectedCount === 1 ? "application was" : "applications were"} automatically rejected.` : ""}` : result.message ?? "The application status was updated.", tone: result.ok ? "success" : "danger" });
     if (result.ok) setHireTarget(null);
     if (createdBooking) go("bookings");
   } });
@@ -93,6 +93,9 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
           <h2 className="mt-4 font-heading text-2xl">Hire {hireTarget?.instructor?.fullName || "this teacher"} and create the booking?</h2>
           <p className="mt-3 text-sm leading-6 text-muted">
             This confirms the teacher for the role and creates the booking contract from the job dates, pay, and school details. Both the school and teacher can then open it from Bookings.
+          </p>
+          <p className="mt-3 rounded-lg bg-warning-tint px-4 py-3 text-sm leading-6 text-ink">
+            All other active applications for this job will be rejected automatically. Each affected teacher will see the updated outcome in My applications.
           </p>
           <BookingPaymentNotice job={job} />
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

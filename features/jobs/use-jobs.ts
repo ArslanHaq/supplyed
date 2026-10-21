@@ -65,11 +65,12 @@ export function useMyJobs(filters: JobListFilters = {}) {
   });
 }
 
-export function useJob(id: string, ownerView = false) {
+export function useJob(id: string, view: boolean | "accessible" = false) {
+  const scope = view === true ? "mine" : view === "accessible" ? "accessible" : "public";
   return useQuery({
     enabled: Boolean(id),
-    queryFn: () => fetchJson<Job>(`/api/jobs/${id}`, ownerView ? { query: { scope: "mine" } } : undefined),
-    queryKey: [...queryKeys.jobs.detail(id), ownerView ? "mine" : "public"],
+    queryFn: () => fetchJson<Job>(`/api/jobs/${id}`, scope === "public" ? undefined : { query: { scope } }),
+    queryKey: [...queryKeys.jobs.detail(id), scope],
   });
 }
 

@@ -18,6 +18,7 @@ import { useMounted } from "@/lib/use-mounted";
 import type { RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, Icon, Tag } from "../atoms";
 import { FormattedJobDescription, Modal, PageHead, SectionLoader } from "../molecules";
+import { ListPagination } from "../molecules/ListPagination";
 import { InvitationErrorNotice, useInvitationError } from "./InvitationErrorNotice";
 
 type Props = Pick<RouteProps, "ctx" | "go" | "role" | "toast">;
@@ -30,17 +31,18 @@ export function JobInvitationsPage(props: Props) {
 
 function InvitationList({ role, go }: Props) {
   const choices = useDropdown("jobInvitationStatus");
-  const filters = [{ value: "", label: "All invitations" }, ...(choices.data?.options ?? [])];
+  const filters = [{ value: "", label: "All invitations" }, ...invitationStatuses.map(value => ({ value, label: choices.data?.options.find(option => option.value === value)?.label ?? value.charAt(0) + value.slice(1).toLowerCase() }))];
   const [status, setStatus] = useState<InvitationStatus | "">("");
   const [page, setPage] = useState(1);
-  const query = useInvitations({ page, limit: 12, status: status || undefined });
+  const [limit, setLimit] = useState(10);
+  const query = useInvitations({ page, limit, status: status || undefined });
   return <div className="app-page">
     <PageHead title={role === "institution" ? "Sent invitations" : "Job invitations"} subtitle={role === "institution" ? "Track your offers and teacher responses. Bookings begin after acceptance." : "Review offers from schools and choose the placements that work for you."} actions={<Btn icon="refresh" variant="secondary" loading={query.isFetching} onClick={() => void query.refetch()}>Refresh</Btn>} />
     <div className="card mb-5 flex flex-wrap items-center gap-2 p-4" aria-label="Invitation status filters">
       <DropdownStatus name="jobInvitationStatus" />{filters.map(({ value, label }) => <Btn key={value} size="sm" variant={status === value ? "secondary" : "ghost"} aria-pressed={status === value} onClick={() => { setStatus(value as InvitationStatus | ""); setPage(1); }}>{label}</Btn>)}
     </div>
     {query.isLoading ? <SectionLoader rows={3} /> : query.error ? <StateMessage title="Invitations unavailable" text={query.error.message} /> : !query.data?.invitations.length ? <StateMessage title="No invitations here yet" text={role === "institution" ? "Choose Invite to job on a teacher card or profile to send an offer." : "When a school invites you to a job, you can review and respond here."} /> : <div className="space-y-4">{query.data.invitations.map(invitation => <InvitationRow key={invitation.id} invitation={invitation} role={role} onOpen={() => go("job-invitations", { invitationId: invitation.id })} />)}</div>}
-    {query.data && query.data.pagination.totalPages > 1 ? <div className="mt-5 flex items-center justify-between gap-3"><Btn variant="secondary" disabled={page <= 1 || query.isFetching} onClick={() => setPage(page - 1)}>Previous</Btn><span className="text-sm text-muted">Page {page} of {query.data.pagination.totalPages}</span><Btn variant="secondary" disabled={!query.data.pagination.hasNextPage || query.isFetching} onClick={() => setPage(page + 1)}>Next</Btn></div> : null}
+    {query.data ? <ListPagination {...query.data.pagination} busy={query.isFetching} onPage={setPage} onLimit={value => { setLimit(value); setPage(1); }} /> : null}
   </div>;
 }
 
@@ -106,7 +108,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
       setRetry(null); setConfirm(null);
       if (storageKey) { try { sessionStorage.removeItem(storageKey); } catch {} }
       if (result.data.invitation) client.setQueryData(queryKeys.invitations.detail(id), result.data.invitation);
-      for (const key of [queryKeys.invitations.all, queryKeys.jobs.all, queryKeys.bookings.all, queryKeys.applications.all, queryKeys.teachers.all, queryKeys.publicProfiles.all]) void client.invalidateQueries({ queryKey: key });
+      for (const key of [queryKeys.invitations.all, queryKeys.jobs.all, queryKeys.bookings.all, queryKeys.applications.all, queryKeys.teachers.all, queryKeys.publicProfiles.all, queryKeys.conversations.all]) void client.invalidateQueries({ queryKey: key });
       if (result.data.booking) { client.setQueryData(queryKeys.bookings.detail(result.data.booking.id), result.data.booking); go("bookings", { bookingId: result.data.booking.id }); }
       else toast({ title: decision === "decline" ? "Invitation declined" : "Invitation withdrawn", msg: "The invitation status has been updated.", tone: "success" });
     } catch { setError("The result could not be confirmed. Retry the same response safely, or refresh to check its status."); setRetry(decision); }
@@ -131,8 +133,51 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
       </section>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5 xl:col-start-1 xl:row-start-1">
-          <section className="card overflow-hidden"><div className="border-b border-border p-5"><h2 className="font-heading text-lg font-semibold">Offered placement</h2><p className="mt-1 text-xs text-muted">These are the terms offered in this invitation.</p></div><dl className="grid gap-6 p-5 sm:grid-cols-2 sm:p-7"><Fact label="Start"><DateText value={invitation.job.startDate} /></Fact><Fact label="End"><DateText value={invitation.job.endDate} /></Fact><Fact label="Pay">{pay(invitation)}</Fact>{invitation.job.payType !== "fixed" ? <Fact label="Planned work">{formatPlannedUnits(invitation.job)}</Fact> : null}<Fact label="Location">{[invitation.job.address, invitation.job.city, invitation.job.county, invitation.job.postalCode].filter(Boolean).join(", ") || "Not specified"}</Fact>{invitation.job.subject ? <Fact label="Subjects">{invitation.job.subject}</Fact> : null}{invitation.job.keyStages.length ? <Fact label="Key stages">{invitation.job.keyStages.join(", ")}</Fact> : null}{invitation.job.requiredSkills?.length ? <Fact label="Required skills">{invitation.job.requiredSkills.join(", ")}</Fact> : null}{invitation.job.minExperienceYears != null ? <Fact label="Minimum experience">{invitation.job.minExperienceYears} years</Fact> : null}{invitation.job.parkingInfo ? <Fact label="Parking">{invitation.job.parkingInfo}</Fact> : null}</dl></section>
+          <section className="card overflow-hidden border-brand-tint-2 bg-brand-tint">
+            <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+              <div className="w-fit rounded-xl border-2 border-surface shadow-sm [&>div]:rounded-lg"><Avatar name={invitation.institution.name} size="lg" src={invitation.institution.imageUrl} /></div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-brand">About the hiring school</div>
+                <h2 className="mt-1 font-heading text-xl font-semibold text-ink">{invitation.institution.name}</h2>
+                <p className="mt-1 text-sm leading-6 text-muted">View the school’s profile, details and reviews before responding.</p>
+              </div>
+              <Btn className="w-full sm:w-auto" icon="building" onClick={() => go("institution-profile", { institutionId: invitation.institution.id, jobId: invitation.job.id })}>View school profile</Btn>
+            </div>
+          </section>
+          <section className="card overflow-hidden">
+            <div className="border-b border-border p-5"><h2 className="font-heading text-lg font-semibold">Offered placement</h2><p className="mt-1 text-xs text-muted">These are the terms offered in this invitation.</p></div>
+            <dl className="grid gap-6 p-5 sm:grid-cols-2 sm:p-7">
+              <Fact label="Job title">{invitation.job.title}</Fact>
+              <Fact label="Posted by">{invitation.institution.name}</Fact>
+              <Fact label="Start date and time"><DateText value={invitation.job.startDate} /></Fact>
+              <Fact label="End date and time"><DateText value={invitation.job.endDate} /></Fact>
+              <Fact label="Pay">{pay(invitation)}</Fact>
+              {invitation.job.payType !== "fixed" ? <Fact label="Planned work">{formatPlannedUnits(invitation.job)}</Fact> : null}
+              <Fact label="Invitation sent"><DateText value={invitation.createdAt} /></Fact>
+              <Fact label="Response deadline"><DateText value={invitation.expiresAt} /></Fact>
+            </dl>
+          </section>
           <section className="card p-5 sm:p-7"><h2 className="mb-4 font-heading text-lg font-semibold">Role details</h2><FormattedJobDescription description={invitation.job.description} /></section>
+          <section className="card p-5 sm:p-7">
+            <h2 className="mb-4 font-heading text-lg font-semibold">Requirements</h2>
+            <dl className="grid gap-6 sm:grid-cols-2">
+              <Fact label="Subjects">{invitation.job.subject || "Not specified"}</Fact>
+              <Fact label="Key stages">{invitation.job.keyStages.join(", ") || "Not specified"}</Fact>
+              <Fact label="Minimum experience">{invitation.job.minExperienceYears != null ? `${invitation.job.minExperienceYears} ${invitation.job.minExperienceYears === 1 ? "year" : "years"}` : "Not specified"}</Fact>
+              <Fact label="Required skills">{invitation.job.requiredSkills?.length ? <span className="flex flex-wrap gap-2">{invitation.job.requiredSkills.map(skill => <Tag key={skill} tone="ghost">{skill}</Tag>)}</span> : "Not specified"}</Fact>
+            </dl>
+          </section>
+          <section className="card p-5 sm:p-7">
+            <h2 className="mb-4 font-heading text-lg font-semibold">Location and arrival</h2>
+            <dl className="grid gap-6 sm:grid-cols-2">
+              <Fact label="Address">{invitation.job.address || "Not specified"}</Fact>
+              <Fact label="City">{invitation.job.city || "Not specified"}</Fact>
+              <Fact label="County">{invitation.job.county || "Not specified"}</Fact>
+              <Fact label="Postcode">{invitation.job.postalCode || "Not specified"}</Fact>
+              <Fact label="Country">{countryName(invitation.job.countryCode)}</Fact>
+              <Fact label="Parking and arrival information">{invitation.job.parkingInfo || "Not specified"}</Fact>
+            </dl>
+          </section>
           {invitation.message ? <section className="card p-5 sm:p-7"><h2 className="mb-3 font-heading text-lg font-semibold">Message from the school</h2><p className="whitespace-pre-wrap text-sm leading-7 text-slate">{invitation.message}</p></section> : null}
         </div>
         <aside className="card row-start-1 p-5 sm:p-6 xl:sticky xl:top-6 xl:col-start-2">
@@ -141,6 +186,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
           {error && !(confirm && pending) ? <InvitationErrorNotice error={error} /> : null}
           {pending && !invitationCanAccept(invitation) ? <p className="mt-3 text-sm leading-6 text-muted">This job is currently unavailable for acceptance. The school may need to update it and send a new invitation.</p> : null}
           <div className="mt-4 grid gap-2">
+            <Btn icon="building" variant="secondary" onClick={() => go("institution-profile", { institutionId: invitation.institution.id, jobId: invitation.job.id })}>View school profile</Btn>
             {retry && pending && !query.error ? <><p className="mb-2 text-sm text-muted">Your previous response is unconfirmed. Retry that same response to recover its result.</p><Btn disabled={busy} loading={busy} onClick={() => void decide(retry)}>Retry {retry === "cancel" ? "withdrawal" : retry === "accept" ? "acceptance" : "decline"}</Btn></> : pending && !query.error ? role === "teacher" ? <><Btn icon="check" disabled={busy || !canAccept || query.isFetching} onClick={() => setConfirm("accept")}>Accept invitation</Btn><Btn variant="secondary" disabled={busy || query.isFetching} onClick={() => setConfirm("decline")}>Decline invitation</Btn></> : <Btn variant="secondary" disabled={busy || query.isFetching} onClick={() => setConfirm("cancel")}>Withdraw invitation</Btn> : null}
             {status === "ACCEPTED" && invitation.bookingId ? <Btn iconRight="arrowRight" onClick={() => go("bookings", { bookingId: invitation.bookingId! })}>View booking</Btn> : null}
             {role === "institution" ? <Btn icon="copy" variant="secondary" onClick={() => void copy()}>Copy invitation link</Btn> : null}
@@ -157,6 +203,14 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
 
 function StatusTag({ status }: { status: InvitationStatus }) { return <Tag tone={status === "ACCEPTED" ? "green" : status === "PENDING" ? "amber" : "ghost"}>{labels[status]}</Tag>; }
 function StateMessage({ title, text }: { title: string; text: string }) { return <div className="card p-8 text-center" role="status"><Icon className="mx-auto mb-3 text-brand" name="mail" size={26} /><h2 className="font-heading text-xl">{title}</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">{text}</p></div>; }
-function Fact({ label, children }: { label: string; children: React.ReactNode }) { return <div><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 text-sm font-semibold leading-6 text-ink">{children}</dd></div>; }
+function Fact({ label, children }: { label: string; children: React.ReactNode }) { return <div className="min-w-0"><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm font-semibold leading-6 text-ink">{children}</dd></div>; }
 function DateText({ value }: { value?: string | null }) { const mounted = useMounted(); return <span>{value && Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short", ...(!mounted ? { timeZone: "UTC" } : {}) }).format(new Date(value)) : "Not specified"}</span>; }
-function pay(invitation: Invitation) { return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(invitation.job.payAmount ?? 0) + (invitation.job.payType === "daily" ? " / day" : invitation.job.payType === "hourly" ? " / hour" : " fixed"); }
+function pay(invitation: Invitation) {
+  if (invitation.job.payAmount == null) return "Not specified";
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(invitation.job.payAmount) + (invitation.job.payType === "daily" ? " / day" : invitation.job.payType === "hourly" ? " / hour" : invitation.job.payType === "fixed" ? " fixed" : "");
+}
+function countryName(code?: string) {
+  if (!code?.trim()) return "Not specified";
+  try { return new Intl.DisplayNames(["en-GB"], { type: "region" }).of(code.trim().toUpperCase()) || code; }
+  catch { return code; }
+}

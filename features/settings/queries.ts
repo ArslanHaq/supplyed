@@ -7,6 +7,7 @@ import { backendEnabled } from "@/lib/server/backend-config";
 import { normalizeRole, normalizeStatus } from "@/features/auth/backend";
 import { api, ApiError } from "@/lib/server/api-client";
 import { getServerAuthContext } from "@/lib/server/auth-context";
+import { normalizeStoredUkPhone } from "@/lib/uk-validation";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 import type {
@@ -95,7 +96,7 @@ function normalizeUser(payload: unknown, fallbackRole: AppRole | null, fallbackU
     id: readString(isRecord(record) ? record.id ?? record.userId ?? record.sub : undefined) || fallbackUserId || "",
     lastLogin: readDate(isRecord(record) ? record.lastLogin : undefined),
     name: readString(isRecord(record) ? record.name ?? record.fullName : undefined) || (email ? email.split("@")[0] : ""),
-    phone: readString(isRecord(record) ? record.phone : undefined),
+    phone: normalizeStoredUkPhone(isRecord(record) ? record.phone : undefined),
     phoneVerified: readBoolean(isRecord(record) ? record.phoneVerified : undefined),
     role,
     twoFactorEnabled: readBoolean(isRecord(record) ? record.twoFactorEnabled : undefined),

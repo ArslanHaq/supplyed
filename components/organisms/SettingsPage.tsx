@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 import { usePhoneVerificationPending } from "@/features/auth/use-phone-verification";
 import { validateSettingsInput } from "@/features/settings/validation";
-import { validateUkCity, validateUkCountry, validateUkPhone, validateUkRegion } from "@/lib/uk-validation";
+import { validateUkCity, validateUkCountry, validateUkRegion } from "@/lib/uk-validation";
 import { useSettingsProfile, useUpdateSettings, useUploadSettingsProfileImage } from "@/features/settings/use-settings";
 import type {
   SettingsInstitutionUpdateInput,
@@ -28,7 +28,7 @@ import { PhoneVerification } from "../molecules/PhoneVerification";
 type SettingsForm = {
   institution: SettingsInstitutionUpdateInput;
   instructor: SettingsInstructorUpdateInput;
-  user: SettingsUserUpdateInput;
+  user: SettingsUserUpdateInput & { phone: string };
 };
 
 type SettingsFormErrors = Partial<Record<string, string>>;
@@ -336,7 +336,6 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
   const form = { ...cachedForm, user: { ...cachedForm.user, phone: phoneEdited && !profile?.user.phoneVerified ? cachedForm.user.phone : profile?.user.phone ?? cachedForm.user.phone } };
   const role = profile?.role ?? state.role;
   const canSave = Boolean(profile && role && profileExists(profile, role));
-  const enteredPhone = validateUkPhone(form.user.phone);
   const [profileImageError, setProfileImageError] = useState<string>();
   const [activeSection, setActiveSection] = useState("settings-profile");
   const profileImageUrl = profileImageUrlForRole(form, role);
@@ -487,11 +486,10 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
       instructor: role === "teacher" ? form.instructor : undefined,
 
       role,
-      user: form.user,
+      user: { ...form.user, phone: phoneEdited && !profile.user.phoneVerified ? form.user.phone : undefined },
     };
 
     const nextErrors = validateSettingsInput(payload, role === "teacher" ? profile.instructor : profile.institution);
-    if (!enteredPhone.valid) nextErrors.phone = enteredPhone.error!;
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setSubmitError("Check the highlighted fields before saving.");

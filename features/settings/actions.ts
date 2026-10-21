@@ -14,7 +14,7 @@ import type { AppRole } from "@/types/supplyed";
 
 import { getSettingsProfileSnapshot } from "./queries";
 import { validateSettingsInput } from "./validation";
-import { validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
+import { hasStoredUkPhoneChanged, validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 import type {
   SettingsInstitutionUpdateInput,
   SettingsInstructorUpdateInput,
@@ -285,6 +285,14 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
   let userSaved = false;
   try {
     if (!input || !input.user || typeof input.user !== "object") return actionError("Check your settings and try again.");
+    // Resolve against fresh server state before validating optional edits.
+    // Unchanged legacy numbers must not block unrelated profile changes.
+    const current = await getSettingsProfileSnapshot();
+    const phoneChanged = hasStoredUkPhoneChanged(input.user.phone, current.user.phone);
+    if (current.user.phoneVerified && phoneChanged) {
+      return actionError("Your verified phone number cannot be changed.", { code: "PHONE_VERIFIED_LOCKED", fieldErrors: { phone: "This number is verified and cannot be edited." } });
+    }
+    if (!phoneChanged) input = { ...input, user: { ...input.user, phone: undefined } };
     const fieldErrors = validateSettingsInput(input);
     if (Object.keys(fieldErrors).some(key => !["subjects", "skills", "staffingNeeds", "otherSubjects", "otherSkills"].includes(key))) {
       return actionError("Check the highlighted settings and try again.", { fieldErrors });
@@ -293,15 +301,9 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
     const profilePayload = input.role === "teacher" && input.instructor
       ? instructorPayload(input.instructor)
       : input.role === "institution" && input.institution ? institutionPayload(input.institution) : undefined;
-    const current = await getSettingsProfileSnapshot();
     const selectionErrors = validateSettingsInput(input, input.role === "teacher" ? current.instructor : current.institution);
     if (Object.keys(selectionErrors).length) return actionError("Check the highlighted settings and try again.", { fieldErrors: selectionErrors });
     if (profilePayload) { omitUnchangedTeachingFields(profilePayload, input.role === "teacher" ? current.instructor : current.institution); omitUnchangedDropdownFields(profilePayload, input.role === "teacher" ? current.instructor : current.institution); }
-    const enteredPhone = validateUkPhone(input.user.phone);
-    const savedPhone = validateUkPhone(current.user.phone);
-    if (current.user.phoneVerified && input.user.phone !== undefined && enteredPhone.value !== savedPhone.value) {
-      return actionError("Your verified phone number cannot be changed.", { code: "PHONE_VERIFIED_LOCKED", fieldErrors: { phone: "This number is verified and cannot be edited." } });
-    }
     const accountPayload = userPayload(input.user, current);
 
     if (!backendEnabled()) {

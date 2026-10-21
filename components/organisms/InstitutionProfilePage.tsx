@@ -13,7 +13,7 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
   const reviewsQuery = useInstitutionReviews(ctx.institutionId);
   const profile = profileQuery.data;
 
-  const goBack = () => ctx.jobId ? go("job-detail", { jobId: ctx.jobId }) : go("bookings");
+  const goBack = () => ctx.jobId ? go("job-detail", { bookingId: ctx.bookingId, jobId: ctx.jobId }) : go("bookings");
 
   if (!ctx.institutionId) return <ProfileState title="Choose a school" message="Open a school from a job, booking, or message to view its profile." onBack={goBack} />;
   if (profileQuery.isLoading) return <div className="app-page profile-page institution-public-profile"><SectionLoader rows={5} /></div>;

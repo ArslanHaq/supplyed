@@ -42,6 +42,7 @@ export function normalizeMessage(message: Partial<ChatMessage>): ChatMessage {
 export function normalizeConversation(conversation: Partial<Conversation>): Conversation {
   return {
     applicationId: conversation.applicationId || null,
+    booking: conversation.booking?.id ? conversation.booking : null,
     applicationStatus: conversation.applicationStatus || null,
     counterpart: normalizeParticipant(conversation.counterpart),
     participants: {

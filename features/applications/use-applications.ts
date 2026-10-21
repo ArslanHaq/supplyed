@@ -33,11 +33,11 @@ export function useApplication(applicationId: string | undefined) {
   });
 }
 
-export function useApplicationHistory(applicationId: string | undefined) {
+export function useApplicationHistory(applicationId: string | undefined, page = 1, limit = 10) {
   return useQuery({
     enabled: Boolean(applicationId),
-    queryFn: () => fetchJson<PaginatedApplicationHistory>(`/api/applications/${applicationId}/history`, { query: { page: 1, limit: 100 } }),
-    queryKey: queryKeys.applications.history(applicationId ?? ""),
+    queryFn: () => fetchJson<PaginatedApplicationHistory>(`/api/applications/${applicationId}/history`, { query: { page, limit } }),
+    queryKey: [...queryKeys.applications.history(applicationId ?? ""), { page, limit }],
   });
 }
 
@@ -65,6 +65,7 @@ export function useUpdateApplicationStatus(options: UseCreateApplicationOptions 
       if (result.ok) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
           ...(result.data.status === "HIRED" ? [
             queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all }),
@@ -108,6 +109,7 @@ export function useCreateApplication(options: UseCreateApplicationOptions = {}) 
       if (result.ok) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
         ]);
       }

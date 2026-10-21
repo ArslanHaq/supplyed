@@ -26,6 +26,7 @@ export const queryKeys = {
     all: ["conversations"] as const,
     detail: (id: string) => [...queryKeys.conversations.all, "detail", id] as const,
     forApplication: (applicationId: string) => [...queryKeys.conversations.all, "application", applicationId] as const,
+    forBooking: (bookingId: string) => [...queryKeys.conversations.all, "booking", bookingId] as const,
     list: () => [...queryKeys.conversations.all, "list"] as const,
     messages: (conversationId: string) => [...queryKeys.conversations.all, "messages", conversationId] as const,
     typing: (conversationId: string) => [...queryKeys.conversations.all, "typing", conversationId] as const,

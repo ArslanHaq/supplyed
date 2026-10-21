@@ -6,11 +6,13 @@ import { useEffect } from "react";
 import { fetchJson } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
 
-import { markConversationReadAction, openConversationForApplicationAction, sendMessageAction, startConversationAction } from "./actions";
+import { markConversationReadAction, openConversationForApplicationAction, openConversationForBookingAction, sendMessageAction, startConversationAction } from "./actions";
 import { acquireConversationSocket, releaseConversationSocket, useConversationConnected } from "./socket";
 import type {
   ChatMessage,
   Conversation,
+  ConversationTopic,
+  ConversationThreadsPage,
   ConversationsPage,
   MessageAttachment,
   MessageEventPayload,
@@ -37,7 +39,6 @@ type ConversationsData = InfiniteData<ConversationsPage, number>;
 
 /** The thread list, a page at a time: the most recent threads first, older ones loaded on demand. */
 export function useConversations(options: { enabled?: boolean; limit?: number } = {}) {
-  const connected = useConversationConnected();
   const limit = options.limit ?? 100;
   return useInfiniteQuery({
     enabled: options.enabled ?? true,
@@ -45,7 +46,19 @@ export function useConversations(options: { enabled?: boolean; limit?: number } 
     initialPageParam: 1,
     queryFn: ({ pageParam }) => fetchJson<ConversationsPage>("/api/conversations", { query: { page: pageParam, limit } }),
     queryKey: limit === 100 ? queryKeys.conversations.list() : [...queryKeys.conversations.list(), { limit }],
-    refetchInterval: connected ? false : FALLBACK_REFETCH_MS,
+    // New application/booking threads may be empty and therefore emit no message event.
+    refetchInterval: FALLBACK_REFETCH_MS,
+  });
+}
+
+/** The picker is scoped to one participant pair, independent of loaded inbox pages. */
+export function useConversationThreads(conversation: Conversation, topic: ConversationTopic) {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.conversations.list(), "threads", conversation.participants.poster?.userId ?? conversation.participants.poster?.id, conversation.participants.instructor?.id, topic],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => fetchJson<ConversationThreadsPage>(`/api/conversations/${conversation.id}/threads`, { query: { topic, before: pageParam, limit: 20 } }),
+    getNextPageParam: page => page.hasMore ? page.nextCursor ?? undefined : undefined,
+    staleTime: 30_000,
   });
 }
 
@@ -53,7 +66,7 @@ export function useConversations(options: { enabled?: boolean; limit?: number } 
  * All loaded threads in order. Threads move to the top as messages arrive,
  * so a later page can repeat one already shown; the first copy wins.
  */
-export function flattenConversations(data: InfiniteData<ConversationsPage, unknown> | undefined): Conversation[] {
+export function flattenConversations(data: InfiniteData<Pick<ConversationsPage, "conversations">, unknown> | undefined): Conversation[] {
   const seen = new Set<string>();
 
   return (data?.pages ?? []).flatMap((page) => page.conversations).filter((item) => {
@@ -73,7 +86,7 @@ export function useUnreadMessages(options: { enabled?: boolean } = {}) {
   });
 }
 
-/** Opens the conversation about an application (starting it on first use). */
+/** Reads an existing application conversation without creating it. */
 export function useConversationForApplication(applicationId: string | undefined) {
   return useQuery({
     enabled: Boolean(applicationId),
@@ -83,6 +96,18 @@ export function useConversationForApplication(applicationId: string | undefined)
       return result.data;
     },
     queryKey: queryKeys.conversations.forApplication(applicationId ?? ""),
+  });
+}
+
+export function useConversationForBooking(bookingId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(bookingId),
+    queryFn: async () => {
+      const result = await openConversationForBookingAction(bookingId as string);
+      if (!result.ok) throw new Error(result.message);
+      return result.data;
+    },
+    queryKey: queryKeys.conversations.forBooking(bookingId ?? ""),
   });
 }
 
@@ -144,6 +169,7 @@ function patchConversation(queryClient: ReturnType<typeof useQueryClient>, conve
     data ? { ...data, pages: data.pages.map((page) => ({ ...page, conversations: page.conversations.map(apply) })) } : data,
   );
   queryClient.setQueriesData<Conversation>(applicationEntries, (item) => (item ? apply(item) : item));
+  queryClient.setQueriesData<Conversation>({ queryKey: [...queryKeys.conversations.all, "booking"] }, (item) => (item ? apply(item) : item));
   queryClient.setQueriesData<Conversation>(detailEntries, (item) => (item ? apply(item) : item));
 }
 

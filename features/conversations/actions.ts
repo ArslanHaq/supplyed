@@ -21,18 +21,25 @@ export async function startConversationAction(input: StartConversationInput) {
   }
 }
 
-/** Opens (or starts) the conversation about an application. */
+/** Reads an existing conversation. Page loads and query retries never create threads. */
 export async function openConversationForApplicationAction(applicationId: string) {
   const id = typeof applicationId === "string" ? applicationId.trim() : "";
   if (!id) return actionError("Choose a valid application.", { code: "APPLICATION_ID_REQUIRED" });
 
   try {
-    const auth = await getServerAuthContext();
-    if (normalizeRole(auth?.role) === "institution") return startConversationAction({ applicationId: id });
     return actionOk(normalizeConversation(await api.get<Conversation>(`/conversations/application/${id}`, { cache: "no-store" })));
   } catch (error) {
     if (error instanceof ApiError && error.status === 403) return actionError("The school has not started this conversation yet. You can reply once they contact you.");
     return actionError(readError(error, "The conversation could not be opened."), { code: errorCode(error) });
+  }
+}
+
+export async function openConversationForBookingAction(bookingId: string) {
+  if (typeof bookingId !== "string" || !bookingId.trim()) return actionError("Choose a valid booking.");
+  try {
+    return actionOk(normalizeConversation(await api.get<Conversation>(`/conversations/booking/${bookingId.trim()}`, { cache: "no-store" })));
+  } catch (error) {
+    return actionError(readError(error, "The booking conversation could not be opened."), { code: errorCode(error) });
   }
 }
 

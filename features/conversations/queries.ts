@@ -5,7 +5,7 @@ import { backendEnabled } from "@/lib/server/backend-config";
 import { api } from "@/lib/server/api-client";
 
 import { normalizeConversation, normalizeMessagesPage } from "./schemas";
-import type { Conversation, ConversationsPage, ConversationsPagination, MessagesPage } from "./types";
+import type { Conversation, ConversationsPage, ConversationsPagination, MessagesPage, ConversationTopic, ConversationThreadsPage } from "./types";
 
 
 /** One page of the signed-in user's threads, most recent activity first. */
@@ -33,6 +33,13 @@ export async function getUnreadMessageCount(): Promise<{ total: number }> {
 
 export async function getConversation(id: string): Promise<Conversation> {
   return normalizeConversation(await api.get<Conversation>(`/conversations/${id}`, { cache: "no-store" }));
+}
+
+export async function listConversationThreads(id: string, topic: ConversationTopic, before?: string, limit = 20): Promise<ConversationThreadsPage> {
+  const result = await api.get<ConversationThreadsPage>(`/conversations/${id}/threads`, {
+    cache: "no-store", query: { topic, before, limit },
+  });
+  return { ...result, conversations: result.conversations.map(normalizeConversation) };
 }
 
 export async function listMessages(id: string, before?: string): Promise<MessagesPage> {

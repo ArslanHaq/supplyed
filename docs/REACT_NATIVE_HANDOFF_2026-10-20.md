@@ -241,6 +241,14 @@ Database changes are atomic, but different devices do not necessarily render the
 - Reading/opening an invitation must not implicitly accept it.
 - Preserve existing conversation association and avoid duplicate chat messages during retries.
 
+### Open invitations directly from chat
+
+Existing invitation messages contain a plain relative path such as `/job-invitations/<uuid>`. Render that reference as an accessible **View invitation** link/button in both incoming and outgoing message bubbles. Tapping it opens the invitation detail screen for that exact UUID through the app's existing authenticated navigation; it must not accept the invitation automatically.
+
+Apply this at rendering time so historical messages also work. Preserve surrounding text, newlines, attachments, timestamps, and read receipts. Do not rewrite/resend old messages or change message generation just to add markup (the web deduplicates retries using the existing message body).
+
+Only recognize valid invitation paths at text boundaries; keep arbitrary text/HTML and unrelated URLs as plain text. Do not interpret chat content as executable HTML or navigation commands. Preserve normal access checks and login return-to behavior. Web reference: `features/conversations/message-links.ts` and the message bubble in `components/organisms/MessagingPage.tsx`. Mobile should navigate to its native invitation detail screen instead of opening a browser-only relative path.
+
 Confirmed booking overlap is checked on invitation creation and acceptance:
 
 ```text
@@ -252,6 +260,24 @@ The supplied checks include equal endpoints. Two nonoverlapping times on one day
 For the known overlap conflict, show: **"This teacher is already booked during these dates. Choose different dates or another teacher."** Refresh the affected teacher schedules. Do not treat every HTTP 409 as overlap; stale consent and other conflicts need their own messages.
 
 Keep the invitation input `requestId` UUID: it is an idempotency key, not a diagnostic reference. When a network failure leaves the outcome uncertain, retry the same UUID with the same payload rather than creating another invitation. Use a new attempt only after a definitive rejection and corrected input. Preserve the app's existing deadline and retry rules.
+
+## 6A. Messaging inbox and topic selection
+
+Show one inbox entry for each school/person, grouping by stable account/profile identity and role. Never group by display name. Keep unknown/deleted accounts separate when no stable identity exists.
+
+Inside the selected contact, use four accessible topic tabs: **General**, **Jobs**, **Applications**, and **Invitations**, with counts. Use "General" in the UI rather than "Direct message". Under the active topic, show a selector for each individual item, including title, creation date, status where available, and unread count. Disambiguate same-title entries so all remain selectable.
+
+Keep all jobs, applications, and invitations; do not collapse them into one topic history. Sort each selector newest first. Opening a contact defaults to its newest job/application/invitation context, ahead of General. An explicit deep link still opens the exact requested conversation/application. Later refetches must not unexpectedly switch an already selected item. Sort contacts by their latest message activity.
+
+Switching the selected item renders its messages and its matching context panel together. Show application context/proposal for an application, job context for a job, and offered snapshot/status/response link for an invitation. General has no job context. Preserve per-conversation message drafts, attachments, and pending sends while switching; a send/upload completing after a switch must update its original conversation only.
+
+Unread counts at the contact level sum distinct underlying conversations. Opening one conversation must not mark unrelated conversations read. Topic counts represent selectable items, not unread totals. Keep pagination intact; a partially loaded inbox must not pretend its contact count is final.
+
+The current conversation API has job/application context but no independent invitation-conversation ID. Use the paginated existing invitations API to match invitations to non-application job conversations by **job ID + instructor profile ID + institution profile ID**. Each matching invitation gets its own selectable context. Its messages are shared with that job conversation; tell the user this clearly and do not create fake independent histories or double-count unread messages. Show a retryable invitation-loading error if that data is unavailable. Invitations without a matching conversation should remain accessible through the normal invitation area; do not silently fabricate a chat.
+
+Use the existing authorization, message send, attachment, read receipt, typing, and realtime APIs. No database merge or deletion of conversations is required. Reference `features/conversations/threads.ts` and `components/organisms/MessagingPage.tsx`.
+
+Replace the old "Messages here are only visible to the two of you" claim. Show: **"Conversations may be monitored by the SupplyEd team for support and safety."** Keep a friendly empty-state greeting without promising two-person-only access.
 
 ## 7. Show booking addresses after creation
 
@@ -334,6 +360,12 @@ Suggested copy:
 
 Refresh the current user before applying sensitive phone changes. If a fresh response says the saved number is verified, it must win over stale local edits. Do not submit a replacement/clear of a verified number. On success reset edited state and update relevant caches; after a locked-phone conflict refresh settings.
 
+### Saved-number normalization and verified display
+
+Saved-number compatibility: normalize historical UK account phone representations consistently before display/comparison. A saved `7740123456`, `07740123456`, or `+44 7740 123456` can represent the same number; do not display an added `+44` while rejecting the underlying unchanged value. Keep strict validation for new/edited input.
+
+The server's verified flag controls the read-only saved-number display and **Phone verified** badge. Do not show a disabled re-verification button, a stale OTP error, or a validation error for an immutable saved phone. Remove replacement-verification prompts. Omit untouched phone values from settings writes. At the save boundary, fetch fresh state, reject actual verified-number replacement/clearing, omit equivalent unchanged values, then validate editable input. Compatibility normalization never verifies ownership or silently rewrites historical database values.
+
 ### Known backend gap: do not claim global enforcement yet
 
 The web currently guards verified-number edits in Settings and its Next.js server action, including a friendly `PHONE_VERIFIED_LOCKED` result. That local code is not proof of a backend HTTP error contract.
@@ -406,6 +438,13 @@ Use the manual checklist below and the mobile project's supported lint/type/buil
 | App background/resume | Polling stops/resumes appropriately; fresh availability |
 | Error responses | No technical panel, reference UUID, raw stack, SQL, or HTML |
 | Uncertain invitation retry | Same request UUID/payload; no duplicate invitation/message |
+| Invitation reference in old/new incoming/outgoing chat | Accessible View invitation action opens the exact invitation; does not accept it |
+| Same school/person has multiple conversations | One inbox entry with General/Jobs/Applications/Invitations tabs |
+| Multiple applications/jobs/invitations, including duplicate titles | Each is selectable, newest first, with matching messages/context |
+| Invitation selection for an existing job conversation | Offered snapshot changes; shared message history is clearly labelled |
+| Open a different topic while composing/uploading/sending | Original draft/attachments remain attached to original conversation |
+| Group unread counts and opening a thread | No double counting shared invitation history; unrelated threads stay unread |
+| Chat privacy copy | SupplyEd monitoring notice is visible; no two-person-only privacy promise |
 | Save changed unverified phone | Saves without SMS requirement |
 | Verified phone | Locked while other settings still save |
 | Stale screen after verification | Cannot replace phone; fresh server state respected |

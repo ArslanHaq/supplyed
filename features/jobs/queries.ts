@@ -55,3 +55,17 @@ export async function getMyJob(id: string): Promise<Job | null> {
     throw error;
   }
 }
+
+/** A live job, a job posted by the caller, or a job attached to the caller's booking. */
+export async function getAccessibleJob(id: string): Promise<Job | null> {
+  try {
+    const job = await api.get<BackendJobResponse>(`/jobs/accessible/${encodeURIComponent(id)}`, {
+      next: { tags: ["jobs", `job:${id}`] },
+    });
+
+    return normalizeBackendJob(job);
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 403)) return null;
+    throw error;
+  }
+}

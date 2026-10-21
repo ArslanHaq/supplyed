@@ -25,7 +25,7 @@ import {
 } from "./documents";
 import { hasCreatedRoleProfile } from "./profile-progress";
 import { normalizeOnboardingForm, validateOnboardingForm } from "./validation";
-import { validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
+import { normalizeStoredUkPhone, validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 import type {
   OnboardingDocumentDownloadResult,
   OnboardingDocumentKind,
@@ -180,7 +180,7 @@ function normalizeUserSnapshot(user: BackendUserProfile, fallbackEmail?: string,
     emailVerified: user.emailVerified === true,
     phoneVerified: user.phoneVerified === true,
     fullName: user.name || "",
-    phone: user.phone || "",
+    phone: normalizeStoredUkPhone(user.phone),
     postcode: user.postCode || postcodeFallback,
   };
 }
@@ -595,10 +595,8 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   let currentPhoneVerified = false;
   if (backendEnabled()) {
     const current = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
-    // Signup assigns the account role before a profile or phone exists. Save the
-    // validated form value for both new and existing roles; only an already
-    // verified number needs the separate OTP flow before it can be replaced.
-    currentPhone = validateUkPhone(current.phone).value;
+    // Preserve the same canonical saved number; verified numbers cannot be replaced.
+    currentPhone = normalizeStoredUkPhone(current.phone);
     currentPhoneVerified = current.phoneVerified === true;
   }
   if (!backendEnabled()) {
@@ -617,7 +615,7 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   const phone = readFormString(formData, "phone");
 
   if (currentPhoneVerified && phone !== currentPhone) {
-    throw new Error("Verify your new phone number before creating this profile.");
+    throw new Error("Your verified phone number cannot be changed.");
   }
 
   if (name || phone) {
@@ -837,7 +835,7 @@ export async function saveOnboardingStepAction(formData: FormData) {
     const stepUser = {
       ...user,
       emailVerified: savedUser?.emailVerified === true,
-      phoneVerified: savedUser?.phoneVerified === true && validateUkPhone(savedUser.phone).value === user.phone,
+      phoneVerified: savedUser?.phoneVerified === true && normalizeStoredUkPhone(savedUser.phone) === user.phone,
     };
     const documentState = normalizeRole(authContext.role)
       ? await getDocumentState(role)

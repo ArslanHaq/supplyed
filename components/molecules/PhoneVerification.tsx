@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from "react";
 
 import type { PhoneOtpChallenge } from "@/features/auth/phone-types";
 import { useSendPhoneOtp, useVerifyPhoneOtp } from "@/features/auth/use-phone-verification";
-import { validateUkPhone } from "@/lib/uk-validation";
+import { normalizeStoredUkPhone, validateUkPhone } from "@/lib/uk-validation";
 
 import { Btn, Field, Icon, Tag } from "../atoms";
 import { PhoneInput } from "./PhoneInput";
@@ -43,10 +43,12 @@ export function PhoneVerification({
   const send = useSendPhoneOtp();
   const verify = useVerifyPhoneOtp();
   const busy = send.isPending || verify.isPending;
-  const phoneValidation = validateUkPhone(phone, { required: true });
-  const savedPhoneValidation = validateUkPhone(savedPhone, { required: true });
+  // The server owns verification. Formatting/metadata checks must not turn a
+  // verified, immutable saved number back into an invalid editable field.
+  const isVerified = verified;
+  const displayPhone = isVerified ? normalizeStoredUkPhone(savedPhone) : phone === savedPhone ? normalizeStoredUkPhone(phone) : phone;
+  const phoneValidation = validateUkPhone(displayPhone, { required: true });
   const matchesChallenge = Boolean(phoneValidation.valid && challenge && phoneValidation.value === challenge.phone);
-  const isVerified = verified && savedPhoneValidation.valid && phoneValidation.valid && phoneValidation.value === savedPhoneValidation.value;
   const resendSeconds = Math.max(0, Math.ceil((Math.max(challenge?.resendAt ?? 0, rateLimitUntil) - now) / 1000));
   const expirySeconds = Math.max(0, Math.ceil(((challenge?.expiresAt ?? 0) - now) / 1000));
   const codeRejected = failure?.field === "otp" && /code|otp/i.test(failure.message) && /invalid|incorrect|expired/i.test(failure.message);
@@ -88,7 +90,7 @@ export function PhoneVerification({
   }
 
   async function verifyCode() {
-    if (busy || disabled) return;
+    if (busy || disabled || isVerified) return;
     if (!matchesChallenge) { setFailure({ message: "Re-enter the UK number this code was sent to, or request a new code.", field: "otp" }); return; }
     if (expirySeconds <= 0) { setFailure({ message: "Request a new code for your UK phone number.", field: "otp" }); return; }
     if (!/^\d{6}$/.test(otp)) { setFailure({ message: "Enter the six-digit verification code.", field: "otp" }); return; }
@@ -117,15 +119,24 @@ export function PhoneVerification({
 
   return (
     <div>
-      {hidePhoneInput && phoneValidation.valid ? (
+      {hidePhoneInput && (isVerified || phoneValidation.valid) ? (
         <div className="mb-4 flex flex-wrap items-center gap-3">
           {verificationButton}
-          {phone ? <span className="text-sm text-muted">We will send the code to the phone number saved on your profile.</span> : null}
+          {!isVerified && displayPhone ? <span className="text-sm text-muted">We will send the code to the phone number saved on your profile.</span> : null}
+        </div>
+      ) : isVerified ? (
+        <div className="mb-4">
+          <Field label="Phone number" htmlFor={inputId || `${id}-phone`}>
+            <div className="phone-input-controls">
+              <input className="input bg-chalk text-muted" id={inputId || `${id}-phone`} type="tel" autoComplete="tel" readOnly value={displayPhone} />
+              <div className="phone-input-action">{verificationButton}</div>
+            </div>
+          </Field>
         </div>
       ) : (
         <div className="mb-4">
-          <PhoneInput action={verificationButton} error={error || (phone && !phoneValidation.valid ? phoneValidation.error : undefined)} id={inputId || `${id}-phone`} required={required}
-            disabled={disabled || busy} value={phone} onChange={(value) => { onChange(value); setFailure(null); }} />
+          <PhoneInput action={verificationButton} error={error || (displayPhone && !phoneValidation.valid ? phoneValidation.error : undefined)} id={inputId || `${id}-phone`} required={required}
+            disabled={disabled || busy} value={displayPhone} onChange={(value) => { onChange(value); setFailure(null); }} />
         </div>
       )}
 
@@ -166,7 +177,7 @@ export function PhoneVerification({
         </div>
       ) : null}
 
-      {failure ? (
+      {failure && !isVerified ? (
         <div id={`${id}-failure`} className="mb-4 flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-tint p-4 text-sm" role="alert">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-danger" aria-hidden="true">
             <Icon name="help" size={18} />
@@ -178,14 +189,6 @@ export function PhoneVerification({
             </p>
 
           </div>
-        </div>
-      ) : null}
-      {verified && savedPhoneValidation.valid && !isVerified ? (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <p className="text-xs text-muted">Your verified number is {savedPhone}. Verify the new number to replace it.</p>
-          <Btn disabled={disabled || busy} onClick={() => { onChange(savedPhone); setFailure(null); }} size="sm" variant="ghost">
-            Use verified number
-          </Btn>
         </div>
       ) : null}
     </div>

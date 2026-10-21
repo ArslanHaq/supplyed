@@ -25,7 +25,7 @@ export function validateJobInput(input: JobCreateInput | JobUpdateInput, options
   })) if (!validation.valid) errors[key] = validation.error!;
   for (const key of ["payAmount", "minExperienceYears"] as const) if (input[key] !== undefined && (typeof input[key] !== "number" || !Number.isFinite(input[key]) || input[key]! < 0 || (key === "minExperienceYears" && !Number.isInteger(input[key])))) errors[key] = "Enter a valid non-negative number.";
   if (input.payType !== undefined && !["hourly", "daily", "fixed"].includes(input.payType)) errors.payType = "Choose hourly, daily or fixed pay.";
-  if (input.status !== undefined && !(options.partial ? ["DRAFT", "ACTIVE", "EXPIRED", "CLOSED"] : ["DRAFT", "ACTIVE"]).includes(input.status)) errors.status = "Choose a valid job status.";
+  if (input.status !== undefined && !(options.partial ? ["DRAFT", "ACTIVE", "EXPIRED", "FILLED", "CLOSED"] : ["DRAFT", "ACTIVE"]).includes(input.status)) errors.status = "Choose a valid job status.";
   for (const key of ["keyStages", "requiredSkills", "subjects"] as const) {
     const values = input[key];
     if (values !== undefined && (!Array.isArray(values) || values.length > (key === "keyStages" ? 100 : 50) || values.some(value => typeof value !== "string" || !value.trim() || value.length > 100))) errors[key] = "Choose valid options.";

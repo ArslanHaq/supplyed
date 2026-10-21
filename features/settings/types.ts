@@ -76,7 +76,8 @@ export type SettingsProfileSnapshot = {
 
 export type SettingsUserUpdateInput = {
   name: string;
-  phone: string;
+  /** Omit an untouched phone so unrelated settings changes do not revalidate it. */
+  phone?: string;
 };
 
 export type SettingsInstructorUpdateInput = {

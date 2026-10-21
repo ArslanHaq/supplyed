@@ -1,6 +1,7 @@
 import { useDropdown } from "@/features/dropdowns/use-dropdown";
 import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
 import { useState } from "react";
+import { useStartConversation } from "@/features/conversations/use-conversations";
 
 import type { ApplicantSummary, JobApplication, JobApplicationStatus } from "@/features/applications/types";
 import { useApplicationHistory, useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
@@ -28,6 +29,7 @@ type ApplicationRow = {
 };
 
 export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ctx" | "toast">) {
+  const message = useStartConversation();
   const [jobsPage, setJobsPage] = useState(1);
   const [jobsFilter, setJobsFilter] = useState<"ACTIVE" | "INVITED">("ACTIVE");
   const [hireTarget, setHireTarget] = useState<JobApplication | null>(null);
@@ -58,7 +60,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       toast({
         title: hired ? "Teacher hired" : result.ok ? "Application updated" : "Could not update application",
         msg: hired
-          ? "Your booking is ready. Once completed, create its Stripe invoice from Bookings."
+          ? `Your booking is ready.${result.data.automaticallyRejectedCount ? ` ${result.data.automaticallyRejectedCount} other ${result.data.automaticallyRejectedCount === 1 ? "application was" : "applications were"} automatically rejected.` : ""} Once completed, create its Stripe invoice from Bookings.`
           : result.message ?? "The application status was updated.",
         tone: result.ok ? "success" : "danger",
       });
@@ -123,7 +125,12 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
             loadingScore={rankedQuery.isLoading}
             onBack={closeApplication}
             onHire={(application) => changeStatus(application, "HIRED")}
-            onMessage={(applicationId) => go("messaging", { applicationId })}
+            onMessage={(applicationId) => {
+              if (!message.isPending) message.mutate({ applicationId }, {
+                onSuccess: conversation => go("messaging", { conversationId: conversation.id }),
+                onError: error => toast({ title: "Could not open conversation", msg: error.message, tone: "danger" }),
+              });
+            }}
             onOpenTeacher={(teacherId) => go("teacher-profile", { teacherId })}
             onStatusChange={changeStatus}
             pending={updateStatus.isPending}
@@ -205,6 +212,9 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
           <h2 className="mt-4 font-heading text-2xl">Hire {hireTarget?.instructor?.fullName || "this teacher"}?</h2>
           <p className="mt-3 text-sm leading-6 text-muted">
             Hiring locks the earlier application stages and creates the booking contract from this job.
+          </p>
+          <p className="mt-3 rounded-lg bg-warning-tint px-4 py-3 text-sm leading-6 text-ink">
+            All other active applications for this job will be rejected automatically. Each affected teacher will see the updated outcome in My applications.
           </p>
           <BookingPaymentNotice job={job} />
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

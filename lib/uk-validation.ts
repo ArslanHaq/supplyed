@@ -30,6 +30,28 @@ export function validateUkPhone(value: unknown, options: ValidationOptions = {})
     : result(raw, false, error);
 }
 
+/** Compatibility for numbers already stored in the UK-only account field.
+ * Do not use this to guess the country of newly typed/pasted numbers.
+ * Invalid legacy values remain unchanged; normalization never verifies ownership.
+ */
+export function normalizeStoredUkPhone(value: unknown): string {
+  const raw = inputText(value);
+  const validated = validateUkPhone(raw);
+  if (validated.valid) return validated.value;
+  if (!/^[\d\s().-]+$/.test(raw)) return raw;
+  const compact = raw.replace(/[\s().-]/g, "");
+  const candidate = /^44\d{9,10}$/.test(compact)
+    ? `+${compact}`
+    : /^[1-9]\d{8,9}$/.test(compact) ? `+44${compact}` : "";
+  const normalized = validateUkPhone(candidate, { required: true });
+  return normalized.valid ? normalized.value : raw;
+}
+
+/** Compare saved formatting without treating an omitted PATCH field as a clear. */
+export function hasStoredUkPhoneChanged(value: unknown, saved: unknown): boolean {
+  return value !== undefined && (typeof value !== "string" || normalizeStoredUkPhone(value) !== normalizeStoredUkPhone(saved));
+}
+
 // Royal Mail outward/inward letter-position rules, including GIR 0AA. Crown
 // dependencies are not part of the UK. A format match does not prove existence.
 const postcodePattern = /^(?:GIR0AA|(?:[A-PR-UWYZ]\d\d?|[A-PR-UWYZ][A-HK-Y]\d\d?|[A-PR-UWYZ]\d[A-HJKPSTUW]|[A-PR-UWYZ][A-HK-Y]\d[ABEHMNPRVWXY])\d[ABD-HJLNP-UW-Z]{2})$/;

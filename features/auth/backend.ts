@@ -7,6 +7,7 @@ import { readUnverifiedJwtExpiresAt } from "@/lib/server/jwt";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 import { normalizeEmail, passwordRequirementsMessage, validateEmail, validatePassword } from "./schemas";
 import { validateOtpCode, validateTwoFactorCode } from "@/lib/auth-code-validation";
+import { normalizeStoredUkPhone } from "@/lib/uk-validation";
 
 import type {
   AuthUser,
@@ -249,7 +250,7 @@ export function normalizeAuthUser(payload: unknown): AuthUser {
       readString(user.institutionId) ??
       (isRecord(user.institutionProfile) ? readString(user.institutionProfile.id) : undefined),
     name: readString(user.name) ?? readString(user.fullName) ?? null,
-    phone: readString(user.phone) ?? "",
+    phone: normalizeStoredUkPhone(user.phone),
     phoneVerified: readBoolean(user.phoneVerified) ?? false,
     role: normalizeRole(user.role),
   };

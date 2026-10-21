@@ -21,6 +21,7 @@ export type ConversationParticipant = { id: string | null; userId?: string | nul
 export type StartConversationInput = { applicationId: string; instructorId?: never; jobId?: never } | { instructorId: string; jobId?: string; applicationId?: never };
 
 export type Conversation = {
+  booking: { id: string; status: string; applicationId: string } | null;
   applicationId: string | null;
   applicationStatus: string | null;
   counterpart: ConversationParticipant | null;
@@ -51,6 +52,14 @@ export type ConversationsPagination = {
 export type ConversationsPage = {
   conversations: Conversation[];
   pagination: ConversationsPagination;
+};
+
+export type ConversationTopic = "GENERAL" | "JOBS";
+export type ConversationThreadsPage = {
+  conversations: Conversation[];
+  total: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 };
 
 export type MessagesPage = {

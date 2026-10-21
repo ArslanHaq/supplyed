@@ -6,7 +6,7 @@ export type MessageAuthor = "me" | "them";
 export type AppRole = "admin" | "institution" | "teacher";
 export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
 export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
-export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "CLOSED" | "SUSPENDED";
+export type JobStatus = "DRAFT" | "ACTIVE" | "EXPIRED" | "FILLED" | "CLOSED" | "SUSPENDED";
 export type JobPayType = "daily" | "fixed" | "hourly";
 
 export type AppPage =

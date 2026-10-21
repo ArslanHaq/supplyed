@@ -32,7 +32,6 @@ export async function createInvitationAction(input: InvitationInput): Promise<Cr
   try {
     const conversation = normalizeConversation(await api.post<Conversation>("/conversations", {
       instructorId: invitation.instructor.id,
-      jobId: invitation.job.id,
     }));
     if (!conversation.id) throw new Error("The conversation response was incomplete.");
 
