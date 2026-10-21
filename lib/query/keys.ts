@@ -23,6 +23,10 @@ export const queryKeys = {
     typing: (conversationId: string) => [...queryKeys.conversations.all, "typing", conversationId] as const,
     unread: () => [...queryKeys.conversations.all, "unread"] as const,
   },
+  identityVerification: {
+    all: ["identity-verification"] as const,
+    mine: () => [...queryKeys.identityVerification.all, "mine"] as const,
+  },
   jobs: {
     all: ["jobs"] as const,
     detail: (id: string) => [...queryKeys.jobs.all, "detail", id] as const,

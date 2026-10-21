@@ -181,6 +181,10 @@ export function useNotificationStream(enabled: boolean, onOpen: (link: string) =
       if (notification.type === "APPLICATION_RECEIVED") {
         void queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
       }
+      // TrustID's results are in: the identity card reloads, then refreshes the onboarding documents itself.
+      if (notification.type === "IDENTITY_VERIFICATION") {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.identityVerification.all });
+      }
       showDesktopAlert(notification, (link) => openRef.current(link));
     };
 

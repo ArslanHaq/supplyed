@@ -15,6 +15,7 @@ import type {
   SignupRole,
 } from "./onboarding/types";
 import { DocumentPreviewModal } from "./onboarding/DocumentPreviewModal";
+import { IdentityStatusCard } from "./onboarding/IdentityStatusCard";
 import type { OnboardingFormController } from "./onboarding/useOnboardingForm";
 import { useOnboardingForm } from "./onboarding/useOnboardingForm";
 import { AccountBasicsStep } from "./onboarding/steps/AccountBasicsStep";
@@ -261,7 +262,9 @@ export function OnboardingPage({
           <div className="flex-1">
             {lockedDocumentStage ? (
               <div className="space-y-6">
-                <PhoneVerificationCard controller={controller} />
+                {/* Teachers verify their phone on the identity step; the card stays for anyone who hasn't. */}
+                {activeRole !== "teacher" || !controller.phoneVerified ? <PhoneVerificationCard controller={controller} /> : null}
+                {activeRole === "teacher" ? <IdentityStatusCard /> : null}
                 <div className={controller.form.institutionType === "MAT_SCHOOL" ? "grid items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "space-y-6"}>
                   {controller.form.institutionType === "MAT_SCHOOL" ? (
                     <SignatoryApprovalCard controller={controller} onRefresh={onRefresh} />

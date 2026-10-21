@@ -3,6 +3,7 @@ import type { Session } from "next-auth";
 
 import { auth } from "@/auth";
 import { OnboardingRouteClient } from "@/components/organisms/OnboardingRouteClient";
+import { needsIdentityStep } from "@/features/identity-verification/queries";
 import { getOnboardingProfileSnapshot } from "@/features/onboarding/actions";
 import { createVerifiedEmailSessionTicket } from "@/features/auth/session-ticket";
 import type { BackendAuthResponse } from "@/features/auth/types";
@@ -64,6 +65,10 @@ export default async function OnboardingPage() {
   if (session.user.role === "admin") redirect("/dashboard");
 
   const snapshot = await getOnboardingProfileSnapshot();
+
+  // Once the teaching profile exists, identity verification is its own step, before documents.
+  if (snapshot.role === "teacher" && snapshot.instructor && (await needsIdentityStep())) redirect("/verify-identity");
+
   const sessionRepairTicket = await createSessionRepairTicket(session, snapshot);
 
   return (
