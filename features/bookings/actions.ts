@@ -34,7 +34,7 @@ export async function updateBookingStatusAction(input: BookingStatusUpdateInput)
     revalidateTag("bookings", "max");
     return actionOk(normalizeBooking(booking), "Booking updated.");
   } catch (error) {
-    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined });
+    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, retryAfter: error instanceof ApiError ? error.retryAfter : undefined, requestId: error instanceof ApiError ? error.requestId : undefined });
   }
 }
 
@@ -52,7 +52,7 @@ export async function createBookingReviewAction(input: BookingReviewInput) {
     revalidateTag("bookings", "max");
     return actionOk(review, "Review submitted.");
   } catch (error) {
-    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined });
+    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, retryAfter: error instanceof ApiError ? error.retryAfter : undefined, requestId: error instanceof ApiError ? error.requestId : undefined });
   }
 }
 

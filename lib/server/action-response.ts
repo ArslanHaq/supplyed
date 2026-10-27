@@ -15,6 +15,7 @@ export type ActionResult<Data = void, Field extends string = string> =
       message: string;
       requestId?: string;
       status?: number;
+      retryAfter?: number;
     };
 
 export function actionOk<Data>(data: Data, message?: string): ActionResult<Data> {
@@ -23,7 +24,7 @@ export function actionOk<Data>(data: Data, message?: string): ActionResult<Data>
 
 export function actionError<Field extends string = string>(
   message: string,
-  options: { code?: string; fieldErrors?: ActionFieldErrors<Field>; requestId?: string; status?: number } = {},
+  options: { code?: string; fieldErrors?: ActionFieldErrors<Field>; requestId?: string; status?: number; retryAfter?: number } = {},
 ): Extract<ActionResult<never, Field>, { ok: false }> {
   message = userFacingError(message, options);
   const catalogueFields = options.code === "INVALID_OTHER_SKILLS" ? { otherSkills: message } : options.code === "INVALID_OTHER_SUBJECTS" ? { otherSubjects: message } : options.code === "SKILL_SUBJECT_MISMATCH"

@@ -1,3 +1,4 @@
+import { useRateLimit } from "@/lib/rate-limit";
 import { useEffect, useRef, useState } from "react";
 
 import { formatCodeResendCountdown, secondsUntilCodeResend } from "@/lib/code-resend-cooldown";
@@ -29,6 +30,7 @@ export function SignupVerifyPage({
   onVerified: (code: string) => Promise<VerifyResult>;
   resendAvailableAt?: number;
 }) {
+  const retryAfter = useRateLimit();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [errors, setErrors] = useState<VerifyErrors>({});
   const [pending, setPending] = useState<VerifyPending>(null);
@@ -96,7 +98,7 @@ export function SignupVerifyPage({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || retryAfter) return;
     if (!validate()) return;
     setPending("verify");
 
@@ -112,7 +114,7 @@ export function SignupVerifyPage({
   }
 
   async function resendCode() {
-    if (pending || resendLocked) return;
+    if (pending || retryAfter || resendLocked) return;
     setPending("resend");
 
     const result = await onResend();
@@ -201,7 +203,7 @@ export function SignupVerifyPage({
               Codes are validated by SupplyED before your workspace session is created. You can request another code every 60 seconds.
             </div>
 
-            <Btn className="w-full" loading={pending === "verify"} loadingLabel="Verifying email" size="lg" type="submit" iconRight="arrow">
+            <Btn className="w-full" loading={pending === "verify"} loadingLabel="Verifying email" size="lg" disabled={Boolean(retryAfter)} type="submit" iconRight="arrow">
               Verify and continue
             </Btn>
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -210,7 +212,7 @@ export function SignupVerifyPage({
               </Btn>
               <Btn
                 className="w-full"
-                disabled={Boolean(pending) || resendLocked}
+                disabled={Boolean(pending) || Boolean(retryAfter) || resendLocked}
                 loading={pending === "resend"}
                 loadingLabel="Sending"
                 variant="secondary"

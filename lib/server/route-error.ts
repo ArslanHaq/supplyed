@@ -6,7 +6,7 @@ import { ApiError } from "./api-client";
 export function routeError(error: unknown) {
   if (error instanceof ApiError) {
     const payload = error.payload ?? { code: error.code, message: error.message };
-    return Response.json(payload, { status: error.status, headers: error.requestId ? { "X-Request-Id": error.requestId } : undefined });
+    return Response.json(payload, { status: error.status, headers: { ...(error.requestId ? { "X-Request-Id": error.requestId } : {}), ...(error.retryAfter !== undefined ? { "Retry-After": String(error.retryAfter) } : {}) } });
   }
 
   const requestId = randomUUID();

@@ -213,6 +213,7 @@ async function request<Data>(
       payload,
       readErrorCode(payload),
       requestId,
+      response.headers.get("Retry-After"),
     );
   }
 

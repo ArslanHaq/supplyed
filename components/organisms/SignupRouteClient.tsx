@@ -1,4 +1,5 @@
 "use client";
+import { recordRateLimit } from "@/lib/rate-limit";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -86,6 +87,7 @@ function SignupRouteClientInner({
     }
 
     if (!result.ok) {
+      recordRateLimit(result);
       showAuthError(result.message);
       return {
         fieldErrors: result.fieldErrors,
@@ -127,6 +129,7 @@ function SignupRouteClientInner({
     }
 
     if (!verificationResult.ok) {
+      recordRateLimit(verificationResult);
       showAuthError(verificationResult.message);
       return {
         message: verificationResult.message,
@@ -189,6 +192,7 @@ function SignupRouteClientInner({
     }
 
     if (!result.ok) {
+      recordRateLimit(result);
       showAuthError(result.message);
       return {
         message: result.message,

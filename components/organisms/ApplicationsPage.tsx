@@ -1,9 +1,13 @@
 import { WorkspaceEmptyState } from "./WorkspacePanels";
+import { useSchoolHiringAllowed } from "@/features/auth/use-school-hiring";
+import { useRateLimit } from "@/lib/rate-limit";
 import { useState } from "react";
 import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 
 import type { JobApplication, JobApplicationStatus } from "@/features/applications/types";
 import { useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
+import { hasRecordedApplicationTerms } from "@/features/applications/terms";
+import { AgreedTerms } from "../molecules/AgreedTerms";
 import { applicationPipeline, canTransitionApplication } from "@/features/applications/workflow";
 import type { Job } from "@/features/jobs/types";
 import { useJob, useMyJobs, useUpdateJob } from "@/features/jobs/use-jobs";
@@ -17,6 +21,8 @@ import { MatchScorePanel, Modal, PageHead, ProposalContent, SectionLoader } from
 type Tab = "best" | "pipeline" | "recommended";
 
 export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ctx" | "toast">) {
+  const hiringAllowed = useSchoolHiringAllowed();
+  const retryAfter = useRateLimit();
   const [tab, setTab] = useState<Tab>("best");
   const [minScore, setMinScore] = useState(0);
   const [scoreInput, setScoreInput] = useState("0");
@@ -54,7 +60,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       <PageHead
         title={job?.title ?? "Applications"}
         subtitle={`${job ? `${formatLocation(job)} - ${job.date} - ${formatPay(job)} - ` : ""}${applicationsQuery.data?.pagination.total ?? applications.length} applications`}
-        actions={<><Btn icon="plus" size="sm" onClick={() => go("post-job")}>Post Another Role</Btn>{selectedJobId ? <Btn variant="secondary" size="sm" icon="edit" onClick={() => go("post-job", { jobId: selectedJobId })}>Edit role</Btn> : null}{job?.status === "ACTIVE" || job?.status === "DRAFT" ? <Btn disabled={updateJob.isPending} loading={updateJob.isPending} loadingLabel="Closing" size="sm" variant="ghost" onClick={() => updateJob.mutate({ id: job.id, status: "CLOSED" })}>Close role</Btn> : null}</>}
+        actions={<><Btn icon="plus" size="sm" onClick={() => go("post-job")}>Post Another Role</Btn>{selectedJobId ? <Btn variant="secondary" size="sm" icon="edit" onClick={() => go("post-job", { jobId: selectedJobId })}>Edit role</Btn> : null}{job && job.status !== "CLOSED" ? <Btn disabled={updateJob.isPending} loading={updateJob.isPending} loadingLabel="Closing" size="sm" variant="ghost" onClick={() => updateJob.mutate({ id: job.id, status: "CLOSED" })}>Close role</Btn> : null}</>}
       />
 
       <div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center gap-3">
@@ -71,11 +77,11 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       {activeError && !activeLoading ? <EmptyState title="Matches unavailable" message={activeError.message || "You may not have permission to view matches for this job."} /> : null}
 
       {!activeLoading && !activeError && tab === "best" ? <div className="space-y-4">
-        {(rankedQuery.data?.applications ?? []).map(({ application, instructor, match }) => <div key={application.id} className="application-detail-card card card-pad-lg"><CandidateHeader instructor={instructor} status={application.status} onOpen={() => go("teacher-profile", { teacherId: instructor.id })} />{application.coverLetter ? <ProposalContent className="my-4 line-clamp-3 border-l-2 border-brand-tint-2 pl-4" preview value={application.coverLetter} /> : null}<MatchScorePanel match={match} /><StatusActions application={application} onOpen={(target) => selectedJobId ? go("applications", { applicationId: target.id, jobId: selectedJobId }) : undefined} pending={updateStatus.isPending} onHire={setHireTarget} onUpdate={(status) => updateStatus.mutate({ id: application.id, status })} /></div>)}
+        {(rankedQuery.data?.applications ?? []).map(({ application, instructor, match }) => <div key={application.id} className="application-detail-card card card-pad-lg"><CandidateHeader instructor={instructor} status={application.status} onOpen={() => go("teacher-profile", { teacherId: instructor.id })} />{application.coverLetter ? <ProposalContent className="my-4 line-clamp-3 border-l-2 border-brand-tint-2 pl-4" preview value={application.coverLetter} /> : null}<MatchScorePanel match={match} /><StatusActions application={application} onOpen={(target) => selectedJobId ? go("applications", { applicationId: target.id, jobId: selectedJobId }) : undefined} pending={updateStatus.isPending || Boolean(retryAfter)} onHire={setHireTarget} onUpdate={(status) => updateStatus.mutate({ id: application.id, status })} /></div>)}
         {rankedQuery.data?.applications.length === 0 ? <EmptyState title="No matching applications" message="No applications meet the selected minimum score." /> : null}
       </div> : null}
 
-      {!activeLoading && !activeError && tab === "pipeline" ? <div className="card overflow-hidden">{applications.length ? <div className="divide-y divide-border">{applications.map((application) => <div key={application.id} className="p-5"><CandidateHeader instructor={application.instructor} status={application.status} onOpen={() => go("teacher-profile", { teacherId: application.instructor?.id })} />{application.coverLetter ? <ProposalContent className="mt-3 line-clamp-3" preview value={application.coverLetter} /> : null}<StatusActions application={application} onOpen={(target) => selectedJobId ? go("applications", { applicationId: target.id, jobId: selectedJobId }) : undefined} pending={updateStatus.isPending} onHire={setHireTarget} onUpdate={(status) => updateStatus.mutate({ id: application.id, status })} /></div>)}</div> : <EmptyState title="No applications yet" message="Applications will appear here when instructors apply." />}</div> : null}
+      {!activeLoading && !activeError && tab === "pipeline" ? <div className="card overflow-hidden">{applications.length ? <div className="divide-y divide-border">{applications.map((application) => <div key={application.id} className="p-5"><CandidateHeader instructor={application.instructor} status={application.status} onOpen={() => go("teacher-profile", { teacherId: application.instructor?.id })} />{application.coverLetter ? <ProposalContent className="mt-3 line-clamp-3" preview value={application.coverLetter} /> : null}<StatusActions application={application} onOpen={(target) => selectedJobId ? go("applications", { applicationId: target.id, jobId: selectedJobId }) : undefined} pending={updateStatus.isPending || Boolean(retryAfter)} onHire={setHireTarget} onUpdate={(status) => updateStatus.mutate({ id: application.id, status })} /></div>)}</div> : <EmptyState title="No applications yet" message="Applications will appear here when instructors apply." />}</div> : null}
 
       {!activeLoading && !activeError && tab === "recommended" ? <div className="space-y-4">
         {(instructorsQuery.data?.instructors ?? []).map(({ instructor, match }) => <div key={instructor.id} className="application-detail-card card card-pad-lg"><CandidateHeader instructor={instructor} onOpen={() => go("teacher-profile", { teacherId: instructor.id })} /><div className="mt-4"><MatchScorePanel match={match} /></div></div>)}
@@ -97,11 +103,11 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
           <p className="mt-3 rounded-lg bg-warning-tint px-4 py-3 text-sm leading-6 text-ink">
             All other active applications for this job will be rejected automatically. Each affected teacher will see the updated outcome in My applications.
           </p>
-          <BookingPaymentNotice job={job} />
+          <AgreedTerms terms={hireTarget?.agreedTerms} /><BookingPaymentNotice job={hireTarget?.agreedTerms} />
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Btn variant="ghost" disabled={updateStatus.isPending} onClick={() => setHireTarget(null)}>Cancel</Btn>
             <Btn loading={updateStatus.isPending} onClick={() => {
-              if (hireTarget) updateStatus.mutate({ id: hireTarget.id, status: "HIRED" });
+              if (hiringAllowed && !retryAfter && hireTarget && hasRecordedApplicationTerms(hireTarget) && job?.status === "ACTIVE") updateStatus.mutate({ id: hireTarget.id, status: "HIRED" });
             }}>Hire & create booking</Btn>
           </div>
         </div>
@@ -115,8 +121,9 @@ function CandidateHeader({ instructor, status, onOpen }: { instructor?: MatchedI
 }
 
 function StatusActions({ application, onOpen, pending, onHire, onUpdate }: { application: JobApplication; onOpen?: (application: JobApplication) => void; pending: boolean; onHire: (application: JobApplication) => void; onUpdate: (status: JobApplicationStatus) => void }) {
+  const hiringAllowed = useSchoolHiringAllowed();
   const actionCandidates: readonly JobApplicationStatus[] = [...applicationPipeline, "REJECTED"];
-  const actions = actionCandidates.filter((status) => canTransitionApplication(application.status, status));
+  const actions = actionCandidates.filter((status) => canTransitionApplication(application.status, status) && (status !== "HIRED" || (hiringAllowed && hasRecordedApplicationTerms(application))));
   if (actions.length === 0) return null;
 
   return <div className="mt-4 flex flex-wrap gap-2">{onOpen ? <Btn iconRight="arrow" size="sm" onClick={() => onOpen(application)}>Open application</Btn> : null}{actions.map((status) => <Btn key={status} disabled={pending} size="sm" variant={status === "REJECTED" ? "danger" : "secondary"} onClick={() => status === "HIRED" ? onHire(application) : onUpdate(status)}>{status === "HIRED" ? "Hire & create booking" : formatStatus(status)}</Btn>)}</div>;

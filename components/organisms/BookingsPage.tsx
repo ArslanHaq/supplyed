@@ -1,4 +1,6 @@
 "use client";
+import { AgreedTerms } from "../molecules/AgreedTerms";
+
 import { formatPlannedUnits } from "@/features/jobs/work-units";
 
 import { useDropdown } from "@/features/dropdowns/use-dropdown";
@@ -327,6 +329,7 @@ function BookingCard({
           <div className="min-w-0">
             <button className="booking-placement-party" disabled={!otherParty.id} onClick={() => onOpenProfile(booking)} type="button">{otherParty.name}<Icon name="arrowRight" size={13} /></button>
             <h2>{booking.job.title}</h2>
+            {booking.termsStatus === "LEGACY_PARTIAL" ? <AgreedTerms terms={null} legacy /> : null}
           </div>
         </div>
         <div className="booking-placement-badges"><BookingStatusTag status={booking.status} />{booking.source === "DIRECT_HIRE" ? <span className="booking-placement-source">Direct hire</span> : null}</div>

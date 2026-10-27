@@ -1,9 +1,13 @@
+import { useRateLimit } from "@/lib/rate-limit";
+import { AgreedTerms } from "../molecules/AgreedTerms";
 import { formatPlannedUnits } from "@/features/jobs/work-units";
 import { useState } from "react";
 
 import { useCreateApplication, useMyApplications } from "@/features/applications/use-applications";
 import { isEmptyRichText, MAX_PROPOSAL_LENGTH } from "@/features/applications/rich-text";
+import { useBooking } from "@/features/bookings/use-bookings";
 import { useJob } from "@/features/jobs/use-jobs";
+import { isJobOpenForApplications } from "@/features/jobs/listing-window";
 import { useJobMatchScore } from "@/features/matching/use-matching";
 import type { RouteProps } from "@/types/supplyed";
 
@@ -11,14 +15,17 @@ import { Avatar, Btn, Field, Icon, Tag } from "../atoms";
 import { FormattedJobDescription, MatchScorePanel, Modal, ProposalEditor, SectionLoader } from "../molecules";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
+  const retryAfter = useRateLimit();
   const [open, setOpen] = useState(false);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const [coverLetter, setCoverLetter] = useState("");
   const [coverLetterTextLength, setCoverLetterTextLength] = useState(0);
   const [coverLetterError, setCoverLetterError] = useState<string>();
-  const jobQuery = useJob(ctx.jobId ?? "", "accessible");
+  const bookingQuery = useBooking(ctx.bookingId);
+  const jobQuery = useJob(ctx.bookingId ? "" : ctx.jobId ?? "", role === "institution" ? true : "accessible");
   const job = jobQuery.data;
   const positionFilled = job?.status === "FILLED";
+  const available = Boolean(job && isJobOpenForApplications(job));
   const existingApplicationQuery = useMyApplications(
     { jobId: ctx.jobId, limit: 1, page: 1 },
     role === "teacher" && Boolean(ctx.jobId),
@@ -29,8 +36,14 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   const createApplication = useCreateApplication({
     onSuccess: (result) => {
       if (!result.ok) {
-        if (result.status === 409) {
-          setApplicationSubmitted(true);
+        if (result.code === "JOB_RESERVED" || result.code === "JOB_UNAVAILABLE") {
+          void jobQuery.refetch();
+          setOpen(false);
+          toast({ title: "Job unavailable", msg: result.message, tone: "danger" });
+          return;
+        }
+        if (result.code === "APPLICATION_ALREADY_EXISTS") {
+          void existingApplicationQuery.refetch();
           setOpen(false);
           toast({ title: "Already applied", msg: "Your application for this job is already on record.", tone: "success" });
           return;
@@ -52,7 +65,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   });
 
   function submitApplication() {
-    if (!job || job.status !== "ACTIVE" || role !== "teacher" || createApplication.isPending || hasApplied) return;
+    if (!job || !isJobOpenForApplications(job) || role !== "teacher" || createApplication.isPending || retryAfter || hasApplied) return;
 
     const normalizedCoverLetter = coverLetter.trim();
     if (normalizedCoverLetter.length > MAX_PROPOSAL_LENGTH) {
@@ -68,6 +81,22 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
     if (createApplication.isPending) return;
     setOpen(false);
     setCoverLetterError(undefined);
+  }
+
+  if (ctx.bookingId) {
+    const booking = bookingQuery.data;
+    const date = (value?: string | null) => value ? new Date(value).toLocaleString("en-GB", { timeZone: "Europe/London" }) : "Not recorded";
+    return <div className="app-page job-detail-page">
+      <Btn variant="secondary" onClick={() => go("bookings", { bookingId: ctx.bookingId })}>Back to booking</Btn>
+      {bookingQuery.isLoading ? <SectionLoader rows={3} /> : booking ? <>
+        <h1 className="mt-5 font-heading text-2xl">{booking.job.title}</h1>
+        <AgreedTerms terms={booking.agreedTerms} legacy />
+        {!booking.agreedTerms ? <dl className="grid gap-4 text-sm sm:grid-cols-2">
+          <div><dt>Original dates (UK time)</dt><dd>{date(booking.startDate)} – {date(booking.endDate)}</dd></div>
+          <div><dt>Original pay and work units</dt><dd>{booking.payAmount == null ? "Not recorded" : `£${booking.payAmount} ${booking.payType ?? ""}`} · {formatPlannedUnits(booking)}</dd></div>
+        </dl> : null}
+      </> : <p role="alert">{bookingQuery.error?.message ?? "Booking unavailable."}</p>}
+    </div>;
   }
 
   if (!ctx.jobId) {
@@ -103,7 +132,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
       <nav aria-label="Job navigation" className="job-detail-navigation"><Btn icon="arrowLeft" size="sm" variant="ghost" onClick={() => ctx.bookingId ? go("bookings", { bookingId: ctx.bookingId }) : go(role === "teacher" ? "find-jobs" : "dashboard")}>{ctx.bookingId ? "Back to booking" : "Back to jobs"}</Btn><span>Role details</span></nav>
       <div className="two-col">
         <div>
-          <div className="mb-3.5 flex flex-wrap gap-1.5">{positionFilled ? <Tag tone="green">{role === "teacher" ? "You were hired" : "Position filled"}</Tag> : job.urgent ? <Tag tone="red">Urgent - act fast</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant matching" : "Open brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div>
+          <div className="mb-3.5 flex flex-wrap gap-1.5">{positionFilled ? <Tag tone="green">{"Position filled"}</Tag> : job.urgent ? <Tag tone="red">Urgent - act fast</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant matching" : "Open brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div>
           <h1 className="mb-2.5 font-heading text-[38px] leading-tight">{job.title}</h1>
           <div className="mb-6 flex flex-wrap gap-4">
             <div className="flex items-center gap-1.5">
@@ -120,7 +149,8 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
             <div className="flex items-center gap-1.5"><Icon name="pin" size={14} />{[job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"}</div>
             <div className="flex items-center gap-1.5"><Icon name="clock" size={14} />Posted {job.postedAt}</div>
           </div>
-          {positionFilled ? <div className="mb-6 rounded-xl border border-success bg-success-tint px-4 py-3 text-sm leading-6 text-graphite"><strong className="text-ink">{role === "teacher" ? "You were hired for this role." : "This role has been filled."}</strong> {role === "teacher" ? "The complete job details are shown below and remain available from your booking." : "The complete job details remain available to your school and the booked teacher."}</div> : null}
+          {job.status === "RESERVED" ? <p className="mb-5 rounded-xl bg-warning-tint p-4 text-sm">This position is reserved for an invited teacher. Applications are closed while the invitation is pending.</p> : null}
+          {positionFilled ? <div className="mb-6 rounded-xl border border-success bg-success-tint px-4 py-3 text-sm leading-6 text-graphite"><strong className="text-ink">{"This role has been filled."}</strong> {role === "teacher" ? "The complete job details are shown below and remain available from your booking." : "The complete job details remain available to your school and the booked teacher."}</div> : null}
           <section className="card mb-7 overflow-hidden border-brand-tint-2 bg-brand-tint">
             <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
               <div className="rounded-xl border-2 border-surface shadow-sm [&>div]:rounded-lg"><Avatar name={job.institution?.name || job.school} size="lg" src={job.institution?.imageUrl} /></div>
@@ -141,7 +171,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
           </section>
           <div className="grid-3 mb-7">
             <div className="card card-pad text-center"><div className="text-xs text-muted">{job.payType === "hourly" ? "Hourly rate" : job.payType === "fixed" ? "Fixed pay" : "Day rate"}</div><div className="font-heading text-[26px] text-brand">£{job.rate}</div></div>
-            <div className="card card-pad text-center"><div className="text-xs text-muted">Duration</div><div className="font-heading text-xl">1 Day</div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">Duration</div><div className="font-heading text-xl">{formatPlannedUnits(job)}</div></div>
             <div className="card card-pad text-center"><div className="text-xs text-muted">Experience</div><div className="font-heading text-xl">{job.minExperienceYears != null ? `${job.minExperienceYears}+ years` : "Not specified"}</div></div>
           </div>
           <div className="card card-pad-lg mb-5">
@@ -165,7 +195,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
               View school profile
             </Btn>
           ) : null}
-          {job.status === "ACTIVE" ? <Btn className="w-full" disabled={role === "teacher" && (hasApplied || existingApplicationQuery.isLoading)} size="lg" onClick={() => role === "institution" ? go("find-teachers", { jobId: job.id }) : setOpen(true)}>{role === "teacher" ? (hasApplied ? "Applied" : existingApplicationQuery.isLoading ? "Checking application..." : "Apply for job") : "Invite candidates"}</Btn> : null}
+          {available ? <Btn className="w-full" disabled={role === "teacher" && (hasApplied || existingApplicationQuery.isLoading)} size="lg" onClick={() => role === "institution" ? go("find-teachers", { jobId: job.id }) : setOpen(true)}>{role === "teacher" ? (hasApplied ? "Applied" : existingApplicationQuery.isLoading ? "Checking application..." : "Apply for job") : "Invite candidates"}</Btn> : null}
           {positionFilled ? <Btn className="w-full" icon="calendar" onClick={() => go("bookings", ctx.bookingId ? { bookingId: ctx.bookingId } : { jobId: job.id })}>{ctx.bookingId ? "View booking" : "View job bookings"}</Btn> : null}
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging", ctx.bookingId ? { bookingId: ctx.bookingId } : undefined)}>Message {role === "teacher" ? "school" : "teacher"}</Btn>
         </aside>
@@ -213,7 +243,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
                 <p className="proposal-submit-note"><Icon name="file" size={16} /><span>Your application{isEmptyRichText(coverLetter) ? "" : " and proposal"} will be shared with {job.institution?.name || job.school}.</span></p>
                 <div className="proposal-action-buttons">
                 <Btn disabled={createApplication.isPending} variant="ghost" onClick={closeModal}>Cancel</Btn>
-                <Btn disabled={coverLetter.length > MAX_PROPOSAL_LENGTH} iconRight="arrowRight" loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
+                <Btn disabled={Boolean(retryAfter) || coverLetter.length > MAX_PROPOSAL_LENGTH} iconRight="arrowRight" loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
                 </div>
               </footer>
             </article>

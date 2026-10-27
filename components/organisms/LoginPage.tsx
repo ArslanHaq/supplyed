@@ -1,3 +1,4 @@
+import { useRateLimit } from "@/lib/rate-limit";
 import { useState } from "react";
 
 import type { SocialAuthAvailability } from "@/types/supplyed";
@@ -33,6 +34,7 @@ export function LoginPage({
   onSwitchSignup: () => void;
   socialAuth: SocialAuthAvailability;
 }) {
+  const retryAfter = useRateLimit();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -56,7 +58,7 @@ export function LoginPage({
 
   async function handleCredentialSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || retryAfter) return;
     if (!validateCredentials()) return;
 
     setPending(true);
@@ -171,7 +173,7 @@ export function LoginPage({
               </button>
             </div>
 
-            <Btn className="w-full" loading={pending} loadingLabel="Signing in" size="lg" type="submit" iconRight="arrow">
+            <Btn className="w-full" loading={pending} loadingLabel="Signing in" size="lg" disabled={Boolean(retryAfter)} type="submit" iconRight="arrow">
               Continue securely
             </Btn>
           </form>

@@ -1,14 +1,18 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { reportSchoolInactive } from "@/features/auth/use-school-hiring";
+import { recordRateLimit } from "@/lib/rate-limit";
 import { userFacingError } from "@/lib/user-facing-error";
 import { Icon } from "../atoms";
 
-type InvitationError = { message: string; status?: number; requestId?: string };
+type InvitationError = { message: string; status?: number; requestId?: string; code?: string; retryAfter?: number };
 
 export function useInvitationError() {
   const [error, updateError] = useState<InvitationError | null>(null);
   const setError = useCallback((message: string, details: Omit<InvitationError, "message"> = {}) => {
+    recordRateLimit(details);
+    reportSchoolInactive(details);
     updateError(message ? { message, status: details.status, requestId: details.requestId } : null);
   }, []);
   return [error, setError] as const;

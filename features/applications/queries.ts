@@ -117,6 +117,8 @@ function toJobApplication(application: (typeof seedApplications)[number]): JobAp
 
   return {
     coverLetter: application.coverLetter,
+    agreedTerms: null,
+    termsStatus: "LEGACY_UNVERIFIED",
     createdAt: application.appliedAt,
     id: application.id,
     instructor: teacher

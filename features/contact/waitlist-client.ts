@@ -7,6 +7,7 @@ import {
   type WaitlistDetailsState,
 } from "./actions";
 import { validateWaitlist, validateWaitlistDetails } from "./validation";
+import { recordRateLimit } from "@/lib/rate-limit";
 import { fetchJson } from "@/lib/query/fetch-json";
 import type { Dropdown } from "@/features/dropdowns/types";
 import { refreshDropdownsAfterFailure } from "@/features/dropdowns/refresh";
@@ -26,6 +27,7 @@ export async function submitWaitlistAction(
     const errors = validateWaitlist(form, choices);
     if (Object.keys(errors).length) { window.dispatchEvent(new Event("supplyed:refresh-dropdowns")); return { ok: false, message: "Some choices have changed. Review the highlighted fields.", fieldErrors: errors }; }
     const result = await foundingInterestAction(previous, form);
+    recordRateLimit(result);
     refreshDropdownsAfterFailure(result);
     return result;
   } catch {
@@ -46,6 +48,7 @@ export async function submitWaitlistDetailsAction(
     const collection = await fetchJson<Dropdown>("/api/dropdowns/waitlistPhase");
     if (form.getAll("phases").some(value => !collection.options.some(option => option.value === value))) { window.dispatchEvent(new Event("supplyed:refresh-dropdowns")); return { ok: false, message: "Review your teaching phases.", fieldErrors: { phases: "A selected phase is no longer available." } }; }
     const result = await saveWaitlistDetailsAction(previous, form);
+    recordRateLimit(result);
     refreshDropdownsAfterFailure(result);
     return result;
   } catch {

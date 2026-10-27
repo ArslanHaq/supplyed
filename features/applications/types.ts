@@ -1,3 +1,4 @@
+import type { OfferedJobTerms } from "@/features/jobs/offered-terms";
 export type JobApplicationStatus = "APPLIED" | "HIRED" | "REJECTED" | "SHORTLISTED" | "VIEWED";
 
 export type ApplicantSummary = {
@@ -16,6 +17,8 @@ export type ApplicantSummary = {
 };
 
 export type JobApplication = {
+  agreedTerms: OfferedJobTerms | null;
+  termsStatus: "RECORDED" | "LEGACY_UNVERIFIED";
   /** Other active applications rejected atomically when this application was hired. */
   automaticallyRejectedCount?: number;
   coverLetter?: string | null;

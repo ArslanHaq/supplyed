@@ -172,7 +172,7 @@ async function issueLoginVerificationChallenge(email: string, message: string) {
 
 function toAuthActionError(error: unknown, fallback = "We could not complete that auth request.") {
   if (error instanceof ApiError) {
-    return actionError(error.message || fallback);
+    return actionError(error.message || fallback, { code: error.code, status: error.status, fieldErrors: error.fieldErrors, retryAfter: error.retryAfter, requestId: error.requestId });
   }
 
   if (error instanceof Error && error.message) {

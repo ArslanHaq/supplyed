@@ -3,6 +3,16 @@ const fallbackMessage = "We couldn't complete this request. Please try again.";
 /** Keep diagnostics in error metadata, never in customer-facing copy. */
 export function userFacingError(message: string, options: { status?: number; code?: string } = {}): string {
   const clean = message.replace(/\s*\(?Support reference:[\s\S]*$/i, "").trim();
+  const marketplaceMessages: Record<string, string> = {
+    SCHOOL_INACTIVE: "Your school must be active and approved before publishing, inviting or hiring. Check your account status.",
+    JOB_RESERVED: "This role is reserved for an invited teacher. Review its latest invitation status.",
+    JOB_UNAVAILABLE: "This role is no longer available for applications or hiring.",
+    JOB_TERMS_LOCKED: "These terms are locked to preserve the original offer. Create a new job to offer different terms.",
+    JOB_TERMS_CHANGED: "The terms have changed. Send a new invitation for the teacher to review and accept.",
+    APPLICATION_TERMS_UNVERIFIED: "Original agreed terms are unavailable. Send a new invitation for the teacher to accept.",
+    JOB_HISTORY_PROTECTED: "This job has history and cannot be deleted. Close it to preserve its records.",
+  };
+  if (options.code && marketplaceMessages[options.code]) return marketplaceMessages[options.code];
   if (options.status === 401 || options.code === "SESSION_EXPIRED") return "Your session expired. Sign in again to continue.";
   if (options.status === 408 || options.status === 504 || /timeout|timed out|aborted/i.test(clean)) return "This is taking longer than expected. Please try again.";
   if (options.status && options.status >= 500) return "Something went wrong on our side. Please try again shortly.";

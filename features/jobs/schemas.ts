@@ -17,7 +17,7 @@ import type {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-const JOB_STATUSES: JobStatus[] = ["DRAFT", "ACTIVE", "EXPIRED", "FILLED", "CLOSED", "SUSPENDED"];
+const JOB_STATUSES: JobStatus[] = ["DRAFT", "ACTIVE", "RESERVED", "EXPIRED", "FILLED", "CLOSED", "SUSPENDED"];
 
 export function normalizeJobFilters(filters: JobListFilters = {}): JobListFilters {
   return {
@@ -70,6 +70,7 @@ export function normalizeMyJobs(result: { jobs?: BackendJobResponse[]; paginatio
     ...normalizePaginatedJobs(result, filters),
     statusCounts: {
       ACTIVE: counts.ACTIVE ?? 0,
+      RESERVED: counts.RESERVED ?? 0,
       ALL: counts.ALL ?? 0,
       CLOSED: counts.CLOSED ?? 0,
       DRAFT: counts.DRAFT ?? 0,
@@ -151,6 +152,9 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
 
   return {
     id: job.id,
+    canDelete: job.canDelete === true,
+    termsLocked: job.termsLocked !== false,
+    hasBeenPublished: job.hasBeenPublished === true,
     address: job.address?.trim() || null,
     city,
     countryCode: job.countryCode?.trim() || "GB",

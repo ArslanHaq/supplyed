@@ -11,7 +11,7 @@ import type { AuthUser } from "./types";
 export async function getCurrentUser(): Promise<AuthUser | null> {
   if (backendEnabled()) {
     return normalizeAuthUser(
-      await api.get<unknown>("/auth/me", {
+      await api.get<unknown>("/users/me", {
         next: { tags: ["auth", "auth:me"] },
       }),
     );

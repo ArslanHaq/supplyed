@@ -1,4 +1,6 @@
 import { signOut } from "next-auth/react";
+import { apiErrorDetails } from "@/lib/api-error-details";
+import { rateLimitError, recordRateLimit } from "@/lib/rate-limit";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { invitationLoginHref } from "@/lib/invitation-links";
@@ -23,6 +25,8 @@ function withQuery(path: string, query?: FetchJsonOptions["query"]) {
 }
 
 export async function fetchJson<Data>(path: string, options: FetchJsonOptions = {}): Promise<Data> {
+  const limited = rateLimitError();
+  if (limited) throw limited;
   let response: Response;
   try {
     response = await fetch(withQuery(path, options.query), {
@@ -47,7 +51,9 @@ export async function fetchJson<Data>(path: string, options: FetchJsonOptions = 
       });
     }
 
-    throw Object.assign(new Error(userFacingError(message, { status: response.status, code })), { status: response.status, code, requestId });
+    const error = Object.assign(new Error(userFacingError(message, { status: response.status, code })), { status: response.status, code, requestId, ...apiErrorDetails(payload, response.headers.get("Retry-After")) });
+    recordRateLimit(error);
+    throw error;
   }
 
   try {

@@ -35,7 +35,7 @@ export async function createApplicationAction(input: ApplicationCreateInput) {
     return actionOk(normalizeApplication(application), "Application submitted.");
   } catch (error) {
     return actionError(readApplicationError(error), {
-      code: error instanceof ApiError ? error.code : undefined,
+      retryAfter: error instanceof ApiError ? error.retryAfter : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, code: error instanceof ApiError ? error.code : undefined,
       requestId: error instanceof ApiError ? error.requestId : undefined,
       status: error instanceof ApiError ? error.status : undefined,
     });
@@ -60,7 +60,7 @@ export async function updateApplicationStatusAction(input: ApplicationStatusUpda
     return actionOk(normalizeApplication(application), "Application status updated.");
   } catch (error) {
     return actionError(readApplicationError(error), {
-      code: error instanceof ApiError ? error.code : undefined,
+      retryAfter: error instanceof ApiError ? error.retryAfter : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, code: error instanceof ApiError ? error.code : undefined,
       requestId: error instanceof ApiError ? error.requestId : undefined,
       status: error instanceof ApiError ? error.status : undefined,
     });

@@ -1,4 +1,6 @@
 "use client";
+import { apiErrorDetails } from "@/lib/api-error-details";
+import { recordRateLimit, useRateLimit } from "@/lib/rate-limit";
 
 import { useEffect, useState } from "react";
 
@@ -30,12 +32,15 @@ async function readResponse(response: Response) {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     const message = Array.isArray(payload?.message) ? payload.message.join(" ") : payload?.message;
-    throw new Error(message || (response.status === 410 ? "This approval link has expired." : "This approval link is not valid."));
+    const error = Object.assign(new Error(message || (response.status === 410 ? "This approval link has expired." : "This approval link is not valid.")), { status: response.status, code: payload?.code, requestId: payload?.meta?.requestId, ...apiErrorDetails(payload, response.headers.get("Retry-After")) });
+    recordRateLimit(error);
+    throw error;
   }
   return payload as ApprovalReview;
 }
 
 export function SignatoryApprovalPage({ token }: { token: string }) {
+  const retryAfter = useRateLimit();
   const [approval, setApproval] = useState<ApprovalReview>();
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
@@ -72,7 +77,7 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
   }, [token]);
 
   async function decide(action: "approve" | "decline") {
-    if (pending || approval?.status !== "PENDING") return;
+    if (pending || retryAfter || approval?.status !== "PENDING") return;
     if (action === "approve" && !acceptTerms) {
       setError("Accept the trust approval terms before approving this school.");
       return;
@@ -146,13 +151,13 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
                   <div className="marketing-approval-actions flex flex-col gap-3 sm:flex-row sm:justify-end">
                     {declining ? (
                       <>
-                        <Btn variant="ghost" disabled={pending} onClick={() => setDeclining(false)}>Cancel</Btn>
-                        <Btn variant="danger" loading={pending} onClick={() => void decide("decline")}>Confirm decline</Btn>
+                        <Btn variant="ghost" disabled={pending || Boolean(retryAfter)} onClick={() => setDeclining(false)}>Cancel</Btn>
+                        <Btn variant="danger" disabled={Boolean(retryAfter)} loading={pending} onClick={() => void decide("decline")}>Confirm decline</Btn>
                       </>
                     ) : (
                       <>
-                        <Btn variant="secondary" disabled={pending} onClick={() => setDeclining(true)}>Decline</Btn>
-                        <Btn disabled={pending} onClick={() => {
+                        <Btn variant="secondary" disabled={pending || Boolean(retryAfter)} onClick={() => setDeclining(true)}>Decline</Btn>
+                        <Btn disabled={pending || Boolean(retryAfter)} onClick={() => {
                           setAcceptTerms(false);
                           setError(undefined);
                           setApproveOpen(true);
@@ -194,8 +199,8 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
           </div>
           {error ? <div className="mt-4 rounded-xl border border-danger bg-danger-tint p-3 text-sm font-semibold text-danger" role="alert">{error}</div> : null}
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Btn variant="ghost" disabled={pending} onClick={() => setApproveOpen(false)}>Cancel</Btn>
-            <Btn loading={pending} onClick={() => void decide("approve")}>Confirm approval</Btn>
+            <Btn variant="ghost" disabled={pending || Boolean(retryAfter)} onClick={() => setApproveOpen(false)}>Cancel</Btn>
+            <Btn disabled={Boolean(retryAfter)} loading={pending} onClick={() => void decide("approve")}>Confirm approval</Btn>
           </div>
         </div>
       </Modal>

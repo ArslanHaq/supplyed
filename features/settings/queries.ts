@@ -249,7 +249,7 @@ export async function getSettingsProfileSnapshot(): Promise<SettingsProfileSnaps
   }
 
   const user = normalizeUser(
-    await api.get<unknown>("/auth/me", { cache: "no-store" }),
+    await api.get<unknown>("/users/me", { cache: "no-store" }),
     fallbackRole,
     authContext.userId,
     authContext.email ?? undefined,

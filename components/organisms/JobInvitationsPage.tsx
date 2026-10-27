@@ -1,4 +1,5 @@
 "use client";
+import { useRateLimit } from "@/lib/rate-limit";
 import { formatPlannedUnits } from "@/features/jobs/work-units";
 
 import { useDropdown } from "@/features/dropdowns/use-dropdown";
@@ -79,6 +80,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useInvitationError();
+  const retryAfter = useRateLimit();
   const [conflicted, setConflicted] = useState(false);
   const [copyLink, setCopyLink] = useState("");
   useEffect(() => {
@@ -88,7 +90,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
   }, [status, storageKey]);
 
   async function decide(decision: InvitationDecision) {
-    if (busyRef.current) return;
+    if (busyRef.current || retryAfter) return;
     busyRef.current = true; setBusy(true); setError("");
     if (storageKey) { try { sessionStorage.setItem(storageKey, decision); } catch {} }
     try {
@@ -99,7 +101,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
         if (!result.uncertain && storageKey) { try { sessionStorage.removeItem(storageKey); } catch {} }
         if (result.status === 409) {
           setConflicted(true);
-          for (const queryKey of [queryKeys.teachers.all, queryKeys.publicProfiles.all]) void client.invalidateQueries({ queryKey });
+          for (const queryKey of [queryKeys.jobs.all, queryKeys.invitations.all, queryKeys.notifications.all, queryKeys.teachers.all, queryKeys.publicProfiles.all]) void client.invalidateQueries({ queryKey });
         }
         if (result.status === 401) { window.location.assign(invitationLoginHref(`/job-invitations/${id}`)); return; }
         await query.refetch();
@@ -108,7 +110,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
       setRetry(null); setConfirm(null);
       if (storageKey) { try { sessionStorage.removeItem(storageKey); } catch {} }
       if (result.data.invitation) client.setQueryData(queryKeys.invitations.detail(id), result.data.invitation);
-      for (const key of [queryKeys.invitations.all, queryKeys.jobs.all, queryKeys.bookings.all, queryKeys.applications.all, queryKeys.teachers.all, queryKeys.publicProfiles.all, queryKeys.conversations.all]) void client.invalidateQueries({ queryKey: key });
+      for (const key of [queryKeys.notifications.all, queryKeys.invitations.all, queryKeys.jobs.all, queryKeys.bookings.all, queryKeys.applications.all, queryKeys.teachers.all, queryKeys.publicProfiles.all, queryKeys.conversations.all]) void client.invalidateQueries({ queryKey: key });
       if (result.data.booking) { client.setQueryData(queryKeys.bookings.detail(result.data.booking.id), result.data.booking); go("bookings", { bookingId: result.data.booking.id }); }
       else toast({ title: decision === "decline" ? "Invitation declined" : "Invitation withdrawn", msg: "The invitation status has been updated.", tone: "success" });
     } catch { setError("The result could not be confirmed. Retry the same response safely, or refresh to check its status."); setRetry(decision); }
@@ -129,7 +131,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
     {invitation && status ? <>
       <section className="card mb-5 overflow-hidden">
         <div className="flex flex-wrap items-start gap-4 border-b border-border bg-brand-tint p-5 sm:p-7"><Avatar name={counterpart} src={role === "institution" ? invitation.instructor.imageUrl : invitation.institution.imageUrl} size="lg" /><div className="min-w-0 flex-1 basis-44"><p className="mb-1 text-sm text-muted">{role === "institution" ? `Invitation to ${counterpart}` : `An offer from ${counterpart}`}</p><h1 className="font-heading text-2xl font-semibold sm:text-3xl">{invitation.job.title}</h1></div><StatusTag status={status} /></div>
-        <div className="p-5 sm:p-7" role="status"><p className="font-semibold">{status === "EXPIRED" ? "This invitation has expired and can no longer be accepted." : status === "ACCEPTED" ? "Invitation accepted — a booking was created." : status === "DECLINED" ? "The teacher declined this invitation." : status === "CANCELLED" ? "This invitation has been withdrawn or the position is no longer available." : role === "institution" ? "Invitation sent — awaiting teacher acceptance" : "You have been invited to this job."}</p><p className="mt-2 text-sm leading-6 text-muted">{pending ? "No booking exists yet. The position and teacher are not reserved until acceptance." : status === "ACCEPTED" ? "Manage the placement, completion and invoicing from the booking." : "No booking was created by this invitation."}</p>{pending ? <p className="mt-3 text-sm font-medium">Respond by <DateText value={invitation.expiresAt} /></p> : null}</div>
+        <div className="p-5 sm:p-7" role="status"><p className="font-semibold">{status === "EXPIRED" ? "This invitation has expired and can no longer be accepted." : status === "ACCEPTED" ? "Invitation accepted — a booking was created." : status === "DECLINED" ? "The teacher declined this invitation." : status === "CANCELLED" ? "This invitation has been withdrawn or the position is no longer available." : role === "institution" ? "Invitation sent — awaiting teacher acceptance" : "You have been invited to this job."}</p><p className="mt-2 text-sm leading-6 text-muted">{pending ? "No booking exists yet. This position is reserved exclusively for the invited teacher until a decision or expiry." : status === "ACCEPTED" ? "Manage the placement, completion and invoicing from the booking." : "No booking was created by this invitation."}</p>{pending ? <p className="mt-3 text-sm font-medium">Respond by <DateText value={invitation.expiresAt} /></p> : null}</div>
       </section>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5 xl:col-start-1 xl:row-start-1">
@@ -187,17 +189,17 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
           {pending && !invitationCanAccept(invitation) ? <p className="mt-3 text-sm leading-6 text-muted">This job is currently unavailable for acceptance. The school may need to update it and send a new invitation.</p> : null}
           <div className="mt-4 grid gap-2">
             <Btn icon="building" variant="secondary" onClick={() => go("institution-profile", { institutionId: invitation.institution.id, jobId: invitation.job.id })}>View school profile</Btn>
-            {retry && pending && !query.error ? <><p className="mb-2 text-sm text-muted">Your previous response is unconfirmed. Retry that same response to recover its result.</p><Btn disabled={busy} loading={busy} onClick={() => void decide(retry)}>Retry {retry === "cancel" ? "withdrawal" : retry === "accept" ? "acceptance" : "decline"}</Btn></> : pending && !query.error ? role === "teacher" ? <><Btn icon="check" disabled={busy || !canAccept || query.isFetching} onClick={() => setConfirm("accept")}>Accept invitation</Btn><Btn variant="secondary" disabled={busy || query.isFetching} onClick={() => setConfirm("decline")}>Decline invitation</Btn></> : <Btn variant="secondary" disabled={busy || query.isFetching} onClick={() => setConfirm("cancel")}>Withdraw invitation</Btn> : null}
+            {retry && pending && !query.error ? <><p className="mb-2 text-sm text-muted">Your previous response is unconfirmed. Retry that same response to recover its result.</p><Btn disabled={Boolean(retryAfter) || busy} loading={busy} onClick={() => void decide(retry)}>Retry {retry === "cancel" ? "withdrawal" : retry === "accept" ? "acceptance" : "decline"}</Btn></> : pending && !query.error ? role === "teacher" ? <><Btn icon="check" disabled={Boolean(retryAfter) || busy || !canAccept || query.isFetching} onClick={() => setConfirm("accept")}>Accept invitation</Btn><Btn variant="secondary" disabled={Boolean(retryAfter) || busy || query.isFetching} onClick={() => setConfirm("decline")}>Decline invitation</Btn></> : <Btn variant="secondary" disabled={Boolean(retryAfter) || busy || query.isFetching} onClick={() => setConfirm("cancel")}>Withdraw invitation</Btn> : null}
             {status === "ACCEPTED" && invitation.bookingId ? <Btn iconRight="arrowRight" onClick={() => go("bookings", { bookingId: invitation.bookingId! })}>View booking</Btn> : null}
             {role === "institution" ? <Btn icon="copy" variant="secondary" onClick={() => void copy()}>Copy invitation link</Btn> : null}
-            <Btn variant="ghost" disabled={busy} loading={query.isFetching} onClick={() => void query.refetch()}>Refresh status</Btn>
+            <Btn variant="ghost" disabled={Boolean(retryAfter) || busy} loading={query.isFetching} onClick={() => void query.refetch()}>Refresh status</Btn>
           </div>
           {copyLink ? <label className="mt-3 block text-xs text-muted">Invitation link<input className="input mt-2" readOnly value={copyLink} onFocus={event => event.target.select()} /></label> : null}
-          <div className="mt-5 border-t border-border pt-5 text-xs leading-6 text-muted"><p>Current job status: <strong className="text-ink">{invitation.jobStatus.toLowerCase()}</strong></p>{invitation.publishOnDecline ? <p className="mt-2">{status === "DECLINED" ? invitation.jobStatus === "ACTIVE" ? "This job is now public and other teachers can apply." : "The job remains unavailable for public applications." : "If declined while still eligible, this private job becomes public so other teachers can apply. Withdrawal or expiry will not publish it."}</p> : <p className="mt-2">Declining this invitation does not change the job’s visibility.</p>}<p className="mt-2">Payment follows the normal invoice process after a completed booking.</p></div>
+          <div className="mt-5 border-t border-border pt-5 text-xs leading-6 text-muted"><p>Current job status: <strong className="text-ink">{invitation.jobStatus.toLowerCase()}</strong></p>{invitation.publishOnDecline ? <p className="mt-2">{status === "DECLINED" ? invitation.jobStatus === "ACTIVE" ? "This job is now public and other teachers can apply." : "The job remains unavailable for public applications." : "After decline or school cancellation, an eligible job normally becomes public again. Its current status is refreshed from the server."}</p> : <p className="mt-2">The server decides whether this job can be reopened after a decision.</p>}<p className="mt-2">Payment follows the normal invoice process after a completed booking.</p></div>
         </aside>
       </div>
     </> : null}
-    <Modal open={Boolean(confirm) && pending} onClose={() => { if (!busy) setConfirm(null); }} label="Confirm invitation response"><div className="p-6"><h2 className="font-heading text-xl font-semibold">{confirm === "accept" ? "Accept these placement terms?" : confirm === "decline" ? "Decline this invitation?" : "Withdraw this invitation?"}</h2><p className="mt-3 text-sm leading-6 text-muted">{confirm === "accept" ? "Accepting creates your confirmed booking at the dates and pay shown. You do not need to apply separately." : confirm === "decline" ? "The school will see your response. This does not close your conversation or reject an existing application." : "The teacher will no longer be able to accept this invitation. Withdrawal does not change the job’s visibility."}</p>{error ? <InvitationErrorNotice error={error} /> : null}<div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Btn variant="secondary" disabled={busy} onClick={() => setConfirm(null)}>Back</Btn><Btn loading={busy} disabled={busy || !pending || Boolean(query.error) || query.isFetching || (confirm === "accept" && !canAccept)} onClick={() => { if (confirm) void decide(confirm); }}>{confirm === "accept" ? "Accept and confirm booking" : confirm === "decline" ? "Confirm decline" : "Confirm withdrawal"}</Btn></div></div></Modal>
+    <Modal open={Boolean(confirm) && pending} onClose={() => { if (!busy) setConfirm(null); }} label="Confirm invitation response"><div className="p-6"><h2 className="font-heading text-xl font-semibold">{confirm === "accept" ? "Accept these placement terms?" : confirm === "decline" ? "Decline this invitation?" : "Withdraw this invitation?"}</h2><p className="mt-3 text-sm leading-6 text-muted">{confirm === "accept" ? "Accepting creates your confirmed booking at the dates and pay shown. You do not need to apply separately." : confirm === "decline" ? "The school will see your response. This does not close your conversation or reject an existing application." : "The teacher will no longer be able to accept this invitation. Withdrawal does not change the job’s visibility."}</p>{error ? <InvitationErrorNotice error={error} /> : null}<div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Btn variant="secondary" disabled={Boolean(retryAfter) || busy} onClick={() => setConfirm(null)}>Back</Btn><Btn loading={busy} disabled={Boolean(retryAfter) || busy || !pending || Boolean(query.error) || query.isFetching || (confirm === "accept" && !canAccept)} onClick={() => { if (confirm) void decide(confirm); }}>{confirm === "accept" ? "Accept and confirm booking" : confirm === "decline" ? "Confirm decline" : "Confirm withdrawal"}</Btn></div></div></Modal>
   </div>;
 }
 

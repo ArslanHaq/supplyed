@@ -63,8 +63,11 @@ export function normalizeApplicationCreateInput(input: ApplicationCreateInput): 
 export function normalizeApplication(application: JobApplication): JobApplication {
   return {
     ...application,
+    agreedTerms: application.termsStatus === "RECORDED" ? application.agreedTerms : null,
+    termsStatus: application.termsStatus === "RECORDED" && application.agreedTerms ? "RECORDED" : "LEGACY_UNVERIFIED",
+    jobDetails: application.termsStatus === "RECORDED" ? application.agreedTerms : null,
     status: normalizeApplicationStatus(application.status),
-    jobName: typeof application.jobName === "string" ? application.jobName.trim() || null : null,
+    jobName: (application.termsStatus === "RECORDED" ? application.agreedTerms?.title : null) ?? (typeof application.jobName === "string" ? application.jobName.trim() || null : null),
     createdAt: readDateIso(application.createdAt),
     updatedAt: readDateIso(application.updatedAt),
     instructor: application.instructor

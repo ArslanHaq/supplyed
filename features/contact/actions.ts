@@ -92,7 +92,7 @@ export async function registerInterestAction(
       "Thanks. We received your interest and will contact you before launch.",
     );
   } catch (error) {
-    return actionError(apiMessage(error), { code: error instanceof ApiError ? error.code : undefined });
+    return actionError(apiMessage(error), { retryAfter: error instanceof ApiError ? error.retryAfter : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, code: error instanceof ApiError ? error.code : undefined });
   }
 }
 
@@ -152,7 +152,7 @@ export async function foundingInterestAction(
         : "You're on the waitlist. No checks, no commitment.",
     );
   } catch (error) {
-    return actionError(apiMessage(error), { code: error instanceof ApiError ? error.code : undefined });
+    return actionError(apiMessage(error), { retryAfter: error instanceof ApiError ? error.retryAfter : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, code: error instanceof ApiError ? error.code : undefined });
   }
 }
 
@@ -189,6 +189,6 @@ export async function saveWaitlistDetailsAction(
       "Your extra details have been saved. Thank you!",
     );
   } catch (error) {
-    return actionError(apiMessage(error), { code: error instanceof ApiError ? error.code : undefined });
+    return actionError(apiMessage(error), { retryAfter: error instanceof ApiError ? error.retryAfter : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, code: error instanceof ApiError ? error.code : undefined });
   }
 }

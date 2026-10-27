@@ -35,12 +35,17 @@ export async function createJobAction(input: JobCreateInput): Promise<ActionResu
       return {
         ...actionError("Your job was saved, but publishing could not be confirmed. Try again to finish publishing this same job.", {
           code: readJobActionCode(error),
+          retryAfter: error instanceof ApiError ? error.retryAfter : undefined,
+          fieldErrors: readJobFieldErrors(error),
+          status: error instanceof ApiError ? error.status : undefined,
+          requestId: error instanceof ApiError ? error.requestId : undefined,
         }),
         savedJobId,
       };
     }
     return actionError(readJobActionError(error, "Job could not be saved. Check the details and try again."), {
       code: readJobActionCode(error),
+      retryAfter: error instanceof ApiError ? error.retryAfter : undefined,
       fieldErrors: readJobFieldErrors(error),
       requestId: error instanceof ApiError ? error.requestId : undefined,
       status: error instanceof ApiError ? error.status : undefined,
@@ -54,6 +59,11 @@ export async function updateJobAction(input: JobUpdateInput) {
     let fieldErrors = validateJobInput(input, { partial: true });
     if (Object.keys(fieldErrors).length) return actionError("Check the highlighted job details.", { fieldErrors });
     const normalizedInput = normalizeJobUpdateInput(input);
+    const materialKeys = ["title", "description", "subjects", "otherSubjects", "requiredSkills", "otherSkills", "minExperienceYears", "keyStages", "address", "city", "county", "postalCode", "countryCode", "latitude", "longitude", "parkingInfo", "startDate", "endDate", "payAmount", "payType", "hours", "days"];
+    if (materialKeys.some(key => key in input)) {
+      const current = await api.get<BackendJobResponse>(`/jobs/mine/${encodeURIComponent(input.id)}`, { cache: "no-store" });
+      if (current.termsLocked !== false) return actionError("Create a new job to offer different terms.", { code: "JOB_TERMS_LOCKED", status: 409 });
+    }
     const changesDates = (["startDate", "endDate", "liveFrom", "expiresAt"] as const).some(key => normalizedInput[key] !== undefined);
     const changesUnits = (["hours", "days", "payType"] as const).some(key => normalizedInput[key] !== undefined);
     if (input.status === "ACTIVE" || changesDates || changesUnits) {
@@ -76,10 +86,12 @@ export async function updateJobAction(input: JobUpdateInput) {
     revalidateTag("jobs", "max");
     revalidateTag("jobs:mine", "max");
     revalidateTag(`job:${normalizedInput.id}`, "max");
+    for (const tag of ["applications", "invitations", "notifications"]) revalidateTag(tag, "max");
     return actionOk(normalizeBackendJob(job), "Job updated.");
   } catch (error) {
     return actionError(readJobActionError(error, "Job could not be updated. Check the details and try again."), {
       code: readJobActionCode(error),
+      retryAfter: error instanceof ApiError ? error.retryAfter : undefined,
       fieldErrors: readJobFieldErrors(error),
       requestId: error instanceof ApiError ? error.requestId : undefined,
       status: error instanceof ApiError ? error.status : undefined,
@@ -91,6 +103,8 @@ export async function deleteJobAction(id: string) {
   if (typeof id !== "string" || !id.trim()) return actionError("Choose a valid job.", { code: "JOB_ID_REQUIRED" });
 
   try {
+    const current = await api.get<BackendJobResponse>(`/jobs/mine/${encodeURIComponent(id)}`, { cache: "no-store" });
+    if (current.canDelete !== true) return actionError("Close this job instead to preserve its history.", { code: "JOB_HISTORY_PROTECTED", status: 409 });
     await api.delete(`/jobs/${id}`);
 
     revalidateTag("jobs", "max");
@@ -99,7 +113,11 @@ export async function deleteJobAction(id: string) {
     return actionOk(null, "Job deleted.");
   } catch (error) {
     return actionError(readJobActionError(error, "Job could not be deleted. Try again."), {
+      status: error instanceof ApiError ? error.status : undefined,
+      requestId: error instanceof ApiError ? error.requestId : undefined,
+      fieldErrors: readJobFieldErrors(error),
       code: readJobActionCode(error),
+      retryAfter: error instanceof ApiError ? error.retryAfter : undefined,
     });
   }
 }
@@ -115,11 +133,5 @@ function readJobActionCode(error: unknown) {
 }
 
 function readJobFieldErrors(error: unknown): Record<string, string> | undefined {
-  if (!(error instanceof ApiError) || !error.payload || typeof error.payload !== "object") return undefined;
-  const payload = error.payload as { data?: unknown; fieldErrors?: unknown };
-  const candidate = payload.fieldErrors ?? (payload.data && typeof payload.data === "object" ? (payload.data as { fieldErrors?: unknown }).fieldErrors : undefined);
-  if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) return candidate as Record<string, string>;
-  if (/listing expiry.*live-from|expiry after the live-from/i.test(error.message)) return { expiresAt: "Please choose a listing expiry after the live-from date." };
-  if (/work start must be on or after the live-from/i.test(error.message)) return { startDate: "Work start must be on or after the live-from date.", liveFrom: "Live-from date cannot be after the work start." };
-  return undefined;
+  return error instanceof ApiError ? error.fieldErrors : undefined;
 }

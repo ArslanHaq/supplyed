@@ -1,3 +1,4 @@
+import { useRateLimit } from "@/lib/rate-limit";
 import { useEffect, useState } from "react";
 import { validateTwoFactorCode } from "@/lib/auth-code-validation";
 
@@ -28,6 +29,7 @@ export function TwoFactorChallengePage({
   onLanding: () => void;
   onVerified: (code: string) => Promise<TwoFactorResult>;
 }) {
+  const retryAfter = useRateLimit();
   const [code, setCode] = useState("");
   const [errors, setErrors] = useState<TwoFactorErrors>({});
   const [now, setNow] = useState(() => Date.now());
@@ -143,7 +145,7 @@ export function TwoFactorChallengePage({
               {expiryText ? <span className="font-semibold text-brand">Expires in {expiryText}</span> : null}
             </div>
 
-            <Btn className="mt-6 w-full" iconRight="arrow" loading={pending} loadingLabel="Verifying" size="lg" type="submit">
+            <Btn className="mt-6 w-full" iconRight="arrow" loading={pending} loadingLabel="Verifying" size="lg" disabled={Boolean(retryAfter)} type="submit">
               Continue securely
             </Btn>
           </form>

@@ -392,7 +392,7 @@ async function getCurrentUserSnapshot(postcodeFallback = "") {
   const authContext = await getServerAuthContext();
   if (!authContext?.userId) return undefined;
 
-  const user = await api.get<BackendUserProfile>(`/users/${authContext.userId}`);
+  const user = await api.get<BackendUserProfile>("/users/me");
   return normalizeUserSnapshot(user, authContext.email ?? undefined, postcodeFallback);
 }
 
@@ -509,7 +509,7 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
   }
 
   {
-    const currentUser = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
+    const currentUser = await api.get<BackendUserProfile>("/users/me", { cache: "no-store" });
     role = normalizeRole(currentUser.role);
     const user = normalizeUserSnapshot(currentUser, authContext.email ?? undefined);
     const documentState = await getDocumentState(role);
@@ -574,7 +574,7 @@ async function getOnboardingAuth(): Promise<BackendAuthResponse & { accessToken:
   const accessToken = await getValidAccessToken(context);
   if (!context || !accessToken) throw new Error("Your session expired. Sign in again to continue.");
 
-  const user = normalizeAuthUser(await api.get("/auth/me", {
+  const user = normalizeAuthUser(await api.get("/users/me", {
     auth: false,
     cache: "no-store",
     headers: buildBearerHeaders(accessToken),
@@ -594,7 +594,7 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   let currentPhone = "";
   let currentPhoneVerified = false;
   if (backendEnabled()) {
-    const current = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
+    const current = await api.get<BackendUserProfile>("/users/me", { cache: "no-store" });
     // Preserve the same canonical saved number; verified numbers cannot be replaced.
     currentPhone = normalizeStoredUkPhone(current.phone);
     currentPhoneVerified = current.phoneVerified === true;

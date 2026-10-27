@@ -35,7 +35,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
   });
   const deleteJob = useDeleteJob({
     onSuccess: (result) => {
-      if (result.ok) setDeleteTarget(null);
+      if (result.ok || result.code === "JOB_HISTORY_PROTECTED") setDeleteTarget(null);
       toast({ title: result.ok ? "Job deleted" : "Could not delete job", msg: result.message ?? "The job was deleted.", tone: result.ok ? "success" : "danger" });
     },
     onError: () => toast({ title: "Could not delete job", msg: "Please try again.", tone: "danger" }),

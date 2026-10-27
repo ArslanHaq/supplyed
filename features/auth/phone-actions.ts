@@ -11,7 +11,7 @@ import type { PhoneOtpChallenge, VerifiedPhoneUser } from "./phone-types";
 
 function phoneActionError(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
-    return actionError(error.message || fallback, { code: error.code, requestId: error.requestId });
+    return actionError(error.message || fallback, { code: error.code, status: error.status, fieldErrors: error.fieldErrors, retryAfter: error.retryAfter, requestId: error.requestId });
   }
   return actionError(error instanceof Error && error.message ? error.message : fallback);
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
 import { actionError } from "@/lib/server/action-response";
 import { normalizeRole } from "@/features/auth/backend";
 import { api, ApiError } from "@/lib/server/api-client";
@@ -12,7 +13,7 @@ import { normalizeConversation, normalizeMessage, normalizeMessagesPage } from "
 import type { ChatMessage, Conversation, MessagesPage } from "@/features/conversations/types";
 import type { Invitation, InvitationDecision, InvitationInput } from "./types";
 
-export type InvitationResult<T> = { ok: true; data: T } | { ok: false; message: string; uncertain: boolean; code?: string; status?: number; fieldErrors?: Record<string, string>; requestId?: string };
+export type InvitationResult<T> = { ok: true; data: T } | { ok: false; message: string; uncertain: boolean; code?: string; status?: number; fieldErrors?: Record<string, string>; requestId?: string; retryAfter?: number };
 export type CreateInvitationResult = InvitationResult<Invitation> & { conversationId?: string };
 
 export async function createInvitationAction(input: InvitationInput): Promise<CreateInvitationResult> {
@@ -25,6 +26,7 @@ export async function createInvitationAction(input: InvitationInput): Promise<Cr
     if (Object.keys(fieldErrors).length) return { ok: false, message: "Check the hiring details before continuing.", fieldErrors, uncertain: false };
     // Time-dependent eligibility is checked by the backend after its idempotency lookup.
     invitation = normalizeInvitation(await api.post<Invitation>("/job-invitations", input));
+    refreshMarketplace();
   } catch (error) {
     return failure(error);
   }
@@ -71,13 +73,20 @@ export async function decideInvitationAction(id: string, decision: InvitationDec
     if (decision === "accept") {
       const booking = await api.post<Booking>(`/job-invitations/${id}/accept`);
       if (!booking?.id || !booking.applicationId || !booking.status) throw new Error("The acceptance result was incomplete. Retry acceptance to retrieve the booking.");
+      refreshMarketplace();
       return { ok: true, data: { booking: normalizeBooking(booking) } };
     }
-    return { ok: true, data: { invitation: normalizeInvitation(await api.post<Invitation>(`/job-invitations/${id}/${decision}`)) } };
+    const invitation = normalizeInvitation(await api.post<Invitation>(`/job-invitations/${id}/${decision}`));
+    refreshMarketplace();
+    return { ok: true, data: { invitation } };
   } catch (error) { return failure(error); }
 }
 
+function refreshMarketplace() {
+  for (const tag of ["jobs", "jobs:mine", "applications", "invitations", "bookings", "notifications"]) revalidateTag(tag, "max");
+}
+
 function failure(error: unknown): InvitationResult<never> {
-  const mapped = actionError(error instanceof Error ? error.message : "The invitation result could not be confirmed. Please try again.", { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined });
+  const mapped = actionError(error instanceof Error ? error.message : "The invitation result could not be confirmed. Please try again.", { fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, retryAfter: error instanceof ApiError ? error.retryAfter : undefined, code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined });
   return { ...mapped, fieldErrors: mapped.fieldErrors as Record<string, string> | undefined, ok: false, uncertain: !(error instanceof ApiError) || error.status >= 500 || [408, 401].includes(error.status), status: error instanceof ApiError ? error.status : undefined, requestId: error instanceof ApiError ? error.requestId : undefined };
 }

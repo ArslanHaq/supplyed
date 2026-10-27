@@ -1,6 +1,6 @@
-import type { Job } from "@/features/jobs/types";
+import type { Job, JobCreateInput } from "@/features/jobs/types";
 import { listingCalendarInstant } from "@/features/jobs/listing-window";
-import { validateJobInput } from "@/features/jobs/validation";
+import { validateJobInput, validatePublishableTerms } from "@/features/jobs/validation";
 import type { InvitationInput } from "./types";
 import { validateJobDateOrder, validJobDate } from "@/features/jobs/date-validation";
 import { validateWorkUnits } from "@/features/jobs/work-units";
@@ -14,7 +14,8 @@ export function jobInvitationProblem(job: Job, now = Date.now()): string | null 
   if (Object.keys(termsErrors).length) return Object.values(termsErrors)[0];
   if (Date.parse(job.startDate) <= now) return "Choose a job with a future start date.";
   if (!(Number(job.payAmount) > 0) || !["hourly", "daily", "fixed"].includes(job.payType ?? "")) return "Add a positive pay amount and pay type before hiring.";
-  return null;
+  const publishErrors = validatePublishableTerms({ ...job, description: job.description ?? "", payType: job.payType as JobCreateInput["payType"], startDate: job.startDate ?? undefined, endDate: job.endDate ?? undefined } as Partial<JobCreateInput>, now);
+  return Object.values(publishErrors)[0] ?? null;
 }
 
 export function validateInvitation(input: InvitationInput, options: { fresh?: boolean; now?: number; job?: { startDate?: string | null; expiresAt?: string | null } } = {}): Record<string, string> {
@@ -28,7 +29,7 @@ export function validateInvitation(input: InvitationInput, options: { fresh?: bo
   if (input.message !== undefined && (typeof input.message !== "string" || input.message.length > 1000)) errors.message = "Use 1,000 characters or fewer.";
   if (input.expiresAt !== undefined && (typeof input.expiresAt !== "string" || !/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(input.expiresAt) || !Number.isFinite(Date.parse(input.expiresAt)))) errors.expiresAt = "Enter a valid invitation deadline with a timezone.";
   if (input.newJob) {
-    const jobErrors = validateJobInput(input.newJob);
+    const jobErrors = { ...validateJobInput(input.newJob), ...validatePublishableTerms(input.newJob, options.fresh ? options.now ?? Date.now() : -Infinity) };
     if (jobErrors.expiresAt) {
       errors.listingExpiresAt = jobErrors.expiresAt;
       delete jobErrors.expiresAt;

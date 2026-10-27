@@ -1,3 +1,4 @@
+import { useRateLimit } from "@/lib/rate-limit";
 import { useState } from "react";
 
 import { passwordRequirementsMessage, validateEmail, validatePassword } from "@/features/auth/schemas";
@@ -47,6 +48,7 @@ export function SignupAccessPage({
   onMicrosoftAuth: () => void;
   socialAuth: SocialAuthAvailability;
 }) {
+  const retryAfter = useRateLimit();
   const [email, setEmail] = useState(initialEmail ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -83,7 +85,7 @@ export function SignupAccessPage({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || retryAfter) return;
     if (!validate()) return;
     setPending(true);
     const result = await onAccountCreated(email.trim(), password, role!, termsAccepted);
@@ -98,7 +100,7 @@ export function SignupAccessPage({
   }
 
   function startSocialSignup(handler: () => void) {
-    if (pending) return;
+    if (pending || retryAfter) return;
     if (role !== "institution" && role !== "teacher") {
       setErrors((current) => ({ ...current, role: "Choose an account type before using social sign-up." }));
       return;
@@ -304,7 +306,7 @@ export function SignupAccessPage({
               />
             </Field>
 
-            <Btn className="mt-2 w-full" loading={pending} loadingLabel="Creating account" size="lg" type="submit" iconRight="arrow">
+            <Btn className="mt-2 w-full" loading={pending} loadingLabel="Creating account" size="lg" disabled={Boolean(retryAfter)} type="submit" iconRight="arrow">
               Create account
             </Btn>
           </form>

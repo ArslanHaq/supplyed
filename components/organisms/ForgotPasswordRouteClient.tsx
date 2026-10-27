@@ -1,4 +1,6 @@
 "use client";
+import { useRateLimit } from "@/lib/rate-limit";
+import { recordRateLimit } from "@/lib/rate-limit";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -44,6 +46,7 @@ function formData(values: Record<string, string>) {
 
 export function ForgotPasswordRouteClient() {
   const router = useRouter();
+  const retryAfter = useRateLimit();
   const [stage, setStage] = useState<ResetStage>("request");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState(emptyCode);
@@ -128,7 +131,7 @@ export function ForgotPasswordRouteClient() {
 
   async function requestReset(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || retryAfter) return;
 
     const trimmedEmail = email.trim().toLowerCase();
     const nextErrors: ResetErrors = {};
@@ -145,6 +148,7 @@ export function ForgotPasswordRouteClient() {
       const result = await requestPasswordResetAction(null, formData({ email: trimmedEmail }));
 
       if (!result.ok) {
+      recordRateLimit(result);
         setErrors(result.fieldErrors ?? { email: result.message });
         showAuthError(result.message);
         return;
@@ -175,7 +179,7 @@ export function ForgotPasswordRouteClient() {
   }
 
   async function resendCode() {
-    if (pending || resendLocked) return;
+    if (pending || retryAfter || resendLocked) return;
 
     setPending("resend");
 
@@ -183,6 +187,7 @@ export function ForgotPasswordRouteClient() {
       const result = await requestPasswordResetAction(null, formData({ email }));
 
       if (!result.ok) {
+      recordRateLimit(result);
         showAuthError(result.message);
         return;
       }
@@ -207,7 +212,7 @@ export function ForgotPasswordRouteClient() {
 
   async function confirmReset(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || retryAfter) return;
 
     const nextErrors: ResetErrors = {};
 
@@ -229,6 +234,7 @@ export function ForgotPasswordRouteClient() {
       );
 
       if (!result.ok) {
+      recordRateLimit(result);
         setErrors(result.fieldErrors ?? { code: result.message });
         showAuthError(result.message);
         return;
@@ -377,7 +383,7 @@ export function ForgotPasswordRouteClient() {
                     <ConfirmPasswordMismatch confirmPassword={confirmPassword} password={password} />
                   </Field>
 
-                  <Btn className="w-full" loading={pending === "confirm"} loadingLabel="Resetting password" size="lg" type="submit" iconRight="arrow">
+                  <Btn className="w-full" loading={pending === "confirm"} loadingLabel="Resetting password" size="lg" disabled={Boolean(retryAfter)} type="submit" iconRight="arrow">
                     Reset password
                   </Btn>
 
@@ -387,7 +393,7 @@ export function ForgotPasswordRouteClient() {
                     </Btn>
                     <Btn
                       className="w-full"
-                      disabled={Boolean(pending) || resendLocked}
+                      disabled={Boolean(pending) || Boolean(retryAfter) || resendLocked}
                       loading={pending === "resend"}
                       loadingLabel="Sending"
                       variant="secondary"
@@ -421,7 +427,7 @@ export function ForgotPasswordRouteClient() {
                     For privacy, SupplyED shows the same confirmation whether or not the email is registered.
                   </div>
 
-                  <Btn className="w-full" loading={pending === "request"} loadingLabel="Sending reset code" size="lg" type="submit" iconRight="arrow">
+                  <Btn className="w-full" loading={pending === "request"} loadingLabel="Sending reset code" size="lg" disabled={Boolean(retryAfter)} type="submit" iconRight="arrow">
                     Send reset code
                   </Btn>
                 </form>

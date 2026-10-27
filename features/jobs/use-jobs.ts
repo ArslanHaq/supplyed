@@ -6,6 +6,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { signOut } from "next-auth/react";
 
 import { fetchJson } from "@/lib/query/fetch-json";
+import { refreshMarketplace } from "@/lib/query/marketplace";
 import { queryKeys } from "@/lib/query/keys";
 import { startRouteLoading } from "@/lib/navigation-loading";
 
@@ -71,6 +72,9 @@ export function useJob(id: string, view: boolean | "accessible" = false) {
     enabled: Boolean(id),
     queryFn: () => fetchJson<Job>(`/api/jobs/${id}`, scope === "public" ? undefined : { query: { scope } }),
     queryKey: [...queryKeys.jobs.detail(id), scope],
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: query => ["ACTIVE", "RESERVED"].includes(query.state.data?.status ?? "") ? 30000 : false,
   });
 }
 
@@ -85,11 +89,7 @@ export function useCreateJob(options: UseCreateJobOptions = {}) {
       if (handleSessionExpiredResult(result)) return;
 
       if (result.ok || result.savedJobId) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),
-        ]);
+        await refreshMarketplace(queryClient);
       }
 
       await options.onSuccess?.(result);
@@ -107,12 +107,8 @@ export function useUpdateJob(options: UseUpdateJobOptions = {}) {
       if (!result.ok && catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
       if (handleSessionExpiredResult(result)) return;
 
-      if (result.ok) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),
-        ]);
+      if (result.ok || result.status === 409 || result.code === "SCHOOL_INACTIVE") {
+        await refreshMarketplace(queryClient);
       }
 
       await options.onSuccess?.(result);
@@ -130,12 +126,8 @@ export function useDeleteJob(options: UseDeleteJobOptions = {}) {
       if (!result.ok && catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
       if (handleSessionExpiredResult(result)) return;
 
-      if (result.ok) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.applications.activeJobCount() }),
-        ]);
+      if (result.ok || result.status === 409 || result.code === "SCHOOL_INACTIVE") {
+        await refreshMarketplace(queryClient);
       }
 
       await options.onSuccess?.(result);

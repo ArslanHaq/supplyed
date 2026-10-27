@@ -52,6 +52,7 @@ export function JobManagementList({
 }: JobManagementListProps) {
   const choices = useDropdown("jobStatus");
   const statusFilters: Array<{ label: string; value: JobStatusFilter }> = [{ label: "All", value: "ALL" }, ...(choices.data?.options ?? []).map(option => ({ label: option.label, value: option.value as JobStatusFilter }))];
+  if (!statusFilters.some(option => option.value === "RESERVED")) statusFilters.push({ label: "Reserved", value: "RESERVED" });
   // The backend already filtered by status; this only guards against a stale page during a tab switch.
   const filteredJobs = filter === "ALL" ? jobs : jobs.filter((job) => job.status === filter);
 
@@ -169,7 +170,7 @@ function JobManagementRow({
   onDelete: (job: Job) => void;
   onEdit: (job: Job) => void;
 }) {
-  const canClose = job.status === "ACTIVE" || job.status === "DRAFT";
+  const canClose = job.status !== "CLOSED";
   const visibility = getJobVisibilityLabel(job);
   const applicationsQuery = useJobApplications(job.id, { limit: 1 });
   const applicantCount = applicationsQuery.data?.pagination.total;
@@ -186,9 +187,9 @@ function JobManagementRow({
         <span className="mr-auto text-xs text-muted" aria-live="polite">
           <strong className="text-ink">{applicantCount ?? (applicationsQuery.isError ? "—" : "…")}</strong> {applicantCount === 1 ? "applicant" : "applicants"}
         </span>
-        <Btn icon="edit" size="sm" variant="ghost" onClick={() => onEdit(job)}>Edit</Btn>
+        <Btn icon="edit" size="sm" variant="ghost" onClick={() => onEdit(job)}>{job.termsLocked ? "View terms" : "Edit"}</Btn>
         {canClose ? <Btn disabled={actionPending} size="sm" variant="ghost" onClick={() => onClose(job)}>Close</Btn> : null}
-        <Btn disabled={actionPending} size="sm" variant="danger" onClick={() => onDelete(job)}>Delete</Btn>
+        {job.canDelete === true ? <Btn disabled={actionPending} size="sm" variant="danger" onClick={() => onDelete(job)}>Delete</Btn> : null}
       </div>
     </div>
   );
@@ -196,7 +197,7 @@ function JobManagementRow({
 
 function visibilityTone(status: JobVisibilityLabel): "amber" | "ghost" | "green" | "red" {
   if (status === "live") return "green";
-  if (status === "draft" || status === "scheduled") return "amber";
+  if (status === "draft" || status === "scheduled" || status === "reserved") return "amber";
   if (status === "suspended") return "red";
   return "ghost";
 }

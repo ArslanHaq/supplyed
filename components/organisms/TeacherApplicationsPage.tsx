@@ -1,3 +1,4 @@
+import { AgreedTerms } from "../molecules/AgreedTerms";
 import { useDropdown } from "@/features/dropdowns/use-dropdown";
 import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
 import { useState } from "react";
@@ -86,14 +87,14 @@ function TeacherApplicationList({ go, initialFilter = "APPLIED" }: Pick<RoutePro
 }
 
 function TeacherApplicationCard({ application, go }: { application: JobApplication; go: RouteProps["go"] }) {
-  const job = application.jobDetails;
+  const job = application.agreedTerms;
   return <article className="card p-5 sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-5">
       <div className="min-w-0 flex-1 basis-60">
         <div className="mb-3 flex flex-wrap items-center gap-3"><ApplicationStatusTag status={application.status} />{application.createdAt ? <span className="text-xs text-muted">Submitted {formatSubmittedAt(application.createdAt)}</span> : null}</div>
         <h2 className="font-heading text-xl font-semibold"><button className="text-left hover:text-brand hover:underline" onClick={() => go("applications", { applicationId: application.id })}>{application.jobName || "Application"}</button></h2>
         {application.school ? <button className="mt-2 flex items-center gap-2 text-sm text-brand hover:underline" onClick={() => go("institution-profile", { institutionId: application.school!.id })}><Icon name="building" size={15} />{application.school.name}<Icon name="arrowRight" size={13} /></button> : null}
-        {job ? <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">{job.startDate ? <span className="flex items-center gap-1.5"><Icon name="calendar" size={14} />{formatDateRange(job.startDate, job.endDate)}</span> : null}{[job.city, job.county, job.postalCode].filter(Boolean).length ? <span className="flex items-center gap-1.5"><Icon name="pin" size={14} />{[job.city, job.county, job.postalCode].filter(Boolean).join(", ")}</span> : null}{job.payAmount != null ? <span>{formatApplicationPay(job.payAmount, job.payType)}</span> : null}</div> : null}
+        {!job ? <p className="mt-3 text-sm text-muted">Original agreed terms are unavailable.</p> : null}{job ? <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">{job.startDate ? <span className="flex items-center gap-1.5"><Icon name="calendar" size={14} />{formatDateRange(job.startDate, job.endDate)}</span> : null}{[job.city, job.county, job.postalCode].filter(Boolean).length ? <span className="flex items-center gap-1.5"><Icon name="pin" size={14} />{[job.city, job.county, job.postalCode].filter(Boolean).join(", ")}</span> : null}{job.payAmount != null ? <span>{formatApplicationPay(job.payAmount, job.payType)}</span> : null}</div> : null}
       </div>
       <Btn iconRight="arrowRight" variant="secondary" onClick={() => go("applications", { applicationId: application.id })}>View application</Btn>
     </div>
@@ -103,7 +104,7 @@ function TeacherApplicationCard({ application, go }: { application: JobApplicati
 function TeacherApplicationDetail({ id, go }: { id: string; go: RouteProps["go"] }) {
   const query = useApplication(id);
   const application = query.data;
-  const job = application?.jobDetails;
+  const job = application?.agreedTerms;
   return <div className="app-page">
     <PageHead title="Your application" subtitle="Your submitted application and its current outcome." actions={<Btn icon="arrowLeft" variant="secondary" onClick={() => go("applications")}>All applications</Btn>} />
     {query.isLoading ? <SectionLoader rows={3} /> : query.error ? <div className="card p-6" role="alert"><h2 className="font-heading text-xl">Application unavailable</h2><p className="my-3 text-sm text-muted">{query.error.message}</p><Btn variant="secondary" onClick={() => void query.refetch()}>Try again</Btn></div> : application ? <>
@@ -126,7 +127,7 @@ function TeacherApplicationDetail({ id, go }: { id: string; go: RouteProps["go"]
         {job.payAmount != null ? <div><dt className="text-xs text-muted">Pay</dt><dd className="mt-1 font-medium">{formatApplicationPay(job.payAmount, job.payType)}</dd></div> : null}
         {[job.city, job.county, job.postalCode].filter(Boolean).length ? <div><dt className="text-xs text-muted">Location</dt><dd className="mt-1 font-medium">{[job.city, job.county, job.postalCode].filter(Boolean).join(", ")}</dd></div> : null}
       </dl>{job.description ? <div className="border-t border-border pt-5"><h3 className="mb-3 text-sm font-semibold">About the role</h3><FormattedJobDescription description={job.description} /></div> : null}</section> : null}
-      <ApplicationTimeline id={application.id} />
+      <AgreedTerms terms={application.agreedTerms} /><ApplicationTimeline id={application.id} />
       <section className="card p-6 sm:p-8"><h2 className="mb-5 font-heading text-lg font-semibold">Your submitted proposal</h2>{application.coverLetter ? <ProposalContent value={application.coverLetter} /> : <p className="text-sm text-muted">No proposal was included with this application.</p>}</section>
     </> : null}
   </div>;

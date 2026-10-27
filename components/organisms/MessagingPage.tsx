@@ -470,7 +470,7 @@ function ConversationContextPanel({
   const [proposalOpen, setProposalOpen] = useState(false);
   const applicant = application?.instructor;
   const status = application?.status ?? conversation.applicationStatus;
-  const jobDetails = application?.jobDetails;
+  const jobDetails = application?.agreedTerms;
 
   return (
     <>
@@ -517,7 +517,7 @@ function ConversationContextPanel({
             {application?.jobName ?? job?.title ?? (conversation.job?.title ?? "General")}
           </h3>
           <div className="mt-3 space-y-2.5">
-            {jobDetails ? <>
+            {application && !jobDetails ? <p className="mt-3 text-xs text-muted">Original agreed terms are unavailable.</p> : null}{jobDetails ? <>
               {[jobDetails.city, jobDetails.county, jobDetails.postalCode].some(Boolean) ? <ContextRow icon="pin" text={[jobDetails.city, jobDetails.county, jobDetails.postalCode].filter(Boolean).join(", ")} /> : null}
               {jobDetails.startDate ? <ContextRow icon="calendar" text={`${formatDisplayDate(jobDetails.startDate)}${jobDetails.endDate ? ` – ${formatDisplayDate(jobDetails.endDate)}` : ""}`} /> : null}
               {jobDetails.payAmount != null ? <ContextRow icon="pound" text={`GBP ${jobDetails.payAmount} ${jobDetails.payType === "hourly" ? "/ hour" : jobDetails.payType === "daily" ? "/ day" : ""}`} /> : null}

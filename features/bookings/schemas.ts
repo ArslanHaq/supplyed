@@ -81,8 +81,12 @@ function normalizeInvoiceSummary(invoice: BookingInvoiceSummary | null | undefin
 }
 
 export function normalizeBooking(booking: Booking): Booking {
+  const terms = booking.termsStatus === "RECORDED" ? booking.agreedTerms : null;
+  booking = terms ? { ...booking, startDate: terms.startDate, endDate: terms.endDate, payAmount: terms.payAmount, payType: terms.payType, hours: terms.hours, days: terms.days, job: terms } : { ...booking, job: { id: booking.job?.id ?? "", title: booking.job?.title ?? "Historical job", description: "", subjects: [], keyStages: [] } };
   return {
     ...booking,
+    agreedTerms: terms,
+    termsStatus: terms ? "RECORDED" : "LEGACY_PARTIAL",
     ...normalizeWorkUnits(booking),
     source: booking.source === "DIRECT_HIRE" ? "DIRECT_HIRE" : "APPLICATION",
     cancelReason: booking.cancelReason ?? null,

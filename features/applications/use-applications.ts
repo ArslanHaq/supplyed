@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
 
 import { fetchJson } from "@/lib/query/fetch-json";
+import { refreshMarketplace } from "@/lib/query/marketplace";
 import { queryKeys } from "@/lib/query/keys";
 import { startRouteLoading } from "@/lib/navigation-loading";
 
@@ -62,29 +63,9 @@ export function useUpdateApplicationStatus(options: UseCreateApplicationOptions 
     mutationFn: (input: ApplicationStatusUpdateInput) => updateApplicationStatusAction(input),
     onError: options.onError,
     onSuccess: async (result) => {
-      if (result.ok) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
-          ...(result.data.status === "HIRED" ? [
-            queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.publicProfiles.all }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.payments.all }),
-          ] : []),
-        ]);
-      } else if (result.status === 409 || result.status === 400) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.publicProfiles.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
-        ]);
+      if (result.ok || result.status === 409 || result.status === 400 || result.code === "SCHOOL_INACTIVE") {
+        await refreshMarketplace(queryClient);
+        if (result.ok && result.data.status === "HIRED") await queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
       }
       await options.onSuccess?.(result);
     },
@@ -106,11 +87,13 @@ export function useCreateApplication(options: UseCreateApplicationOptions = {}) 
         return;
       }
 
-      if (result.ok) {
+      if (result.ok || result.code === "JOB_RESERVED" || result.code === "JOB_UNAVAILABLE") {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
         ]);
       }
 

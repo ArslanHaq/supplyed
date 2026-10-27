@@ -5,10 +5,11 @@ export function shiftCalendarDay(value: string, days: number): string {
   const instant = Date.parse(`${value.slice(0, 10)}T00:00:00Z`);
   return Number.isFinite(instant) ? new Date(instant + days * 86400000).toISOString().slice(0, 10) : "";
 }
-export type JobVisibilityLabel = "closed" | "draft" | "expired" | "filled" | "live" | "scheduled" | "suspended";
+export type JobVisibilityLabel = "reserved" | "closed" | "draft" | "expired" | "filled" | "live" | "scheduled" | "suspended";
 
 export function getJobVisibilityLabel(job: Pick<Job, "expiresAt" | "liveFrom" | "status">, now = Date.now()): JobVisibilityLabel {
   if (job.status === "SUSPENDED") return "suspended";
+  if (job.status === "RESERVED") return "reserved";
   if (job.status === "FILLED") return "filled";
   if (job.status === "CLOSED") return "closed";
   if (job.status === "DRAFT" || !job.status) return "draft";
@@ -20,6 +21,11 @@ export function getJobVisibilityLabel(job: Pick<Job, "expiresAt" | "liveFrom" | 
 
 export function formatJobVisibilityLabel(value: JobVisibilityLabel) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+export function isJobOpenForApplications(job: Pick<Job, "status" | "liveFrom" | "expiresAt" | "startDate">, now = Date.now()) {
+  return job.status === "ACTIVE" && getJobVisibilityLabel(job, now) === "live"
+    && Boolean(job.startDate) && Date.parse(job.startDate!) > now;
 }
 
 export function ukCalendarDate(value: string | null | undefined, inclusiveLastDay = false): string {

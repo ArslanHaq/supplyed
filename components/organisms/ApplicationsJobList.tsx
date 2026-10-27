@@ -154,7 +154,7 @@ function invitationJobSnapshot(invitation: Invitation): Job {
   const end = job.endDate && Number.isFinite(Date.parse(job.endDate)) ? new Date(job.endDate) : null;
   const display = (value: Date) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" }).format(value);
   const date = start && end ? (display(start) === display(end) ? display(start) : `${display(start)} - ${display(end)}`) : start ? display(start) : end ? `Until ${display(end)}` : "Date TBC";
-  const statuses = ["ACTIVE", "CLOSED", "DRAFT", "EXPIRED", "SUSPENDED"] as const;
+  const statuses = ["ACTIVE", "RESERVED", "FILLED", "CLOSED", "DRAFT", "EXPIRED", "SUSPENDED"] as const;
   const status = statuses.find((value) => value === invitation.jobStatus) ?? "DRAFT";
   const payAmount = Number(job.payAmount ?? 0);
   const rate = Number.isFinite(payAmount) ? payAmount : 0;

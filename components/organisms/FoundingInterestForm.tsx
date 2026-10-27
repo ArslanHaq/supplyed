@@ -1,4 +1,5 @@
 "use client";
+import { useRateLimit } from "@/lib/rate-limit";
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
@@ -55,6 +56,7 @@ function WaitlistForm({
   type,
   onTypeChange,
 }: Props & { onTypeChange: (type: InterestType) => void }) {
+  const retryAfter = useRateLimit();
   const [state, action, pending] = useActionState(
     submitWaitlistAction,
     null as FoundingInterestActionState,
@@ -116,7 +118,7 @@ function WaitlistForm({
       >
         <DynamicSelect
           aria-invalid={Boolean(errors?.[name])}
-          disabled={pending}
+          disabled={pending || Boolean(retryAfter)}
           error={Boolean(errors?.[name])}
           id={fieldId(name)}
           name={name}
@@ -168,7 +170,7 @@ function WaitlistForm({
           of the pilot.
         </p>
       </div>
-      <fieldset className="waitlist-form-fields" disabled={pending}>
+      <fieldset className="waitlist-form-fields" disabled={pending || Boolean(retryAfter)}>
         <legend className="sr-only">
           {school ? "School" : "Teacher"} waitlist details
         </legend>
@@ -229,7 +231,7 @@ function WaitlistForm({
             <Checkbox
               checked={founding}
               className="waitlist-checkbox"
-              disabled={pending}
+              disabled={pending || Boolean(retryAfter)}
               label="I'd like to hear about the Founding Schools Programme (20 places)."
               name="foundingProgrammeInterest"
               onChange={setFounding}
@@ -253,7 +255,7 @@ function WaitlistForm({
               maxLength: 254,
             })}
             <PhoneInput
-              disabled={pending}
+              disabled={pending || Boolean(retryAfter)}
               error={errors?.phone}
               id={fieldId("phone")}
               label="UK phone number (optional)"
@@ -280,7 +282,7 @@ function WaitlistForm({
               aria-invalid={Boolean(errors?.emailConsent)}
               checked={consent}
               className="waitlist-checkbox"
-              disabled={pending}
+              disabled={pending || Boolean(retryAfter)}
               label="Email me about the first cohort and SupplyED's launch. I can unsubscribe any time."
               name="emailConsent"
               onChange={setConsent}
@@ -300,7 +302,7 @@ function WaitlistForm({
         ) : null}
         <Button
           className="w-full"
-          disabled={invalidPhone}
+          disabled={invalidPhone || Boolean(retryAfter)}
           loading={pending}
           loadingLabel="Joining the waitlist"
           iconRight="arrow"

@@ -2,7 +2,7 @@ import "server-only";
 
 import { listApplicationsByJob, listMyApplications } from "@/features/applications/queries";
 import { listMyBookings } from "@/features/bookings/queries";
-import { getJob, listMyJobs } from "@/features/jobs/queries";
+import { listMyJobs } from "@/features/jobs/queries";
 import { ApiError } from "@/lib/server/api-client";
 import { getServerAuthContext } from "@/lib/server/auth-context";
 import { backendEnabled } from "@/lib/server/backend-config";
@@ -55,14 +55,7 @@ export async function listMyProfileApplications(query: ProfilePageQuery): Promis
   const role = await requireProfileRole();
   if (role === "teacher") {
     const result = await listMyApplications(query);
-    const jobs = new Map(await Promise.all([...new Set(result.applications.map(item => item.jobId))].map(async id => {
-      try { return [id, await getJob(id)] as const; }
-      catch (error) {
-        if (error instanceof ApiError && (error.status === 403 || error.status === 404)) return [id, null] as const;
-        throw error;
-      }
-    })));
-    return { ...result, applications: result.applications.map(item => ({ ...item, jobTitle: item.jobName?.trim() || jobs.get(item.jobId)?.title || null, schoolName: jobs.get(item.jobId)?.school ?? null, jobAvailable: Boolean(jobs.get(item.jobId)) })) };
+    return { ...result, applications: result.applications.map(item => ({ ...item, jobTitle: item.agreedTerms?.title ?? item.jobName ?? null, schoolName: item.school?.name ?? null, jobAvailable: false })) };
   }
 
   const checkBudget = requestBudget();
@@ -77,7 +70,7 @@ export async function listMyProfileApplications(query: ProfilePageQuery): Promis
         const result = await listApplicationsByJob(job.id, { page, limit: 100 });
         return { items: result.applications, pagination: result.pagination };
       }, checkBudget);
-      return records.map(item => ({ ...item, jobTitle: item.jobName?.trim() || job.title, schoolName: job.school, jobAvailable: true }));
+      return records.map(item => ({ ...item, jobTitle: item.agreedTerms?.title ?? item.jobName ?? null, schoolName: job.school, jobAvailable: true }));
     }));
     applications.push(...batch.flat());
   }

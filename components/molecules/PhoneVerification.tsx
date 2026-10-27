@@ -1,5 +1,6 @@
 "use client";
 
+import { useRateLimit } from "@/lib/rate-limit";
 import { useEffect, useId, useState } from "react";
 
 import type { PhoneOtpChallenge } from "@/features/auth/phone-types";
@@ -34,6 +35,7 @@ export function PhoneVerification({
   savedPhone: string;
   verified: boolean;
 }) {
+  const retryAfter = useRateLimit();
   const id = useId();
   const [challenge, setChallenge] = useState<ActiveChallenge | null>(null);
   const [otp, setOtp] = useState("");
@@ -42,7 +44,7 @@ export function PhoneVerification({
   const [rateLimitUntil, setRateLimitUntil] = useState(0);
   const send = useSendPhoneOtp();
   const verify = useVerifyPhoneOtp();
-  const busy = send.isPending || verify.isPending;
+  const busy = send.isPending || verify.isPending || retryAfter > 0;
   // The server owns verification. Formatting/metadata checks must not turn a
   // verified, immutable saved number back into an invalid editable field.
   const isVerified = verified;
@@ -72,7 +74,7 @@ export function PhoneVerification({
       setNow(receivedAt);
       if (!result.ok) {
         setFailure({ message: result.message, requestId: result.requestId });
-        const waitSeconds = /Please wait (\d+) seconds/i.exec(result.message)?.[1];
+        const waitSeconds = result.retryAfter;
         if (waitSeconds) setRateLimitUntil(receivedAt + Number(waitSeconds) * 1000);
         return;
       }

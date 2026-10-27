@@ -1,3 +1,5 @@
+import { useRateLimit } from "@/lib/rate-limit";
+import { useSchoolHiringAllowed } from "@/features/auth/use-school-hiring";
 import { PlannedWorkUnitsField } from "@/components/molecules/PlannedWorkUnitsField";
 import { plannedUnitsInput, formatPlannedUnits } from "@/features/jobs/work-units";
 import { syncWorkSchedule, validateScheduleUnits } from "@/features/jobs/schedule-editor";
@@ -115,6 +117,8 @@ export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "
     );
   }
 
+  if (editingJob?.termsLocked) return <div className="app-page post-job-page"><PageHead title={editingJob.title} subtitle="Agreed terms are locked" /><div className="card card-pad-lg"><p className="mb-4 text-sm text-muted">This job has offer or publication history. Its material terms are read-only. Create a new job to offer different terms.</p><div className="flex flex-wrap gap-3"><Btn onClick={() => go("post-job")}>Create a new job</Btn><Btn variant="secondary" onClick={() => go("job-detail", { jobId: editingJob.id })}>View terms</Btn><Btn variant="ghost" onClick={() => go("dashboard")}>Manage job status</Btn></div></div></div>;
+
   const schoolAddress = addressFromSchoolProfile(schoolProfile);
   const initialValues = editingJob
     ? toFormState(editingJob)
@@ -174,6 +178,8 @@ function PostJobEditor({
   const [savingIntent, setSavingIntent] = useState<"draft" | "publish" | null>(null);
   const savedJobIdRef = useRef<string | undefined>(editingJob?.id);
   const savingRef = useRef(false);
+  const retryAfter = useRateLimit();
+  const hiringAllowed = useSchoolHiringAllowed();
   const isEditing = Boolean(editingJob);
   const todayDate = getTodayDateInput();
   const savedExpiryUnchanged = Boolean(form.originalExpiresAt && form.expiresAt === ukCalendarDate(form.originalExpiresAt, true));
@@ -304,7 +310,7 @@ function PostJobEditor({
   }
 
   function saveJob(status: Extract<JobCreateInput["status"], "ACTIVE" | "DRAFT">) {
-    if (savingRef.current) return;
+    if (savingRef.current || retryAfter || (status === "ACTIVE" && !hiringAllowed)) return;
     savingRef.current = true;
     const payload = toJobCreateInput(form, mode, status, catalogue.data);
     setSavingIntent(status === "ACTIVE" ? "publish" : "draft");
@@ -580,7 +586,7 @@ function PostJobEditor({
             </Btn>
             <div className="flex flex-wrap justify-end gap-2">
               <Btn
-                disabled={saving}
+                disabled={saving || Boolean(retryAfter)}
                 loading={savingIntent === "draft"}
                 loadingLabel="Saving draft"
                 onClick={saveDraft}
@@ -590,7 +596,7 @@ function PostJobEditor({
                 Save draft
               </Btn>
               <Btn
-                disabled={saving}
+                disabled={saving || Boolean(retryAfter) || !hiringAllowed}
                 iconRight="send"
                 loading={savingIntent === "publish"}
                 loadingLabel="Updating"
@@ -637,7 +643,7 @@ function PostJobEditor({
           </Btn>
           <div className="flex flex-wrap justify-end gap-2">
             <Btn
-              disabled={saving}
+              disabled={saving || Boolean(retryAfter)}
               loading={savingIntent === "draft"}
               loadingLabel="Saving draft"
               onClick={saveDraft}
@@ -647,7 +653,7 @@ function PostJobEditor({
               Save draft
             </Btn>
             <Btn
-              disabled={saving}
+              disabled={saving || Boolean(retryAfter) || (step === 4 && !hiringAllowed)}
               iconRight={step === 4 ? "send" : "arrow"}
               loading={savingIntent === "publish"}
               loadingLabel={isEditing ? "Updating" : "Publishing"}

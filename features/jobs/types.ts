@@ -33,6 +33,9 @@ export type MyJobs = PaginatedJobs & {
 };
 
 export type BackendJobResponse = {
+  canDelete: boolean;
+  termsLocked: boolean;
+  hasBeenPublished: boolean;
   id: string;
   institution?: { id: string; imageUrl: string | null; name: string } | null;
   postedByUserId: string;

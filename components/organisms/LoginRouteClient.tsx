@@ -1,4 +1,5 @@
 "use client";
+import { recordRateLimit } from "@/lib/rate-limit";
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -131,6 +132,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     if (!loginResult.ok) {
+      recordRateLimit(loginResult);
       showAuthError(loginResult.message);
       return {
         fieldErrors: loginResult.fieldErrors,
@@ -225,6 +227,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     if (!verificationResult.ok) {
+      recordRateLimit(verificationResult);
       showAuthError(verificationResult.message);
       return {
         message: verificationResult.message,
@@ -287,6 +290,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     if (!verificationResult.ok) {
+      recordRateLimit(verificationResult);
       showAuthError(verificationResult.message);
       return {
         fieldErrors: verificationResult.fieldErrors,
@@ -347,6 +351,7 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     }
 
     if (!result.ok) {
+      recordRateLimit(result);
       showAuthError(result.message);
       return {
         message: result.message,

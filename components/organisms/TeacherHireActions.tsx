@@ -1,5 +1,6 @@
 "use client";
 
+import { useSchoolHiringAllowed } from "@/features/auth/use-school-hiring";
 import { useState } from "react";
 import { useWorkspaceAccount } from "@/features/auth/workspace-account";
 import { useStartConversation } from "@/features/conversations/use-conversations";
@@ -10,11 +11,12 @@ import { InvitationModal, type HireTeacher } from "./InvitationModal";
 export function TeacherHireActions({ teacher, go, jobId, hideMessage = false }: { teacher: HireTeacher; go: GoFn; jobId?: string; hideMessage?: boolean }) {
   const [hireOpen, setHireOpen] = useState(false);
   const account = useWorkspaceAccount();
+  const hiringAllowed = useSchoolHiringAllowed();
   const message = useStartConversation();
   if (account.role !== "institution") return null;
   // Do not hide school actions behind a second account request. The workspace
   // already resolved this account and its approval; the API authorizes mutations.
-  const blocked = account.applicationStatus !== "approved";
+  const blocked = !hiringAllowed;
   const disabled = blocked;
   return <div className="teacher-hire-actions mt-3 text-left">
     <div className="flex flex-wrap gap-2">
