@@ -6,6 +6,7 @@ import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { exchangeOAuthAccount, loginWithEmail, normalizeRole, normalizeStatus, verifyEmail } from "@/features/auth/backend";
 import { readUnknownSocialAuthErrorMessage } from "@/features/auth/error-messages";
 import { validateEmail } from "@/features/auth/schemas";
+import { validateOtpCode } from "@/lib/auth-code-validation";
 import { readVerifiedEmailSessionTicket } from "@/features/auth/session-ticket";
 import type { BackendAuthResponse } from "@/features/auth/types";
 import { readUnverifiedJwtExpiresAt, readUnverifiedJwtPayload } from "@/lib/server/jwt";
@@ -297,15 +298,15 @@ export const {
         if (!validateEmail(email)) return null;
 
         if (flow === "verify-email") {
-          const code = readCredential(credentials, "code").replace(/\D/g, "").slice(0, 6);
+          const code = readCredential(credentials, "code").trim();
           const otpToken = readCredential(credentials, "otpToken");
-          if (code.length !== 6) return null;
+          if (!validateOtpCode(code)) return null;
           return toAuthUser(await verifyEmail({ code, email, otpToken }));
         }
 
         const password = readCredential(credentials, "password");
 
-        if (password.length < 8) return null;
+        if (password.length < 8 || password.length > 128) return null;
 
         const response = await loginWithEmail({ email, password });
         if ("twoFactorRequired" in response) return null;

@@ -1,7 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
+import { invitationReturnPath } from "@/lib/invitation-links";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { AppNotification, NotificationType } from "@/features/notifications/types";
 import {
@@ -26,6 +29,8 @@ const ICON_BY_TYPE: Record<NotificationType, string> = {
   BOOKING_CONFIRMED: "checkCircle",
   INVOICE_PAID: "pound",
   JOB_MATCH: "zap",
+  JOB_INVITATION: "mail",
+  JOB_INVITATION_STATUS: "file",
   PROFILE_STATUS: "shield",
   REVIEW_RECEIVED: "star",
 };
@@ -37,15 +42,21 @@ const ICON_BY_TYPE: Record<NotificationType, string> = {
  */
 export function NotificationBell({ live, onSettings }: { live: boolean; onSettings: () => void }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const mounted = useMounted();
   const [open, setOpen] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("unsupported");
   const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
   const unreadQuery = useUnreadNotifications(true);
   const listQuery = useNotifications(open);
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
-  const openLink = useCallback((link: string) => router.push(link), [router]);
+  const openLink = useCallback((link: string) => {
+    if (invitationReturnPath(link)) void queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
+    router.push(link);
+  }, [router, queryClient]);
   useNotificationStream(live, openLink);
 
   const unread = mounted ? unreadQuery.data?.total ?? 0 : 0;
@@ -58,7 +69,10 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener("mousedown", onPointer);
     document.addEventListener("keydown", onKey);
@@ -76,7 +90,7 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
   function select(notification: AppNotification) {
     if (!notification.readAt) markRead.mutate(notification);
     setOpen(false);
-    if (notification.link) router.push(notification.link);
+    if (notification.link) openLink(notification.link);
   }
 
   async function enableDesktopAlerts() {
@@ -87,6 +101,8 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
   return (
     <div ref={panelRef} className="relative">
       <button
+        ref={triggerRef}
+        aria-controls={open ? panelId : undefined}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
@@ -104,8 +120,9 @@ export function NotificationBell({ live, onSettings }: { live: boolean; onSettin
 
       {open ? (
         <div
+          id={panelId}
           aria-label="Notifications"
-          className="notification-panel absolute right-0 top-12 z-50 flex max-h-[70vh] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-xl border border-border bg-white shadow-panel"
+          className="notification-panel flex max-h-[70vh] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-panel"
           role="dialog"
         >
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">

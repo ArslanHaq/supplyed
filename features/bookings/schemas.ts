@@ -1,3 +1,5 @@
+import { normalizeWorkUnits } from "@/features/jobs/work-units";
+import { jobSubjects } from "@/features/teaching-catalogue/selection";
 import type {
   Booking,
   BookingInvoiceFilter,
@@ -79,8 +81,14 @@ function normalizeInvoiceSummary(invoice: BookingInvoiceSummary | null | undefin
 }
 
 export function normalizeBooking(booking: Booking): Booking {
+  const terms = booking.termsStatus === "RECORDED" ? booking.agreedTerms : null;
+  booking = terms ? { ...booking, startDate: terms.startDate, endDate: terms.endDate, payAmount: terms.payAmount, payType: terms.payType, hours: terms.hours, days: terms.days, job: terms } : { ...booking, job: { id: booking.job?.id ?? "", title: booking.job?.title ?? "Historical job", description: "", subjects: [], keyStages: [] } };
   return {
     ...booking,
+    agreedTerms: terms,
+    termsStatus: terms ? "RECORDED" : "LEGACY_PARTIAL",
+    ...normalizeWorkUnits(booking),
+    source: booking.source === "DIRECT_HIRE" ? "DIRECT_HIRE" : "APPLICATION",
     cancelReason: booking.cancelReason ?? null,
     cancelledAt: readDateIso(booking.cancelledAt),
     completedAt: readDateIso(booking.completedAt),
@@ -96,7 +104,8 @@ export function normalizeBooking(booking: Booking): Booking {
       keyStages: readStringArray(booking.job?.keyStages),
       parkingInfo: booking.job?.parkingInfo ?? null,
       postalCode: booking.job?.postalCode ?? null,
-      subject: booking.job?.subject ?? null,
+      subject: jobSubjects(booking.job ?? {}).join(", ") || null,
+      subjects: jobSubjects(booking.job ?? {}),
       title: booking.job?.title ?? "Booking",
     },
     institution: {
@@ -153,7 +162,7 @@ export function normalizeReviewInput(input: BookingReviewInput): BookingReviewIn
   return {
     bookingId: input.bookingId.trim(),
     comment: input.comment?.trim() || undefined,
-    rating: Math.min(5, Math.max(1, Math.round(input.rating))),
+    rating: input.rating,
   };
 }
 

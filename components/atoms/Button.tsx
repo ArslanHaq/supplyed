@@ -23,11 +23,11 @@ type ButtonStyleOptions = {
 };
 
 const variantClass: Record<ButtonVariant, string> = {
-  primary: "border-transparent bg-brand-dark text-white shadow-(--shadow-xs) hover:bg-brand-dark/90",
-  secondary: "border-border-strong bg-white text-ink shadow-(--shadow-xs) hover:bg-chalk",
+  primary: "border-transparent bg-brand-dark text-white shadow-(--shadow-xs) hover:bg-[color-mix(in_srgb,var(--se-dark)_88%,black)]",
+  secondary: "border-border-strong bg-surface text-ink shadow-(--shadow-xs) hover:bg-chalk",
   ghost: "border-transparent bg-transparent text-slate hover:bg-chalk hover:text-ink",
-  ink: "border-transparent bg-ink text-white hover:bg-black",
-  danger: "border-danger bg-white text-danger hover:bg-danger-tint",
+  ink: "border-transparent bg-ink text-white hover:bg-graphite",
+  danger: "border-danger bg-surface text-danger hover:bg-danger-tint",
 };
 
 const sizeClass: Record<ButtonSize, string> = {
@@ -39,7 +39,7 @@ const sizeClass: Record<ButtonSize, string> = {
 
 export function buttonClassName({ variant = "primary", size = "", className }: ButtonStyleOptions = {}) {
   return cn(
-    "ui-button inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border text-center font-semibold leading-5 transition-[background-color,border-color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+    "ui-button inline-flex max-w-full shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-normal rounded-lg border text-center font-semibold leading-5 transition-[background-color,border-color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
     variantClass[variant],
     sizeClass[size],
     className,
@@ -60,7 +60,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const isDisabled = disabled || loading;
-  const label = loading && loadingLabel ? loadingLabel : children;
+  const hasLoadingState = loading !== undefined || Boolean(loadingLabel);
 
   return (
     <button
@@ -70,9 +70,21 @@ export function Button({
       type={type}
       {...props}
     >
-      {loading ? <span className="button-loader-mark" /> : icon ? <Icon name={icon} size={16} /> : null}
-      {label ? <span>{label}</span> : null}
-      {!loading && iconRight ? <Icon name={iconRight} size={16} /> : null}
+      {icon ? (
+        <span aria-hidden="true" className="inline-grid h-4 w-4 shrink-0 place-items-center">
+          {loading ? <span className="button-loader-mark" /> : icon ? <Icon name={icon} size={16} /> : null}
+        </span>
+      ) : null}
+      {children || loadingLabel ? (
+        <span className="grid min-w-0 items-center justify-items-center">
+          <span aria-hidden={loading || undefined} className={cn("col-start-1 row-start-1", loading ? "invisible" : null)}>{children}</span>
+          {hasLoadingState ? <span aria-hidden={!loading || undefined} className={cn("col-start-1 row-start-1 inline-flex items-center justify-center gap-2", !loading ? "invisible" : null)}>
+            {!icon ? <span aria-hidden="true" className="inline-grid h-4 w-4 shrink-0 place-items-center"><span className="button-loader-mark" /></span> : null}
+            <span>{loadingLabel || children}</span>
+          </span> : null}
+        </span>
+      ) : null}
+      {iconRight ? <Icon name={iconRight} size={16} className={loading ? "invisible" : undefined} /> : null}
     </button>
   );
 }

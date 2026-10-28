@@ -1,10 +1,10 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type AriaAttributes } from "react";
 
 import { Icon } from "../atoms";
 
-type TagInputProps = {
+type TagInputProps = AriaAttributes & {
   id?: string;
   itemMaxLength?: number;
   maxItems?: number;
@@ -13,7 +13,7 @@ type TagInputProps = {
   value: string[];
 };
 
-export function TagInput({ id, itemMaxLength = 100, maxItems = 50, onChange, placeholder = "Type a skill and press Enter", value }: TagInputProps) {
+export function TagInput({ id, itemMaxLength = 100, maxItems = 50, onChange, placeholder = "Type a skill and press Enter", value, ...aria }: TagInputProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
   const [draft, setDraft] = useState("");
@@ -29,14 +29,14 @@ export function TagInput({ id, itemMaxLength = 100, maxItems = 50, onChange, pla
   }
 
   return (
-    <div className="rounded-lg border border-border bg-white px-3 py-2 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
+    <div className="tag-input rounded-lg border border-border-strong bg-surface px-3 py-2 focus-within:border-brand focus-within:shadow-(--focus-ring)">
       <div className="flex min-h-9 flex-wrap items-center gap-2">
         {value.map((skill) => (
-          <span key={skill} className="inline-flex items-center gap-1 rounded-full bg-brand-tint px-2.5 py-1 text-xs font-semibold text-brand">
-            {skill}
+          <span key={skill} className="inline-flex max-w-full items-center gap-1 rounded-full bg-brand-tint px-2.5 py-1 text-xs font-semibold text-brand-dark">
+            <span className="min-w-0 break-words">{skill}</span>
             <button
               aria-label={`Remove ${skill}`}
-              className="cursor-pointer rounded-full p-0.5 hover:bg-white"
+              className="shrink-0 cursor-pointer rounded-full p-0.5 hover:bg-surface"
               onClick={() => onChange(value.filter((item) => item !== skill))}
               type="button"
             >
@@ -45,8 +45,9 @@ export function TagInput({ id, itemMaxLength = 100, maxItems = 50, onChange, pla
           </span>
         ))}
         <input
+          {...aria}
           id={inputId}
-          className="min-w-[180px] flex-1 border-0 bg-transparent py-1 text-sm outline-none"
+          className="min-w-0 basis-40 flex-1 border-0 bg-transparent py-1 text-sm outline-none"
           disabled={value.length >= maxItems}
           maxLength={itemMaxLength}
           onBlur={addDraft}

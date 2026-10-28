@@ -1,13 +1,12 @@
 import "server-only";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { api } from "@/lib/server/api-client";
 
 import { normalizeNotificationsPage, normalizePreferences } from "./schemas";
 import type { NotificationPreferences, NotificationsPage } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 /** One page of the signed-in user's notifications, newest first. */
 export async function listNotifications(page = 1, limit = 15, unreadOnly = false): Promise<NotificationsPage> {

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { api, ApiError } from "@/lib/server/api-client";
 import { requirePayoutInstructor } from "./payout-auth";
 
@@ -20,9 +22,6 @@ import type {
   PayoutBalance,
 } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 function emptyInvoices(query: InvoiceListQuery): PaginatedInvoices {
   return {

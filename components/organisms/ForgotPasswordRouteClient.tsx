@@ -1,11 +1,14 @@
 "use client";
+import { useRateLimit } from "@/lib/rate-limit";
+import { recordRateLimit } from "@/lib/rate-limit";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { confirmPasswordResetAction, requestPasswordResetAction } from "@/app/(auth)/forgot-password/actions";
 import { readUnknownAuthErrorMessage } from "@/features/auth/error-messages";
-import { passwordRequirementsMessage, validatePassword } from "@/features/auth/schemas";
+import { passwordRequirementsMessage, validateEmail, validatePassword } from "@/features/auth/schemas";
+import { validateOtpCode } from "@/lib/auth-code-validation";
 import {
   formatCodeResendCountdown,
   nextCodeResendAvailableAt,
@@ -29,7 +32,6 @@ type ResetStage = "request" | "reset" | "success";
 type ResetPending = "request" | "confirm" | "resend" | null;
 type ResetErrors = Partial<Record<"code" | "confirmPassword" | "email" | "password", string>>;
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const emptyCode = ["", "", "", "", "", ""];
 
 function fieldClass(error?: string) {
@@ -44,6 +46,7 @@ function formData(values: Record<string, string>) {
 
 export function ForgotPasswordRouteClient() {
   const router = useRouter();
+  const retryAfter = useRateLimit();
   const [stage, setStage] = useState<ResetStage>("request");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState(emptyCode);
@@ -101,7 +104,7 @@ export function ForgotPasswordRouteClient() {
   function handleCodeChange(index: number, value: string) {
     const digit = value.replace(/\D/g, "").slice(-1);
     setCode((current) => current.map((item, itemIndex) => (itemIndex === index ? digit : item)));
-    setErrors((current) => ({ ...current, code: undefined }));
+    if (validateOtpCode(code.map((item, itemIndex) => itemIndex === index ? digit : item).join(""))) setErrors((current) => ({ ...current, code: undefined }));
 
     if (digit && index < code.length - 1) {
       codeRefs.current[index + 1]?.focus();
@@ -115,10 +118,12 @@ export function ForgotPasswordRouteClient() {
   }
 
   function handleCodePaste(event: React.ClipboardEvent<HTMLInputElement>) {
-    const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!pasted) return;
-
     event.preventDefault();
+    const pasted = event.clipboardData.getData("text").trim();
+    if (!validateOtpCode(pasted)) {
+      setErrors((current) => ({ ...current, code: "Paste the complete 6-digit reset code." }));
+      return;
+    }
     setCode(Array.from({ length: 6 }, (_, index) => pasted[index] || ""));
     codeRefs.current[Math.min(pasted.length, 5)]?.focus();
     setErrors((current) => ({ ...current, code: undefined }));
@@ -126,13 +131,13 @@ export function ForgotPasswordRouteClient() {
 
   async function requestReset(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || retryAfter) return;
 
     const trimmedEmail = email.trim().toLowerCase();
     const nextErrors: ResetErrors = {};
 
     if (!trimmedEmail) nextErrors.email = "Enter your email address.";
-    else if (!emailPattern.test(trimmedEmail)) nextErrors.email = "Use a valid email address.";
+    else if (!validateEmail(trimmedEmail)) nextErrors.email = "Use a valid email address.";
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -143,6 +148,7 @@ export function ForgotPasswordRouteClient() {
       const result = await requestPasswordResetAction(null, formData({ email: trimmedEmail }));
 
       if (!result.ok) {
+      recordRateLimit(result);
         setErrors(result.fieldErrors ?? { email: result.message });
         showAuthError(result.message);
         return;
@@ -173,7 +179,7 @@ export function ForgotPasswordRouteClient() {
   }
 
   async function resendCode() {
-    if (pending || resendLocked) return;
+    if (pending || retryAfter || resendLocked) return;
 
     setPending("resend");
 
@@ -181,6 +187,7 @@ export function ForgotPasswordRouteClient() {
       const result = await requestPasswordResetAction(null, formData({ email }));
 
       if (!result.ok) {
+      recordRateLimit(result);
         showAuthError(result.message);
         return;
       }
@@ -205,11 +212,11 @@ export function ForgotPasswordRouteClient() {
 
   async function confirmReset(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || retryAfter) return;
 
     const nextErrors: ResetErrors = {};
 
-    if (codeValue.length !== 6) nextErrors.code = "Enter the 6-digit reset code.";
+    if (!validateOtpCode(codeValue)) nextErrors.code = "Enter the 6-digit reset code.";
     if (!password) nextErrors.password = "Create a password.";
     else if (!validatePassword(password)) nextErrors.password = passwordRequirementsMessage;
     if (!confirmPassword) nextErrors.confirmPassword = "Confirm your password.";
@@ -227,6 +234,7 @@ export function ForgotPasswordRouteClient() {
       );
 
       if (!result.ok) {
+      recordRateLimit(result);
         setErrors(result.fieldErrors ?? { code: result.message });
         showAuthError(result.message);
         return;
@@ -326,6 +334,8 @@ export function ForgotPasswordRouteClient() {
                             codeRefs.current[index] = node;
                           }}
                           aria-label={`Reset code digit ${index + 1}`}
+                          aria-invalid={Boolean(errors.code)}
+                          autoComplete={index === 0 ? "one-time-code" : "off"}
                           className="input auth-code-input"
                           disabled={Boolean(pending)}
                           inputMode="numeric"
@@ -341,13 +351,14 @@ export function ForgotPasswordRouteClient() {
 
                   <Field label="New password" htmlFor="reset-new-password" error={passwordError} required>
                     <PasswordInput
+                      aria-invalid={Boolean(passwordError)}
                       autoComplete="new-password"
                       className={fieldClass(passwordError)}
                       disabled={Boolean(pending)}
                       id="reset-new-password"
                       onChange={(event) => {
                         setPassword(event.target.value);
-                        setErrors((current) => ({ ...current, password: undefined }));
+                        if (validatePassword(event.target.value)) setErrors((current) => ({ ...current, password: undefined }));
                       }}
                       placeholder="Create a new password"
                       value={password}
@@ -357,13 +368,14 @@ export function ForgotPasswordRouteClient() {
 
                   <Field label="Confirm password" htmlFor="reset-confirm-password" error={confirmPasswordError} required>
                     <PasswordInput
+                      aria-invalid={Boolean(confirmPasswordError || confirmPasswordMismatch)}
                       autoComplete="new-password"
                       className={fieldClass(confirmPasswordError)}
                       disabled={Boolean(pending)}
                       id="reset-confirm-password"
                       onChange={(event) => {
                         setConfirmPassword(event.target.value);
-                        setErrors((current) => ({ ...current, confirmPassword: undefined }));
+                        if (event.target.value && event.target.value === password) setErrors((current) => ({ ...current, confirmPassword: undefined }));
                       }}
                       placeholder="Repeat your new password"
                       value={confirmPassword}
@@ -371,7 +383,7 @@ export function ForgotPasswordRouteClient() {
                     <ConfirmPasswordMismatch confirmPassword={confirmPassword} password={password} />
                   </Field>
 
-                  <Btn className="w-full" loading={pending === "confirm"} loadingLabel="Resetting password" size="lg" type="submit" iconRight="arrow">
+                  <Btn className="w-full" loading={pending === "confirm"} loadingLabel="Resetting password" size="lg" disabled={Boolean(retryAfter)} type="submit" iconRight="arrow">
                     Reset password
                   </Btn>
 
@@ -381,7 +393,7 @@ export function ForgotPasswordRouteClient() {
                     </Btn>
                     <Btn
                       className="w-full"
-                      disabled={Boolean(pending) || resendLocked}
+                      disabled={Boolean(pending) || Boolean(retryAfter) || resendLocked}
                       loading={pending === "resend"}
                       loadingLabel="Sending"
                       variant="secondary"
@@ -403,7 +415,7 @@ export function ForgotPasswordRouteClient() {
                       inputMode="email"
                       onChange={(event) => {
                         setEmail(event.target.value);
-                        setErrors((current) => ({ ...current, email: undefined }));
+                        if (validateEmail(event.target.value.trim())) setErrors((current) => ({ ...current, email: undefined }));
                       }}
                       placeholder="name@example.com"
                       type="email"
@@ -415,7 +427,7 @@ export function ForgotPasswordRouteClient() {
                     For privacy, SupplyED shows the same confirmation whether or not the email is registered.
                   </div>
 
-                  <Btn className="w-full" loading={pending === "request"} loadingLabel="Sending reset code" size="lg" type="submit" iconRight="arrow">
+                  <Btn className="w-full" loading={pending === "request"} loadingLabel="Sending reset code" size="lg" disabled={Boolean(retryAfter)} type="submit" iconRight="arrow">
                     Send reset code
                   </Btn>
                 </form>

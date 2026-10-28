@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}));
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body) || (body.amountPence !== undefined && (!Number.isSafeInteger(body.amountPence) || body.amountPence < 40))) return Response.json({ message: "Cash-outs start at £0.40. Enter a valid whole-pence amount." }, { status: 400 });
     const amountPence = typeof body.amountPence === "number" ? body.amountPence : undefined;
     const payout = await api.post<PayoutSummary>("/payments/payout-account/instant-payout", { amountPence });
 

@@ -172,7 +172,7 @@ async function issueLoginVerificationChallenge(email: string, message: string) {
 
 function toAuthActionError(error: unknown, fallback = "We could not complete that auth request.") {
   if (error instanceof ApiError) {
-    return actionError(error.message || fallback);
+    return actionError(error.message || fallback, { code: error.code, status: error.status, fieldErrors: error.fieldErrors, retryAfter: error.retryAfter, requestId: error.requestId });
   }
 
   if (error instanceof Error && error.message) {
@@ -191,9 +191,9 @@ export async function loginWithEmailAction(_previousState: unknown, formData: Fo
     });
   }
 
-  if (input.password.length < 8) {
-    return actionError("Password must be at least 8 characters.", {
-      fieldErrors: { password: "Password must be at least 8 characters." },
+  if (input.password.length < 8 || input.password.length > 128) {
+    return actionError("Password must be between 8 and 128 characters.", {
+      fieldErrors: { password: "Password must be between 8 and 128 characters." },
     });
   }
 
@@ -258,6 +258,12 @@ export async function verifyTwoFactorLoginAction(_previousState: unknown, formDa
 
 export async function signupWithEmailAction(_previousState: unknown, formData: FormData) {
   const input = parseSignupForm(formData);
+
+  if (formData.get("termsAccepted") !== "on") {
+    return actionError("Accept the terms and privacy policy before creating your account.", {
+      fieldErrors: { termsAccepted: "Accept the terms and privacy policy to continue." },
+    });
+  }
 
   if (input.role !== "teacher" && input.role !== "institution") {
     return actionError("Choose whether you are signing up as a teacher or a school.", {
@@ -337,7 +343,7 @@ export async function forgotPasswordAction(_previousState: unknown, formData: Fo
 export async function resetPasswordAction(_previousState: unknown, formData: FormData) {
   const input = parsePasswordResetForm(formData);
 
-  if (input.code.length !== 6) {
+  if (!/^\d{6}$/.test(input.code)) {
     return actionError("Enter the 6-digit reset code.", {
       fieldErrors: { code: "Enter the 6-digit reset code." },
     });
@@ -371,7 +377,7 @@ export async function verifyEmailAction(_previousState: unknown, formData: FormD
     });
   }
 
-  if (input.code.length !== 6) {
+  if (!/^\d{6}$/.test(input.code)) {
     return actionError("Enter the 6-digit verification code.", {
       fieldErrors: { code: "Enter the 6-digit verification code." },
     });
@@ -399,7 +405,7 @@ export async function verifyEmailSessionAction(_previousState: unknown, formData
     });
   }
 
-  if (input.code.length !== 6) {
+  if (!/^\d{6}$/.test(input.code)) {
     return actionError("Enter the 6-digit verification code.", {
       fieldErrors: { code: "Enter the 6-digit verification code." },
     });

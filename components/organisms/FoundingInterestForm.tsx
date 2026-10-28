@@ -1,24 +1,18 @@
 "use client";
+import { useRateLimit } from "@/lib/rate-limit";
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Button, Field, Icon } from "@/components/atoms";
+import { Button, Checkbox, Field, Icon } from "@/components/atoms";
+import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
+import type { DropdownName } from "@/features/dropdowns/types";
+import { PhoneInput } from "@/components/molecules/PhoneInput";
+import { validateUkPhone } from "@/lib/uk-validation";
 import {
   type FoundingInterestActionState,
   type WaitlistField,
 } from "@/features/contact/actions";
 import { submitWaitlistAction } from "@/features/contact/waitlist-client";
-import {
-  coverBookingOptions,
-  currentSupplyOptions,
-  daysPerWeekOptions,
-  supplyDaysOptions,
-  waitlistSchoolAreas,
-  waitlistSchoolRoles,
-  waitlistSchoolTypes,
-  waitlistTeacherAreas,
-  waitlistTeacherRoles,
-} from "@/features/contact/waitlist-options";
 import { WaitlistConfirmation } from "./WaitlistConfirmation";
 
 type InterestType = "SCHOOL" | "TEACHER";
@@ -62,6 +56,7 @@ function WaitlistForm({
   type,
   onTypeChange,
 }: Props & { onTypeChange: (type: InterestType) => void }) {
+  const retryAfter = useRateLimit();
   const [state, action, pending] = useActionState(
     submitWaitlistAction,
     null as FoundingInterestActionState,
@@ -70,6 +65,7 @@ function WaitlistForm({
   const [consent, setConsent] = useState(false);
   const [founding, setFounding] = useState(false);
   const school = type === "SCHOOL";
+  const invalidPhone = !school && !validateUkPhone(values.phone).valid;
   const errors = state && !state.ok ? state.fieldErrors : undefined;
   const fieldId = (field: string) => `${id}-${field}`;
   function input(
@@ -111,7 +107,7 @@ function WaitlistForm({
   function select(
     name: WaitlistField,
     label: string,
-    options: readonly string[],
+    collection: DropdownName,
   ) {
     return (
       <Field
@@ -120,24 +116,19 @@ function WaitlistForm({
         error={errors?.[name]}
         required
       >
-        <select
+        <DynamicSelect
           aria-invalid={Boolean(errors?.[name])}
-          className="select"
+          disabled={pending || Boolean(retryAfter)}
+          error={Boolean(errors?.[name])}
           id={fieldId(name)}
           name={name}
-          onChange={(e) =>
-            setValues((current) => ({ ...current, [name]: e.target.value }))
+          onChange={(value) =>
+            setValues((current) => ({ ...current, [name]: value }))
           }
+          collection={collection}
           required
           value={values[name] ?? ""}
-        >
-          <option value="">Select an option</option>
-          {options.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
+        />
       </Field>
     );
   }
@@ -154,7 +145,7 @@ function WaitlistForm({
       />
     );
   return (
-    <form action={action} className="waitlist-form" id={id}>
+    <form action={action} className="waitlist-form" id={id} noValidate onSubmit={(event) => { if (invalidPhone) event.preventDefault(); }}>
       <input name="type" type="hidden" value={type} />
       <input
         name="source"
@@ -179,7 +170,7 @@ function WaitlistForm({
           of the pilot.
         </p>
       </div>
-      <fieldset className="waitlist-form-fields" disabled={pending}>
+      <fieldset className="waitlist-form-fields" disabled={pending || Boolean(retryAfter)}>
         <legend className="sr-only">
           {school ? "School" : "Teacher"} waitlist details
         </legend>
@@ -216,7 +207,7 @@ function WaitlistForm({
               {input("name", "Your name", "Full name", {
                 autoComplete: "name",
               })}
-              {select("role", "Your role", waitlistSchoolRoles)}
+              {select("role", "Your role", "waitlistSchoolRole")}
             </div>
             {input("email", "Work email", "name@school.org.uk", {
               type: "email",
@@ -224,31 +215,27 @@ function WaitlistForm({
               maxLength: 254,
             })}
             <div className="waitlist-field-grid">
-              {select("area", "Area", waitlistSchoolAreas)}
-              {select("schoolType", "School type", waitlistSchoolTypes)}
+              {select("area", "Area", "waitlistSchoolArea")}
+              {select("schoolType", "School type", "waitlistSchoolType")}
             </div>
             {select(
               "supplyDaysPerTerm",
               "Supply days per term (roughly)",
-              supplyDaysOptions,
+              "supplyDaysPerTerm",
             )}
             {select(
               "coverBookingMethod",
               "How you book cover now",
-              coverBookingOptions,
+              "coverBookingMethod",
             )}
-            <label className="waitlist-checkbox">
-              <input
-                checked={founding}
-                name="foundingProgrammeInterest"
-                onChange={(e) => setFounding(e.target.checked)}
-                type="checkbox"
-              />
-              <span>
-                I&apos;d like to hear about the Founding Schools Programme (20
-                places).
-              </span>
-            </label>
+            <Checkbox
+              checked={founding}
+              className="waitlist-checkbox"
+              disabled={pending || Boolean(retryAfter)}
+              label="I'd like to hear about the Founding Schools Programme (20 places)."
+              name="foundingProgrammeInterest"
+              onChange={setFounding}
+            />
           </>
         ) : (
           <>
@@ -267,40 +254,40 @@ function WaitlistForm({
               autoComplete: "email",
               maxLength: 254,
             })}
-            {input("phone", "Mobile number (optional)", "e.g. 07700 900123", {
-              type: "tel",
-              autoComplete: "tel",
-              optional: true,
-              maxLength: 32,
-            })}
+            <PhoneInput
+              disabled={pending || Boolean(retryAfter)}
+              error={errors?.phone}
+              id={fieldId("phone")}
+              label="UK phone number (optional)"
+              name="phone"
+              onChange={(phone) => setValues((current) => ({ ...current, phone }))}
+              placeholder="e.g. 07400 123456 or 020 7946 0018"
+              value={values.phone ?? ""}
+            />
             <div className="waitlist-field-grid">
-              {select("role", "I work as a", waitlistTeacherRoles)}
-              {select("area", "Where you’ll work", waitlistTeacherAreas)}
+              {select("role", "I work as a", "waitlistTeacherRole")}
+              {select("area", "Where you’ll work", "waitlistTeacherArea")}
             </div>
             {select(
               "currentSupply",
               "Are you doing supply now?",
-              currentSupplyOptions,
+              "currentSupply",
             )}
             {select(
               "daysPerWeek",
               "How many days a week would you want?",
-              daysPerWeekOptions,
+              "daysPerWeek",
             )}
-            <label className="waitlist-checkbox">
-              <input
-                aria-invalid={Boolean(errors?.emailConsent)}
-                checked={consent}
-                name="emailConsent"
-                onChange={(e) => setConsent(e.target.checked)}
-                required
-                type="checkbox"
-              />
-              <span>
-                Email me about the first cohort and SupplyED&apos;s launch. I
-                can unsubscribe any time.
-              </span>
-            </label>
+            <Checkbox
+              aria-invalid={Boolean(errors?.emailConsent)}
+              checked={consent}
+              className="waitlist-checkbox"
+              disabled={pending || Boolean(retryAfter)}
+              label="Email me about the first cohort and SupplyED's launch. I can unsubscribe any time."
+              name="emailConsent"
+              onChange={setConsent}
+              required
+            />
             {errors?.emailConsent ? (
               <p className="text-danger text-sm" role="alert">
                 {errors.emailConsent}
@@ -315,6 +302,7 @@ function WaitlistForm({
         ) : null}
         <Button
           className="w-full"
+          disabled={invalidPhone || Boolean(retryAfter)}
           loading={pending}
           loadingLabel="Joining the waitlist"
           iconRight="arrow"

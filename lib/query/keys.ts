@@ -1,10 +1,16 @@
 export const queryKeys = {
+  invitations: {
+    all: ["invitations"] as const,
+    detail: (id: string) => [...queryKeys.invitations.all, "detail", id] as const,
+    list: (filters?: Record<string, unknown>) => [...queryKeys.invitations.all, "list", filters ?? {}] as const,
+  },
   applications: {
     all: ["applications"] as const,
     activeJobCount: () => [...queryKeys.applications.all, "active-job-count"] as const,
     byJob: (jobId: string, filters?: Record<string, unknown>) =>
       [...queryKeys.applications.all, "job", jobId, filters ?? {}] as const,
     detail: (applicationId: string) => [...queryKeys.applications.all, "detail", applicationId] as const,
+    history: (applicationId: string) => [...queryKeys.applications.all, "history", applicationId] as const,
     mine: (filters?: Record<string, unknown>) => [...queryKeys.applications.all, "mine", filters ?? {}] as const,
   },
   auth: {
@@ -13,11 +19,14 @@ export const queryKeys = {
   },
   bookings: {
     all: ["bookings"] as const,
+    detail: (id: string) => [...queryKeys.bookings.all, "detail", id] as const,
     mine: (filters?: Record<string, unknown>) => [...queryKeys.bookings.all, "mine", filters ?? {}] as const,
   },
   conversations: {
     all: ["conversations"] as const,
+    detail: (id: string) => [...queryKeys.conversations.all, "detail", id] as const,
     forApplication: (applicationId: string) => [...queryKeys.conversations.all, "application", applicationId] as const,
+    forBooking: (bookingId: string) => [...queryKeys.conversations.all, "booking", bookingId] as const,
     list: () => [...queryKeys.conversations.all, "list"] as const,
     messages: (conversationId: string) => [...queryKeys.conversations.all, "messages", conversationId] as const,
     typing: (conversationId: string) => [...queryKeys.conversations.all, "typing", conversationId] as const,

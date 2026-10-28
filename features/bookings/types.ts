@@ -1,3 +1,4 @@
+import type { OfferedJobTerms } from "@/features/jobs/offered-terms";
 export type BookingStatus = "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 export type BookingInvoiceFilter = "none" | "paid" | "unpaid";
 export type ReviewerType = "INSTITUTION" | "INSTRUCTOR";
@@ -24,6 +25,7 @@ export type BookingJobSummary = {
   parkingInfo?: string | null;
   postalCode?: string | null;
   subject?: string | null;
+  subjects?: string[];
   title: string;
 };
 
@@ -45,6 +47,9 @@ export type BookingInvoiceSummary = {
 };
 
 export type Booking = {
+  agreedTerms: OfferedJobTerms | null;
+  termsStatus: "RECORDED" | "LEGACY_PARTIAL";
+  source?: "APPLICATION" | "DIRECT_HIRE";
   applicationId: string;
   cancelReason?: string | null;
   cancelledAt?: string | null;
@@ -57,6 +62,8 @@ export type Booking = {
   instructor: BookingPartySummary;
   invoice: BookingInvoiceSummary | null;
   job: BookingJobSummary;
+  hours?: number | null;
+  days?: number | null;
   payAmount?: number | null;
   payType?: string | null;
   reviews: BookingReview[];

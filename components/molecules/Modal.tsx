@@ -49,7 +49,7 @@ export function Modal({
         closeRef.current();
       }
       if (event.key !== "Tab" || !panel) return;
-      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(focusableSelector)).filter((item) => item.getClientRects().length > 0);
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(focusableSelector)).filter((item) => item.tabIndex >= 0 && item.getClientRects().length > 0 && !item.closest('[aria-hidden="true"]'));
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (!first) { event.preventDefault(); panel.focus(); return; }
@@ -74,7 +74,7 @@ export function Modal({
         "modal-overlay fixed inset-0 z-50 flex justify-center p-4 sm:p-6",
         scrollMode === "viewport" ? "items-start overflow-y-auto" : "items-center",
       )}
-      onClick={onClose}
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <div
         ref={panelRef}
@@ -83,7 +83,7 @@ export function Modal({
         role="dialog"
         tabIndex={-1}
         className={cn(
-          "modal-panel w-full cursor-default rounded-xl border border-border bg-white shadow-panel",
+          "modal-panel w-full cursor-default rounded-xl border border-border bg-surface shadow-panel",
           scrollMode === "viewport" ? "my-auto overflow-visible" : "max-h-[90dvh] overflow-y-auto",
           size === "xl" ? "max-w-4xl" : size === "lg" ? "max-w-2xl" : "max-w-lg",
         )}

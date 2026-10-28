@@ -91,7 +91,7 @@ export async function getTwoFactorStatusAction() {
   try {
     return actionOk(normalizeStatus(await api.get<unknown>("/auth/2fa/status")));
   } catch (error) {
-    return actionError(readActionError(error, "We could not load two-factor authentication status."));
+    return actionError(readActionError(error, "We could not load two-factor authentication status."), errorDetails(error));
   }
 }
 
@@ -99,7 +99,7 @@ export async function startTwoFactorSetupAction() {
   try {
     return actionOk(normalizeSetup(await api.post<unknown>("/auth/2fa/setup")));
   } catch (error) {
-    return actionError(readActionError(error, "We could not start two-factor authentication setup."));
+    return actionError(readActionError(error, "We could not start two-factor authentication setup."), errorDetails(error));
   }
 }
 
@@ -116,6 +116,7 @@ export async function enableTwoFactorAction(_previousState: unknown, formData: F
     return actionOk(normalizeRecoveryCodes(await api.post<unknown>("/auth/2fa/enable", { code })), "Two-factor authentication is now enabled.");
   } catch (error) {
     return actionError(readActionError(error, "We could not enable two-factor authentication."), {
+      ...errorDetails(error),
       fieldErrors: { code: "Check the authenticator code and try again." },
     });
   }
@@ -134,6 +135,7 @@ export async function disableTwoFactorAction(_previousState: unknown, formData: 
     return actionOk(normalizeStatus(await api.post<unknown>("/auth/2fa/disable", { code })), "Two-factor authentication is disabled.");
   } catch (error) {
     return actionError(readActionError(error, "We could not disable two-factor authentication."), {
+      ...errorDetails(error),
       fieldErrors: { code: "Check the code and try again." },
     });
   }
@@ -155,7 +157,10 @@ export async function regenerateTwoFactorRecoveryCodesAction(_previousState: unk
     );
   } catch (error) {
     return actionError(readActionError(error, "We could not generate new recovery codes."), {
+      ...errorDetails(error),
       fieldErrors: { code: "Check the code and try again." },
     });
   }
 }
+
+function errorDetails(error: unknown) { return error instanceof ApiError ? { code: error.code, status: error.status, retryAfter: error.retryAfter, requestId: error.requestId, fieldErrors: error.fieldErrors } : {}; }

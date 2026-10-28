@@ -1,5 +1,5 @@
 import type { SocialAuthAvailability } from "@/types/supplyed";
-import { cn } from "@/lib/cn";
+import { buttonClassName } from "../atoms";
 
 type SocialAuthButtonsProps = {
   available?: SocialAuthAvailability;
@@ -50,12 +50,7 @@ export function SocialAuthButtons({
               key={provider.id}
               aria-disabled={!providerAvailable}
               aria-label={providerAvailable ? `${action} with ${provider.name}` : unavailableLabel}
-              className={cn(
-                "flex h-12 cursor-pointer items-center justify-center gap-3 rounded-lg border border-border bg-white px-4 text-sm font-semibold text-ink transition",
-                "hover:border-brand hover:bg-brand-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
-                "disabled:cursor-not-allowed disabled:opacity-50",
-                !providerAvailable && "opacity-60",
-              )}
+              className={buttonClassName({ variant: "secondary", size: "lg", className: !providerAvailable ? "opacity-60" : undefined })}
               disabled={disabled}
               onClick={provider.id === "google" ? onGoogle : onMicrosoft}
               title={providerAvailable ? `${action} with ${provider.name}` : unavailableLabel}

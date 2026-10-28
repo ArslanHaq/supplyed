@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 import { useApplication } from "@/features/applications/use-applications";
 import type { JobApplication } from "@/features/applications/types";
+import { useBooking } from "@/features/bookings/use-bookings";
+import type { Booking } from "@/features/bookings/types";
 import {
   ALLOWED_ATTACHMENT_TYPES,
   formatFileSize,
@@ -12,25 +15,36 @@ import {
   MAX_MESSAGE_LENGTH,
 } from "@/features/conversations/schemas";
 import { emitTyping } from "@/features/conversations/socket";
+import { invitationMessageParts } from "@/features/conversations/message-links";
+import { conversationPerson, groupConversationThreads, threadKind, type ConversationGroup, type ConversationThread } from "@/features/conversations/threads";
+import { useAllInvitations, useInvitationClock } from "@/features/invitations/use-invitations";
+import type { Invitation } from "@/features/invitations/types";
+import { formatPlannedUnits } from "@/features/jobs/work-units";
 import type { ChatMessage, Conversation, MessageAttachment } from "@/features/conversations/types";
 import {
   flattenMessages,
   uploadAttachment,
   flattenConversations,
   useConversationForApplication,
+  useConversationForBooking,
+  useConversation,
   useConversations,
   useMarkConversationRead,
   useMessages,
   useSendMessage,
   useTypingIndicator,
+  useUnreadMessages,
 } from "@/features/conversations/use-conversations";
 import { useJob } from "@/features/jobs/use-jobs";
 import type { Job } from "@/features/jobs/types";
 import type { RouteProps, ToastFn } from "@/types/supplyed";
 
 import { Avatar, Btn, Icon, Tag } from "../atoms";
-import { Modal, PageHead, ProposalContent, SectionLoader } from "../molecules";
+import { PageHead, SectionLoader } from "../molecules";
+import { ProposalPreviewModal } from "../molecules/ProposalPreviewModal";
+import { TeacherHireActions } from "./TeacherHireActions";
 import { MessageAttachmentPreview } from "./MessageAttachmentPreview";
+import { ConversationThreadPicker } from "./ConversationThreadPicker";
 
 type PendingFile = {
   attachment?: MessageAttachment;
@@ -39,52 +53,58 @@ type PendingFile = {
   localId: string;
   status: "error" | "ready" | "uploading";
 };
+type ComposerDraft = { body: string; files: PendingFile[]; sending?: boolean };
+type UpdateDraft = (conversationId: string, update: (draft: ComposerDraft) => ComposerDraft) => void;
+const emptyDraft: ComposerDraft = { body: "", files: [] };
 
 /**
- * Conversations between a school and a teacher, one per job application.
+ * General conversations and separate application/booking conversations under Jobs.
  * New messages, read receipts and typing notices arrive live over the shared
  * socket (see useConversationStream in AppChrome).
  */
 export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" | "go" | "role" | "toast">) {
-  const conversationsQuery = useConversations();
-  const fromApplication = useConversationForApplication(ctx.applicationId);
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } = conversationsQuery;
+  const conversationsQuery = useConversations({ limit: 20 });
+  const unreadQuery = useUnreadMessages();
+  const invitationsQuery = useAllInvitations(role === "teacher" || role === "institution");
+  const [drafts, setDrafts] = useState<Record<string, ComposerDraft>>({});
+  const updateDraft: UpdateDraft = useCallback((id, update) => {
+    setDrafts(current => ({ ...current, [id]: update(current[id] ?? emptyDraft) }));
+  }, []);
+  const fromApplication = useConversationForApplication(ctx.conversationId || ctx.bookingId ? undefined : ctx.applicationId);
+  const fromBooking = useConversationForBooking(ctx.conversationId ? undefined : ctx.bookingId);
+  const fromId = useConversation(ctx.conversationId);
+  const linked = ctx.conversationId ? fromId : ctx.bookingId ? fromBooking : fromApplication;
+  const contextId = ctx.conversationId ?? ctx.bookingId ?? ctx.applicationId;
+  const { hasNextPage } = conversationsQuery;
   // undefined follows a direct application link, null explicitly returns to the inbox.
-  const [selection, setSelection] = useState<{ applicationId?: string; selectedId: string | null | undefined }>({ selectedId: undefined });
-  const selectedId = selection.applicationId === ctx.applicationId ? selection.selectedId : undefined;
+  const [selection, setSelection] = useState<{ applicationId?: string; selectedId: string | null | undefined; conversation?: Conversation }>({ selectedId: undefined });
+  const selectedId = selection.applicationId === contextId ? selection.selectedId : undefined;
 
-  // A thread opened from an application may not be in the list yet.
+  const selectedQuery = useConversation(selectedId ?? undefined);
+  const selectedConversation = selectedId ? selectedQuery.data ?? selection.conversation : undefined;
+
+  // An older picker choice may not be in the loaded inbox pages.
   const conversations = useMemo(() => {
     const list = flattenConversations(conversationsQuery.data);
-    const opened = fromApplication.data;
-    return opened && !list.some((item) => item.id === opened.id) ? [opened, ...list] : list;
-  }, [conversationsQuery.data, fromApplication.data]);
+    const opened = [selectedConversation, linked.data].filter((item): item is Conversation => Boolean(item));
+    return [...opened, ...list.filter(item => !opened.some(value => value.id === item.id))];
+  }, [conversationsQuery.data, linked.data, selectedConversation]);
 
-  // Fill the inbox without making the user page through older conversations.
-  useEffect(() => {
-    if (
-      hasNextPage &&
-      !isFetchingNextPage &&
-      !isFetchNextPageError
-    ) {
-      void fetchNextPage();
-    }
-  }, [
-    fetchNextPage,
-    hasNextPage,
-    isFetchNextPageError,
-    isFetchingNextPage,
-  ]);
-
-  const activeId = selectedId === undefined ? fromApplication.data?.id ?? null : selectedId;
-  const active = conversations.find((item) => item.id === activeId) ?? null;
-  const applicationQuery = useApplication(active?.applicationId);
-  const jobQuery = useJob(active?.job.id ?? "", role === "institution");
-  const total = Math.max(conversationsQuery.data?.pages[0]?.pagination.total ?? 0, conversations.length);
-  const unread = conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0);
+  const groups = useMemo(() => groupConversationThreads(conversations, invitationsQuery.data), [conversations, invitationsQuery.data]);
+  const activeKey = selectedId === undefined ? linked.data?.id ?? null : selectedId;
+  const activeGroup = groups.find(group => group.threads.some(thread => thread.key === activeKey));
+  const activeThread = activeGroup?.threads.find(thread => thread.key === activeKey);
+  const active = activeThread?.conversation ?? null;
+  const bookingQuery = useBooking(active?.booking?.id);
+  const applicationQuery = useApplication(active?.applicationId ?? undefined);
+  const jobQuery = useJob(role === "institution" && !active?.booking && active?.applicationId ? active.job?.id ?? "" : "", role === "institution");
+  const unread = unreadQuery.data?.total ?? conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0);
+  function selectThread(conversation: Conversation) {
+    setSelection({ applicationId: contextId, selectedId: conversation.id, conversation });
+  }
 
   function returnToInbox() {
-    setSelection({ applicationId: ctx.applicationId, selectedId: null });
+    setSelection({ applicationId: contextId, selectedId: null });
   }
 
   return (
@@ -98,18 +118,19 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
         }
       />
 
-      {conversationsQuery.isLoading || fromApplication.isLoading ? <SectionLoader rows={4} /> : null}
-      {fromApplication.error ? (
-        <p className="mb-4 rounded-lg bg-danger-tint px-4 py-3 text-sm text-danger">{fromApplication.error.message}</p>
+      {conversationsQuery.isLoading || linked.isLoading ? <SectionLoader rows={4} /> : null}
+      {linked.error ? (
+        <p className="mb-4 rounded-lg bg-danger-tint px-4 py-3 text-sm text-danger">{linked.error.message}</p>
       ) : null}
+      {conversationsQuery.isError ? <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 text-sm" role="alert"><span>The inbox could not be loaded.</span><Btn size="sm" variant="secondary" onClick={() => void conversationsQuery.refetch()}>Try again</Btn></div> : null}
 
-      {!conversationsQuery.isLoading && !fromApplication.isLoading && conversations.length === 0 ? (
+      {!conversationsQuery.isLoading && !conversationsQuery.isError && !linked.isLoading && conversations.length === 0 ? (
         <div className="card card-pad-lg text-center">
           <div className="font-heading text-[24px]">No conversations yet</div>
           <p className="mx-auto mt-2 max-w-[480px] text-sm leading-6 text-muted">
             {role === "teacher"
-              ? "Once you apply for a job, choose Message school on the application to start a conversation."
-              : "Choose Message on an applicant to start a conversation with them."}
+              ? "Schools can contact you directly or about an application. Their conversations appear here so you can reply."
+              : "Choose Message on a teacher profile or applicant to start a conversation."}
           </p>
         </div>
       ) : null}
@@ -117,19 +138,30 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
       {conversations.length > 0 ? (
         <div className={active ? "messaging-layout has-active" : "messaging-inbox-layout"}>
           <ConversationList
-            active={activeId}
-            conversations={conversations}
+            active={activeGroup?.key ?? null}
+            groups={groups}
             expanded={!active}
             hasMore={conversationsQuery.hasNextPage}
             loadingMore={conversationsQuery.isFetchingNextPage}
             onLoadMore={() => void conversationsQuery.fetchNextPage()}
-            onSelect={(nextId) => setSelection({ applicationId: ctx.applicationId, selectedId: nextId })}
-            total={total}
+            onSelect={(group) => selectThread(group.key === activeGroup?.key && active ? active : group.threads[0].conversation)}
           />
-          {active ? (
+          {active && activeThread && activeGroup ? (
             <>
-              <Thread key={active.id} conversation={active} onBack={returnToInbox} toast={toast} />
-              <ConversationContextPanel
+              <Thread
+                conversation={active}
+                activeThread={activeThread}
+                onSelectThread={selectThread}
+                invitationsLoading={invitationsQuery.isLoading}
+                invitationsError={invitationsQuery.isError}
+                onRetryInvitations={() => void invitationsQuery.refetch()}
+                draft={drafts[active.id] ?? emptyDraft}
+                updateDraft={updateDraft}
+                onBack={returnToInbox}
+                toast={toast}
+              />
+              {threadKind(activeThread) === "General" ? <GeneralConversationContext invitations={activeGroup.invitations} conversation={active} go={go} /> : active.booking ? <BookingConversationContext booking={bookingQuery.data} conversation={active} loading={bookingQuery.isLoading} error={bookingQuery.error?.message} go={go} /> : <ConversationContextPanel
+                key={activeThread.key}
                 application={applicationQuery.data ?? null}
                 conversation={active}
                 applicationError={applicationQuery.isError}
@@ -137,10 +169,10 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
                 job={jobQuery.data ?? null}
                 loading={applicationQuery.isLoading || jobQuery.isLoading}
                 role={role}
-              />
+              />}
             </>
           ) : (
-            <InboxOverview conversations={total} role={role} unread={unread} />
+            <InboxOverview conversations={groups.length} role={role} unread={unread} loadingMore={Boolean(hasNextPage)} />
           )}
         </div>
       ) : null}
@@ -150,32 +182,33 @@ export function MessagingPage({ ctx, go, role, toast }: Pick<RouteProps, "ctx" |
 
 function ConversationList({
   active,
-  conversations,
+  groups,
   expanded,
   hasMore,
   loadingMore,
   onLoadMore,
   onSelect,
-  total,
 }: {
   active: string | null;
-  conversations: Conversation[];
+  groups: ConversationGroup[];
   expanded: boolean;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
-  onSelect: (id: string) => void;
-  /** Every thread the user has, not just the pages loaded so far. */
-  total: number;
+  onSelect: (group: ConversationGroup) => void;
 }) {
   return (
     <div className={`messaging-conversations sidebar-panel flex min-h-0 flex-col overflow-hidden ${expanded ? "is-inbox" : ""}`}>
       <div className="sidebar-heading mx-4 mb-0 pt-5">
         <span className="flex items-center gap-2"><Icon name="message" size={17} /> Inbox</span>
-        <span className="rounded-md bg-chalk px-2 py-0.5 text-xs text-muted">{total}</span>
+        <span className="rounded-md bg-chalk px-2 py-0.5 text-xs text-muted">{groups.length}{hasMore ? "+" : ""}</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {conversations.map((conversation) => {
+      <div className="min-h-0 flex-1 overflow-y-auto" onScroll={event => {
+        const element = event.currentTarget;
+        if (hasMore && !loadingMore && element.scrollHeight - element.scrollTop - element.clientHeight < 80) onLoadMore();
+      }}>
+        {groups.map((group) => {
+          const conversation = group.latest;
           const last = conversation.lastMessage;
           const preview = last
             ? `${last.fromMe ? "You: " : ""}${last.body || (last.hasAttachments ? "Sent a file" : "")}`
@@ -183,22 +216,22 @@ function ConversationList({
 
           return (
             <button
-              key={conversation.id}
-              aria-current={active === conversation.id ? "true" : undefined}
-              className={`msg-list-item w-full text-left ${active === conversation.id ? "active" : ""}`}
-              onClick={() => onSelect(conversation.id)}
+              key={group.key}
+              aria-current={active === group.key ? "true" : undefined}
+              className={`msg-list-item w-full text-left ${active === group.key ? "active" : ""}`}
+              onClick={() => onSelect(group)}
               type="button"
             >
-              <Avatar name={conversation.counterpart.name} size="sm" src={conversation.counterpart.imageUrl} />
+              <Avatar name={group.person.name} size="sm" src={group.person.imageUrl} />
               <div className="min-w-0 flex-1">
-                <div className={`truncate ${conversation.unreadCount ? "font-bold" : "font-medium"}`}>{conversation.counterpart.name}</div>
-                <div className="truncate text-xs text-muted">{conversation.job.title}</div>
-                <div className={`truncate text-xs ${conversation.unreadCount ? "font-semibold text-ink" : "text-muted"}`}>{preview}</div>
+                <div className={`truncate ${group.unreadCount ? "font-bold" : "font-medium"}`}>{group.person.name}</div>
+                <div className="truncate text-xs text-muted">{group.threads.length}{hasMore ? "+" : ""} {group.threads.length === 1 && !hasMore ? "thread" : "threads"} · {threadKind({ key: conversation.id, conversation })}</div>
+                <div className={`truncate text-xs ${group.unreadCount ? "font-semibold text-ink" : "text-muted"}`}>{preview}</div>
               </div>
               <div className="flex flex-col items-end gap-1">
                 {last ? <span className="text-[11px] text-muted">{formatWhen(last.createdAt)}</span> : null}
-                {conversation.unreadCount ? (
-                  <span className="rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">{conversation.unreadCount}</span>
+                {group.unreadCount ? (
+                  <span className="rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">{group.unreadCount}</span>
                 ) : null}
               </div>
             </button>
@@ -216,7 +249,7 @@ function ConversationList({
   );
 }
 
-function InboxOverview({ conversations, role, unread }: { conversations: number; role: RouteProps["role"]; unread: number }) {
+function InboxOverview({ conversations, role, unread, loadingMore }: { conversations: number; role: RouteProps["role"]; unread: number; loadingMore: boolean }) {
   return (
     <section className="messaging-inbox-overview card" aria-labelledby="inbox-overview-title">
       <div className="messaging-inbox-illustration" aria-hidden="true">
@@ -225,12 +258,12 @@ function InboxOverview({ conversations, role, unread }: { conversations: number;
       <p className="context-label">Your messages</p>
       <h2 className="mt-2 font-heading text-2xl font-bold text-ink" id="inbox-overview-title">Select a conversation</h2>
       <p className="mt-2 max-w-[540px] text-sm leading-6 text-muted">
-        Choose a {role === "teacher" ? "school" : "teacher"} from your inbox to open the full conversation and see the related application and job details.
+        Choose a {role === "teacher" ? "school" : "teacher"}. General holds direct messages and invitations. Jobs holds application conversations and a fresh conversation for each booking.
       </p>
       <div className="mt-6 grid w-full max-w-[520px] grid-cols-2 gap-3">
         <div className="rounded-xl border border-border bg-chalk p-4">
-          <div className="text-2xl font-bold text-ink">{conversations}</div>
-          <div className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Conversations</div>
+          <div className="text-2xl font-bold text-ink">{conversations}{loadingMore ? "+" : ""}</div>
+          <div className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted">{role === "teacher" ? "Schools" : "People"}</div>
         </div>
         <div className="rounded-xl border border-border bg-chalk p-4">
           <div className="text-2xl font-bold text-ink">{unread}</div>
@@ -241,7 +274,19 @@ function InboxOverview({ conversations, role, unread }: { conversations: number;
   );
 }
 
-function Thread({ conversation, onBack, toast }: { conversation: Conversation; onBack: () => void; toast: ToastFn }) {
+function Thread({ conversation, activeThread, onSelectThread, invitationsLoading, invitationsError, onRetryInvitations, draft, updateDraft, onBack, toast }: {
+  conversation: Conversation;
+  activeThread: ConversationThread;
+  onSelectThread: (conversation: Conversation) => void;
+  invitationsLoading: boolean;
+  invitationsError: boolean;
+  onRetryInvitations: () => void;
+  draft: ComposerDraft;
+  updateDraft: UpdateDraft;
+  onBack: () => void;
+  toast: ToastFn;
+}) {
+  const tabId = useId();
   const messagesQuery = useMessages(conversation.id);
   const messages = useMemo(() => flattenMessages(messagesQuery.data), [messagesQuery.data]);
   const markRead = useMarkConversationRead();
@@ -287,22 +332,26 @@ function Thread({ conversation, onBack, toast }: { conversation: Conversation; o
   return (
     <section className="messaging-thread card card-pad-lg flex min-h-[620px] flex-col overflow-hidden">
       <header className="mb-4 flex items-center gap-3 border-b border-border pb-4">
-        <Btn className="messaging-back-button" size="sm" variant="ghost" onClick={onBack}>Inbox</Btn>
-        <Avatar name={conversation.counterpart.name} size="md" src={conversation.counterpart.imageUrl} />
+        <Btn className="messaging-back-button" icon="arrowLeft" size="sm" variant="ghost" onClick={onBack}>Inbox</Btn>
+        <Avatar name={conversationPerson(conversation).name} size="md" src={conversationPerson(conversation).imageUrl} />
         <div className="min-w-0 flex-1">
-          <div className="font-semibold">{conversation.counterpart.name}</div>
+          <div className="font-semibold">{conversationPerson(conversation).name}</div>
           <div className="truncate text-xs text-muted" aria-live="polite">
             {counterpartTyping ? (
-              <span className="text-brand">{conversation.counterpart.name} is typing…</span>
+              <span className="text-brand">{conversationPerson(conversation).name} is typing…</span>
             ) : (
-              <>{conversation.counterpart.role === "school" ? "School" : "Teacher"} · {conversation.job.title}</>
+              <>{conversationPerson(conversation).role === "school" ? "School" : "Teacher"} · {threadKind(activeThread) === "General" ? "General" : conversation.job?.title ?? "Job"}</>
             )}
           </div>
         </div>
-        <Tag tone="ghost">{conversation.applicationStatus.toLowerCase().replace(/_/g, " ")}</Tag>
+        <Tag tone="ghost">{threadKind(activeThread)}</Tag>
       </header>
 
-      <div className="message-timeline flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
+      <ConversationThreadPicker key={`${conversation.participants.poster?.id}:${conversation.participants.instructor?.id}`} id={tabId} active={activeThread} onSelect={onSelectThread} />
+      {threadKind(activeThread) === "General" && invitationsLoading ? <p className="conversation-info" role="status">Loading invitation details…</p> : null}
+      {threadKind(activeThread) === "General" && invitationsError ? <p className="conversation-info" role="status">Invitation details unavailable. <button className="underline" type="button" onClick={onRetryInvitations}>Try again</button></p> : null}
+      {conversation.booking ? <p className="conversation-info"><Icon name="calendar" size={14} />Booking conversation · Application messages are in the application thread.</p> : null}
+      <div id={`${tabId}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${threadKind(activeThread)}`} tabIndex={0} className="message-timeline flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
         {messagesQuery.hasNextPage ? (
           <Btn
             className="self-center"
@@ -316,33 +365,89 @@ function Thread({ conversation, onBack, toast }: { conversation: Conversation; o
           </Btn>
         ) : null}
         {messagesQuery.isLoading ? <SectionLoader rows={3} /> : null}
-        {!messagesQuery.isLoading && messages.length === 0 ? (
+        {messagesQuery.isError ? <div className="my-4 text-center" role="alert"><p className="mb-3 text-sm text-muted">Messages could not be loaded.</p><Btn variant="secondary" size="sm" onClick={() => void messagesQuery.refetch()}>Try again</Btn></div> : null}
+        {!messagesQuery.isLoading && !messagesQuery.isError && messages.length === 0 ? (
           <p className="m-auto max-w-[360px] text-center text-sm text-muted">
-            Say hello to {conversation.counterpart.name}. Messages here are only visible to the two of you.
+            Say hello to {conversationPerson(conversation).name}. Start a conversation using the message box below.
           </p>
         ) : null}
-        {messages.map((message) => (
+        {messages.map((message, index) => <div key={message.id}>
+          {index === 0 || new Date(messages[index - 1].createdAt).toDateString() !== new Date(message.createdAt).toDateString() ? <div className="message-day-label"><span>{formatDisplayDate(message.createdAt)}</span></div> : null}
           <Bubble
-            key={message.id}
             conversationId={conversation.id}
             message={message}
-            mine={message.senderSide === conversation.me}
+            mine={conversation.me !== null && message.senderSide === conversation.me}
             seen={message.id === seenId}
             toast={toast}
           />
-        ))}
+        </div>)}
         <div ref={bottomRef} />
       </div>
 
       {conversation.readOnly ? (
         <p className="mt-4 rounded-lg bg-chalk px-4 py-3 text-sm text-muted">
-          This application was not successful, so the conversation is closed. You can still read and download what was shared.
+          This conversation is read-only. You can still read and download what was shared.
         </p>
       ) : (
-        <Composer key={conversation.id} conversationId={conversation.id} toast={toast} />
+        <Composer key={conversation.id} conversationId={conversation.id} draft={draft} updateDraft={updateDraft} toast={toast} />
       )}
+      <p className="conversation-privacy-note">SupplyEd may review conversations for support and safety.</p>
     </section>
   );
+}
+
+function GeneralConversationContext({ invitations, conversation, go }: { invitations: Invitation[]; conversation: Conversation; go: RouteProps["go"] }) {
+  const person = conversationPerson(conversation);
+  return <aside className="messaging-context sidebar-panel overflow-y-auto">
+    <div className="border-b border-border p-5">
+      <p className="context-label">General conversation</p>
+      <h2 className="mt-1 font-heading text-lg font-bold text-ink">{person.name}</h2>
+      <p className="mt-2 text-sm text-muted">Direct messages and all job invitations with this {person.role === "school" ? "school" : "teacher"} stay together here.</p>
+      <Btn className="mt-4 w-full" variant="secondary" disabled={!person.id} onClick={() => person.role === "school" ? go("institution-profile", { institutionId: person.id ?? undefined }) : go("teacher-profile", { teacherId: person.id ?? undefined })}>View {person.role === "school" ? "school" : "teacher"} profile</Btn>
+    </div>
+    <div className="space-y-4 p-5">
+      <h3 className="font-semibold">Job invitations</h3>
+      {invitations.length ? invitations.map(invitation => <InvitationContextCard key={invitation.id} invitation={invitation} go={go} />) : <p className="text-sm text-muted">No invitations yet.</p>}
+    </div>
+  </aside>;
+}
+
+function InvitationContextCard({ invitation, go }: { invitation: Invitation; go: RouteProps["go"] }) {
+  const status = useInvitationClock(invitation);
+  return <section className="overflow-hidden rounded-xl border border-border">
+    <div className="border-b border-border p-5">
+      <p className="context-label">Invitation details</p>
+      <h2 className="mt-1 font-heading text-lg font-bold text-ink">{invitation.job.title}</h2>
+      <div className="mt-2"><Tag tone="ghost">{formatStatus(status ?? invitation.status)}</Tag></div>
+    </div>
+    <div className="space-y-4 p-5">
+      <ContextRow icon="calendar" text={`Invited ${formatDisplayDate(invitation.createdAt)}`} />
+      {invitation.job.startDate ? <ContextRow icon="calendar" text={`${formatDisplayDate(invitation.job.startDate)}${invitation.job.endDate ? ` – ${formatDisplayDate(invitation.job.endDate)}` : ""}`} /> : null}
+      <ContextRow icon="pin" text={[invitation.job.address, invitation.job.city, invitation.job.county, invitation.job.postalCode].filter(Boolean).join(", ") || "Location not specified"} />
+      <ContextRow icon="pound" text={`GBP ${invitation.job.payAmount} ${invitation.job.payType === "hourly" ? "/ hour" : invitation.job.payType === "daily" ? "/ day" : "fixed"}`} />
+      <p className="text-sm text-muted">{formatPlannedUnits(invitation.job)}</p>
+      {invitation.message ? <p className="whitespace-pre-wrap break-words rounded-lg bg-chalk p-3 text-sm">{invitation.message}</p> : null}
+      {status === "PENDING" ? <p className="text-xs text-muted">Respond by {formatDisplayDate(invitation.expiresAt)}</p> : null}
+      <Btn className="w-full" variant="secondary" onClick={() => go("job-invitations", { invitationId: invitation.id })}>View invitation</Btn>
+    </div>
+  </section>;
+}
+
+function BookingConversationContext({ booking, conversation, loading, error, go }: { booking?: Booking; conversation: Conversation; loading: boolean; error?: string; go: RouteProps["go"] }) {
+  return <aside className="messaging-context sidebar-panel overflow-y-auto">
+    <div className="border-b border-border p-5"><p className="context-label">Booking details</p><h2 className="mt-1 font-heading text-lg font-bold">{booking?.job.title ?? conversation.job?.title}</h2><Tag tone="ghost">{formatStatus(booking?.status ?? conversation.booking?.status ?? "CONFIRMED")}</Tag></div>
+    <div className="space-y-4 p-5">
+      {loading ? <SectionLoader rows={2} /> : null}
+      {error ? <p className="text-sm text-danger" role="status">{error}</p> : null}
+      {booking ? <>
+        <ContextRow icon="calendar" text={`${booking.startDate ? formatDisplayDate(booking.startDate) : "Start not specified"} – ${booking.endDate ? formatDisplayDate(booking.endDate) : "End not specified"}`} />
+        <ContextRow icon="pin" text={[booking.job.address, booking.job.city, booking.job.county, booking.job.postalCode].filter(Boolean).join(", ") || "Location not specified"} />
+        <ContextRow icon="pound" text={booking.payAmount == null ? "Pay not specified" : `GBP ${booking.payAmount} ${booking.payType === "hourly" ? "/ hour" : booking.payType === "daily" ? "/ day" : "fixed"}`} />
+        <p className="text-sm text-muted">{formatPlannedUnits(booking)}</p>
+      </> : null}
+      <Btn className="w-full" variant="secondary" onClick={() => go("bookings", { bookingId: conversation.booking!.id })}>View booking</Btn>
+    </div>
+  </aside>;
 }
 
 function ConversationContextPanel({
@@ -365,6 +470,7 @@ function ConversationContextPanel({
   const [proposalOpen, setProposalOpen] = useState(false);
   const applicant = application?.instructor;
   const status = application?.status ?? conversation.applicationStatus;
+  const jobDetails = application?.agreedTerms;
 
   return (
     <>
@@ -372,48 +478,50 @@ function ConversationContextPanel({
       <div className="border-b border-border p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="context-label">Application details</p>
+            <p className="context-label">{conversation.applicationId ? "Application details" : conversation.job ? "Job details" : "General conversation"}</p>
             <h2 className="mt-1 font-heading text-lg font-bold text-ink">Conversation context</h2>
           </div>
-          <Tag tone={applicationStatusTone(status)}>{formatStatus(status)}</Tag>
+          {status ? <Tag tone={applicationStatusTone(status)}>{formatStatus(status)}</Tag> : null}
         </div>
       </div>
 
       <div className="space-y-5 p-5">
         <div className="flex items-center gap-3 rounded-xl border border-border bg-chalk p-3.5">
           <Avatar
-            name={conversation.counterpart.name}
+            name={conversationPerson(conversation).name}
             size="lg"
-            src={conversation.counterpart.imageUrl}
+            src={conversationPerson(conversation).imageUrl}
           />
           <div className="min-w-0">
             <button
               className="block max-w-full truncate text-left font-bold text-ink hover:text-brand hover:underline disabled:cursor-default disabled:no-underline"
-              disabled={!conversation.counterpart.id}
-              onClick={() => conversation.counterpart.role === "school"
-                ? go("institution-profile", { institutionId: conversation.counterpart.id ?? undefined, jobId: conversation.job.id })
-                : go("teacher-profile", { applicationId: conversation.applicationId, jobId: conversation.job.id, teacherId: conversation.counterpart.id ?? undefined })}
+              disabled={!conversationPerson(conversation).id}
+              onClick={() => conversationPerson(conversation).role === "school"
+                ? go("institution-profile", { institutionId: conversationPerson(conversation).id ?? undefined, jobId: conversation.job?.id })
+                : go("teacher-profile", { applicationId: conversation.applicationId ?? undefined, jobId: conversation.job?.id, teacherId: conversationPerson(conversation).id ?? undefined })}
               type="button"
             >
-              {conversation.counterpart.name}
+              {conversationPerson(conversation).name}
             </button>
             <p className="mt-0.5 text-xs text-muted">
-              {role === "teacher" ? "Hiring school" : "Teaching applicant"}
+              {role === "teacher" ? "Hiring school" : (conversation.applicationId ? "Teaching applicant" : "Teacher")}
             </p>
           </div>
         </div>
 
         {loading ? <SectionLoader rows={2} /> : null}
 
-        <section>
+        {conversation.job ? <section>
           <p className="context-label">Job</p>
           <h3 className="mt-2 text-base font-bold leading-snug text-ink">
-            {job?.title ?? conversation.job.title}
+            {application?.jobName ?? job?.title ?? (conversation.job?.title ?? "General")}
           </h3>
           <div className="mt-3 space-y-2.5">
-            <ContextRow icon="pin" text={formatJobLocation(job)} />
-            <ContextRow icon="calendar" text={formatJobDates(job)} />
-            <ContextRow icon="pound" text={formatJobPay(job)} />
+            {application && !jobDetails ? <p className="mt-3 text-xs text-muted">Original agreed terms are unavailable.</p> : null}{jobDetails ? <>
+              {[jobDetails.city, jobDetails.county, jobDetails.postalCode].some(Boolean) ? <ContextRow icon="pin" text={[jobDetails.city, jobDetails.county, jobDetails.postalCode].filter(Boolean).join(", ")} /> : null}
+              {jobDetails.startDate ? <ContextRow icon="calendar" text={`${formatDisplayDate(jobDetails.startDate)}${jobDetails.endDate ? ` – ${formatDisplayDate(jobDetails.endDate)}` : ""}`} /> : null}
+              {jobDetails.payAmount != null ? <ContextRow icon="pound" text={`GBP ${jobDetails.payAmount} ${jobDetails.payType === "hourly" ? "/ hour" : jobDetails.payType === "daily" ? "/ day" : ""}`} /> : null}
+            </> : job ? <><ContextRow icon="pin" text={formatJobLocation(job)} /><ContextRow icon="calendar" text={formatJobDates(job)} /><ContextRow icon="pound" text={formatJobPay(job)} /></> : null}
           </div>
           {job?.subject || job?.keyStages?.length ? (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -421,7 +529,7 @@ function ConversationContextPanel({
               {job.keyStages?.slice(0, 3).map((stage) => <Tag key={stage} tone="ghost">{stage}</Tag>)}
             </div>
           ) : null}
-        </section>
+        </section> : <p className="text-sm leading-6 text-muted">Use General for questions and updates that are not about a particular job or application.</p>}
 
         {role === "institution" && applicant ? (
           <section className="border-t border-border pt-5">
@@ -446,7 +554,7 @@ function ConversationContextPanel({
             <p className="context-label">Proposal</p>
             <div className="mt-3 rounded-xl border border-brand-tint-2 bg-brand-tint p-4">
               <div className="flex items-start gap-3">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-brand shadow-sm">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface text-brand shadow-sm">
                   <Icon name="file" size={17} />
                 </div>
                 <div className="min-w-0">
@@ -474,45 +582,28 @@ function ConversationContextPanel({
         ) : null}
 
         <div className="grid gap-2 border-t border-border pt-5">
-          <Btn
+          {conversation.applicationId ? <Btn
             icon="arrow"
-            onClick={() => go("applications", { applicationId: conversation.applicationId, jobId: conversation.job.id })}
+            onClick={() => go("applications", { applicationId: conversation.applicationId ?? undefined, jobId: conversation.job?.id })}
           >
             View application
-          </Btn>
-          <Btn icon="file" variant="secondary" onClick={() => go("job-detail", { jobId: conversation.job.id })}>
+          </Btn> : null}
+          {job ? <Btn icon="file" variant="secondary" onClick={() => go("job-detail", { jobId: conversation.job?.id })}>
             View job
-          </Btn>
+          </Btn> : null}
+          {role === "institution" && conversation.me === "poster" && !conversation.readOnly && conversation.applicationStatus !== "HIRED" && conversation.participants.instructor?.id ? <TeacherHireActions go={go} hideMessage jobId={conversation.job?.id} teacher={{ id: conversation.participants.instructor.id, fullName: conversation.participants.instructor.name, imageUrl: conversation.participants.instructor.imageUrl }} /> : null}
         </div>
       </div>
     </aside>
-    <Modal open={proposalOpen} scrollMode="viewport" size="xl" onClose={() => setProposalOpen(false)}>
-      <article className="overflow-hidden rounded-xl">
-        <header className="border-b border-border bg-[linear-gradient(135deg,#eef9fd_0%,#ffffff_72%)] px-5 py-5 sm:px-8 sm:py-7">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex min-w-0 items-start gap-3.5">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-sm">
-                <Icon name="file" size={21} />
-              </div>
-              <div className="min-w-0">
-                <p className="context-label text-brand">Application proposal</p>
-                <h2 className="mt-1 font-heading text-xl font-semibold text-ink sm:text-2xl">{applicant?.fullName ?? conversation.counterpart.name}</h2>
-                <p className="mt-1 text-sm text-muted">For {job?.title ?? conversation.job.title}</p>
-              </div>
-            </div>
-            <button aria-label="Close proposal" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-white text-muted shadow-sm transition-colors hover:bg-chalk hover:text-ink" onClick={() => setProposalOpen(false)} type="button">
-              <Icon name="x" size={18} />
-            </button>
-          </div>
-        </header>
-        <div className="px-5 py-6 sm:px-8 sm:py-8">
-          <ProposalContent className="text-[15px] leading-8 text-slate" value={application?.coverLetter ?? ""} />
-        </div>
-        <footer className="flex justify-end border-t border-border bg-surface-subtle px-5 py-4 sm:px-8">
-          <Btn variant="secondary" onClick={() => setProposalOpen(false)}>Close proposal</Btn>
-        </footer>
-      </article>
-    </Modal>
+    <ProposalPreviewModal
+      applicantImage={applicant?.imageUrl}
+      applicantName={applicant?.fullName ?? conversationPerson(conversation).name}
+      jobTitle={job?.title ?? (conversation.job?.title ?? "General")}
+      onClose={() => setProposalOpen(false)}
+      open={proposalOpen}
+      submittedAt={application?.createdAt}
+      value={application?.coverLetter ?? ""}
+    />
     </>
   );
 }
@@ -528,7 +619,7 @@ function ContextRow({ icon, text }: { icon: string; text: string }) {
 
 function ContextStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border bg-white p-3">
+    <div className="rounded-lg border border-border bg-surface p-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
       <p className="mt-1 text-sm font-semibold text-ink">{value}</p>
     </div>
@@ -537,7 +628,7 @@ function ContextStat({ label, value }: { label: string; value: string }) {
 
 function applicationStatusTone(status: string): "" | "green" | "purple" | "amber" | "red" {
   if (status === "HIRED") return "green";
-  if (status === "INTERVIEW" || status === "SHORTLISTED") return "purple";
+  if (status === "SHORTLISTED") return "purple";
   if (status === "VIEWED") return "amber";
   if (status === "REJECTED") return "red";
   return "";
@@ -587,20 +678,39 @@ function Bubble({
   return (
     <div className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
       <div className={`msg-bubble ${mine ? "out" : "in"}`}>
-        {message.body ? <div className="whitespace-pre-wrap break-words">{message.body}</div> : null}
+        {message.body ? (
+          <div className="whitespace-pre-wrap break-words">
+            {invitationMessageParts(message.body).map((part, index) => part.href ? (
+              <Link
+                key={index}
+                href={part.href}
+                prefetch={false}
+                className="rounded-sm font-semibold text-inherit underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+              >
+                {part.text}
+              </Link>
+            ) : <span key={index}>{part.text}</span>)}
+          </div>
+        ) : null}
         {message.attachments.map((attachment) => (
           <MessageAttachmentPreview key={attachment.id} attachment={attachment} conversationId={conversationId} light={mine} toast={toast} />
         ))}
-        <div className="mt-1.5 text-xs opacity-70">{formatTime(message.createdAt)}</div>
+        <div className={`mt-1.5 text-xs ${mine ? "text-white" : "text-muted"}`}>{formatTime(message.createdAt)}</div>
       </div>
       {seen ? <span className="mt-0.5 text-[11px] text-muted">Seen</span> : null}
     </div>
   );
 }
 
-function Composer({ conversationId, toast }: { conversationId: string; toast: ToastFn }) {
-  const [body, setBody] = useState("");
-  const [files, setFiles] = useState<PendingFile[]>([]);
+function Composer({ conversationId, draft, updateDraft, toast }: { conversationId: string; draft: ComposerDraft; updateDraft: UpdateDraft; toast: ToastFn }) {
+  const { body, files } = draft;
+  function setBody(value: string) {
+    updateDraft(conversationId, current => ({ ...current, body: value }));
+  }
+  function setFiles(value: PendingFile[] | ((current: PendingFile[]) => PendingFile[])) {
+    updateDraft(conversationId, current => ({ ...current, files: typeof value === "function" ? value(current.files) : value }));
+  }
+  const [messageError, setMessageError] = useState<string>();
   const fileInput = useRef<HTMLInputElement>(null);
   const typingRef = useRef<{ lastSentAt: number; stopTimer: ReturnType<typeof setTimeout> | null }>({ lastSentAt: 0, stopTimer: null });
   const send = useSendMessage({ onError: (message) => toast({ msg: message, title: "Message not sent", tone: "danger" }) });
@@ -637,7 +747,8 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
   }, [conversationId]);
   const uploading = files.some((file) => file.status === "uploading");
   const readyIds = files.flatMap((file) => (file.status === "ready" && file.attachment ? [file.attachment.id] : []));
-  const canSend = !send.isPending && !uploading && (body.trim().length > 0 || readyIds.length > 0);
+  const failedFiles = files.some((file) => file.status === "error");
+  const canSend = !send.isPending && !draft.sending && !uploading && !failedFiles && body.length <= MAX_MESSAGE_LENGTH && (body.trim().length > 0 || readyIds.length > 0);
 
   function addFiles(list: FileList | null) {
     const picked = Array.from(list ?? []);
@@ -651,6 +762,7 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
       const localId = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
       const problem = !ALLOWED_ATTACHMENT_TYPES.includes(file.type)
         ? "Only PDF, Word, JPEG, PNG and text files"
+        : file.size === 0 ? "Choose a file that is not empty"
         : file.size > MAX_ATTACHMENT_BYTES
           ? "Files can be up to 10 MB"
           : null;
@@ -680,22 +792,27 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
   }
 
   function submit() {
+    if (failedFiles) { setMessageError("Remove or replace the failed attachments before sending."); return; }
+    if (body.length > MAX_MESSAGE_LENGTH) { setMessageError(`Use ${MAX_MESSAGE_LENGTH.toLocaleString()} characters or fewer.`); return; }
+    if (!body.trim() && !readyIds.length) { setMessageError("Write a message or add an attachment."); return; }
     if (!canSend) return;
+    setMessageError(undefined);
 
     const state = typingRef.current;
     if (state.stopTimer) clearTimeout(state.stopTimer);
     if (state.lastSentAt) emitTyping(conversationId, false);
     state.lastSentAt = 0;
 
-    send.mutate(
-      { attachmentIds: readyIds, body, conversationId },
-      {
-        onSuccess: () => {
-          setBody("");
-          setFiles([]);
-        },
-      },
-    );
+    // Finish updating this thread's draft even if the user switches topics while sending.
+    updateDraft(conversationId, current => ({ ...current, sending: true }));
+    void send.mutateAsync({ attachmentIds: readyIds, body, conversationId }).then(() => {
+      updateDraft(conversationId, current => ({
+        ...current,
+        body: current.body === body ? "" : current.body,
+        files: current.files.filter(file => !files.some(sentFile => sentFile.localId === file.localId)),
+      }));
+    }).catch(() => { /* The mutation's error handler displays the failure; keep the draft. */ })
+      .finally(() => updateDraft(conversationId, current => ({ ...current, sending: false })));
   }
 
   return (
@@ -738,6 +855,8 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
           Attach
         </Btn>
         <textarea
+          aria-invalid={Boolean(messageError)}
+          aria-describedby={messageError ? "message-validation-error" : undefined}
           aria-label="Message"
           className="input min-h-[44px] flex-1 resize-none"
           maxLength={MAX_MESSAGE_LENGTH}
@@ -755,10 +874,11 @@ function Composer({ conversationId, toast }: { conversationId: string; toast: To
           rows={1}
           value={body}
         />
-        <Btn disabled={!canSend} icon="send" loading={send.isPending} loadingLabel="Sending" onClick={submit}>
+        <Btn disabled={!canSend} icon="send" loading={send.isPending || draft.sending} loadingLabel="Sending" onClick={submit}>
           Send
         </Btn>
       </div>
+      {messageError ? <p className="mt-2 text-sm text-danger" id="message-validation-error" role="alert">{messageError}</p> : null}
       <p className="message-composer-hint">Enter to send · Shift+Enter for a new line</p>
     </div>
   );

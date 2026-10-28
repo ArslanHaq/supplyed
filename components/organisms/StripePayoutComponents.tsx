@@ -5,7 +5,7 @@ import { ConnectAccountOnboarding, ConnectComponentsProvider, ConnectNotificatio
 import { useEffect, useState } from "react";
 
 import { createPayoutSessionAction } from "@/features/payments/actions";
-import { connectAppearance, stripeFonts } from "@/features/payments/stripe-client";
+import { getConnectAppearance, observeStripeTheme, stripeFonts } from "@/features/payments/stripe-client";
 
 import { Btn } from "../atoms";
 import { SectionLoader } from "../molecules";
@@ -34,7 +34,7 @@ function useConnectInstance() {
         let unused: string | null = clientSecret;
         setState({
           instance: loadConnectAndInitialize({
-            appearance: connectAppearance,
+            appearance: getConnectAppearance(),
             fetchClientSecret: async () => {
               if (unused) {
                 const secret = unused;
@@ -58,6 +58,12 @@ function useConnectInstance() {
       cancelled = true;
     };
   }, [attempt]);
+
+  useEffect(() => {
+    const instance = state.instance;
+    if (!instance) return;
+    return observeStripeTheme(() => instance.update({ appearance: getConnectAppearance() }));
+  }, [state.instance]);
 
   return {
     ...state,

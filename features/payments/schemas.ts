@@ -1,3 +1,4 @@
+import { normalizeWorkUnits } from "@/features/jobs/work-units";
 import type {
   AdminInvoiceListQuery,
   Invoice,
@@ -77,6 +78,7 @@ export function normalizeInvoice(invoice: Invoice): Invoice {
     ...invoice,
     amountRefundedPence: readNumber(invoice.amountRefundedPence) ?? 0,
     booking: {
+      ...normalizeWorkUnits(invoice.booking),
       endDate: readDateIso(invoice.booking?.endDate),
       id: invoice.booking?.id ?? "",
       institution: { id: invoice.booking?.institution?.id ?? "", name: invoice.booking?.institution?.name ?? "School" },

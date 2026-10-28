@@ -8,6 +8,8 @@ import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import type { SettingsProfileSnapshot } from "@/features/settings/types";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { queryKeys } from "@/lib/query/keys";
+import { validateUkPhone } from "@/lib/uk-validation";
+import { validateOtpCode } from "@/lib/auth-code-validation";
 
 import { sendPhoneOtpAction, verifyPhoneOtpAction } from "./phone-actions";
 import type { AuthUser } from "./types";
@@ -21,7 +23,11 @@ function handleExpiredSession(result: { ok: boolean; code?: string }, navigateTo
 export function useSendPhoneOtp() {
   const router = useRouter();
   return useMutation({
-    mutationFn: sendPhoneOtpAction,
+    mutationFn: (input: { phone: string }): Promise<Awaited<ReturnType<typeof sendPhoneOtpAction>>> => {
+      const phone = validateUkPhone(input.phone, { required: true });
+      if (!phone.valid) return Promise.resolve({ ok: false as const, message: phone.error!, fieldErrors: { phone: phone.error! } });
+      return sendPhoneOtpAction({ phone: phone.value });
+    },
     mutationKey: [...queryKeys.auth.all, "phone", "send"],
     onSuccess: (result) => handleExpiredSession(result, () => router.replace("/login")),
   });
@@ -32,7 +38,10 @@ export function useVerifyPhoneOtp() {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: verifyPhoneOtpAction,
+    mutationFn: (input: { otp: string }): Promise<Awaited<ReturnType<typeof verifyPhoneOtpAction>>> => {
+      if (!validateOtpCode(input.otp)) return Promise.resolve({ ok: false as const, message: "Enter the 6-digit code from your SMS.", fieldErrors: { otp: "Enter the 6-digit code from your SMS." } });
+      return verifyPhoneOtpAction({ otp: input.otp.trim() });
+    },
     mutationKey: [...queryKeys.auth.all, "phone", "verify"],
     onSuccess: async (result) => {
       handleExpiredSession(result, () => router.replace("/login"));

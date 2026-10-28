@@ -18,6 +18,10 @@ export function useTeacherDirectory(filters: TeacherDirectoryFilters = {}) {
   return useQuery({
     queryFn: () => fetchJson<TeacherDirectoryPage>("/api/instructors/directory", { query: filters }),
     queryKey: queryKeys.teachers.directory(filters),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 

@@ -1,8 +1,10 @@
 "use client";
+import { apiErrorDetails } from "@/lib/api-error-details";
+import { recordRateLimit, useRateLimit } from "@/lib/rate-limit";
 
 import { useEffect, useState } from "react";
 
-import { Btn, Checkbox, Icon, Logo, Tag } from "../atoms";
+import { Btn, Checkbox, Field, Icon, Logo, Tag } from "../atoms";
 import { Modal } from "../molecules";
 
 type ApprovalStatus = "APPROVED" | "DECLINED" | "EXPIRED" | "PENDING" | "REVOKED";
@@ -30,18 +32,22 @@ async function readResponse(response: Response) {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     const message = Array.isArray(payload?.message) ? payload.message.join(" ") : payload?.message;
-    throw new Error(message || (response.status === 410 ? "This approval link has expired." : "This approval link is not valid."));
+    const error = Object.assign(new Error(message || (response.status === 410 ? "This approval link has expired." : "This approval link is not valid.")), { status: response.status, code: payload?.code, requestId: payload?.meta?.requestId, ...apiErrorDetails(payload, response.headers.get("Retry-After")) });
+    recordRateLimit(error);
+    throw error;
   }
   return payload as ApprovalReview;
 }
 
 export function SignatoryApprovalPage({ token }: { token: string }) {
+  const retryAfter = useRateLimit();
   const [approval, setApproval] = useState<ApprovalReview>();
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string>();
+  const [reasonError, setReasonError] = useState<string>();
   const [pending, setPending] = useState(false);
 
   async function load() {
@@ -71,20 +77,22 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
   }, [token]);
 
   async function decide(action: "approve" | "decline") {
+    if (pending || retryAfter || approval?.status !== "PENDING") return;
     if (action === "approve" && !acceptTerms) {
       setError("Accept the trust approval terms before approving this school.");
       return;
     }
-    if (action === "decline" && !reason.trim()) {
-      setError("Explain why the trust is declining this request.");
+    if (action === "decline" && (!reason.trim() || reason.trim().length > 1000)) {
+      setReasonError("Explain why the trust is declining this request (up to 1,000 characters).");
       return;
     }
 
     setPending(true);
     setError(undefined);
+    setReasonError(undefined);
     try {
       setApproval(await readResponse(await fetch(`/api/signatory-approvals/${encodeURIComponent(token)}`, {
-        body: JSON.stringify({ acceptTerms, action, reason }),
+        body: JSON.stringify({ acceptTerms, action, reason: reason.trim() }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       }))); 
@@ -106,7 +114,7 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
       <main className="marketing-approval min-h-screen px-4 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="marketing-approval-header"><Logo href="/" size={24} /><span><Icon name="lock" size={14} /> Secure approval link</span></div>
-        <div className="marketing-approval-card mt-8 border border-border bg-white p-6 sm:p-9">
+        <div className="marketing-approval-card mt-8 border border-border bg-surface p-6 sm:p-9">
           <Tag tone={approval?.status === "APPROVED" ? "green" : approval?.status === "DECLINED" ? "red" : "amber"}>
             Trust signatory approval
           </Tag>
@@ -136,21 +144,20 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
                     <p className="mt-2 text-xs text-muted">Terms version {signatoryTermsVersion}. Link expires {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(approval.expiresAt))}.</p>
                   </div>
                   {declining ? (
-                    <label className="block text-sm font-semibold">
-                      Reason for declining
+                    <Field error={reasonError} label="Reason for declining" required>
                       <textarea className="textarea mt-2" maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} />
-                    </label>
+                    </Field>
                   ) : null}
                   <div className="marketing-approval-actions flex flex-col gap-3 sm:flex-row sm:justify-end">
                     {declining ? (
                       <>
-                        <Btn variant="ghost" disabled={pending} onClick={() => setDeclining(false)}>Cancel</Btn>
-                        <Btn variant="danger" loading={pending} onClick={() => void decide("decline")}>Confirm decline</Btn>
+                        <Btn variant="ghost" disabled={pending || Boolean(retryAfter)} onClick={() => setDeclining(false)}>Cancel</Btn>
+                        <Btn variant="danger" disabled={Boolean(retryAfter)} loading={pending} onClick={() => void decide("decline")}>Confirm decline</Btn>
                       </>
                     ) : (
                       <>
-                        <Btn variant="secondary" disabled={pending} onClick={() => setDeclining(true)}>Decline</Btn>
-                        <Btn disabled={pending} onClick={() => {
+                        <Btn variant="secondary" disabled={pending || Boolean(retryAfter)} onClick={() => setDeclining(true)}>Decline</Btn>
+                        <Btn disabled={pending || Boolean(retryAfter)} onClick={() => {
                           setAcceptTerms(false);
                           setError(undefined);
                           setApproveOpen(true);
@@ -192,8 +199,8 @@ export function SignatoryApprovalPage({ token }: { token: string }) {
           </div>
           {error ? <div className="mt-4 rounded-xl border border-danger bg-danger-tint p-3 text-sm font-semibold text-danger" role="alert">{error}</div> : null}
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Btn variant="ghost" disabled={pending} onClick={() => setApproveOpen(false)}>Cancel</Btn>
-            <Btn loading={pending} onClick={() => void decide("approve")}>Confirm approval</Btn>
+            <Btn variant="ghost" disabled={pending || Boolean(retryAfter)} onClick={() => setApproveOpen(false)}>Cancel</Btn>
+            <Btn disabled={Boolean(retryAfter)} loading={pending} onClick={() => void decide("approve")}>Confirm approval</Btn>
           </div>
         </div>
       </Modal>

@@ -1,4 +1,5 @@
 import { Field } from "../../../atoms";
+import { PostcodeLookup } from "../../../molecules/PostcodeLookup";
 import { CountryCityFields } from "../CountryCityFields";
 import type { AccountStepProps } from "../step-types";
 import { fieldClass } from "../utils";
@@ -13,7 +14,7 @@ export function InstitutionProfileStep(props: AccountStepProps) {
         <div>
           <h3 className="font-heading text-2xl leading-tight">Institution profile</h3>
           <p className="mt-1 text-sm leading-6 text-muted">
-            These fields create the school or MAT profile in the backend before review.
+            Add your school or trust details so we can review your profile.
           </p>
         </div>
 
@@ -45,15 +46,8 @@ export function InstitutionProfileStep(props: AccountStepProps) {
               placeholder="1 School Lane"
             />
           </Field>
-          <Field label="Postal code" htmlFor="institution-postcode" error={errors.postcode} required>
-            <input
-              id="institution-postcode"
-              className={fieldClass(errors.postcode)}
-              value={form.postcode}
-              onChange={(event) => updateField("postcode", event.target.value)}
-              placeholder="M1 1AE"
-            />
-          </Field>
+          <PostcodeLookup id="institution-postcode" error={errors.postcode} required value={form.postcode}
+            onChange={(value) => updateField("postcode", value)} onSelect={(selection) => updateField("postcode", selection.postcode)} />
           <CountryCityFields
             city={form.institutionCity}
             cityError={errors.institutionCity}

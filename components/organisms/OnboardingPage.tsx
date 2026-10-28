@@ -1,7 +1,9 @@
 import { useState } from "react";
 
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
+import { missingRequiredDocuments } from "@/features/onboarding/document-utils";
 import type { FoundingSignupType } from "@/lib/founding-signup-intent";
+import { validateUkPhone } from "@/lib/uk-validation";
 import type { AppRole } from "@/types/supplyed";
 
 import { Btn, Field, Icon, Logo, Tag } from "../atoms";
@@ -106,6 +108,12 @@ export function OnboardingPage({
     submitSignup,
     uploadPending,
   } = controller;
+  const contactPhone = validateUkPhone(controller.form.phone, { required: true });
+  const phoneBlocksProgress = !lockedDocumentStage && (!contactPhone.valid || phoneVerificationPending);
+  const documentsBlockProgress = lockedDocumentStage && Boolean(
+    documentRequirementsLoading || documentRequirementsError ||
+    missingRequiredDocuments(controller.documentRequirements, controller.requirementDocuments).length,
+  );
   const waitingForSignatory = activeRole === "institution" && controller.form.institutionType === "MAT_SCHOOL" && controller.signatoryApproval?.status !== "APPROVED";
   const displayProgress = lockedDocumentStage ? 100 : progress;
   const pageTitle = lockedDocumentStage ? "Upload required documents" : roleSelected ? signupStepTitle(activeRole, currentStep) : "Choose account type";
@@ -119,7 +127,7 @@ export function OnboardingPage({
   }
 
   function handlePrimaryAction() {
-    if (phoneVerificationPending) return;
+    if (pending || uploadPending || requirementUploadPending || phoneBlocksProgress || documentsBlockProgress) return;
     if (lockedDocumentStage) {
       void submitDocumentsForReview();
       return;
@@ -199,7 +207,7 @@ export function OnboardingPage({
                     data-active={active}
                     data-complete={complete}
                     onClick={() => {
-                      if (!lockedDocumentStage && itemStep < currentStep) setStep(itemStep);
+                      if (!lockedDocumentStage && itemStep < currentStep) controller.setStep(itemStep);
                     }}
                     type="button"
                   >
@@ -238,7 +246,7 @@ export function OnboardingPage({
           </div>
         </aside>
 
-        <section className="onboarding-canvas">
+        <form className="onboarding-canvas" noValidate onSubmit={(event) => { event.preventDefault(); handlePrimaryAction(); }}>
           <div className="onboarding-canvas-heading">
             <div>
               <Tag>{lockedDocumentStage ? "Required documents" : `Step ${currentStep} of ${steps.length}`}</Tag>
@@ -258,7 +266,7 @@ export function OnboardingPage({
             </div>
           </div>
 
-          <div className="flex-1">
+          <fieldset className="min-w-0 flex-1" disabled={Boolean(pending) || (!lockedDocumentStage && phoneVerificationPending)}>
             {lockedDocumentStage ? (
               <div className="space-y-6">
                 <PhoneVerificationCard controller={controller} />
@@ -277,10 +285,10 @@ export function OnboardingPage({
                 setRole={setRole}
               />
             )}
-          </div>
+          </fieldset>
 
           {sessionError || submitError ? (
-            <div className="mt-6 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger">
+            <div className="mt-6 rounded-xl border border-danger bg-danger-tint px-4 py-3 text-sm font-semibold text-danger" role="alert">
               {sessionError || submitError}
             </div>
           ) : null}
@@ -289,7 +297,7 @@ export function OnboardingPage({
             {lockedDocumentStage ? (
               <span className="text-sm font-semibold text-muted">Profile created. Previous onboarding steps are locked.</span>
             ) : (
-              <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending) || phoneVerificationPending} onClick={() => setStep(Math.max(1, currentStep - 1))}>Back</Btn>
+              <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending) || phoneVerificationPending} onClick={() => controller.setStep(Math.max(1, currentStep - 1))}>Back</Btn>
             )}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <span className="self-center text-xs font-semibold uppercase tracking-[1px] text-muted">
@@ -300,14 +308,14 @@ export function OnboardingPage({
                 loadingLabel={lockedDocumentStage ? "Sending for review" : isLastStep ? "Creating profile" : "Saving step"}
                 size="lg"
                 iconRight="arrow"
-                disabled={Boolean(phoneVerificationPending || uploadPending || requirementUploadPending || (lockedDocumentStage && (documentRequirementsLoading || documentRequirementsError)))}
-                onClick={handlePrimaryAction}
+                disabled={Boolean(phoneBlocksProgress || uploadPending || requirementUploadPending || documentsBlockProgress)}
+                type="submit"
               >
                 {lockedDocumentStage ? "Send for review" : isLastStep ? signupSubmitLabel(activeRole) : "Continue"}
               </Btn>
             </div>
           </div>
-        </section>
+        </form>
       </main>
       <Modal open={confirmCreateOpen} onClose={closeConfirmCreate}>
         <div className="p-6 sm:p-7">
@@ -338,16 +346,16 @@ function PhoneVerificationCard({ controller }: { controller: OnboardingFormContr
     <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="font-semibold text-brand-dark">Verify your phone</div>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-brand-dark/75">
-            Your profile has been created. Confirm the phone number saved on your profile before sending it for review.
+          <div className="font-semibold text-brand-dark">Verify your phone (optional)</div>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-brand-dark">
+            You can verify your phone now or skip verification and send your profile for review once all required documents are uploaded.
           </p>
         </div>
         <PhoneVerification
           disabled={Boolean(controller.pending)}
           hidePhoneInput
           onChange={(phone) => controller.updateField("phone", phone)}
-          phone={controller.form.phone || controller.savedPhone}
+          phone={controller.form.phone}
           savedPhone={controller.savedPhone}
           verified={controller.phoneVerified}
         />

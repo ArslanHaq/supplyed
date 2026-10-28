@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Button, Field, Icon } from "@/components/atoms";
+import { Button, Checkbox, Field, Icon } from "@/components/atoms";
 import {
   type FoundingInterestSubmitResult,
   type WaitlistDetailsState,
 } from "@/features/contact/actions";
 import { submitWaitlistDetailsAction } from "@/features/contact/waitlist-client";
-import { waitlistPhases } from "@/features/contact/waitlist-options";
+import { useDropdown } from "@/features/dropdowns/use-dropdown";
+import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
 
 export function WaitlistConfirmation({
   result,
@@ -153,6 +154,7 @@ export function WaitlistConfirmation({
 }
 
 function TeacherDetails({ id, token }: { id: string; token: string }) {
+  const phaseChoices = useDropdown("waitlistPhase");
   const [state, action, pending] = useActionState(
     submitWaitlistDetailsAction,
     null as WaitlistDetailsState,
@@ -162,7 +164,7 @@ function TeacherDetails({ id, token }: { id: string; token: string }) {
   const [postcode, setPostcode] = useState("");
   const errors = state && !state.ok ? state.fieldErrors : undefined;
   return (
-    <form action={action} className="waitlist-extra-details">
+    <form action={action} className="waitlist-extra-details" noValidate>
       <input name="id" type="hidden" value={id} />
       <input name="token" type="hidden" value={token} />
       <h3>
@@ -175,24 +177,24 @@ function TeacherDetails({ id, token }: { id: string; token: string }) {
       <fieldset disabled={pending}>
         <legend>Phases you teach</legend>
         <div className="waitlist-phase-options">
-          {waitlistPhases.map((phase) => (
-            <label key={phase}>
-              <input
-                checked={phases.includes(phase)}
-                name="phases"
-                onChange={(e) =>
-                  setPhases((current) =>
-                    e.target.checked
-                      ? [...current, phase]
-                      : current.filter((value) => value !== phase),
-                  )
-                }
-                type="checkbox"
-                value={phase}
-              />
-              {phase}
-            </label>
-          ))}
+          {(phaseChoices.data?.options ?? []).map((option) => { const phase = option.value; return (
+            <Checkbox
+              key={phase}
+              checked={phases.includes(phase)}
+              disabled={pending}
+              label={option.label}
+              name="phases"
+              onChange={(checked) =>
+                setPhases((current) =>
+                  checked
+                    ? [...current, phase]
+                    : current.filter((value) => value !== phase),
+                )
+              }
+              value={phase}
+            />
+          ); })}
+          <DropdownStatus name="waitlistPhase" />
         </div>
         {errors?.phases ? (
           <p className="text-danger" role="alert">
@@ -216,7 +218,7 @@ function TeacherDetails({ id, token }: { id: string; token: string }) {
             />
           </Field>
           <Field
-            label="Postcode area"
+            label="UK postcode (optional)"
             error={errors?.postcode}
             htmlFor={`${id}-postcode`}
           >
@@ -227,7 +229,7 @@ function TeacherDetails({ id, token }: { id: string; token: string }) {
               name="postcode"
               maxLength={20}
               onChange={(e) => setPostcode(e.target.value)}
-              placeholder="e.g. M20"
+              placeholder="e.g. M20 2LT"
               value={postcode}
             />
           </Field>

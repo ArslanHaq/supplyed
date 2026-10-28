@@ -19,8 +19,8 @@ export function DocumentPreviewModal({
 
   return (
     <Modal open={Boolean(preview)} onClose={onClose} size="xl" label={title}>
-      <div className="document-preview flex w-full flex-col overflow-hidden rounded-2xl bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white px-4 py-3 sm:px-5">
+      <div className="document-preview flex w-full flex-col overflow-hidden rounded-2xl bg-surface">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
               <Icon name={isImage ? "image" : "file"} size={19} />
@@ -46,7 +46,7 @@ export function DocumentPreviewModal({
             </a>
             <button
               aria-label="Close document preview"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white text-ink transition hover:bg-chalk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              className={buttonClassName({ variant: "secondary", className: "w-11 p-0" })}
               onClick={onClose}
               type="button"
             >
@@ -55,8 +55,8 @@ export function DocumentPreviewModal({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 bg-[#101217] p-3 sm:p-4">
-          <div className="document-preview-frame flex items-center justify-center overflow-hidden rounded-lg bg-[#f8fafc]">
+        <div className="min-h-0 flex-1 bg-ink p-3 sm:p-4">
+          <div className="document-preview-frame flex items-center justify-center overflow-hidden rounded-lg bg-surface-subtle">
             {isImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -66,7 +66,7 @@ export function DocumentPreviewModal({
               />
             ) : (
               <iframe
-                className="h-full w-full border-0 bg-white"
+                className="h-full w-full border-0 bg-surface"
                 src={preview.url}
                 title={title}
               />

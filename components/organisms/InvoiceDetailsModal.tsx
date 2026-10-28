@@ -1,4 +1,6 @@
 "use client";
+import { formatPlannedUnits } from "@/features/jobs/work-units";
+
 
 import { stripeInvoiceUrl } from "@/features/payments/invoice-links";
 import { formatPence } from "@/features/payments/schemas";
@@ -40,6 +42,7 @@ export function InvoiceDetailsModal({ id, onClose, onPay, role }: { id: string |
               <Row label="SupplyEd processing fee" value={formatPence(invoice.feeAmountPence)} />
               <Row label="Total invoice" value={formatPence(invoice.totalAmountPence)} />
               <Row label="Agreed rate" value={`${formatPence(Math.round(invoice.rateAmount * 100))}${invoice.payType === "fixed" ? " fixed" : ` per ${invoice.payType === "hourly" ? "hour" : "day"}`}`} />
+              {invoice.booking.hours != null || invoice.booking.days != null ? <Row label="Planned work (agreed)" value={formatPlannedUnits(invoice.booking)} /> : null}
               {invoice.payType !== "fixed" && invoice.unitsWorked !== null ? <Row label="Time worked" value={`${invoice.unitsWorked} ${invoice.payType === "hourly" ? "hours" : "days"}`} /> : null}
               {invoice.poNumber ? <Row label="PO number" value={invoice.poNumber} /> : null}
               {role === "admin" ? <>

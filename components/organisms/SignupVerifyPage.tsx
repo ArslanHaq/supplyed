@@ -1,6 +1,8 @@
+import { useRateLimit } from "@/lib/rate-limit";
 import { useEffect, useRef, useState } from "react";
 
 import { formatCodeResendCountdown, secondsUntilCodeResend } from "@/lib/code-resend-cooldown";
+import { validateOtpCode } from "@/lib/auth-code-validation";
 
 import { Btn, Field, Icon, Logo } from "../atoms";
 import { AuthProgress } from "./AuthProgress";
@@ -28,6 +30,7 @@ export function SignupVerifyPage({
   onVerified: (code: string) => Promise<VerifyResult>;
   resendAvailableAt?: number;
 }) {
+  const retryAfter = useRateLimit();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [errors, setErrors] = useState<VerifyErrors>({});
   const [pending, setPending] = useState<VerifyPending>(null);
@@ -55,7 +58,7 @@ export function SignupVerifyPage({
   }, [resendAvailableAt]);
 
   function validate() {
-    if (codeValue.length !== 6) {
+    if (!validateOtpCode(codeValue)) {
       setErrors({ code: "Enter the 6-digit verification code." });
       return false;
     }
@@ -67,7 +70,7 @@ export function SignupVerifyPage({
   function handleCodeChange(index: number, value: string) {
     const digit = value.replace(/\D/g, "").slice(-1);
     setCode((current) => current.map((item, itemIndex) => (itemIndex === index ? digit : item)));
-    setErrors({});
+    if (validateOtpCode(code.map((item, itemIndex) => itemIndex === index ? digit : item).join(""))) setErrors({});
 
     if (digit && index < code.length - 1) {
       codeRefs.current[index + 1]?.focus();
@@ -81,18 +84,21 @@ export function SignupVerifyPage({
   }
 
   function handleCodePaste(event: React.ClipboardEvent<HTMLInputElement>) {
-    const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!pasted) return;
-
     event.preventDefault();
+    const pasted = event.clipboardData.getData("text").trim();
+    if (!validateOtpCode(pasted)) {
+      setErrors({ code: "Paste the complete 6-digit verification code." });
+      return;
+    }
     const nextCode = Array.from({ length: 6 }, (_, index) => pasted[index] || "");
     setCode(nextCode);
+    setErrors({});
     codeRefs.current[Math.min(pasted.length, 5)]?.focus();
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || retryAfter) return;
     if (!validate()) return;
     setPending("verify");
 
@@ -108,7 +114,7 @@ export function SignupVerifyPage({
   }
 
   async function resendCode() {
-    if (pending || resendLocked) return;
+    if (pending || retryAfter || resendLocked) return;
     setPending("resend");
 
     const result = await onResend();
@@ -197,7 +203,7 @@ export function SignupVerifyPage({
               Codes are validated by SupplyED before your workspace session is created. You can request another code every 60 seconds.
             </div>
 
-            <Btn className="w-full" loading={pending === "verify"} loadingLabel="Verifying email" size="lg" type="submit" iconRight="arrow">
+            <Btn className="w-full" loading={pending === "verify"} loadingLabel="Verifying email" size="lg" disabled={Boolean(retryAfter)} type="submit" iconRight="arrow">
               Verify and continue
             </Btn>
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -206,7 +212,7 @@ export function SignupVerifyPage({
               </Btn>
               <Btn
                 className="w-full"
-                disabled={Boolean(pending) || resendLocked}
+                disabled={Boolean(pending) || Boolean(retryAfter) || resendLocked}
                 loading={pending === "resend"}
                 loadingLabel="Sending"
                 variant="secondary"

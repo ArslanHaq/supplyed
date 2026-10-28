@@ -31,7 +31,7 @@ export const initialForm: SignupForm = {
   safeguardingConfirmed: false,
   schoolName: "",
   skills: [],
-  staffingNeeds: "",
+  staffingNeeds: [],
   signatoryEmail: "",
   signatoryJobTitle: "",
   signatoryName: "",
@@ -45,9 +45,6 @@ export const initialForm: SignupForm = {
   yearsExperience: "",
 };
 
-export const subjects = ["Maths", "English", "Science", "Humanities", "SEN", "All Primary"];
-export const keyStages = ["EYFS", "KS1", "KS2", "KS3", "KS4", "KS5"];
-export const teacherSkills = ["Classroom management", "SEN support", "Safeguarding", "Behaviour support", "Phonics", "Exam preparation"];
 export const coverTypes = ["Same-day cover", "Long-term roles", "Intervention groups", "Exam season", "SEN support"];
 export const currencies = ["GBP"];
 export const countryCodes = ["GB"];

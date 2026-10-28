@@ -1,4 +1,5 @@
 "use client";
+import { useRateLimit, recordRateLimit } from "@/lib/rate-limit";
 
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,6 +15,7 @@ import {
 import { queryKeys } from "@/lib/query/keys";
 import type { SettingsProfileSnapshot } from "@/features/settings/types";
 import type { RouteProps } from "@/types/supplyed";
+import { validateOtpCode, validateTwoFactorCode } from "@/lib/auth-code-validation";
 
 import { Btn, Field, Icon, Tag } from "../atoms";
 import { PageHead, SectionLoader } from "../molecules";
@@ -58,6 +60,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
     return queryClient.invalidateQueries({ queryKey: queryKeys.settings.profile() });
   }
 
+  const retryAfter = useRateLimit();
   const [status, setStatus] = useState<TwoFactorStatus>();
   const [setup, setSetup] = useState<TwoFactorSetup>();
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
@@ -77,6 +80,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
       if (!mounted) return;
 
       if (!result.ok) {
+      recordRateLimit(result);
         toast({ title: "Security status unavailable", msg: result.message, tone: "danger" });
         setPending(null);
         return;
@@ -95,11 +99,13 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
   }, [toast, queryClient]);
 
   async function startSetup() {
+    if (pending || retryAfter) return;
     setPending("setup");
     setCodeError(undefined);
     const result = await startTwoFactorSetupAction();
 
     if (!result.ok) {
+      recordRateLimit(result);
       toast({ title: "Could not start setup", msg: result.message, tone: "danger" });
       setPending(null);
       return;
@@ -113,11 +119,17 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
 
   async function enableTwoFactor(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending || retryAfter) return;
+    if (!validateOtpCode(enableCode)) {
+      setCodeError("Enter the 6-digit code from your authenticator app.");
+      return;
+    }
     setPending("enable");
     setCodeError(undefined);
     const result = await enableTwoFactorAction(null, formData({ code: enableCode }));
 
     if (!result.ok) {
+      recordRateLimit(result);
       setCodeError(result.fieldErrors?.code ?? result.message);
       toast({ title: "Could not enable 2FA", msg: result.message, tone: "danger" });
       setPending(null);
@@ -135,11 +147,17 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
 
   async function disableTwoFactor(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending || retryAfter) return;
+    if (!validateTwoFactorCode(disableCode)) {
+      setDisableError("Enter a 6-digit authenticator code or a recovery code.");
+      return;
+    }
     setPending("disable");
     setDisableError(undefined);
     const result = await disableTwoFactorAction(null, formData({ code: disableCode }));
 
     if (!result.ok) {
+      recordRateLimit(result);
       setDisableError(result.fieldErrors?.code ?? result.message);
       toast({ title: "Could not disable 2FA", msg: result.message, tone: "danger" });
       setPending(null);
@@ -155,12 +173,19 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
     setPending(null);
   }
 
-  async function regenerateRecoveryCodes() {
+  async function regenerateRecoveryCodes(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending || retryAfter) return;
+    if (!validateTwoFactorCode(manageCode)) {
+      setCodeError("Enter a 6-digit authenticator code or a recovery code.");
+      return;
+    }
     setPending("recoveries");
     setCodeError(undefined);
     const result = await regenerateTwoFactorRecoveryCodesAction(null, formData({ code: manageCode }));
 
     if (!result.ok) {
+      recordRateLimit(result);
       setCodeError(result.fieldErrors?.code ?? result.message);
       toast({ title: "Could not regenerate codes", msg: result.message, tone: "danger" });
       setPending(null);
@@ -254,7 +279,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                 </div>
 
                 {!status?.enabled ? (
-                  <Btn className="mt-5" icon="shield" loading={pending === "setup"} loadingLabel="Starting setup" onClick={startSetup}>
+                  <Btn className="mt-5" icon="shield" disabled={Boolean(retryAfter)} loading={pending === "setup"} loadingLabel="Starting setup" onClick={startSetup}>
                     {setup ? "Restart authenticator setup" : "Set up authenticator"}
                   </Btn>
                 ) : null}
@@ -276,7 +301,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
-                  <div className="rounded-xl border border-border bg-white p-4 shadow-(--shadow-xs)">
+                  <div className="rounded-xl border border-border bg-surface p-4 shadow-(--shadow-xs)">
                     <Image
                       alt="Two-factor setup QR code"
                       className="h-auto w-full"
@@ -297,16 +322,16 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                           className="input tracking-[0.18em]"
                           id="enable-2fa-code"
                           inputMode="numeric"
-                          maxLength={6}
+                          maxLength={64}
                           onChange={(event) => {
-                            setEnableCode(event.target.value.replace(/\D/g, "").slice(0, 6));
-                            setCodeError(undefined);
+                            setEnableCode(event.target.value);
+                            if (validateOtpCode(event.target.value)) setCodeError(undefined);
                           }}
                           placeholder="123456"
                           value={enableCode}
                         />
                       </Field>
-                      <Btn className="mt-4" loading={pending === "enable"} loadingLabel="Enabling" type="submit">
+                      <Btn className="mt-4" loading={pending === "enable"} loadingLabel="Enabling" disabled={Boolean(retryAfter)} type="submit">
                         Enable 2FA
                       </Btn>
                     </form>
@@ -333,7 +358,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                   <div className="mb-3 text-sm font-semibold text-warning">Save these now. They are shown only once.</div>
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                     {recoveryCodes.map((code) => (
-                      <code key={code} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-ink">
+                      <code key={code} className="rounded-lg bg-surface px-3 py-2 text-sm font-semibold text-ink">
                         {code}
                       </code>
                     ))}
@@ -367,24 +392,24 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                     </p>
                   </div>
                 </div>
-                <div>
+                <form noValidate onSubmit={(event) => void regenerateRecoveryCodes(event)}>
                   <Field error={codeError} htmlFor="manage-2fa-code" label="Code for new recovery codes" required>
                     <input
                       autoComplete="one-time-code"
                       className="input tracking-[0.12em]"
                       id="manage-2fa-code"
                       inputMode="text"
-                      maxLength={19}
+                      maxLength={64}
                       onChange={(event) => {
                         setManageCode(event.target.value.toUpperCase());
-                        setCodeError(undefined);
+                        if (validateTwoFactorCode(event.target.value)) setCodeError(undefined);
                       }}
                       placeholder="123456"
                       value={manageCode}
                     />
                   </Field>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Btn loading={pending === "recoveries"} loadingLabel="Generating" onClick={() => void regenerateRecoveryCodes()} variant="secondary">
+                    <Btn loading={pending === "recoveries"} loadingLabel="Generating" disabled={Boolean(retryAfter)} type="submit" variant="secondary">
                       Generate new recovery codes
                     </Btn>
                     {!showDisableForm ? (
@@ -393,7 +418,7 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                       </Btn>
                     ) : null}
                   </div>
-                </div>
+                </form>
                 {showDisableForm ? (
                   <form className="mt-5 rounded-xl border border-danger/30 bg-danger-tint p-4" noValidate onSubmit={(event) => void disableTwoFactor(event)}>
                     <div className="mb-3 font-semibold text-danger">Confirm disabling 2FA</div>
@@ -410,14 +435,14 @@ export function SecurityPage({ state, toast }: Pick<RouteProps, "state" | "toast
                         className="input"
                         id="disable-2fa-code"
                         inputMode="text"
-                        maxLength={19}
-                        onChange={(event) => { setDisableCode(event.target.value.toUpperCase()); setDisableError(undefined); }}
+                        maxLength={64}
+                        onChange={(event) => { setDisableCode(event.target.value.toUpperCase()); if (validateTwoFactorCode(event.target.value)) setDisableError(undefined); }}
                         placeholder="Enter your code"
                         value={disableCode}
                       />
                     </Field>
                     <div className="flex flex-wrap gap-2">
-                      <Btn loading={pending === "disable"} loadingLabel="Disabling" type="submit" variant="danger">
+                      <Btn loading={pending === "disable"} loadingLabel="Disabling" disabled={Boolean(retryAfter)} type="submit" variant="danger">
                         Confirm disable
                       </Btn>
                       <Btn disabled={pending === "disable"} onClick={() => { setShowDisableForm(false); setDisableCode(""); setDisableError(undefined); }} variant="secondary">

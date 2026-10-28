@@ -11,7 +11,7 @@ export const seedTeachers: Teacher[] = [
 export const seedApplications: Application[] = [
   { id: "a-1", teacherId: "t-sarah", jobId: "j-101", stage: "shortlisted", rate: 180, coverLetter: "Available tomorrow, happy to arrive by 08:15. Five years of Y6 Maths cover experience.", appliedAt: "1h ago" },
   { id: "a-2", teacherId: "t-marcus", jobId: "j-101", stage: "applied", rate: 195, coverLetter: "Science specialist but happy to cover Maths. Grammar-school background.", appliedAt: "2h ago" },
-  { id: "a-3", teacherId: "t-priya", jobId: "j-101", stage: "interview", rate: 175, coverLetter: "KS2 specialist with strong rapport with Y6 cohorts.", appliedAt: "3h ago" },
+  { id: "a-3", teacherId: "t-priya", jobId: "j-101", stage: "shortlisted", rate: 175, coverLetter: "KS2 specialist with strong rapport with Y6 cohorts.", appliedAt: "3h ago" },
   { id: "a-4", teacherId: "t-tom", jobId: "j-101", stage: "applied", rate: 165, coverLetter: "English and drama specialist with full-day availability this week.", appliedAt: "5h ago" },
 ];
 

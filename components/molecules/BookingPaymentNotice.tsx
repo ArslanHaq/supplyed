@@ -1,7 +1,9 @@
 import type { Job } from "@/features/jobs/types";
+import type { OfferedJobTerms } from "@/features/jobs/offered-terms";
 
-export function BookingPaymentNotice({ job }: { job: Job | null }) {
-  const rate = job?.rate ? new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(job.rate) : null;
+export function BookingPaymentNotice({ job }: { job: Job | OfferedJobTerms | null | undefined }) {
+  const amount = job?.payAmount;
+  const rate = amount != null ? new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount) : null;
   const rateLabel = job?.payType === "hourly" ? "per hour" : job?.payType === "fixed" ? "fixed price" : "per day";
 
   return (

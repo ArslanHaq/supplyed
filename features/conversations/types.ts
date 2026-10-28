@@ -17,19 +17,24 @@ export type ChatMessage = {
   senderSide: ConversationSide | null;
 };
 
+export type ConversationParticipant = { id: string | null; userId?: string | null; imageUrl: string | null; name: string; role: "school" | "teacher" };
+export type StartConversationInput = { applicationId: string; instructorId?: never; jobId?: never } | { instructorId: string; jobId?: string; applicationId?: never };
+
 export type Conversation = {
-  applicationId: string;
-  applicationStatus: string;
-  counterpart: { id: string | null; imageUrl: string | null; name: string; role: "school" | "teacher" };
+  booking: { id: string; status: string; applicationId: string } | null;
+  applicationId: string | null;
+  applicationStatus: string | null;
+  counterpart: ConversationParticipant | null;
+  participants: { instructor: ConversationParticipant | null; poster: ConversationParticipant | null };
   /** Messages up to this time have been seen by the other person. */
   counterpartLastReadAt: string | null;
   createdAt: string | null;
   id: string;
-  job: { id: string; title: string };
+  job: { id: string; title: string; hours?: number | null; days?: number | null } | null;
   lastMessage: { body: string; createdAt: string; fromMe: boolean; hasAttachments: boolean } | null;
   lastMessageAt: string | null;
   /** The signed-in user's side of the thread. */
-  me: ConversationSide;
+  me: ConversationSide | null;
   /** True after the application was rejected: history stays, no new messages. */
   readOnly: boolean;
   unreadCount: number;
@@ -47,6 +52,14 @@ export type ConversationsPagination = {
 export type ConversationsPage = {
   conversations: Conversation[];
   pagination: ConversationsPagination;
+};
+
+export type ConversationTopic = "GENERAL" | "JOBS";
+export type ConversationThreadsPage = {
+  conversations: Conversation[];
+  total: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 };
 
 export type MessagesPage = {

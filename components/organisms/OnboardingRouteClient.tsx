@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut } from "next-auth/react";
 
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/lib/founding-signup-intent";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { getAuthenticatedEntryHref } from "@/lib/routes";
+import { invitationReturnPath } from "@/lib/invitation-links";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
@@ -56,7 +57,7 @@ function initialStep(role: AppRole | null | undefined, snapshot: OnboardingProfi
 
   if (role === "institution") {
     if (!snapshot.institution) return 1;
-    if (snapshot.institution.userRole && snapshot.institution.staffingNeeds) return 3;
+    if (snapshot.institution.userRole) return 3;
     return 2;
   }
 
@@ -110,7 +111,7 @@ function prefillFromFoundingIntent(intent: FoundingSignupIntent | null): Onboard
     institutionDomain: intent.institutionDomain,
     localAuthority: intent.localAuthority,
     schoolName: intent.organizationName,
-    staffingNeeds: intent.staffingNeeds ?? intent.coverTypes?.join(", "),
+    staffingNeeds: intent.staffingNeeds ? [intent.staffingNeeds] : [],
     typicalPupilCount: intent.typicalPupilCount,
   };
 }
@@ -223,6 +224,7 @@ function OnboardingRouteClientInner({
   sessionRepairTicket?: string;
 }) {
   const router = useRouter();
+  const returnTo = invitationReturnPath(useSearchParams().get("returnTo"));
   const [foundingIntent, setFoundingIntent] = useState(() => readMatchingFoundingIntent(initialRole, accountEmail));
   const foundingRole = foundingIntent ? foundingSignupRole(foundingIntent.type) : null;
   const [sessionRepairError, setSessionRepairError] = useState<string>();
@@ -242,7 +244,7 @@ function OnboardingRouteClientInner({
     const shouldRedirect = initialRole && effectiveApplicationStatus !== "none";
     if (!shouldRedirect && !sessionRepairTicket) return;
 
-    const entryHref = getAuthenticatedEntryHref({ applicationStatus: effectiveApplicationStatus, role: initialRole });
+    const entryHref = (effectiveApplicationStatus === "approved" ? returnTo : null) ?? getAuthenticatedEntryHref({ applicationStatus: effectiveApplicationStatus, role: initialRole });
     if (!sessionRepairTicket) {
       startRouteLoading();
       router.replace(entryHref);
@@ -261,7 +263,7 @@ function OnboardingRouteClientInner({
       }
       router.refresh();
     });
-  }, [effectiveApplicationStatus, initialRole, router, sessionRepairTicket]);
+  }, [effectiveApplicationStatus, initialRole, router, sessionRepairTicket, returnTo]);
 
   function setRole(role: SignupRole) {
     if (hasCreatedRoleProfile(profileSnapshot)) return;
@@ -325,7 +327,7 @@ function OnboardingRouteClientInner({
     setShowDocuments(false);
     startRouteLoading();
     router.push(
-      getAuthenticatedEntryHref({
+      (result.data.applicationStatus === "approved" ? returnTo : null) ?? getAuthenticatedEntryHref({
         applicationStatus: result.data.applicationStatus,
         role,
       }),

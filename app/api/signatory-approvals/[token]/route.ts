@@ -26,13 +26,17 @@ export async function POST(request: Request, context: RouteContext) {
 
   const origin = request.headers.get("origin");
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? new URL(request.url).host;
-  if (!origin || new URL(origin).host !== host) {
+  let originHost: string | undefined;
+  try { originHost = origin ? new URL(origin).host : undefined; } catch { /* Invalid origins fail the same check. */ }
+  if (!originHost || originHost !== host) {
     return Response.json({ message: "Open the approval link directly before responding." }, { status: 403 });
   }
 
   try {
-    const input = await request.json() as { action?: unknown; acceptTerms?: unknown; reason?: unknown };
+    const input = await request.json().catch(() => null) as { action?: unknown; acceptTerms?: unknown; reason?: unknown } | null;
+    if (!input || typeof input !== "object" || Array.isArray(input)) return Response.json({ message: "Enter a valid approval response." }, { status: 400 });
     if (input.action === "approve") {
+      if (input.acceptTerms !== true) return Response.json({ message: "Accept the terms before approving.", fieldErrors: { acceptTerms: "Accept the terms before approving." } }, { status: 400 });
       return Response.json(await api.post(
         `/signatory-approvals/token/${encodeURIComponent(token)}/approve`,
         { acceptTerms: input.acceptTerms === true },
@@ -40,6 +44,7 @@ export async function POST(request: Request, context: RouteContext) {
       ));
     }
     if (input.action === "decline") {
+      if (typeof input.reason !== "string" || !input.reason.trim() || input.reason.trim().length > 1000) return Response.json({ message: "Enter a reason of up to 1,000 characters.", fieldErrors: { reason: "Enter a reason of up to 1,000 characters." } }, { status: 400 });
       return Response.json(await api.post(
         `/signatory-approvals/token/${encodeURIComponent(token)}/decline`,
         { reason: typeof input.reason === "string" ? input.reason.trim() : "" },

@@ -1,11 +1,11 @@
-import { useState } from "react";
-
+import { useDropdown } from "@/features/dropdowns/use-dropdown";
+import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
 import { useJobApplications } from "@/features/applications/use-applications";
 import type { Job, JobsPagination, JobStatus, JobStatusCounts } from "@/features/jobs/types";
-import type { Tone } from "@/types/supplyed";
+import { formatJobVisibilityLabel, getJobVisibilityLabel, type JobVisibilityLabel } from "@/features/jobs/listing-window";
 
-import { Btn, Icon, Tag } from "../atoms";
-import { SectionLoader } from "../molecules";
+import { Btn } from "../atoms";
+import { JobListingPreview, jobListingPreviewData, SectionLoader } from "../molecules";
 
 export type JobStatusFilter = "ALL" | JobStatus;
 
@@ -30,13 +30,6 @@ type JobManagementListProps = {
   title: string;
 };
 
-const statusFilters: Array<{ label: string; value: JobStatusFilter }> = [
-  { label: "All", value: "ALL" },
-  { label: "Active", value: "ACTIVE" },
-  { label: "Draft", value: "DRAFT" },
-  { label: "Expired", value: "EXPIRED" },
-  { label: "Closed", value: "CLOSED" },
-];
 
 export function JobManagementList({
   actionPending,
@@ -57,6 +50,9 @@ export function JobManagementList({
   refreshing = false,
   title,
 }: JobManagementListProps) {
+  const choices = useDropdown("jobStatus");
+  const statusFilters: Array<{ label: string; value: JobStatusFilter }> = [{ label: "All", value: "ALL" }, ...(choices.data?.options ?? []).map(option => ({ label: option.label, value: option.value as JobStatusFilter }))];
+  if (!statusFilters.some(option => option.value === "RESERVED")) statusFilters.push({ label: "Reserved", value: "RESERVED" });
   // The backend already filtered by status; this only guards against a stale page during a tab switch.
   const filteredJobs = filter === "ALL" ? jobs : jobs.filter((job) => job.status === filter);
 
@@ -71,6 +67,7 @@ export function JobManagementList({
         <Btn icon="plus" size="sm" variant="secondary" onClick={onCreate}>New role</Btn>
       </header>
         <div aria-label="Filter roles by status" className="workspace-status-filters job-status-toolbar">
+          <DropdownStatus name="jobStatus" />
           {statusFilters.map((statusFilter) => {
             const count = counts?.[statusFilter.value];
             return (
@@ -78,7 +75,7 @@ export function JobManagementList({
                 key={statusFilter.value}
                 aria-pressed={filter === statusFilter.value}
                 className={`min-h-9 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                  filter === statusFilter.value ? "border-brand bg-brand-tint text-brand" : "border-border bg-white text-slate hover:bg-chalk"
+                  filter === statusFilter.value ? "border-brand bg-brand-tint text-brand" : "border-border bg-surface text-slate hover:bg-chalk"
                 }`}
                 onClick={() => onFilterChange(statusFilter.value)}
                 type="button"
@@ -124,7 +121,7 @@ export function JobManagementList({
                 className={`h-9 min-w-9 rounded-lg border px-2 text-sm font-semibold transition-colors ${
                   item === pagination.page
                     ? "border-brand bg-brand text-white"
-                    : "border-border bg-white text-slate hover:border-brand hover:bg-brand-tint hover:text-brand"
+                    : "border-border bg-surface text-slate hover:border-brand hover:bg-brand-tint hover:text-brand"
                 }`}
                 disabled={loading || refreshing}
                 onClick={() => onPageChange(item)}
@@ -173,107 +170,34 @@ function JobManagementRow({
   onDelete: (job: Job) => void;
   onEdit: (job: Job) => void;
 }) {
-  const canClose = job.status === "ACTIVE" || job.status === "DRAFT";
+  const canClose = job.status !== "CLOSED";
+  const visibility = getJobVisibilityLabel(job);
   const applicationsQuery = useJobApplications(job.id, { limit: 1 });
   const applicantCount = applicationsQuery.data?.pagination.total;
-  const [menuOpen, setMenuOpen] = useState(false);
+  const status = { label: formatJobVisibilityLabel(visibility), tone: visibilityTone(visibility) } as const;
 
   return (
-    <div
-      className="job-management-row"
-      onClick={() => onApplications(job)}
-    >
-      <div aria-hidden="true" className="job-management-icon"><Icon name={job.status === "ACTIVE" ? "file" : job.status === "DRAFT" ? "edit" : "checkCircle"} size={22} /></div>
-      <div className="job-management-copy">
-        <div className="job-management-status"><Tag tone={statusTone(job.status)}>{formatJobStatus(job.status)}</Tag>{job.urgent ? <Tag tone="red">Urgent</Tag> : null}<span>Posted {job.postedAt}</span></div>
-        <button className="job-management-title" onClick={(event) => { event.stopPropagation(); onApplications(job); }} type="button">{job.title}</button>
-        <div className="job-management-meta"><span><Icon name="pin" size={13} />{[job.city === "Location TBC" ? "" : job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC"}</span><span><Icon name="calendar" size={13} />{job.date}</span><span><Icon name="pound" size={13} />{formatPay(job)}</span></div>
-        <div className="job-management-skills"><Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant" : "Brief"}</Tag>{job.requiredSkills.slice(0, 4).map((skill) => <span key={skill} className="pill">{skill}</span>)}{job.minExperienceYears != null ? <span className="pill">{job.minExperienceYears}+ years</span> : null}</div>
-      </div>
-      <button className="job-applicant-action" onClick={(event) => { event.stopPropagation(); onApplications(job); }} type="button">
-        <span aria-label={applicantCount !== undefined ? `${applicantCount} applicants` : applicationsQuery.isError ? "Applicant count unavailable" : "Loading applicant count"} aria-live="polite"><strong>{applicantCount ?? (applicationsQuery.isError ? "-" : "...")}</strong><span>{applicantCount === 1 ? "applicant" : "applicants"}</span></span>
-        <span>Review <Icon name="arrowRight" size={13} /></span>
-      </button>
-      <div className="job-management-menu" onClick={(event) => event.stopPropagation()}>
-        <button
-          aria-expanded={menuOpen}
-          aria-label={`Options for ${job.title}`}
-          className="grid h-10 w-10 place-items-center rounded-lg border border-border-strong bg-white text-slate transition hover:border-brand hover:bg-brand-tint hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-          onClick={() => setMenuOpen((current) => !current)}
-          type="button"
-        >
-          <Icon name="moreH" size={18} />
-        </button>
-        {menuOpen ? (
-          <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-border bg-white p-1.5 shadow-(--shadow-sm)">
-            <button
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-ink hover:bg-chalk"
-              onClick={() => {
-                setMenuOpen(false);
-                onApplications(job);
-              }}
-              type="button"
-            >
-              <Icon name="users" size={14} />
-              Applications
-            </button>
-            <button
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-ink hover:bg-chalk"
-              onClick={() => {
-                setMenuOpen(false);
-                onEdit(job);
-              }}
-              type="button"
-            >
-              <Icon name="edit" size={14} />
-              Edit
-            </button>
-            {canClose ? (
-              <button
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-ink hover:bg-chalk disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={actionPending}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onClose(job);
-                }}
-                type="button"
-              >
-                <Icon name="x" size={14} />
-                Close
-              </button>
-            ) : null}
-            <button
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-danger hover:bg-danger-tint disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={actionPending}
-              onClick={() => {
-                setMenuOpen(false);
-                onDelete(job);
-              }}
-              type="button"
-            >
-              <Icon name="x" size={14} />
-              Delete
-            </button>
-          </div>
-        ) : null}
+    <div className="border-b border-border p-4 last:border-0 sm:p-5">
+      <JobListingPreview
+        action={<Btn iconRight="arrowRight" size="sm" onClick={() => onApplications(job)}>Review applications</Btn>}
+        data={jobListingPreviewData(job, status)}
+        onOpen={() => onApplications(job)}
+      />
+      <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-chalk px-3 py-2">
+        <span className="mr-auto text-xs text-muted" aria-live="polite">
+          <strong className="text-ink">{applicantCount ?? (applicationsQuery.isError ? "—" : "…")}</strong> {applicantCount === 1 ? "applicant" : "applicants"}
+        </span>
+        <Btn icon="edit" size="sm" variant="ghost" onClick={() => onEdit(job)}>{job.termsLocked ? "View terms" : "Edit"}</Btn>
+        {canClose ? <Btn disabled={actionPending} size="sm" variant="ghost" onClick={() => onClose(job)}>Close</Btn> : null}
+        {job.canDelete === true ? <Btn disabled={actionPending} size="sm" variant="danger" onClick={() => onDelete(job)}>Delete</Btn> : null}
       </div>
     </div>
   );
 }
 
-export function formatPay(job: Job) {
-  if (!job.rate) return "Rate TBC";
-  if (job.payType === "hourly") return `GBP ${job.rate}/hr`;
-  if (job.payType === "fixed") return `GBP ${job.rate} fixed`;
-  return `GBP ${job.rate}/day`;
-}
-
-export function formatJobStatus(status: Job["status"]) {
-  return status ? status.toLowerCase().replace(/_/g, " ") : "draft";
-}
-
-function statusTone(status: Job["status"]): Tone | "ghost" {
-  if (status === "ACTIVE") return "green";
-  if (status === "DRAFT") return "amber";
+function visibilityTone(status: JobVisibilityLabel): "amber" | "ghost" | "green" | "red" {
+  if (status === "live") return "green";
+  if (status === "draft" || status === "scheduled" || status === "reserved") return "amber";
+  if (status === "suspended") return "red";
   return "ghost";
 }

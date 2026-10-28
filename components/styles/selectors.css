@@ -1,0 +1,40 @@
+/* Single, multiple and searchable controls share the existing form tokens. */
+@layer components {
+  .option-dropdown { position: relative; min-width: 0; }
+  .option-trigger { display: flex; width: 100%; align-items: center; gap: 10px; text-align: left; cursor: pointer; background-color: var(--surface); }
+  .option-trigger[data-placeholder] { color: var(--muted); }
+  .option-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .option-count { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; min-width: 22px; padding: 1px 6px; border-radius: var(--radius-sm); background: var(--se-tint); color: var(--se-dark); font-size: 11px; font-weight: 650; line-height: 20px; }
+  .option-chevron { flex-shrink: 0; color: var(--muted); transition: transform 150ms ease; }
+  .option-trigger:not(:disabled)[aria-expanded="true"], .option-trigger:not(:disabled):not([data-placeholder]) { border-color: var(--se); background-color: var(--se-tint); color: var(--ink); }
+  .option-trigger:not(:disabled)[aria-expanded="true"] .option-chevron, .option-trigger:not(:disabled):not([data-placeholder]) .option-chevron { color: var(--se-dark); }
+  .option-dropdown .option-trigger[aria-invalid="true"] { border-color: var(--red); }
+  .option-native-control { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .option-validation { margin-top: 8px; color: var(--red); font-size: 12px; line-height: 1.6; }
+  .option-menu { position: fixed; inset: auto; z-index: 80; display: flex; flex-direction: column; margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); color: var(--ink); background: var(--surface); box-shadow: var(--shadow-lg); font-family: var(--sans); }
+  .option-menu::backdrop { background: transparent; pointer-events: none; }
+  .option-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 6px; }
+  .option-item { display: flex; width: 100%; min-height: 44px; align-items: center; gap: 10px; border: 1px solid transparent; border-radius: var(--radius-sm); padding: 9px 11px; color: var(--slate); text-align: left; font-size: 13px; line-height: 1.5; transition: color 150ms ease, background 150ms ease; }
+  .option-item:hover { background: var(--se-tint); color: var(--se-dark); }
+  .option-item[aria-selected="true"] { background: var(--se-tint); color: var(--se-dark); }
+  .option-item[data-active] { outline: 2px solid var(--se); outline-offset: -2px; }
+  .option-indicator { display: inline-flex; width: 16px; height: 16px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid var(--border-2); border-radius: 50%; background: var(--surface); }
+  .option-indicator[data-multiple] { border-radius: var(--radius-check); }
+  .option-item[aria-selected="true"] .option-indicator { border-color: var(--se-dark); background: var(--se-dark); color: var(--surface); }
+  .option-copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .option-copy > span { display: block; }
+  .option-description { margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .option-search { display: flex; flex-shrink: 0; align-items: center; gap: 9px; padding: 10px 13px; border-bottom: 1px solid var(--border); color: var(--muted); }
+  .option-search:focus-within { box-shadow: inset 0 -2px var(--se); }
+  .option-search input { min-width: 0; width: 100%; min-height: 28px; border: 0; background: transparent; color: var(--ink); font-size: 13px; outline: none; }
+  .option-search input::placeholder { color: var(--muted); }
+  .option-empty { padding: 16px 12px; color: var(--muted); font-size: 13px; }
+  .option-footer { flex-shrink: 0; padding: 6px; border-top: 1px solid var(--border); }
+  .option-clear { width: 100%; min-height: 40px; border-radius: var(--radius-sm); padding: 8px 11px; color: var(--se-dark); text-align: left; font-size: 12px; font-weight: 600; }
+  .option-clear:hover { background: var(--se-tint); }
+  .option-clear:focus-visible { outline-offset: -2px; }
+  @media (max-width: 639px) {
+    .option-search input { font-size: 16px; }
+    .option-item { font-size: 14px; }
+  }
+}

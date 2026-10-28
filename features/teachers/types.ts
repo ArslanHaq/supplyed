@@ -1,4 +1,5 @@
 import type { Teacher } from "@/types/supplyed";
+import type { InstructorBookingDates } from "@/features/public-profiles/booking-dates";
 
 export type TeacherListFilters = {
   keyStage?: string;
@@ -24,6 +25,7 @@ export type TeacherDirectoryFilters = {
 };
 
 export type TeacherDirectoryItem = {
+  bookings: InstructorBookingDates[] | null;
   availableToday: boolean;
   bio: string | null;
   city: string | null;

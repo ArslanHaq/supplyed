@@ -1,5 +1,10 @@
 "use server";
 
+import { omitUnchangedDropdownFields, omitUnchangedTeachingFields } from "@/features/teaching-catalogue/patch";
+import { selectionValues } from "@/features/teaching-catalogue/selection";
+
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { revalidateTag } from "next/cache";
 
 import { normalizeAuthUser, normalizeRole, normalizeStatus } from "@/features/auth/backend";
@@ -19,6 +24,8 @@ import {
   uploadProfileDocument,
 } from "./documents";
 import { hasCreatedRoleProfile } from "./profile-progress";
+import { normalizeOnboardingForm, validateOnboardingForm } from "./validation";
+import { normalizeStoredUkPhone, validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 import type {
   OnboardingDocumentDownloadResult,
   OnboardingDocumentKind,
@@ -34,9 +41,6 @@ import type {
   OnboardingUserSnapshot,
 } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
@@ -52,6 +56,7 @@ function readNumber(value: unknown): number | undefined {
 }
 
 type InstructorProfilePayload = {
+  otherSubjects?: string[]; otherSkills?: string[];
   bio?: string;
   city?: string;
   countryCode?: string;
@@ -68,6 +73,7 @@ type InstructorProfilePayload = {
 };
 
 type InstitutionProfilePayload = {
+  otherSubjects?: string[];
   address: string;
   city: string;
   complianceContact?: string;
@@ -81,7 +87,7 @@ type InstitutionProfilePayload = {
   postalCode?: string;
   registrationId?: string;
   safeguardingConfirmed?: boolean;
-  staffingNeeds?: string;
+  staffingNeeds?: string[];
   typicalPupilCount?: number;
   trust?: {
     companyNumber?: string;
@@ -143,7 +149,7 @@ type BackendInstitutionProfile = {
   registrationId?: string | null;
   safeguardingConfirmed?: boolean | null;
   status?: unknown;
-  staffingNeeds?: string | null;
+  staffingNeeds?: string[] | string | null;
   typicalPupilCount?: unknown;
   trust?: {
     companyNumber?: string | null;
@@ -174,7 +180,7 @@ function normalizeUserSnapshot(user: BackendUserProfile, fallbackEmail?: string,
     emailVerified: user.emailVerified === true,
     phoneVerified: user.phoneVerified === true,
     fullName: user.name || "",
-    phone: user.phone || "",
+    phone: normalizeStoredUkPhone(user.phone),
     postcode: user.postCode || postcodeFallback,
   };
 }
@@ -220,7 +226,7 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
     registrationId: profile.registrationId || "",
     safeguardingConfirmed: Boolean(profile.safeguardingConfirmed),
     status: normalizeStatus(profile.status),
-    staffingNeeds: profile.staffingNeeds || "",
+    staffingNeeds: selectionValues(profile.staffingNeeds),
     trust: profile.trust?.id && profile.trust.name
       ? { companyNumber: profile.trust.companyNumber ?? null, id: profile.trust.id, name: profile.trust.name }
       : null,
@@ -329,7 +335,9 @@ function buildInstructorProfilePayload(formData: FormData): InstructorProfilePay
     maxTravelDistance: readFormNumber(formData, "maxTravelDistance"),
     postalCode: postalCode || undefined,
     skills: readFormStringArray(formData, "skills"),
+    otherSkills: formData.has("otherSkills") ? readFormStringArray(formData, "otherSkills") : undefined,
     subjects: readFormStringArray(formData, "subjects"),
+    otherSubjects: formData.has("otherSubjects") ? readFormStringArray(formData, "otherSubjects") : undefined,
   };
 
   return profile;
@@ -358,7 +366,8 @@ function buildInstitutionProfilePayload(formData: FormData): InstitutionProfileP
     postalCode: readFormString(formData, "postcode") || undefined,
     registrationId: readFormString(formData, "institutionRegistrationId") || undefined,
     safeguardingConfirmed: readFormBoolean(formData, "safeguardingConfirmed"),
-    staffingNeeds: readFormString(formData, "staffingNeeds") || undefined,
+    staffingNeeds: readFormStringArray(formData, "staffingNeeds"),
+    otherSubjects: formData.has("otherSubjects") ? readFormStringArray(formData, "otherSubjects") : undefined,
     typicalPupilCount: readFormNumber(formData, "typicalPupilCount"),
     trust: institutionType === "MAT_SCHOOL"
       ? { name: trustName, ...(trustCompanyNumber ? { companyNumber: trustCompanyNumber } : {}) }
@@ -383,7 +392,7 @@ async function getCurrentUserSnapshot(postcodeFallback = "") {
   const authContext = await getServerAuthContext();
   if (!authContext?.userId) return undefined;
 
-  const user = await api.get<BackendUserProfile>(`/users/${authContext.userId}`);
+  const user = await api.get<BackendUserProfile>("/users/me");
   return normalizeUserSnapshot(user, authContext.email ?? undefined, postcodeFallback);
 }
 
@@ -500,7 +509,7 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
   }
 
   {
-    const currentUser = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
+    const currentUser = await api.get<BackendUserProfile>("/users/me", { cache: "no-store" });
     role = normalizeRole(currentUser.role);
     const user = normalizeUserSnapshot(currentUser, authContext.email ?? undefined);
     const documentState = await getDocumentState(role);
@@ -565,7 +574,7 @@ async function getOnboardingAuth(): Promise<BackendAuthResponse & { accessToken:
   const accessToken = await getValidAccessToken(context);
   if (!context || !accessToken) throw new Error("Your session expired. Sign in again to continue.");
 
-  const user = normalizeAuthUser(await api.get("/auth/me", {
+  const user = normalizeAuthUser(await api.get("/users/me", {
     auth: false,
     cache: "no-store",
     headers: buildBearerHeaders(accessToken),
@@ -585,9 +594,9 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   let currentPhone = "";
   let currentPhoneVerified = false;
   if (backendEnabled()) {
-    const current = await api.get<BackendUserProfile>("/auth/me", { cache: "no-store" });
-    if (normalizeRole(current.role)) return normalizeUserSnapshot(current, current.email, postcodeFallback);
-    currentPhone = current.phone?.trim() ?? "";
+    const current = await api.get<BackendUserProfile>("/users/me", { cache: "no-store" });
+    // Preserve the same canonical saved number; verified numbers cannot be replaced.
+    currentPhone = normalizeStoredUkPhone(current.phone);
     currentPhoneVerified = current.phoneVerified === true;
   }
   if (!backendEnabled()) {
@@ -606,7 +615,7 @@ async function saveUserBasics(formData: FormData, postcodeFallback = "") {
   const phone = readFormString(formData, "phone");
 
   if (currentPhoneVerified && phone !== currentPhone) {
-    throw new Error("Verify your new phone number before creating this profile.");
+    throw new Error("Your verified phone number cannot be changed.");
   }
 
   if (name || phone) {
@@ -633,7 +642,13 @@ function onboardingError(error: unknown) {
 
 async function saveInstructorProfile(formData: FormData, accessToken: string) {
   const existing = await getCurrentInstructorSnapshot(accessToken);
-  if (existing) return existing;
+  if (existing) {
+    if (!["none", "rejected"].includes(existing.status)) return existing;
+    const payload = buildInstructorProfilePayload(formData);
+    omitUnchangedTeachingFields(payload, existing);
+    omitUnchangedDropdownFields(payload, existing);
+    return normalizeInstructorSnapshot(await api.patch<BackendInstructorProfile>(`/instructors/${existing.id}`, payload, { auth: false, headers: buildBearerHeaders(accessToken) }));
+  }
 
   try {
     return normalizeInstructorSnapshot(await api.post<BackendInstructorProfile>("/instructors", buildInstructorProfilePayload(formData), {
@@ -650,7 +665,13 @@ async function saveInstructorProfile(formData: FormData, accessToken: string) {
 
 async function saveInstitutionProfile(formData: FormData, accessToken: string) {
   const existing = await getInstitutionSnapshot(accessToken);
-  if (existing) return existing;
+  if (existing) {
+    if (!["none", "rejected"].includes(existing.status)) return existing;
+    const payload = buildInstitutionProfilePayload(formData);
+    omitUnchangedTeachingFields(payload, existing);
+    omitUnchangedDropdownFields(payload, existing);
+    return normalizeInstitutionSnapshot(await api.patch<BackendInstitutionProfile>(`/institutions/${existing.id}`, payload, { auth: false, headers: buildBearerHeaders(accessToken) }));
+  }
 
   try {
     return normalizeInstitutionSnapshot(await api.post<BackendInstitutionProfile>("/institutions", buildInstitutionProfilePayload(formData), {
@@ -666,6 +687,7 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string) {
 }
 
 async function submitInstructorProfileForReview(accessToken: string, current?: OnboardingInstructorSnapshot) {
+  assertStoredProfileLocation(current);
   if (current && ["pending_review", "approved"].includes(current.status)) return current;
   try {
     return normalizeInstructorSnapshot(
@@ -685,6 +707,7 @@ async function submitInstructorProfileForReview(accessToken: string, current?: O
 }
 
 async function submitInstitutionProfileForReview(accessToken: string, current?: OnboardingInstitutionSnapshot) {
+  assertStoredProfileLocation(current);
   if (current && ["pending_review", "approved"].includes(current.status)) return current;
   try {
     return normalizeInstitutionSnapshot(
@@ -775,6 +798,9 @@ export async function downloadOnboardingDocumentAction(formData: FormData) {
 }
 
 export async function saveOnboardingStepAction(formData: FormData) {
+  const fieldErrors = validateOnboardingForm(formData);
+  if (Object.keys(fieldErrors).length) return actionError("Check the highlighted fields before continuing.", { fieldErrors });
+  formData = normalizeOnboardingForm(formData);
   const role = readFormString(formData, "role") as AppRole;
   const step = Number(readFormString(formData, "step")) || 1;
   const postcode = readFormString(formData, "postcode");
@@ -809,7 +835,7 @@ export async function saveOnboardingStepAction(formData: FormData) {
     const stepUser = {
       ...user,
       emailVerified: savedUser?.emailVerified === true,
-      phoneVerified: savedUser?.phoneVerified === true && savedUser.phone === user.phone,
+      phoneVerified: savedUser?.phoneVerified === true && normalizeStoredUkPhone(savedUser.phone) === user.phone,
     };
     const documentState = normalizeRole(authContext.role)
       ? await getDocumentState(role)
@@ -866,6 +892,8 @@ async function submitInstructorOnboarding(formData: FormData) {
       if (!instructor) throw new Error("Create your teacher profile before sending it for review.");
 
       const user = normalizeUserSnapshot(sessionAuth.user, sessionAuth.user.email, readFormString(formData, "postcode"));
+      const savedPhone = validateUkPhone(sessionAuth.user.phone, { required: true });
+      if (!savedPhone.valid) return actionError("Update your saved UK phone number before review.", { fieldErrors: { phone: savedPhone.error! } });
       const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
       if (missingDocuments.length > 0) {
         return actionOk<OnboardingProgressResult>(
@@ -1022,6 +1050,8 @@ async function submitInstitutionOnboarding(formData: FormData) {
       if (!institution) throw new Error("Create your school profile before sending it for review.");
 
       const user = normalizeUserSnapshot(sessionAuth.user, sessionAuth.user.email, readFormString(formData, "postcode"));
+      const savedPhone = validateUkPhone(sessionAuth.user.phone, { required: true });
+      if (!savedPhone.valid) return actionError("Update your saved UK phone number before review.", { fieldErrors: { phone: savedPhone.error! } });
       const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
       if (missingDocuments.length > 0 || (institution.institutionType === "MAT_SCHOOL" && signatoryApproval?.status !== "APPROVED")) {
         return actionOk<OnboardingProgressResult>(
@@ -1182,9 +1212,20 @@ async function submitInstitutionOnboarding(formData: FormData) {
 }
 
 export async function submitOnboardingAction(formData: FormData) {
+  const fieldErrors = validateOnboardingForm(formData, { complete: true });
+  if (Object.keys(fieldErrors).length) return actionError("Check the highlighted fields before submitting your profile.", { fieldErrors });
+  formData = normalizeOnboardingForm(formData);
   const role = readFormString(formData, "role");
   if (role === "teacher") return submitInstructorOnboarding(formData);
   if (role === "institution") return submitInstitutionOnboarding(formData);
 
   return actionError("Choose a valid account type before creating your profile.");
+}
+
+function assertStoredProfileLocation(profile?: OnboardingInstructorSnapshot | OnboardingInstitutionSnapshot) {
+  if (!profile) throw new Error("Load your saved profile before submitting it for review.");
+  const checks = [validateUkCountry(profile.countryCode, { required: true }), validateUkCity(profile.city, { required: true }), validateUkPostcode(profile.postalCode, { required: true })];
+  if ("county" in profile) checks.push(validateUkRegion(profile.county));
+  const invalid = checks.find(check => !check.valid);
+  if (invalid) throw new Error(`Your saved profile needs correction before review. ${invalid.error}`);
 }

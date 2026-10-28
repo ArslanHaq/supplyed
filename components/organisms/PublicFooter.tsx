@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { Icon, Logo } from "@/components/atoms";
-import { PublicThemeControls } from "@/components/molecules";
 
 const footerLinks = [
   ["For schools", "/founding-schools"],
@@ -30,7 +29,6 @@ export function PublicFooter() {
         <span>SupplyED · Built around better education.</span>
         <span><Icon name="shield" size={14} /> Compliance-first. People-focused.</span>
       </div>
-      <PublicThemeControls />
     </footer>
   );
 }

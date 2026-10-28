@@ -189,7 +189,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
   const registrationFormId = `${registrationAnchorId}-form`;
 
   return (
-    <div className="marketing-page marketing-founding bg-white">
+    <div className="marketing-page marketing-founding bg-surface">
       <PublicHeader active={type === "SCHOOL" ? "founding-schools" : "founding-teachers"} />
 
       <main>
@@ -253,7 +253,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
 
               <div className="mt-5 rounded-lg border border-brand/20 bg-brand-tint p-4">
                 <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-white text-brand">
+                  <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-surface text-brand">
                     <Icon name="check" size={18} />
                   </span>
                   <div>
@@ -278,7 +278,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
 
       {type === "TEACHER" ? <FoundingTeacherTrustStrip /> : null}
 
-      <section id="programme" className="marketing-section bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
+      <section id="programme" className="marketing-section bg-surface px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
         <div className="mx-auto max-w-[1200px]">
           <div className="marketing-section-intro mb-10">
             <div className="eyebrow">{content.formBadge}</div>
@@ -333,7 +333,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
       {type === "TEACHER" ? <FoundingTeacherFaqSection /> : null}
 
       <div id="register" className="h-0 scroll-mt-24" aria-hidden="true" />
-      <section id={registrationAnchorId} className={`marketing-registration marketing-section scroll-mt-24 ${type === "TEACHER" ? "waitlist-teacher-registration" : "bg-white"}`}>
+      <section id={registrationAnchorId} className={`marketing-registration marketing-section scroll-mt-24 ${type === "TEACHER" ? "waitlist-teacher-registration" : "bg-surface"}`}>
         <div
           className="supplyed-content-wrap marketing-registration-grid marketing-registration-grid-long waitlist-registration-grid"
         >
@@ -351,7 +351,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
             Use the page URL directly in QR codes. Add source and campaign query strings when you need attribution.
           </p>
           <div className="mt-8">
-            <Link className={buttonClassName({ size: "xl", className: "rounded-full px-8" })} href="#register">
+            <Link className={buttonClassName({ size: "xl", className: "px-8" })} href="#register">
               Register interest
             </Link>
           </div>

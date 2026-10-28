@@ -14,7 +14,7 @@ export function DashboardMessages({ go }: Pick<RouteProps, "go">) {
   const seen = new Set<string>();
   const conversations = flattenConversations(query.data).filter((conversation) => {
     if (!conversation.lastMessage) return false;
-    const userId = conversation.counterpart.id ?? conversation.id;
+    const userId = conversation.counterpart?.id ?? conversation.id;
     if (seen.has(userId)) return false;
     seen.add(userId);
     return true;
@@ -37,11 +37,11 @@ export function DashboardMessages({ go }: Pick<RouteProps, "go">) {
           type="button"
           className="msg-list-item w-full text-left"
           style={{ borderBottom: index < conversations.length - 1 ? "0.5px solid var(--border)" : "none" }}
-          onClick={() => go("messaging", { applicationId: conversation.applicationId })}
+          onClick={() => go("messaging", { conversationId: conversation.id })}
         >
-          <Avatar name={conversation.counterpart.name} src={conversation.counterpart.imageUrl} size="sm" />
+          <Avatar name={conversation.counterpart?.name ?? "Conversation"} src={conversation.counterpart?.imageUrl} size="sm" />
           <div className="min-w-0 flex-1">
-            <div className="truncate font-medium">{conversation.counterpart.name}</div>
+            <div className="truncate font-medium">{conversation.counterpart?.name ?? "Conversation"}</div>
             <div className="truncate text-xs text-muted">
               {conversation.lastMessage?.fromMe ? "You: " : ""}
               {conversation.lastMessage?.body || (conversation.lastMessage?.hasAttachments ? "Attachment" : "Message")}

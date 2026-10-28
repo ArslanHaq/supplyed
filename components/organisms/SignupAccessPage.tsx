@@ -1,6 +1,7 @@
+import { useRateLimit } from "@/lib/rate-limit";
 import { useState } from "react";
 
-import { passwordRequirementsMessage, validatePassword } from "@/features/auth/schemas";
+import { passwordRequirementsMessage, validateEmail, validatePassword } from "@/features/auth/schemas";
 import type { FoundingSignupType } from "@/lib/founding-signup-intent";
 import type { AppRole, SocialAuthAvailability } from "@/types/supplyed";
 
@@ -23,7 +24,6 @@ const accountRoleOptions = [
   ["teacher", "Supply teacher", "user", "Build your profile, find roles, and manage availability."],
 ] as const;
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function fieldClass(error?: string) {
   return `input ${error ? "border-danger bg-danger-tint" : ""}`;
@@ -43,11 +43,12 @@ export function SignupAccessPage({
   initialEmail?: string;
   onLanding: () => void;
   onLogin: () => void;
-  onAccountCreated: (email: string, password: string, role: AppRole) => Promise<AccessResult>;
+  onAccountCreated: (email: string, password: string, role: AppRole, termsAccepted: boolean) => Promise<AccessResult>;
   onGoogleAuth: () => void;
   onMicrosoftAuth: () => void;
   socialAuth: SocialAuthAvailability;
 }) {
+  const retryAfter = useRateLimit();
   const [email, setEmail] = useState(initialEmail ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -55,7 +56,8 @@ export function SignupAccessPage({
   const [errors, setErrors] = useState<AccessErrors>({});
   const [pending, setPending] = useState(false);
   const isFoundingSignup = Boolean(foundingType);
-  const expectedEmail = initialEmail?.trim().toLowerCase();
+  const prefilledEmail = initialEmail?.trim().toLowerCase();
+  const expectedEmail = prefilledEmail && validateEmail(prefilledEmail) ? prefilledEmail : undefined;
   const [role, setRole] = useState<AppRole | null>(
     isFoundingSignup ? (foundingType === "teacher" ? "teacher" : "institution") : null
   );
@@ -65,9 +67,9 @@ export function SignupAccessPage({
     const trimmedEmail = email.trim();
     const normalizedEmail = trimmedEmail.toLowerCase();
 
-    if (!role) nextErrors.role = "Choose an account type.";
+    if (role !== "institution" && role !== "teacher") nextErrors.role = "Choose an account type.";
     if (!trimmedEmail) nextErrors.email = "Enter your email address.";
-    else if (!emailPattern.test(trimmedEmail)) nextErrors.email = "Use a valid email address.";
+    else if (!validateEmail(trimmedEmail)) nextErrors.email = "Use a valid email address.";
     else if (expectedEmail && normalizedEmail !== expectedEmail) {
       nextErrors.email = "Use the same email address you entered in the interest form.";
     }
@@ -83,10 +85,10 @@ export function SignupAccessPage({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || retryAfter) return;
     if (!validate()) return;
     setPending(true);
-    const result = await onAccountCreated(email.trim(), password, role!);
+    const result = await onAccountCreated(email.trim(), password, role!, termsAccepted);
 
     if (!result.ok) {
       setErrors(result.fieldErrors ?? { email: result.message });
@@ -98,8 +100,13 @@ export function SignupAccessPage({
   }
 
   function startSocialSignup(handler: () => void) {
-    if (!role) {
+    if (pending || retryAfter) return;
+    if (role !== "institution" && role !== "teacher") {
       setErrors((current) => ({ ...current, role: "Choose an account type before using social sign-up." }));
+      return;
+    }
+    if (!termsAccepted) {
+      setErrors((current) => ({ ...current, termsAccepted: "Accept the terms to continue." }));
       return;
     }
 
@@ -202,13 +209,13 @@ export function SignupAccessPage({
                           setErrors((current) => ({ ...current, role: undefined }));
                         }}
                         style={{
-                          background: selected ? "var(--se-tint)" : "#fff",
+                          background: selected ? "var(--se-tint)" : "var(--surface)",
                           borderColor: selected ? "var(--se)" : "var(--border)",
                         }}
                         type="button"
                       >
                         <span className="account-role-check" aria-hidden="true">{selected ? <Icon name="check" size={12} /> : null}</span>
-                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-white text-brand shadow-sm">
+                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-surface text-brand shadow-sm">
                           <Icon name={icon as "building" | "user" | "heart"} size={18} />
                         </div>
                         <div className="font-heading text-[17px] leading-snug">{title}</div>
@@ -231,6 +238,7 @@ export function SignupAccessPage({
             <div className="signup-credentials grid gap-x-4 sm:grid-cols-2">
               <Field label="Email address" htmlFor="signup-access-email" error={errors.email} required>
                 <input
+                  aria-invalid={Boolean(errors.email)}
                   autoComplete="email"
                   className={fieldClass(errors.email)}
                   disabled={pending}
@@ -238,7 +246,7 @@ export function SignupAccessPage({
                   inputMode="email"
                   onChange={(event) => {
                     setEmail(event.target.value);
-                    setErrors((current) => ({ ...current, email: undefined }));
+                    if (validateEmail(event.target.value.trim()) && (!expectedEmail || event.target.value.trim().toLowerCase() === expectedEmail)) setErrors((current) => ({ ...current, email: undefined }));
                   }}
                   placeholder="name@example.com"
                   type="email"
@@ -247,13 +255,14 @@ export function SignupAccessPage({
               </Field>
               <Field label="Password" htmlFor="signup-access-password" error={passwordError} required>
                 <PasswordInput
+                  aria-invalid={Boolean(passwordError)}
                   autoComplete="new-password"
                   className={fieldClass(passwordError)}
                   disabled={pending}
                   id="signup-access-password"
                   onChange={(event) => {
                     setPassword(event.target.value);
-                    setErrors((current) => ({ ...current, password: undefined }));
+                    if (validatePassword(event.target.value)) setErrors((current) => ({ ...current, password: undefined }));
                   }}
                   placeholder="Create a password"
                   value={password}
@@ -262,13 +271,14 @@ export function SignupAccessPage({
               </Field>
               <Field label="Confirm password" htmlFor="signup-access-confirm" error={confirmPasswordError} required>
                 <PasswordInput
+                  aria-invalid={Boolean(confirmPasswordError || confirmPasswordMismatch)}
                   autoComplete="new-password"
                   className={fieldClass(confirmPasswordError)}
                   disabled={pending}
                   id="signup-access-confirm"
                   onChange={(event) => {
                     setConfirmPassword(event.target.value);
-                    setErrors((current) => ({ ...current, confirmPassword: undefined }));
+                    if (event.target.value && event.target.value === password) setErrors((current) => ({ ...current, confirmPassword: undefined }));
                   }}
                   placeholder="Repeat your password"
                   value={confirmPassword}
@@ -282,7 +292,7 @@ export function SignupAccessPage({
                 checked={termsAccepted}
                 onChange={(value) => {
                   setTermsAccepted(value);
-                  setErrors((current) => ({ ...current, termsAccepted: undefined }));
+                  if (value) setErrors((current) => ({ ...current, termsAccepted: undefined }));
                 }}
                 label={
                   <>
@@ -296,7 +306,7 @@ export function SignupAccessPage({
               />
             </Field>
 
-            <Btn className="mt-2 w-full" loading={pending} loadingLabel="Creating account" size="lg" type="submit" iconRight="arrow">
+            <Btn className="mt-2 w-full" loading={pending} loadingLabel="Creating account" size="lg" disabled={Boolean(retryAfter)} type="submit" iconRight="arrow">
               Create account
             </Btn>
           </form>

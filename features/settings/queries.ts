@@ -1,8 +1,13 @@
+
+import { selectionValues } from "@/features/teaching-catalogue/selection";
 import "server-only";
+
+import { backendEnabled } from "@/lib/server/backend-config";
 
 import { normalizeRole, normalizeStatus } from "@/features/auth/backend";
 import { api, ApiError } from "@/lib/server/api-client";
 import { getServerAuthContext } from "@/lib/server/auth-context";
+import { normalizeStoredUkPhone } from "@/lib/uk-validation";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 import type {
@@ -12,9 +17,6 @@ import type {
   SettingsUserSnapshot,
 } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -94,7 +96,7 @@ function normalizeUser(payload: unknown, fallbackRole: AppRole | null, fallbackU
     id: readString(isRecord(record) ? record.id ?? record.userId ?? record.sub : undefined) || fallbackUserId || "",
     lastLogin: readDate(isRecord(record) ? record.lastLogin : undefined),
     name: readString(isRecord(record) ? record.name ?? record.fullName : undefined) || (email ? email.split("@")[0] : ""),
-    phone: readString(isRecord(record) ? record.phone : undefined),
+    phone: normalizeStoredUkPhone(isRecord(record) ? record.phone : undefined),
     phoneVerified: readBoolean(isRecord(record) ? record.phoneVerified : undefined),
     role,
     twoFactorEnabled: readBoolean(isRecord(record) ? record.twoFactorEnabled : undefined),
@@ -154,7 +156,7 @@ function normalizeInstitution(payload: unknown): SettingsInstitutionProfile | un
     postalCode: readString(record.postalCode),
     registrationId: readString(record.registrationId),
     safeguardingConfirmed: readBoolean(record.safeguardingConfirmed),
-    staffingNeeds: readString(record.staffingNeeds),
+    staffingNeeds: selectionValues(record.staffingNeeds),
     status: normalizeStatus(record.status),
     typicalPupilCount: numberString(record.typicalPupilCount),
     updatedAt: readDate(record.updatedAt),
@@ -247,7 +249,7 @@ export async function getSettingsProfileSnapshot(): Promise<SettingsProfileSnaps
   }
 
   const user = normalizeUser(
-    await api.get<unknown>("/auth/me", { cache: "no-store" }),
+    await api.get<unknown>("/users/me", { cache: "no-store" }),
     fallbackRole,
     authContext.userId,
     authContext.email ?? undefined,

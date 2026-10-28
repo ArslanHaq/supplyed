@@ -1,15 +1,14 @@
 import "server-only";
 
+import { backendEnabled } from "@/lib/server/backend-config";
+
 import { seedApplications, seedTeachers } from "@/data/supplyed";
 import { listMyJobs } from "@/features/jobs/queries";
-import { api } from "@/lib/server/api-client";
+import { api, ApiError } from "@/lib/server/api-client";
 
-import { normalizeApplication, normalizeApplicationsQuery, normalizePaginatedApplications } from "./schemas";
-import type { JobApplication, JobApplicationsQuery, PaginatedApplications } from "./types";
+import { normalizeApplication, normalizeApplicationHistory, normalizeApplicationsQuery, normalizePaginatedApplications } from "./schemas";
+import type { JobApplication, JobApplicationsQuery, PaginatedApplicationHistory, PaginatedApplications } from "./types";
 
-function backendEnabled() {
-  return Boolean(process.env.API_BASE_URL);
-}
 
 export async function getApplicationById(applicationId: string): Promise<JobApplication | null> {
   if (backendEnabled()) {
@@ -20,6 +19,16 @@ export async function getApplicationById(applicationId: string): Promise<JobAppl
 
   const application = seedApplications.find((item) => item.id === applicationId);
   return application ? toJobApplication(application) : null;
+}
+
+export async function listApplicationHistory(applicationId: string, query: { limit?: number; page?: number } = {}): Promise<PaginatedApplicationHistory> {
+  const page = Number.isInteger(query.page) && Number(query.page) > 0 ? Number(query.page) : 1;
+  const limit = Number.isInteger(query.limit) && Number(query.limit) > 0 ? Math.min(Number(query.limit), 100) : 20;
+  const result = await api.get<PaginatedApplicationHistory>(`/applications/${applicationId}/history`, {
+    cache: "no-store",
+    query: { page, limit },
+  });
+  return normalizeApplicationHistory(result);
 }
 
 export async function listApplicationsByJob(jobId: string, query: JobApplicationsQuery = {}): Promise<PaginatedApplications> {
@@ -67,11 +76,25 @@ export async function countApplicationsForActiveJobs(): Promise<{ total: number 
   const jobIds: string[] = [];
   let page = 1;
   let hasNextPage = true;
+  const seen = new Set<string>();
+  const deadline = Date.now() + 30_000;
+  const checkBudget = () => {
+    if (Date.now() >= deadline) {
+      throw new ApiError("The application count took too long to load. Please try again.", 503);
+    }
+  };
 
   while (hasNextPage) {
+    checkBudget();
+    if (page > 100) throw new ApiError("The application count is too large to load. Please try again.", 503);
     const jobsPage = await listMyJobs({ limit: 100, page, status: "ACTIVE" });
-    jobIds.push(...jobsPage.jobs.map((job) => job.id));
+    const freshIds = Array.from(new Set(jobsPage.jobs.map((job) => job.id))).filter((id) => !seen.has(id));
+    freshIds.forEach((id) => seen.add(id));
+    jobIds.push(...freshIds);
     hasNextPage = jobsPage.pagination.hasNextPage;
+    if (hasNextPage && freshIds.length === 0) {
+      throw new ApiError("The complete application count could not be verified. Please try again.", 502);
+    }
     page += 1;
   }
 
@@ -79,6 +102,7 @@ export async function countApplicationsForActiveJobs(): Promise<{ total: number 
   const batchSize = 10;
 
   for (let index = 0; index < jobIds.length; index += batchSize) {
+    checkBudget();
     const applicationPages = await Promise.all(
       jobIds.slice(index, index + batchSize).map((jobId) => listApplicationsByJob(jobId, { limit: 1, page: 1 })),
     );
@@ -93,6 +117,8 @@ function toJobApplication(application: (typeof seedApplications)[number]): JobAp
 
   return {
     coverLetter: application.coverLetter,
+    agreedTerms: null,
+    termsStatus: "LEGACY_UNVERIFIED",
     createdAt: application.appliedAt,
     id: application.id,
     instructor: teacher

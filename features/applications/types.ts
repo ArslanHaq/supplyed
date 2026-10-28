@@ -1,4 +1,5 @@
-export type JobApplicationStatus = "APPLIED" | "HIRED" | "INTERVIEW" | "REJECTED" | "SHORTLISTED" | "VIEWED";
+import type { OfferedJobTerms } from "@/features/jobs/offered-terms";
+export type JobApplicationStatus = "APPLIED" | "HIRED" | "REJECTED" | "SHORTLISTED" | "VIEWED";
 
 export type ApplicantSummary = {
   city?: string | null;
@@ -16,18 +17,38 @@ export type ApplicantSummary = {
 };
 
 export type JobApplication = {
+  agreedTerms: OfferedJobTerms | null;
+  termsStatus: "RECORDED" | "LEGACY_UNVERIFIED";
+  /** Other active applications rejected atomically when this application was hired. */
+  automaticallyRejectedCount?: number;
   coverLetter?: string | null;
   createdAt?: string | null;
   id: string;
   instructor?: ApplicantSummary;
   instructorId: string;
   jobId: string;
+  /** The backend saves the job's title when the application is submitted. */
+  jobName?: string | null;
+  school?: { id: string; name: string; imageUrl?: string | null } | null;
+  bookingId?: string | null;
+  conversationId?: string | null;
+  jobDetails?: {
+    description: string;
+    subject: string | null;
+    city: string | null;
+    county: string | null;
+    postalCode: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    payAmount: number | null;
+    payType: string | null;
+  } | null;
   status: JobApplicationStatus;
   updatedAt?: string | null;
 };
 
 export type ApplicationCreateInput = {
-  coverLetter: string;
+  coverLetter?: string;
   jobId: string;
 };
 
@@ -46,7 +67,22 @@ export type PaginatedApplications = {
   pagination: ApplicationsPagination;
 };
 
+export type ApplicationHistoryEntry = {
+  applicationId: string;
+  changedBy: string;
+  createdAt: string;
+  fromStatus: JobApplicationStatus | null;
+  id: string;
+  toStatus: JobApplicationStatus;
+};
+
+export type PaginatedApplicationHistory = {
+  history: ApplicationHistoryEntry[];
+  pagination: ApplicationsPagination;
+};
+
 export type JobApplicationsQuery = {
+  jobId?: string;
   limit?: number;
   page?: number;
   status?: JobApplicationStatus;

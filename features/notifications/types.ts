@@ -6,6 +6,8 @@ export type NotificationType =
   | "BOOKING_CONFIRMED"
   | "INVOICE_PAID"
   | "JOB_MATCH"
+  | "JOB_INVITATION"
+  | "JOB_INVITATION_STATUS"
   | "PROFILE_STATUS"
   | "REVIEW_RECEIVED";
 

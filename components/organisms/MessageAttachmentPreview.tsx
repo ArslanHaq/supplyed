@@ -120,7 +120,7 @@ export function MessageAttachmentPreview({
         ref={cardRef}
         aria-label={`Preview ${attachment.fileName}`}
         aria-haspopup="dialog"
-        className={`attachment-preview-card mt-2 block w-60 max-w-full overflow-hidden rounded-xl border text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${light ? "border-white/25 bg-white/15" : "border-border bg-white"}`}
+        className={`attachment-preview-card mt-2 block w-60 max-w-full overflow-hidden rounded-xl border text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${light ? "border-surface/25 bg-surface/15" : "border-border bg-surface"}`}
         onClick={() => { setVisible(true); setOpen(true); }}
         type="button"
       >
@@ -139,7 +139,7 @@ export function MessageAttachmentPreview({
         </span>
         <span className="block px-3 py-2">
           <span className="block truncate text-xs font-semibold" title={attachment.fileName}>{attachment.fileName}</span>
-          <span className="mt-1 flex items-center justify-between gap-2 text-[11px] opacity-75">
+          <span className={`mt-1 flex items-center justify-between gap-2 text-[11px] ${light ? "text-white" : "text-muted"}`}>
             <span>{formatFileSize(attachment.sizeBytes)}</span>
             <span className="flex items-center gap-1"><Icon name="eye" size={12} /> View file</span>
           </span>
@@ -150,7 +150,7 @@ export function MessageAttachmentPreview({
         <dialog
           ref={dialogRef}
           aria-labelledby={titleId}
-          className="attachment-preview-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-hidden rounded-xl border border-border bg-white p-0 text-ink shadow-panel backdrop:bg-black/45 backdrop:backdrop-blur-sm"
+          className="attachment-preview-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-hidden rounded-xl border border-border bg-surface p-0 text-ink shadow-panel backdrop:bg-black/45 backdrop:backdrop-blur-sm"
           onCancel={() => setOpen(false)}
           onClose={() => setOpen(false)}
           onClick={(event) => {
@@ -168,7 +168,7 @@ export function MessageAttachmentPreview({
               <Icon name="x" size={20} />
             </button>
           </header>
-          <div className="flex h-[60dvh] items-center justify-center overflow-auto bg-chalk p-3">
+          <div className="attachment-preview-body flex h-[60dvh] items-center justify-center overflow-auto bg-chalk p-3">
             {!supported || error ? (
               <div className="flex max-w-sm flex-col items-center gap-3 text-center text-sm text-muted" role={error ? "status" : undefined}>
                 <Icon name="file" size={44} />

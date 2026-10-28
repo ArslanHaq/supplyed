@@ -1,4 +1,5 @@
 import type { AppNotification, NotificationPreferences, NotificationsPage } from "./types";
+import { invitationReturnPath } from "@/lib/invitation-links";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -11,13 +12,18 @@ export function safeNotificationLink(link: unknown): string | null {
 
 export function normalizeNotification(value: unknown): AppNotification {
   const item = isRecord(value) ? value : {};
+  const data = isRecord(item.data) ? item.data : {};
+  const isInvitation = item.type === "JOB_INVITATION" || item.type === "JOB_INVITATION_STATUS";
+  const invitationLink = isInvitation && typeof data.invitationId === "string"
+    ? invitationReturnPath(`/job-invitations/${data.invitationId}`)
+    : null;
 
   return {
     body: typeof item.body === "string" ? item.body : "",
     createdAt: typeof item.createdAt === "string" ? item.createdAt : new Date(0).toISOString(),
-    data: isRecord(item.data) ? item.data : {},
+    data,
     id: typeof item.id === "string" ? item.id : "",
-    link: safeNotificationLink(item.link),
+    link: invitationLink ?? safeNotificationLink(item.link),
     readAt: typeof item.readAt === "string" ? item.readAt : null,
     title: typeof item.title === "string" ? item.title : "",
     type: (typeof item.type === "string" ? item.type : "APPLICATION_STATUS") as AppNotification["type"],

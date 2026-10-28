@@ -1,0 +1,1480 @@
+{
+  "audit": "SupplyED website form and UK-only validation audit",
+  "date": "2026-10-14",
+  "scope": {
+    "edited": "supplyed-web website only",
+    "readOnly": "Sibling backend request/response contracts, explicitly authorized by the user",
+    "excluded": [
+      "Separate backend edits",
+      "Separate admin application",
+      "Mobile application",
+      "Deployment",
+      "Customer database access or cleanup",
+      "Real account/payment/message/upload mutations"
+    ]
+  },
+  "counting": {
+    "countedInterfaces": 67,
+    "supplementalSharedOrInactiveEntries": 4,
+    "matrixRows": 71,
+    "uniqueIds": 71,
+    "note": "Role/step variants count separately; shared control placements do not. Includes two explicitly identified unmounted legacy interfaces from the website inventory. This is not a count of HTML form elements or independently exercised live routes."
+  },
+  "statuses": {
+    "FIXED": 37,
+    "PARTIALLY VERIFIED": 18,
+    "VERIFIED": 9,
+    "BLOCKED": 3
+  },
+  "statusDefinitions": {
+    "FIXED": "Validation changed and audited; the row identifies actual checks and remaining integration limits.",
+    "VERIFIED": "Named behavior passed the listed local checks. Does not mean authenticated live end-to-end verification.",
+    "PARTIALLY VERIFIED": "Source and/or limited tests exist; named states, persistence or provider behavior remain unverified.",
+    "BLOCKED": "Full behavior unavailable because provider prerequisites are absent or the interface has no persistence implementation."
+  },
+  "groups": [
+    {
+      "id": "public-auth-settings-security",
+      "counted": 23,
+      "supplemental": 0,
+      "statuses": {
+        "FIXED": 21,
+        "PARTIALLY VERIFIED": 2
+      },
+      "evidenceSummary": {
+        "unitTests": "tests/public-form-validation.test.cjs; tests/founding-interest.test.cjs; tests/waitlist-client.test.cjs (17 passing tests)",
+        "browserFixtures": "tmp/form-audit/public/results.json (34 passing checks: 17 scenarios at 320 and 1440px; real React components, mocked action/hook/fetch boundaries, external requests blocked)",
+        "liveLocal": "tmp/form-audit/public/live-results.json (7 passing invalid-submission checks at 375px; every POST intercepted, zero attempted POSTs, zero page errors)",
+        "typecheck": "npx.cmd tsc --noEmit --incremental false passed",
+        "limits": "This suite made no real account, message, upload or provider changes. Separate backend contract inspection was read-only and is documented in serverSummary; backend/admin/mobile implementation changes and database cleanup remain excluded."
+      }
+    },
+    {
+      "id": "onboarding",
+      "counted": 17,
+      "supplemental": 4,
+      "statuses": {
+        "FIXED": 16,
+        "PARTIALLY VERIFIED": 1
+      },
+      "evidenceSummary": {
+        "unitTests": "tests/onboarding-validation.test.cjs: 7 passing tests",
+        "roleMatrix": "tmp/form-audit/onboarding/results.json: 18 passing role/scenario/width checks (teacher, school, MAT; valid, invalid, legacy; 320/1440)",
+        "phoneControls": "tmp/form-audit/onboarding/controls-results.json: 7 assertions at each of 320/1440, no overflow, page errors or axe violations",
+        "correctionFlow": "tmp/form-audit/onboarding/correction-results.json: existing profile correction remains blocked until mocked OTP success, then sends canonical UK values and preserved profile ID at 320/1440",
+        "responsive": "tmp/form-audit/onboarding/width-results.json: changed contact/PhoneVerification layout at 320/375/430/768/1024/1440/1920, no overflow or page errors; axe320/1440 clean",
+        "alternateSubmission": "tmp/form-audit/onboarding/transition-results.json: requestSubmit invalid guard, duplicate request guard and disabled pending inputs, server field-error correction/input preservation at375",
+        "reportedRegression": "tmp/form-audit/onboarding/first-profile-results.json: assigned teacher role, blank saved phone, valid entered UK phone reaches first-profile callback without OTP at320/1440; five accepted UK input formats normalize identically. Server agent separately fixed and tested role-only saved-phone early return.",
+        "rawInputPreservation": "tmp/form-audit/onboarding/input-preservation-results.json: numeric and OTP malformed input remains exact rather than being stripped/truncated; 6 passing browser scenarios at320/1440, with invalid/correction/real handler assertions and OTP aria-invalid/describedby checks.",
+        "checks": "Targeted ESLint and TypeScript passed; root owns final full repository checks.",
+        "limits": "Actual React page, hooks/controller and components run in isolated fixtures with query/action/OTP responses mocked; postcode HTTP responses are intercepted. No live account writes, profile creation/review, SMS, storage upload or database inspection. Existing UI audit evidence is retained separately; original Canada/Toronto selector behavior was intentionally superseded by this UK-only task. No separate backend/admin/mobile changes."
+      }
+    },
+    {
+      "id": "workspace",
+      "counted": 27,
+      "supplemental": 0,
+      "statuses": {
+        "VERIFIED": 9,
+        "PARTIALLY VERIFIED": 15,
+        "BLOCKED": 3
+      },
+      "evidenceSummary": {
+        "source": "tmp/form-audit/workspace-inventory.json",
+        "browser": "tmp/form-audit/workspace/final-results.json",
+        "limits": "Local component fixtures and mocked boundaries; no authenticated live writes or external provider transactions."
+      }
+    }
+  ],
+  "routes": {
+    "frontendPatterns": [
+      "/",
+      "/applications",
+      "/billing",
+      "/bookings",
+      "/calendar",
+      "/dashboard",
+      "/find-jobs",
+      "/find-teachers",
+      "/forgot-password",
+      "/founding-schools",
+      "/founding-teachers",
+      "/how-it-works",
+      "/institution-profile",
+      "/job-detail",
+      "/login",
+      "/messaging",
+      "/onboarding",
+      "/payouts/refresh",
+      "/payouts/return",
+      "/post-auth",
+      "/post-job",
+      "/security",
+      "/settings",
+      "/signatory-approval/[token]",
+      "/signup",
+      "/teacher-profile",
+      "/terms"
+    ],
+    "fallback": "Shared 404; no additional submitted inputs",
+    "websiteApiPatterns": [
+      "/api/applications/[id]",
+      "/api/applications/active-jobs/count",
+      "/api/applications/job/[jobId]",
+      "/api/applications/me",
+      "/api/auth/[...nextauth]",
+      "/api/auth/me",
+      "/api/bookings/me",
+      "/api/conversations",
+      "/api/conversations/[id]/attachments",
+      "/api/conversations/[id]/attachments/[attachmentId]/preview",
+      "/api/conversations/[id]/messages",
+      "/api/conversations/socket-ticket",
+      "/api/conversations/unread-count",
+      "/api/health",
+      "/api/institutions/profile/[id]",
+      "/api/instructors/directory",
+      "/api/instructors/profile/[id]",
+      "/api/invoices",
+      "/api/invoices/[id]",
+      "/api/invoices/me",
+      "/api/jobs",
+      "/api/jobs/[id]",
+      "/api/jobs/mine",
+      "/api/matching/jobs/[jobId]/applications",
+      "/api/matching/jobs/[jobId]/instructors",
+      "/api/matching/jobs/[jobId]/score",
+      "/api/matching/jobs/recommended",
+      "/api/notifications",
+      "/api/notifications/preferences",
+      "/api/notifications/unread-count",
+      "/api/onboarding/document-requirements",
+      "/api/onboarding/documents",
+      "/api/onboarding/documents/[documentId]/preview",
+      "/api/onboarding/me",
+      "/api/payments/payout-account",
+      "/api/payments/payout-account/balance",
+      "/api/payments/payout-account/instant-payout",
+      "/api/payments/payout-accounts/instructor/[instructorId]",
+      "/api/reviews/institution/[institutionId]",
+      "/api/reviews/instructor/[instructorId]",
+      "/api/settings/profile",
+      "/api/signatory-approvals/[token]",
+      "/api/teachers",
+      "/api/teachers/[id]"
+    ]
+  },
+  "ukPolicy": {
+    "country": "GB",
+    "allowedCountries": [
+      "GB"
+    ],
+    "phoneLibrary": "libphonenumber-js/max",
+    "phoneNormalization": "E.164 only after valid GB numbering-plan check; format is not ownership or reachability",
+    "postcode": "Full UK format, uppercase and one separating space; syntax is not existence verification",
+    "citySource": "Installed country-state-city GB dataset only",
+    "citySourceRows": 3871,
+    "uniqueCityTownNames": 3844,
+    "regionSourceRows": 247,
+    "regionAdjustments": "Exclude erroneously GB-grouped overseas subdivisions; add seven common metropolitan county labels and aliases",
+    "nations": [
+      "England",
+      "Scotland",
+      "Wales",
+      "Northern Ireland"
+    ],
+    "addressVerification": false,
+    "cityCountyPairVerification": false
+  },
+  "legacyData": {
+    "userReport": "The previously saved phone was Pakistani.",
+    "databaseRecordQueried": false,
+    "fixtures": "Synthetic Pakistani/foreign phone and foreign country/town/region/postcode values; these do not establish the contents of any customer record.",
+    "correction": "Preserve invalid entered/saved personal values until explicit correction; do not fabricate replacement UK details."
+  },
+  "browserSummary": {
+    "records": 107,
+    "passed": 107,
+    "note": "These are heterogeneous evidence records, including viewport layouts and grouped assertions, not 107 unique forms. Controls records each contain seven named assertions. Absence of an axe/overflow field means that measurement was not recorded for that case."
+  },
+  "suites": [
+    {
+      "id": "public-fixtures",
+      "source": "tmp/form-audit/public/results.json",
+      "records": 34,
+      "passed": 34,
+      "mode": "isolated React component; action/hook/fetch boundaries mocked; external traffic blocked"
+    },
+    {
+      "id": "public-live-invalid",
+      "source": "tmp/form-audit/public/live-results.json",
+      "records": 7,
+      "passed": 7,
+      "mode": "running local Next.js website; all POSTs intercepted; invalid cases attempted zero POSTs"
+    },
+    {
+      "id": "workspace-fixtures",
+      "source": "tmp/form-audit/workspace/final-results.json",
+      "records": 26,
+      "passed": 26,
+      "mode": "isolated React component; mutation/query boundaries mocked"
+    },
+    {
+      "id": "onboarding-role-matrix",
+      "source": "tmp/form-audit/onboarding/results.json",
+      "records": 18,
+      "passed": 18,
+      "mode": "actual onboarding page/controller in isolated fixture; server/query boundaries mocked"
+    },
+    {
+      "id": "onboarding-controls",
+      "source": "tmp/form-audit/onboarding/controls-results.json",
+      "records": 2,
+      "passed": 2,
+      "mode": "isolated phone/OTP/postcode controls; OTP and postcode responses mocked"
+    },
+    {
+      "id": "onboarding-existing-correction",
+      "source": "tmp/form-audit/onboarding/correction-results.json",
+      "records": 2,
+      "passed": 2,
+      "mode": "isolated existing-profile correction; successful OTP and save mocked"
+    },
+    {
+      "id": "onboarding-responsive",
+      "source": "tmp/form-audit/onboarding/width-results.json",
+      "records": 7,
+      "passed": 7,
+      "mode": "isolated changed contact layout; seven requested viewport widths"
+    },
+    {
+      "id": "onboarding-transition-guards",
+      "source": "tmp/form-audit/onboarding/transition-results.json",
+      "records": 3,
+      "passed": 3,
+      "mode": "isolated requestSubmit, pending/duplicate and server-error correction flow at375px"
+    },
+    {
+      "id": "onboarding-first-profile",
+      "source": "tmp/form-audit/onboarding/first-profile-results.json",
+      "records": 2,
+      "passed": 2,
+      "mode": "isolated assigned-role first profile; save callback mocked; no initial OTP prerequisite"
+    },
+    {
+      "id": "onboarding-input-preservation",
+      "source": "tmp/form-audit/onboarding/input-preservation-results.json",
+      "records": 6,
+      "passed": 6,
+      "mode": "isolated teacher/school numeric and phone OTP controls at320/1440; malformed raw input rejected, explicit correction accepted; OTP ARIA checked"
+    }
+  ],
+  "cases": [
+    {
+      "id": "public-fixtures:login:320",
+      "suite": "public-fixtures",
+      "case": "login",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:email-otp:320",
+      "suite": "public-fixtures",
+      "case": "email-otp",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:password-reset:320",
+      "suite": "public-fixtures",
+      "case": "password-reset",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:waitlist-teacher:320",
+      "suite": "public-fixtures",
+      "case": "waitlist-teacher",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:waitlist-details:320",
+      "suite": "public-fixtures",
+      "case": "waitlist-details",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:waitlist-school:320",
+      "suite": "public-fixtures",
+      "case": "waitlist-school",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:signatory-decline:320",
+      "suite": "public-fixtures",
+      "case": "signatory-decline",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:signatory-approval:320",
+      "suite": "public-fixtures",
+      "case": "signatory-approval",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:login:1440",
+      "suite": "public-fixtures",
+      "case": "login",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:email-otp:1440",
+      "suite": "public-fixtures",
+      "case": "email-otp",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:password-reset:1440",
+      "suite": "public-fixtures",
+      "case": "password-reset",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:waitlist-teacher:1440",
+      "suite": "public-fixtures",
+      "case": "waitlist-teacher",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:waitlist-details:1440",
+      "suite": "public-fixtures",
+      "case": "waitlist-details",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:waitlist-school:1440",
+      "suite": "public-fixtures",
+      "case": "waitlist-school",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:signatory-decline:1440",
+      "suite": "public-fixtures",
+      "case": "signatory-decline",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:signatory-approval:1440",
+      "suite": "public-fixtures",
+      "case": "signatory-approval",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:twofactor:320",
+      "suite": "public-fixtures",
+      "case": "twofactor",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:security-enable:320",
+      "suite": "public-fixtures",
+      "case": "security-enable",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:security-manage:320",
+      "suite": "public-fixtures",
+      "case": "security-manage",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:profile-image:320",
+      "suite": "public-fixtures",
+      "case": "profile-image",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:twofactor:1440",
+      "suite": "public-fixtures",
+      "case": "twofactor",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:security-enable:1440",
+      "suite": "public-fixtures",
+      "case": "security-enable",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:security-manage:1440",
+      "suite": "public-fixtures",
+      "case": "security-manage",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:profile-image:1440",
+      "suite": "public-fixtures",
+      "case": "profile-image",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:signup:320",
+      "suite": "public-fixtures",
+      "case": "signup",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:signup:1440",
+      "suite": "public-fixtures",
+      "case": "signup",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:signup-school-prefill:320",
+      "suite": "public-fixtures",
+      "case": "signup-school-prefill",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:signup-school-prefill:1440",
+      "suite": "public-fixtures",
+      "case": "signup-school-prefill",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:settings-existing-invalid:320",
+      "suite": "public-fixtures",
+      "case": "settings-existing-invalid",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:settings-optional:320",
+      "suite": "public-fixtures",
+      "case": "settings-optional",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:settings-phone-refresh:320",
+      "suite": "public-fixtures",
+      "case": "settings-phone-refresh",
+      "status": "PASS",
+      "width": 320,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:settings-existing-invalid:1440",
+      "suite": "public-fixtures",
+      "case": "settings-existing-invalid",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:settings-optional:1440",
+      "suite": "public-fixtures",
+      "case": "settings-optional",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-fixtures:settings-phone-refresh:1440",
+      "suite": "public-fixtures",
+      "case": "settings-phone-refresh",
+      "status": "PASS",
+      "width": 1440,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-live-invalid:login:375",
+      "suite": "public-live-invalid",
+      "case": "login",
+      "status": "PASS",
+      "width": 375,
+      "url": "/login",
+      "blockedPosts": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-live-invalid:signup:375",
+      "suite": "public-live-invalid",
+      "case": "signup",
+      "status": "PASS",
+      "width": 375,
+      "url": "/signup",
+      "blockedPosts": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-live-invalid:reset:375",
+      "suite": "public-live-invalid",
+      "case": "reset",
+      "status": "PASS",
+      "width": 375,
+      "url": "/forgot-password",
+      "blockedPosts": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-live-invalid:waitlist-school:375",
+      "suite": "public-live-invalid",
+      "case": "waitlist-school",
+      "status": "PASS",
+      "width": 375,
+      "url": "/founding-schools",
+      "blockedPosts": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-live-invalid:waitlist-teacher:375",
+      "suite": "public-live-invalid",
+      "case": "waitlist-teacher",
+      "status": "PASS",
+      "width": 375,
+      "url": "/founding-teachers",
+      "blockedPosts": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-live-invalid:home-school:375",
+      "suite": "public-live-invalid",
+      "case": "home-school",
+      "status": "PASS",
+      "width": 375,
+      "url": "/",
+      "blockedPosts": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "public-live-invalid:home-teacher:375",
+      "suite": "public-live-invalid",
+      "case": "home-teacher",
+      "status": "PASS",
+      "width": 375,
+      "url": "/",
+      "blockedPosts": 0,
+      "pageErrorCount": 0
+    },
+    {
+      "id": "workspace-fixtures:job-wizard-validation:320",
+      "suite": "workspace-fixtures",
+      "case": "job-wizard-validation",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:job-existing-invalid:320",
+      "suite": "workspace-fixtures",
+      "case": "job-existing-invalid",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:directory-filter-validation:320",
+      "suite": "workspace-fixtures",
+      "case": "directory-filter-validation",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:cancel-required-reason:320",
+      "suite": "workspace-fixtures",
+      "case": "cancel-required-reason",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:invoice-number-validation:320",
+      "suite": "workspace-fixtures",
+      "case": "invoice-number-validation",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:review-optional-note:320",
+      "suite": "workspace-fixtures",
+      "case": "review-optional-note",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:proposal-required-and-link:320",
+      "suite": "workspace-fixtures",
+      "case": "proposal-required-and-link",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:match-score-range:320",
+      "suite": "workspace-fixtures",
+      "case": "match-score-range",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:job-wizard-validation:1440",
+      "suite": "workspace-fixtures",
+      "case": "job-wizard-validation",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:job-existing-invalid:1440",
+      "suite": "workspace-fixtures",
+      "case": "job-existing-invalid",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:directory-filter-validation:1440",
+      "suite": "workspace-fixtures",
+      "case": "directory-filter-validation",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:cancel-required-reason:1440",
+      "suite": "workspace-fixtures",
+      "case": "cancel-required-reason",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:invoice-number-validation:1440",
+      "suite": "workspace-fixtures",
+      "case": "invoice-number-validation",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:review-optional-note:1440",
+      "suite": "workspace-fixtures",
+      "case": "review-optional-note",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:proposal-required-and-link:1440",
+      "suite": "workspace-fixtures",
+      "case": "proposal-required-and-link",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:match-score-range:1440",
+      "suite": "workspace-fixtures",
+      "case": "match-score-range",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:job-new-selectors-responsive:375",
+      "suite": "workspace-fixtures",
+      "case": "job-new-selectors-responsive",
+      "status": "PASS",
+      "width": 375,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:directory-responsive:375",
+      "suite": "workspace-fixtures",
+      "case": "directory-responsive",
+      "status": "PASS",
+      "width": 375,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:job-new-selectors-responsive:430",
+      "suite": "workspace-fixtures",
+      "case": "job-new-selectors-responsive",
+      "status": "PASS",
+      "width": 430,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:directory-responsive:430",
+      "suite": "workspace-fixtures",
+      "case": "directory-responsive",
+      "status": "PASS",
+      "width": 430,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:job-new-selectors-responsive:768",
+      "suite": "workspace-fixtures",
+      "case": "job-new-selectors-responsive",
+      "status": "PASS",
+      "width": 768,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:directory-responsive:768",
+      "suite": "workspace-fixtures",
+      "case": "directory-responsive",
+      "status": "PASS",
+      "width": 768,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:job-new-selectors-responsive:1024",
+      "suite": "workspace-fixtures",
+      "case": "job-new-selectors-responsive",
+      "status": "PASS",
+      "width": 1024,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:directory-responsive:1024",
+      "suite": "workspace-fixtures",
+      "case": "directory-responsive",
+      "status": "PASS",
+      "width": 1024,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:job-new-selectors-responsive:1920",
+      "suite": "workspace-fixtures",
+      "case": "job-new-selectors-responsive",
+      "status": "PASS",
+      "width": 1920,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "workspace-fixtures:directory-responsive:1920",
+      "suite": "workspace-fixtures",
+      "case": "directory-responsive",
+      "status": "PASS",
+      "width": 1920,
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:teacher-valid:320",
+      "suite": "onboarding-role-matrix",
+      "case": "teacher valid",
+      "status": "PASS",
+      "width": 320,
+      "role": "teacher",
+      "scenario": "valid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:teacher-invalid:320",
+      "suite": "onboarding-role-matrix",
+      "case": "teacher invalid",
+      "status": "PASS",
+      "width": 320,
+      "role": "teacher",
+      "scenario": "invalid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:teacher-legacy:320",
+      "suite": "onboarding-role-matrix",
+      "case": "teacher legacy",
+      "status": "PASS",
+      "width": 320,
+      "role": "teacher",
+      "scenario": "legacy",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:institution-valid:320",
+      "suite": "onboarding-role-matrix",
+      "case": "institution valid",
+      "status": "PASS",
+      "width": 320,
+      "role": "institution",
+      "scenario": "valid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:institution-invalid:320",
+      "suite": "onboarding-role-matrix",
+      "case": "institution invalid",
+      "status": "PASS",
+      "width": 320,
+      "role": "institution",
+      "scenario": "invalid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:institution-legacy:320",
+      "suite": "onboarding-role-matrix",
+      "case": "institution legacy",
+      "status": "PASS",
+      "width": 320,
+      "role": "institution",
+      "scenario": "legacy",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:mat-valid:320",
+      "suite": "onboarding-role-matrix",
+      "case": "mat valid",
+      "status": "PASS",
+      "width": 320,
+      "role": "mat",
+      "scenario": "valid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:mat-invalid:320",
+      "suite": "onboarding-role-matrix",
+      "case": "mat invalid",
+      "status": "PASS",
+      "width": 320,
+      "role": "mat",
+      "scenario": "invalid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:mat-legacy:320",
+      "suite": "onboarding-role-matrix",
+      "case": "mat legacy",
+      "status": "PASS",
+      "width": 320,
+      "role": "mat",
+      "scenario": "legacy",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:teacher-valid:1440",
+      "suite": "onboarding-role-matrix",
+      "case": "teacher valid",
+      "status": "PASS",
+      "width": 1440,
+      "role": "teacher",
+      "scenario": "valid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:teacher-invalid:1440",
+      "suite": "onboarding-role-matrix",
+      "case": "teacher invalid",
+      "status": "PASS",
+      "width": 1440,
+      "role": "teacher",
+      "scenario": "invalid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:teacher-legacy:1440",
+      "suite": "onboarding-role-matrix",
+      "case": "teacher legacy",
+      "status": "PASS",
+      "width": 1440,
+      "role": "teacher",
+      "scenario": "legacy",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:institution-valid:1440",
+      "suite": "onboarding-role-matrix",
+      "case": "institution valid",
+      "status": "PASS",
+      "width": 1440,
+      "role": "institution",
+      "scenario": "valid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:institution-invalid:1440",
+      "suite": "onboarding-role-matrix",
+      "case": "institution invalid",
+      "status": "PASS",
+      "width": 1440,
+      "role": "institution",
+      "scenario": "invalid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:institution-legacy:1440",
+      "suite": "onboarding-role-matrix",
+      "case": "institution legacy",
+      "status": "PASS",
+      "width": 1440,
+      "role": "institution",
+      "scenario": "legacy",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:mat-valid:1440",
+      "suite": "onboarding-role-matrix",
+      "case": "mat valid",
+      "status": "PASS",
+      "width": 1440,
+      "role": "mat",
+      "scenario": "valid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:mat-invalid:1440",
+      "suite": "onboarding-role-matrix",
+      "case": "mat invalid",
+      "status": "PASS",
+      "width": 1440,
+      "role": "mat",
+      "scenario": "invalid",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-role-matrix:mat-legacy:1440",
+      "suite": "onboarding-role-matrix",
+      "case": "mat legacy",
+      "status": "PASS",
+      "width": 1440,
+      "role": "mat",
+      "scenario": "legacy",
+      "overflow": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-controls:check:320",
+      "suite": "onboarding-controls",
+      "case": "onboarding-controls",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "checks": [
+        "foreign verified phone rejected",
+        "UK phone canonical OTP request",
+        "incomplete OTP Enter blocked",
+        "OTP rejection retained",
+        "invalid postcode feedback retained",
+        "postcode never infers town",
+        "stale postcode result ignored"
+      ],
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-controls:check:1440",
+      "suite": "onboarding-controls",
+      "case": "onboarding-controls",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "checks": [
+        "foreign verified phone rejected",
+        "UK phone canonical OTP request",
+        "incomplete OTP Enter blocked",
+        "OTP rejection retained",
+        "invalid postcode feedback retained",
+        "postcode never infers town",
+        "stale postcode result ignored"
+      ],
+      "pageErrorCount": 0,
+      "axeViolationCount": 0
+    },
+    {
+      "id": "onboarding-existing-correction:check:320",
+      "suite": "onboarding-existing-correction",
+      "case": "onboarding-existing-correction",
+      "status": "PASS",
+      "width": 320,
+      "guardedUntilOtp": true,
+      "normalizedPayload": true
+    },
+    {
+      "id": "onboarding-existing-correction:check:1440",
+      "suite": "onboarding-existing-correction",
+      "case": "onboarding-existing-correction",
+      "status": "PASS",
+      "width": 1440,
+      "guardedUntilOtp": true,
+      "normalizedPayload": true
+    },
+    {
+      "id": "onboarding-responsive:check:320",
+      "suite": "onboarding-responsive",
+      "case": "onboarding-responsive",
+      "status": "PASS",
+      "width": 320,
+      "overflow": false,
+      "axeScanned": true,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0,
+      "phoneControlWidth": 250
+    },
+    {
+      "id": "onboarding-responsive:check:375",
+      "suite": "onboarding-responsive",
+      "case": "onboarding-responsive",
+      "status": "PASS",
+      "width": 375,
+      "overflow": false,
+      "axeScanned": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0,
+      "phoneControlWidth": 305
+    },
+    {
+      "id": "onboarding-responsive:check:430",
+      "suite": "onboarding-responsive",
+      "case": "onboarding-responsive",
+      "status": "PASS",
+      "width": 430,
+      "overflow": false,
+      "axeScanned": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0,
+      "phoneControlWidth": 360
+    },
+    {
+      "id": "onboarding-responsive:check:768",
+      "suite": "onboarding-responsive",
+      "case": "onboarding-responsive",
+      "status": "PASS",
+      "width": 768,
+      "overflow": false,
+      "axeScanned": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0,
+      "phoneControlWidth": 325
+    },
+    {
+      "id": "onboarding-responsive:check:1024",
+      "suite": "onboarding-responsive",
+      "case": "onboarding-responsive",
+      "status": "PASS",
+      "width": 1024,
+      "overflow": false,
+      "axeScanned": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0,
+      "phoneControlWidth": 321
+    },
+    {
+      "id": "onboarding-responsive:check:1440",
+      "suite": "onboarding-responsive",
+      "case": "onboarding-responsive",
+      "status": "PASS",
+      "width": 1440,
+      "overflow": false,
+      "axeScanned": true,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0,
+      "phoneControlWidth": 450
+    },
+    {
+      "id": "onboarding-responsive:check:1920",
+      "suite": "onboarding-responsive",
+      "case": "onboarding-responsive",
+      "status": "PASS",
+      "width": 1920,
+      "overflow": false,
+      "axeScanned": false,
+      "pageErrorCount": 0,
+      "axeViolationCount": 0,
+      "phoneControlWidth": 450
+    },
+    {
+      "id": "onboarding-transition-guards:programmatic requestSubmit uses validation:1",
+      "suite": "onboarding-transition-guards",
+      "case": "programmatic requestSubmit uses validation",
+      "status": "PASS"
+    },
+    {
+      "id": "onboarding-transition-guards:server field errors remain inline and correction preserves other inputs:2",
+      "suite": "onboarding-transition-guards",
+      "case": "server field errors remain inline and correction preserves other inputs",
+      "status": "PASS"
+    },
+    {
+      "id": "onboarding-transition-guards:duplicate programmatic submit blocked and fields disabled during save:3",
+      "suite": "onboarding-transition-guards",
+      "case": "duplicate programmatic submit blocked and fields disabled during save",
+      "status": "PASS"
+    },
+    {
+      "id": "onboarding-first-profile:check:320",
+      "suite": "onboarding-first-profile",
+      "case": "onboarding-first-profile",
+      "status": "PASS",
+      "width": 320,
+      "firstProfileHasNoOtpPrerequisite": true,
+      "assignedRole": "teacher",
+      "acceptedFormats": [
+        "07400123456",
+        "+44 7400 123456",
+        "0044 7400 123456",
+        "+44 (0)7400 123456",
+        "447400123456"
+      ]
+    },
+    {
+      "id": "onboarding-first-profile:check:1440",
+      "suite": "onboarding-first-profile",
+      "case": "onboarding-first-profile",
+      "status": "PASS",
+      "width": 1440,
+      "firstProfileHasNoOtpPrerequisite": true,
+      "assignedRole": "teacher",
+      "acceptedFormats": [
+        "07400123456",
+        "+44 7400 123456",
+        "0044 7400 123456",
+        "+44 (0)7400 123456",
+        "447400123456"
+      ]
+    },
+    {
+      "id": "onboarding-input-preservation:teacher numeric preservation:320",
+      "suite": "onboarding-input-preservation",
+      "case": "teacher numeric preservation",
+      "status": "PASS",
+      "width": 320,
+      "scenario": "teacher numeric preservation",
+      "negativeFieldsRejected": 4,
+      "fractionalExperienceRejected": true,
+      "decimalRatesTravelAccepted": true
+    },
+    {
+      "id": "onboarding-input-preservation:school pupil count preservation:320",
+      "suite": "onboarding-input-preservation",
+      "case": "school pupil count preservation",
+      "status": "PASS",
+      "width": 320,
+      "scenario": "school pupil count preservation",
+      "negativeAndFractionRejected": true,
+      "correctedIntegerAccepted": true
+    },
+    {
+      "id": "onboarding-input-preservation:OTP raw paste preservation:320",
+      "suite": "onboarding-input-preservation",
+      "case": "OTP raw paste preservation",
+      "status": "PASS",
+      "width": 320,
+      "scenario": "OTP raw paste preservation",
+      "malformedAndOverlongRejected": true,
+      "onlyCorrectedExactCodeSent": true
+    },
+    {
+      "id": "onboarding-input-preservation:teacher numeric preservation:1440",
+      "suite": "onboarding-input-preservation",
+      "case": "teacher numeric preservation",
+      "status": "PASS",
+      "width": 1440,
+      "scenario": "teacher numeric preservation",
+      "negativeFieldsRejected": 4,
+      "fractionalExperienceRejected": true,
+      "decimalRatesTravelAccepted": true
+    },
+    {
+      "id": "onboarding-input-preservation:school pupil count preservation:1440",
+      "suite": "onboarding-input-preservation",
+      "case": "school pupil count preservation",
+      "status": "PASS",
+      "width": 1440,
+      "scenario": "school pupil count preservation",
+      "negativeAndFractionRejected": true,
+      "correctedIntegerAccepted": true
+    },
+    {
+      "id": "onboarding-input-preservation:OTP raw paste preservation:1440",
+      "suite": "onboarding-input-preservation",
+      "case": "OTP raw paste preservation",
+      "status": "PASS",
+      "width": 1440,
+      "scenario": "OTP raw paste preservation",
+      "malformedAndOverlongRejected": true,
+      "onlyCorrectedExactCodeSent": true
+    }
+  ],
+  "serverSummary": {
+    "actionGroups": 13,
+    "nextAuthCredentialGateway": "auth.ts",
+    "apiSourceFiles": 44,
+    "referenceNotes": "tmp/form-audit/server-notes.md",
+    "localResults": [
+      "Final focused UK/server + phone-state:21/21 tests passed",
+      "Public/contact/client targeted:17/17 tests passed",
+      "Onboarding targeted:7/7 tests passed"
+    ],
+    "mockBoundaries": [
+      "Authentication",
+      "Outbound API/fetch",
+      "Storage",
+      "OTP/email/SMS",
+      "Payments"
+    ],
+    "initialProfileRegression": "Both assigned INSTRUCTOR and INSTITUTION roles accept submitted valid UK phone when saved phone is empty or unverified foreign/Pakistani. Existing verified replacements require OTP; equivalent canonical UK values preserve verification.",
+    "limits": [
+      "External backend direct callers are not protected by website-only guards.",
+      "An existing foreign OTP created outside the website may already persist externally before the website rejects its response.",
+      "No customer records were read, repaired or deleted; no database constraints or migrations changed."
+    ]
+  },
+  "productionHttpSmoke": {
+    "records": 11,
+    "passed": 11,
+    "boundary": "Actual HTTP and Server Actions against the built local website with mock backend, storage and payment services; not live provider or separately deployed backend verification.",
+    "source": "tmp/form-audit/final-smoke.log",
+    "cases": [
+      {
+        "id": "production-http:1",
+        "case": "production health, login and protected pages render with the existing routing",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:2",
+        "case": "actual onboarding upload and preview preserve a PDF and replace it without creating another document",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:3",
+        "case": "actual conversation uploads preserve bytes, previews work, and anonymous uploads are rejected",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:4",
+        "case": "actual Server Action accepts a 5 MiB profile photo and finalizes storage",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:5",
+        "case": "production rejects oversized or cross-origin uploads and serves unsafe previews as downloads",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:6",
+        "case": "actual job actions create drafts, publish and retry failed activation without another creation",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:7",
+        "case": "real session-cookie refresh persists rotated tokens and a transient outage never signs the user out",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:8",
+        "case": "built phone Server Action rejects foreign and malformed numbers before sending",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:9",
+        "case": "built job Server Action rejects foreign country, town and postal code without a write",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:10",
+        "case": "actual website filter endpoints reject invalid direct query requests",
+        "status": "PASS"
+      },
+      {
+        "id": "production-http:11",
+        "case": "built teacher creation replaces an old Pakistani phone with normalized UK input, but rejects Pakistani input",
+        "status": "PASS"
+      }
+    ]
+  },
+  "finalChecks": {
+    "status": "PASS",
+    "afterFinalSourceChanges": true,
+    "checks": [
+      {
+        "command": "npm test",
+        "status": "PASS",
+        "tests": 141,
+        "passed": 141,
+        "failed": 0,
+        "skipped": 0,
+        "log": "tmp/form-audit/final-unit.log"
+      },
+      {
+        "command": "npm run lint",
+        "status": "PASS",
+        "errors": 0,
+        "warnings": 0,
+        "log": "tmp/form-audit/final-lint.log"
+      },
+      {
+        "command": "npx tsc --noEmit --incremental false",
+        "status": "PASS",
+        "log": "tmp/form-audit/final-typecheck.log"
+      },
+      {
+        "command": "npm run build",
+        "status": "PASS",
+        "framework": "Next.js 16.2.9",
+        "warning": "Existing nonfatal MODULE_TYPELESS_PACKAGE_JSON warning for Tailwind configuration",
+        "log": "tmp/form-audit/final-build.log"
+      },
+      {
+        "command": "npm run test:smoke",
+        "status": "PASS",
+        "tests": 11,
+        "passed": 11,
+        "failed": 0,
+        "log": "tmp/form-audit/final-smoke.log"
+      },
+      {
+        "command": "git diff --check",
+        "status": "PASS",
+        "whitespaceErrors": 0,
+        "note": "Line-ending notices only",
+        "log": "tmp/form-audit/final-diffcheck.log"
+      }
+    ]
+  }
+}

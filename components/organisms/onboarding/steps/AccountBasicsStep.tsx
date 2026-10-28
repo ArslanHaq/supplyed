@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { Field, Icon } from "../../../atoms";
 import { PostcodeLookup } from "../../../molecules";
+import { PhoneInput } from "../../../molecules/PhoneInput";
+import { PhoneVerification } from "../../../molecules/PhoneVerification";
 import { CountryCityFields } from "../CountryCityFields";
 import type { AccountStepProps } from "../step-types";
 import { fieldClass } from "../utils";
@@ -26,12 +28,12 @@ export function AccountBasicsStep({
     <div className="onboarding-step-content space-y-6">
       <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface text-brand">
             <Icon name="checkCircle" size={19} />
           </div>
           <div className="min-w-0">
             <div className="font-semibold text-brand-dark">Email verified</div>
-            <div className="truncate text-sm text-brand-dark/75">{form.email || accountEmail || "Verified email"}</div>
+            <div className="truncate text-sm text-brand-dark">{form.email || accountEmail || "Verified email"}</div>
           </div>
         </div>
       </div>
@@ -52,13 +54,13 @@ export function AccountBasicsStep({
                     clearFieldError("accountRole");
                   }}
                   style={{
-                    background: selected ? "var(--se-tint)" : "#fff",
+                    background: selected ? "var(--se-tint)" : "var(--surface)",
                     borderColor: selected ? "var(--se)" : "var(--border)",
                   }}
                   type="button"
                 >
                   <span className="account-role-check" aria-hidden="true">{selected ? <Icon name="check" size={12} /> : null}</span>
-                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-brand">
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-surface text-brand">
                     <Icon name={icon as "building" | "user" | "heart"} size={20} />
                   </div>
                   <div className="font-heading text-xl">{title}</div>
@@ -81,21 +83,13 @@ export function AccountBasicsStep({
             placeholder="Your full name"
           />
         </Field>
-        <Field label="Phone number" htmlFor="signup-phone" error={errors.phone} required
-          hint="Use your country code. Numbers without a country code are treated as UK numbers.">
-          <input
-            autoComplete="tel"
-            className={fieldClass(errors.phone)}
-            disabled={Boolean(controller.pending)}
-            id="signup-phone"
-            inputMode="tel"
-            maxLength={30}
-            onChange={(event) => updateField("phone", event.target.value)}
-            placeholder="+44 7700 900000"
-            type="tel"
-            value={form.phone}
-          />
-        </Field>
+        {form.teacherProfileId || form.institutionProfileId || controller.phoneVerified ? (
+          <PhoneVerification inputId="signup-phone" error={errors.phone} required disabled={Boolean(controller.pending)}
+            phone={form.phone} onChange={(value) => updateField("phone", value)} savedPhone={controller.savedPhone} verified={controller.phoneVerified} />
+        ) : (
+          <PhoneInput id="signup-phone" error={errors.phone} required disabled={Boolean(controller.pending)}
+            value={form.phone} onChange={(value) => updateField("phone", value)} />
+        )}
         {roleSelected && activeRole !== "institution" ? (
           <>
             <PostcodeLookup
@@ -105,7 +99,6 @@ export function AccountBasicsStep({
               onChange={(value) => updateField("postcode", value)}
               onSelect={(selection) => {
                 updateField("postcode", selection.postcode);
-                updateField("profileCountryCode", "GB");
                 if (selection.city) updateField("profileCity", selection.city);
               }}
               placeholder="M1 1AE"

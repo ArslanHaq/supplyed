@@ -29,7 +29,7 @@ export async function createPayoutSessionAction() {
 
 /** Starts paying an invoice in the app: the secrets Stripe's Payment Element needs. School only. */
 export async function createInvoicePaymentSessionAction(id: string) {
-  const invoiceId = id.trim();
+  const invoiceId = typeof id === "string" ? id.trim() : "";
   if (!isUuid(invoiceId)) return actionError("Choose a valid invoice.", { code: "INVOICE_ID_REQUIRED" });
 
   try {
@@ -53,7 +53,7 @@ export async function createInvoicePaymentSessionAction(id: string) {
 
 /** Reads the invoice's latest status from Stripe, so a payment shows without waiting for the webhook. */
 export async function syncInvoiceAction(id: string) {
-  const invoiceId = id.trim();
+  const invoiceId = typeof id === "string" ? id.trim() : "";
   if (!isUuid(invoiceId)) return actionError("Choose a valid invoice.", { code: "INVOICE_ID_REQUIRED" });
 
   try {
@@ -68,7 +68,7 @@ export async function syncInvoiceAction(id: string) {
 
 /** Cashes out the teacher's instantly available balance (or part of it) to their bank or debit card. */
 export async function instantPayoutAction(amountPence?: number) {
-  if (amountPence !== undefined && (!Number.isInteger(amountPence) || amountPence < 40)) {
+  if (amountPence !== undefined && (!Number.isSafeInteger(amountPence) || amountPence < 40)) {
     return actionError("Cash-outs start at £0.40.", { code: "PAYOUT_AMOUNT_INVALID" });
   }
 
@@ -81,6 +81,7 @@ export async function instantPayoutAction(amountPence?: number) {
 }
 
 export async function createInvoiceAction(input: CreateInvoiceInput) {
+  if (!input || typeof input.bookingId !== "string" || (input.poNumber !== undefined && typeof input.poNumber !== "string")) return actionError("Check the booking and invoice details.");
   const bookingId = input.bookingId.trim();
   if (!isUuid(bookingId)) return actionError("Choose a valid booking.", { code: "BOOKING_ID_REQUIRED" });
 
@@ -118,6 +119,7 @@ export async function voidInvoiceAction(id: string) {
 }
 
 export async function refundInvoiceAction(input: RefundInvoiceInput) {
+  if (!input || typeof input.id !== "string") return actionError("Choose a valid invoice.");
   const id = input.id.trim();
   if (!isUuid(id)) return actionError("Choose a valid invoice.", { code: "INVOICE_ID_REQUIRED" });
   if (input.amountPence !== undefined && (!Number.isSafeInteger(input.amountPence) || input.amountPence < 1)) {
@@ -140,7 +142,7 @@ export async function refundInvoiceAction(input: RefundInvoiceInput) {
 }
 
 async function invoiceCommand(id: string, command: "send" | "void", success: string, failure: string) {
-  const invoiceId = id.trim();
+  const invoiceId = typeof id === "string" ? id.trim() : "";
   if (!isUuid(invoiceId)) return actionError("Choose a valid invoice.", { code: "INVOICE_ID_REQUIRED" });
 
   try {

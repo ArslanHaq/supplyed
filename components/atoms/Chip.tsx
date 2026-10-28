@@ -10,7 +10,7 @@ export function Chip({ active, children, onClick }: { active?: boolean; children
         "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
         active
           ? "border-brand bg-brand-tint text-brand"
-          : "border-border bg-white text-slate hover:bg-chalk",
+          : "border-border bg-surface text-slate hover:bg-chalk",
       )}
       onClick={onClick}
       type="button"

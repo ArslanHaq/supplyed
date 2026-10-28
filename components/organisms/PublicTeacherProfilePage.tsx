@@ -7,8 +7,10 @@ import type { RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, Icon, Tag, VerifyBadge } from "../atoms";
 import { PageHead, SectionLoader } from "../molecules";
 import { ProfileReviewsPanel, RatingStars } from "./ProfileReviewsPanel";
+import { TeacherHireActions } from "./TeacherHireActions";
+import { TeacherBookingDates } from "../molecules/TeacherBookingDates";
 
-export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
+export function PublicTeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ctx" | "go" | "role">) {
   const profileQuery = useInstructorPublicProfile(ctx.teacherId);
   const reviewsQuery = useInstructorReviews(ctx.teacherId);
   const profile = profileQuery.data;
@@ -21,28 +23,29 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
 
   return (
     <div className="app-page profile-page teacher-public-profile">
-      <PageHead title="Teacher profile" subtitle="Experience, credentials and verified booking feedback" actions={<Btn icon="arrowLeft" variant="secondary" onClick={() => go("applications")}>Back to applications</Btn>} />
+      <PageHead title="Teacher profile" subtitle="Experience, credentials and verified booking feedback" actions={<Btn icon="arrowLeft" variant="secondary" onClick={() => go(role === "institution" && !ctx.applicationId ? "find-teachers" : "applications")}>{role === "institution" && !ctx.applicationId ? "Back to teachers" : "Back to applications"}</Btn>} />
 
       <section className="profile-hero relative mb-6 overflow-hidden border">
         <div aria-hidden="true" className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-brand/10 blur-3xl" />
         <div className="relative px-5 py-7 sm:px-8 sm:py-9">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
             <div className="relative w-fit">
-              <div className="rounded-full border-4 border-white shadow-lg"><Avatar name={profile.fullName} size="xl" src={profile.imageUrl} /></div>
-              {profile.dbsVerified ? <div className="absolute -right-1 bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-success text-white"><Icon name="check" size={15} /></div> : null}
+              <div className="rounded-full border-4 border-surface shadow-lg"><Avatar name={profile.fullName} size="xl" src={profile.imageUrl} /></div>
+              {profile.dbsVerified ? <div className="absolute -right-1 bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-surface bg-success text-white"><Icon name="check" size={15} /></div> : null}
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex flex-wrap items-center gap-2.5">
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand shadow-sm">Supply teacher</span>
+                <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-brand shadow-sm">Supply teacher</span>
                 {profile.dbsVerified ? <VerifyBadge /> : null}
               </div>
               <h1 className="font-heading text-3xl font-semibold leading-tight text-ink sm:text-[40px]">{profile.fullName}</h1>
+              {role === "institution" ? <TeacherHireActions go={go} jobId={ctx.jobId} teacher={{ id: ctx.teacherId, fullName: profile.fullName, imageUrl: profile.imageUrl }} /> : null}
               <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate">
                 <span className="flex items-center gap-1.5"><Icon className="text-brand" name="pin" size={15} />{location}</span>
                 {profile.memberSince ? <span className="flex items-center gap-1.5"><Icon className="text-brand" name="calendar" size={15} />Member since {formatMonth(profile.memberSince)}</span> : null}
               </div>
             </div>
-            <div className="w-full rounded-2xl border border-white bg-white/85 p-4 shadow-sm backdrop-blur sm:w-auto sm:min-w-48">
+            <div className="w-full rounded-2xl border border-surface bg-surface/85 p-4 shadow-sm backdrop-blur sm:w-auto sm:min-w-48">
               <div className="flex items-center gap-3 sm:block sm:text-center">
                 <div className="font-heading text-3xl font-semibold text-ink">{profile.ratingCount ? profile.ratingAverage.toFixed(1) : "New"}</div>
                 <div><RatingStars className="mt-1" rating={profile.ratingAverage} size={17} /><div className="mt-1 text-xs text-muted">{profile.ratingCount ? `${profile.ratingCount} verified ${profile.ratingCount === 1 ? "review" : "reviews"}` : "Ready for a first booking"}</div></div>
@@ -50,7 +53,7 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
             </div>
           </div>
         </div>
-        <div className="relative grid border-t border-brand-tint-2 bg-white/75 sm:grid-cols-3">
+        <div className="relative grid border-t border-brand-tint-2 bg-surface/75 sm:grid-cols-3">
           <ProfileMetric icon="award" label="Teaching experience" value={profile.experience == null ? "Not shared" : `${profile.experience} ${profile.experience === 1 ? "year" : "years"}`} />
           <ProfileMetric icon="file" label="Subjects" value={profile.subjects.length ? `${profile.subjects.length} listed` : "Not shared"} />
           <ProfileMetric icon="shield" label="Safeguarding" value={profile.dbsVerified ? "DBS verified" : "Awaiting verification"} />
@@ -78,7 +81,7 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
         <aside className="profile-overview sidebar-panel overflow-hidden xl:sticky xl:top-6">
           <div className="border-b border-border px-6 py-5 text-white">
             <div className="flex items-center gap-2 text-base font-semibold"><Icon name="file" size={18} />Profile overview</div>
-            <p className="mt-1 text-xs leading-5 text-white/65">Key information for your hiring decision</p>
+            <p className="mt-1 text-xs leading-5 text-white">Key information for your hiring decision</p>
           </div>
           <div className="p-6">
             <ProfileFact icon="award" label="Experience" value={profile.experience == null ? "Not shared" : `${profile.experience} years`} />
@@ -86,6 +89,7 @@ export function PublicTeacherProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "
             <ProfileFact icon="clock" label="Hourly rate" value={formatMoney(profile.hourlyRate, profile.currency, "hour")} />
             <ProfileFact icon="shield" label="DBS status" value={profile.dbsVerified ? "Verified" : "Not verified"} tone={profile.dbsVerified ? "success" : undefined} />
             <ProfileFact icon="pin" label="Location" value={location} />
+            {role === "institution" ? <TeacherBookingDates bookings={profile.bookings} /> : null}
           </div>
           <div className="border-t border-border bg-success-tint p-5">
             <div className="flex gap-3"><Icon className="mt-0.5 text-success" name="shield" size={20} /><div><div className="text-sm font-semibold text-ink">Trust and transparency</div><p className="mt-1 text-xs leading-5 text-slate">Reviews shown here come from completed bookings on SupplyEd.</p></div></div>

@@ -32,7 +32,7 @@ export function InstitutionComplianceStep({ controller }: StepComponentProps) {
       {form.institutionType === "MAT_SCHOOL" ? (
         <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-5">
           <div className="mb-2 font-semibold text-brand-dark">Trust signatory approval</div>
-          <p className="mb-4 text-sm leading-6 text-brand-dark/80">
+          <p className="mb-4 text-sm leading-6 text-brand-dark">
             We will email an authorised trust representative. The school can be submitted for review after they approve it.
           </p>
           <div className="grid gap-x-4 sm:grid-cols-2">
@@ -73,7 +73,7 @@ export function InstitutionComplianceStep({ controller }: StepComponentProps) {
 
       <div className="rounded-xl border border-border bg-chalk p-5">
         <div className="mb-3 flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface text-brand">
             <Icon name="shield" size={19} />
           </div>
           <div>

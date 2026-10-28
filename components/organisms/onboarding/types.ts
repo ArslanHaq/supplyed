@@ -21,12 +21,14 @@ export type DocumentPreview = {
 };
 
 export type OnboardingFinishResult = {
+  code?: string;
   data?: {
     applicationStatus?: string;
     snapshot?: OnboardingProfileSnapshot;
     ticket?: string;
   };
   message?: string;
+  fieldErrors?: SignupErrors;
   ok: boolean;
 };
 
@@ -72,6 +74,8 @@ export type SignupField =
   | "institutionDomain"
   | "institutionRegistrationId"
   | "staffingNeeds"
+  | "otherSubjects"
+  | "otherSkills"
   | "subjects"
   | "keyStages"
   | "skills"
@@ -130,11 +134,12 @@ export type SignupForm = {
   safeguardingConfirmed: boolean;
   schoolName: string;
   skills: string[];
-  staffingNeeds: string;
+  staffingNeeds: string[];
   signatoryEmail: string;
   signatoryJobTitle: string;
   signatoryName: string;
   subjects: string[];
+  otherSubjects?: string[]; otherSkills?: string[];
   teacherProfileId: string;
   teachingReferenceNumber: string;
   termsAccepted: boolean;

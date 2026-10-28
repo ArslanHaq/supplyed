@@ -9,12 +9,12 @@ export function ReviewStep({ controller }: StepComponentProps) {
     <div className="space-y-4">
       <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface text-brand">
             <Icon name="checkCircle" size={20} />
           </div>
           <div>
             <div className="font-semibold text-brand-dark">Ready to create profile</div>
-            <p className="mt-1 text-sm leading-6 text-brand-dark/80">
+            <p className="mt-1 text-sm leading-6 text-brand-dark">
               Review the details below. After you confirm, your profile will be created and any required documents will be handled on the next screen.
             </p>
           </div>

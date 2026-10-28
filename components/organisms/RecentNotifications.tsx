@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
 
 import type { AppNotification, NotificationType } from "@/features/notifications/types";
 import { useMarkNotificationRead, useRecentNotifications } from "@/features/notifications/use-notifications";
@@ -16,6 +18,8 @@ const ICON_BY_TYPE: Record<NotificationType, string> = {
   BOOKING_CONFIRMED: "checkCircle",
   INVOICE_PAID: "pound",
   JOB_MATCH: "zap",
+  JOB_INVITATION: "mail",
+  JOB_INVITATION_STATUS: "file",
   PROFILE_STATUS: "shield",
   REVIEW_RECEIVED: "star",
 };
@@ -23,11 +27,13 @@ const ICON_BY_TYPE: Record<NotificationType, string> = {
 /** The four newest real notifications, shared by teacher and institution dashboards. */
 export function RecentNotifications() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const notificationsQuery = useRecentNotifications(true, 4);
   const markRead = useMarkNotificationRead();
   const notifications = notificationsQuery.data?.notifications ?? [];
 
   function select(notification: AppNotification) {
+    if (notification.type === "JOB_INVITATION" || notification.type === "JOB_INVITATION_STATUS") void queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
     if (!notification.readAt) markRead.mutate(notification);
     if (notification.link) router.push(notification.link);
   }

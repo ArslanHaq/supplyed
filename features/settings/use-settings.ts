@@ -1,4 +1,6 @@
 "use client";
+import { catalogueError } from "@/features/teaching-catalogue/selection";
+import { teachingCatalogueKey } from "@/features/teaching-catalogue/use-teaching-catalogue";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
@@ -57,6 +59,10 @@ export function useUpdateSettings(options: UseUpdateSettingsOptions = {}) {
     mutationFn: (input: SettingsUpdateInput) => updateSettingsAction(input),
     onError: options.onError,
     onSuccess: async (result) => {
+      if (!result.ok && catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
+      if (!result.ok && result.code === "PHONE_VERIFIED_LOCKED") {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.settings.profile() });
+      }
       if (!result.ok && result.code === "SESSION_EXPIRED") {
         signOutExpiredSession();
         return;
@@ -68,6 +74,8 @@ export function useUpdateSettings(options: UseUpdateSettingsOptions = {}) {
           queryClient.invalidateQueries({ queryKey: queryKeys.auth.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.settings.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all }),
         ]);
       }
 
@@ -86,6 +94,7 @@ export function useUploadSettingsProfileImage(options: UseUploadSettingsProfileI
     },
     onError: options.onError,
     onSuccess: async (result) => {
+      if (!result.ok && catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
       if (!result.ok && result.code === "SESSION_EXPIRED") {
         signOutExpiredSession();
         return;

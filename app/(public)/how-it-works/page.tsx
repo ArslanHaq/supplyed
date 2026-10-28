@@ -96,7 +96,7 @@ export default function HowItWorksPage() {
 
             <div className="marketing-workflow-grid">
               {workflow.map((item, index) => (
-                <article key={item.label} className="relative bg-white">
+                <article key={item.label} className="relative bg-surface">
                   <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-brand-tint text-brand">
                     <Icon name={item.icon} size={20} />
                   </div>
@@ -109,7 +109,7 @@ export default function HowItWorksPage() {
           </div>
         </section>
 
-        <section className="bg-white px-4 py-14 sm:px-6 lg:px-12">
+        <section className="bg-surface px-4 py-14 sm:px-6 lg:px-12">
           <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-3">
             <article className="marketing-journey-card">
               <Tag>For schools</Tag>
@@ -162,7 +162,7 @@ export default function HowItWorksPage() {
         </section>
 
         <section className="px-4 py-14 sm:px-6 lg:px-12">
-          <div className="marketing-next-step mx-auto flex max-w-[1180px] flex-col gap-5 bg-white md:flex-row md:items-center md:justify-between">
+          <div className="marketing-next-step mx-auto flex max-w-[1180px] flex-col gap-5 bg-surface md:flex-row md:items-center md:justify-between">
             <div>
               <div className="eyebrow">Next step</div>
               <h2 className="mt-2 font-heading text-3xl">Create a workspace and test the full flow.</h2>

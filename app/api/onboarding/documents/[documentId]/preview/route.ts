@@ -24,7 +24,7 @@ export async function GET(request: Request, context: { params: Promise<{ documen
     const { searchParams } = new URL(request.url);
     const filename = searchParams.get("name") ?? "document";
 
-    const download = await api.get<DownloadDocumentResponse>(`/documents/${documentId}/download-url`);
+    const download = await api.get<DownloadDocumentResponse>(`/documents/${encodeURIComponent(documentId)}/download-url`, { cache: "no-store" });
     const sourceUrl = readString(download.downloadUrl) ?? readString(download.url);
 
     if (!sourceUrl) {
@@ -34,20 +34,28 @@ export async function GET(request: Request, context: { params: Promise<{ documen
     const sourceResponse = await fetch(sourceUrl, {
       cache: "no-store",
       redirect: "follow",
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]),
     });
 
     if (!sourceResponse.ok) {
+      await sourceResponse.body?.cancel();
       return Response.json(
         { message: "Document preview could not be loaded." },
         { status: sourceResponse.status },
       );
     }
 
+    const contentType = sourceResponse.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "application/octet-stream";
+    const previewTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp", "image/avif", "image/heic", "image/bmp", "text/plain"]);
+    // Keep non-previewable documents downloadable without executing active content.
+    const disposition = inlineContentDisposition(filename).replace(/^inline/, previewTypes.has(contentType) ? "inline" : "attachment");
     return new Response(sourceResponse.body, {
       headers: {
         "Cache-Control": "private, no-store",
-        "Content-Disposition": inlineContentDisposition(filename),
-        "Content-Type": sourceResponse.headers.get("content-type") ?? "application/octet-stream",
+        "Content-Disposition": disposition,
+        "Content-Type": previewTypes.has(contentType) ? contentType : "application/octet-stream",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "sandbox",
       },
       status: 200,
     });

@@ -5,11 +5,13 @@ export const appPathByPage: Record<AppPage, string> = {
   "post-job": "/post-job",
   applications: "/applications",
   bookings: "/bookings",
+  "job-invitations": "/job-invitations",
   "find-teachers": "/find-teachers",
   "find-jobs": "/find-jobs",
   "job-detail": "/job-detail",
   "teacher-profile": "/teacher-profile",
   "institution-profile": "/institution-profile",
+  "my-profile": "/my-profile",
   messaging: "/messaging",
   calendar: "/calendar",
   settings: "/settings",
@@ -21,13 +23,16 @@ export function buildAppHref(page: AppPage, ctx: RouteContext = {}) {
   const params = new URLSearchParams();
 
   if (ctx.applicationId) params.set("applicationId", ctx.applicationId);
+  if (ctx.bookingId) params.set("bookingId", ctx.bookingId);
+  if (ctx.conversationId) params.set("conversationId", ctx.conversationId);
   if (ctx.institutionId) params.set("institutionId", ctx.institutionId);
   if (ctx.jobId) params.set("jobId", ctx.jobId);
   if (ctx.search) params.set("search", ctx.search);
   if (ctx.teacherId) params.set("teacherId", ctx.teacherId);
 
   const query = params.toString();
-  return `${appPathByPage[page]}${query ? `?${query}` : ""}`;
+  const path = page === "job-invitations" && ctx.invitationId ? `/job-invitations/${encodeURIComponent(ctx.invitationId)}` : appPathByPage[page];
+  return `${path}${query ? `?${query}` : ""}`;
 }
 
 export function hasSubmittedApplicationStatus(status: ApplicationStatus) {

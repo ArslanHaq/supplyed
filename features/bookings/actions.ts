@@ -15,6 +15,7 @@ const bookingActionPath = {
 } satisfies Record<BookingStatusUpdateInput["action"], string>;
 
 export async function updateBookingStatusAction(input: BookingStatusUpdateInput) {
+  if (!input || typeof input.id !== "string" || !Object.hasOwn(bookingActionPath, input.action) || (input.reason !== undefined && typeof input.reason !== "string")) return actionError("Choose a valid booking action.");
   const id = input.id.trim();
   if (!id) return actionError("Choose a valid booking.", { code: "BOOKING_ID_REQUIRED" });
 
@@ -33,11 +34,12 @@ export async function updateBookingStatusAction(input: BookingStatusUpdateInput)
     revalidateTag("bookings", "max");
     return actionOk(normalizeBooking(booking), "Booking updated.");
   } catch (error) {
-    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined });
+    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, retryAfter: error instanceof ApiError ? error.retryAfter : undefined, requestId: error instanceof ApiError ? error.requestId : undefined });
   }
 }
 
 export async function createBookingReviewAction(input: BookingReviewInput) {
+  if (!input || typeof input.bookingId !== "string" || !Number.isInteger(input.rating) || input.rating < 1 || input.rating > 5 || (input.comment !== undefined && typeof input.comment !== "string")) return actionError("Choose a rating from 1 to 5 and enter a valid review.", { fieldErrors: { rating: "Choose a rating from 1 to 5." } });
   const normalized = normalizeReviewInput(input);
   if (!normalized.bookingId) return actionError("Choose a valid booking.", { code: "BOOKING_ID_REQUIRED" });
   if (normalized.rating < 1 || normalized.rating > 5) return actionError("Choose a rating from 1 to 5.", { code: "RATING_REQUIRED" });
@@ -50,7 +52,7 @@ export async function createBookingReviewAction(input: BookingReviewInput) {
     revalidateTag("bookings", "max");
     return actionOk(review, "Review submitted.");
   } catch (error) {
-    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined });
+    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, retryAfter: error instanceof ApiError ? error.retryAfter : undefined, requestId: error instanceof ApiError ? error.requestId : undefined });
   }
 }
 

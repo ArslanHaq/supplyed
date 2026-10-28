@@ -1,6 +1,7 @@
+import { DynamicMultiSelect, DynamicSelect } from "@/components/molecules/DynamicDropdown";
+
+import { TeachingSelectionFields } from "@/components/molecules/TeachingSelectionFields";
 import { Field } from "../../../atoms";
-import { MultiSelectDropdown, SelectDropdown } from "../../../molecules/OptionDropdowns";
-import { currencies, keyStages, subjects, teacherSkills } from "../constants";
 import type { AccountStepProps } from "../step-types";
 import { areaClass, fieldClass } from "../utils";
 import { AccountBasicsStep } from "./AccountBasicsStep";
@@ -14,24 +15,16 @@ export function TeacherProfileStep(props: AccountStepProps) {
         <div>
           <h3 className="font-heading text-2xl leading-tight">Teaching profile</h3>
           <p className="mt-1 text-sm leading-6 text-muted">
-            These details are sent to the instructor profile endpoint and used for matching after review.
+            Tell schools about your teaching experience, subjects and availability.
           </p>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2">
-          <Field label="Primary subjects" error={errors.subjects} required>
-            <MultiSelectDropdown
-              error={Boolean(errors.subjects)}
-              options={subjects}
-              placeholder="Select primary subjects"
-              value={form.subjects}
-              onChange={(value) => updateField("subjects", value)}
-            />
-          </Field>
+          <TeachingSelectionFields otherSkills={form.otherSkills} otherSkillError={errors.otherSkills} otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjects={form.subjects} skills={form.skills} subjectError={errors.subjects} skillError={errors.skills} onChange={(subjects, skills, otherSubjects, otherSkills) => { updateField("subjects", subjects); updateField("skills", skills); updateField("otherSkills", otherSkills); updateField("otherSubjects", otherSubjects); }} />
           <Field label="Key stages" error={errors.keyStages} required>
-            <MultiSelectDropdown
+            <DynamicMultiSelect
               error={Boolean(errors.keyStages)}
-              options={keyStages}
+              collection="keyStage"
               placeholder="Select key stages"
               value={form.keyStages}
               onChange={(value) => updateField("keyStages", value)}
@@ -39,14 +32,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
           </Field>
         </div>
 
-        <Field label="Skills" hint="Optional, but useful for matching.">
-          <MultiSelectDropdown
-            options={teacherSkills}
-            placeholder="Select skills"
-            value={form.skills}
-            onChange={(value) => updateField("skills", value)}
-          />
-        </Field>
+
 
         <div className="grid gap-x-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="onboarding-field-heading"><h3>Experience and preferences</h3><p>Your experience, preferred rates and travel distance.</p></div>
@@ -55,7 +41,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
               id="experience"
               className={fieldClass(errors.yearsExperience)}
               value={form.yearsExperience}
-              onChange={(event) => updateField("yearsExperience", event.target.value.replace(/[^\d]/g, ""))}
+              onChange={(event) => updateField("yearsExperience", event.target.value)}
               placeholder="5"
               inputMode="numeric"
             />
@@ -65,7 +51,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
               id="daily-rate"
               className={fieldClass(errors.dailyRate)}
               value={form.dailyRate}
-              onChange={(event) => updateField("dailyRate", event.target.value.replace(/[^\d.]/g, ""))}
+              onChange={(event) => updateField("dailyRate", event.target.value)}
               placeholder="180"
               inputMode="decimal"
             />
@@ -75,15 +61,15 @@ export function TeacherProfileStep(props: AccountStepProps) {
               id="hourly-rate"
               className={fieldClass(errors.hourlyRate)}
               value={form.hourlyRate}
-              onChange={(event) => updateField("hourlyRate", event.target.value.replace(/[^\d.]/g, ""))}
+              onChange={(event) => updateField("hourlyRate", event.target.value)}
               placeholder="35"
               inputMode="decimal"
             />
           </Field>
           <Field label="Currency" error={errors.currency}>
-            <SelectDropdown
+            <DynamicSelect
               error={Boolean(errors.currency)}
-              options={currencies}
+              collection="currency"
               placeholder="Select currency"
               value={form.currency}
               onChange={(value) => updateField("currency", value)}
@@ -94,7 +80,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
               id="travel-distance"
               className={fieldClass(errors.maxTravelDistance)}
               value={form.maxTravelDistance}
-              onChange={(event) => updateField("maxTravelDistance", event.target.value.replace(/[^\d.]/g, ""))}
+              onChange={(event) => updateField("maxTravelDistance", event.target.value)}
               placeholder="25"
               inputMode="decimal"
             />

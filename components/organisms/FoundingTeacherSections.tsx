@@ -127,7 +127,7 @@ const faqs = [
 function roleChipClassName(highlighted: boolean) {
   return highlighted
     ? "rounded-full border border-brand/25 bg-brand-tint px-4 py-2 text-sm font-semibold text-brand-dark"
-    : "rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-muted";
+    : "rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-muted";
 }
 
 export function FoundingTeacherTrustStrip() {
@@ -139,7 +139,7 @@ export function FoundingTeacherTrustStrip() {
             className="border-border lg:border-l lg:pl-8 first:lg:border-l-0 first:lg:pl-0"
             key={signal.copy}
           >
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-brand shadow-(--shadow-xs)">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface text-brand shadow-(--shadow-xs)">
               <Icon name={signal.icon} size={22} />
             </div>
             <h2 className="text-lg font-bold leading-tight text-ink">{signal.title}</h2>
@@ -193,7 +193,7 @@ export function FoundingTeacherRolesSection() {
 
 export function FoundingTeacherRegionsSection() {
   return (
-    <section className="border-b border-border bg-white px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
+    <section className="border-b border-border bg-surface px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-[72px]">
       <div className="mx-auto max-w-[980px]">
         <div className="mb-10 text-center">
           <div className="eyebrow">Launch regions</div>
@@ -221,7 +221,7 @@ export function FoundingTeacherRegionsSection() {
               <span
                 className={
                   region.tone === "priority"
-                    ? "inline-flex w-fit rounded-full bg-brand px-3 py-1 text-xs font-bold uppercase tracking-[0.8px] text-white"
+                    ? "inline-flex w-fit rounded-full bg-brand-dark px-3 py-1 text-xs font-bold uppercase tracking-[0.8px] text-white"
                     : "inline-flex w-fit rounded-full bg-success-tint px-3 py-1 text-xs font-bold uppercase tracking-[0.8px] text-success"
                 }
               >

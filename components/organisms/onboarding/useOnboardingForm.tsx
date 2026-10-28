@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { actualSubjects, catalogueError } from "@/features/teaching-catalogue/selection";
+import { teachingCatalogueKey, useTeachingCatalogue } from "@/features/teaching-catalogue/use-teaching-catalogue";
 import { Country } from "country-state-city";
 
 import { useCurrentUser } from "@/features/auth/use-current-user";
@@ -14,9 +17,11 @@ import type {
   OnboardingProfileSnapshot,
 } from "@/features/onboarding/types";
 import type { AppRole } from "@/types/supplyed";
+import { validateUkPhone } from "@/lib/uk-validation";
 
 import { FileSummary, ReviewBadgeList } from "./ReviewCard";
 import { stepContent, unselectedSteps } from "./constants";
+import { validateOnboardingStep } from "./validation";
 import type {
   DocumentErrors,
   DocumentPreview,
@@ -40,10 +45,6 @@ import {
   roleLabel,
 } from "./utils";
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const phonePattern = /^[0-9+()\s-]{10,}$/;
-const domainPattern = /^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,}$/i;
-const companyNumberPattern = /^(?:\d{1,8}|[a-z]{2}\d{6})$/i;
 
 function snapshotFingerprint(snapshot?: OnboardingProfileSnapshot) {
   if (!snapshot) return "";
@@ -128,11 +129,13 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     schoolName: snapshotString(current.schoolName, next.schoolName),
     safeguardingConfirmed: current.safeguardingConfirmed || next.safeguardingConfirmed,
     skills: snapshotStringArray(current.skills, next.skills),
-    staffingNeeds: snapshotString(current.staffingNeeds, next.staffingNeeds),
+    otherSkills: next.skills.length ? undefined : current.otherSkills,
+    staffingNeeds: snapshotStringArray(current.staffingNeeds, next.staffingNeeds),
     signatoryEmail: snapshotString(current.signatoryEmail, next.signatoryEmail),
     signatoryJobTitle: snapshotString(current.signatoryJobTitle, next.signatoryJobTitle),
     signatoryName: snapshotString(current.signatoryName, next.signatoryName),
     subjects: snapshotStringArray(current.subjects, next.subjects),
+    otherSubjects: (snapshot.role === "teacher" ? next.subjects.length : next.staffingNeeds.length) ? undefined : current.otherSubjects,
     teacherProfileId: snapshotString(current.teacherProfileId, next.teacherProfileId),
     typicalPupilCount: snapshotString(current.typicalPupilCount, next.typicalPupilCount),
     trustCompanyNumber: snapshotString(current.trustCompanyNumber, next.trustCompanyNumber),
@@ -149,7 +152,7 @@ function fillEmptyArray(current: string[], next?: string[]) {
   return current.length > 0 ? current : next ?? current;
 }
 
-function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill) {
+function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill, snapshot?: OnboardingProfileSnapshot) {
   if (!prefill) return current;
 
   return {
@@ -166,18 +169,18 @@ function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill) {
     hourlyRate: fillEmpty(current.hourlyRate, prefill.hourlyRate),
     institutionAddress: fillEmpty(current.institutionAddress, prefill.institutionAddress),
     institutionCity: fillEmpty(current.institutionCity, prefill.institutionCity),
-    institutionCountryCode: fillEmpty(current.institutionCountryCode, prefill.institutionCountryCode),
+    institutionCountryCode: snapshot?.institution?.countryCode ?? prefill.institutionCountryCode ?? current.institutionCountryCode,
     institutionDomain: fillEmpty(current.institutionDomain, prefill.institutionDomain),
     keyStages: fillEmptyArray(current.keyStages, prefill.keyStages),
     localAuthority: fillEmpty(current.localAuthority, prefill.localAuthority),
     maxTravelDistance: fillEmpty(current.maxTravelDistance, prefill.maxTravelDistance),
     phone: fillEmpty(current.phone, prefill.phone),
     profileCity: fillEmpty(current.profileCity, prefill.profileCity),
-    profileCountryCode: fillEmpty(current.profileCountryCode, prefill.profileCountryCode),
+    profileCountryCode: snapshot?.instructor?.countryCode ?? prefill.profileCountryCode ?? current.profileCountryCode,
     postcode: fillEmpty(current.postcode, prefill.postcode),
     schoolName: fillEmpty(current.schoolName, prefill.schoolName),
     skills: fillEmptyArray(current.skills, prefill.skills),
-    staffingNeeds: fillEmpty(current.staffingNeeds, prefill.staffingNeeds),
+    staffingNeeds: current.staffingNeeds.length ? current.staffingNeeds : prefill.staffingNeeds ?? [],
     subjects: fillEmptyArray(current.subjects, prefill.subjects),
     typicalPupilCount: fillEmpty(current.typicalPupilCount, prefill.typicalPupilCount),
     yearsExperience: fillEmpty(current.yearsExperience, prefill.yearsExperience),
@@ -209,10 +212,12 @@ export function useOnboardingForm({
   setStep: (step: number) => void;
   step: number;
 }) {
+  const queryClient = useQueryClient();
+  const catalogue = useTeachingCatalogue();
   const activeRole: SignupRole = role === "teacher" ? "teacher" : "institution";
   const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
-  const currentStep = Math.min(steps.length, Math.max(1, step)) as SignupStep;
-  const [form, setForm] = useState<SignupForm>(() => mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill));
+  const requestedStep = Math.min(steps.length, Math.max(1, Number.isFinite(step) ? Math.trunc(step) : 1)) as SignupStep;
+  const [form, setForm] = useState<SignupForm>(() => mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill, initialSnapshot));
   const currentUserQuery = useCurrentUser();
   const phoneVerificationPending = usePhoneVerificationPending();
   const phoneTouchedRef = useRef(false);
@@ -228,9 +233,21 @@ export function useOnboardingForm({
   const [lockedDocumentStage, setLockedDocumentStage] = useState(
     () => hasCreatedProfile(initialSnapshot, activeRole),
   );
+  const navigation = useMemo(() => {
+    if (!lockedDocumentStage) {
+      for (let index = 1; index < requestedStep; index += 1) {
+        const invalid = validateOnboardingStep(form, activeRole, index as SignupStep, roleSelected, accountEmail);
+        if (Object.keys(invalid).length) return { step: index as SignupStep, errors: invalid };
+      }
+    }
+    return { step: requestedStep, errors: undefined };
+  }, [form, activeRole, requestedStep, roleSelected, accountEmail, lockedDocumentStage]);
+  const currentStep = navigation.step;
   const [requirementDocuments, setRequirementDocuments] = useState<Record<string, OnboardingDocumentSnapshot>>(() => initialSnapshot?.requirementDocuments ?? {});
   const [requirementDocumentErrors, setRequirementDocumentErrors] = useState<Record<string, string | undefined>>({});
-  const [requirementUploadPending, setRequirementUploadPending] = useState<string | null>(null);
+  const [pendingRequirementIds, setPendingRequirementIds] = useState<Set<string>>(() => new Set());
+  const requirementUploadPending = pendingRequirementIds.size > 0;
+  const pendingRequirementIdsRef = useRef(new Set<string>());
   const [requirementViewPending, setRequirementViewPending] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string>();
   const [signatoryApproval, setSignatoryApproval] = useState(initialSnapshot?.signatoryApproval ?? null);
@@ -275,6 +292,13 @@ export function useOnboardingForm({
   }, []);
 
   useEffect(() => {
+    if (navigation.errors) {
+      setErrors(navigation.errors);
+      setStep(navigation.step);
+    }
+  }, [navigation, setStep]);
+
+  useEffect(() => {
     if (previousStepRef.current === currentStep) return;
 
     previousStepRef.current = currentStep;
@@ -311,7 +335,7 @@ export function useOnboardingForm({
   }, [onboardingStatusQuery.data?.signatoryApproval]);
 
   function buildPayload() {
-    return buildOnboardingPayload(form, activeRole, currentStep, accountEmail);
+    return buildOnboardingPayload(form, activeRole, currentStep, accountEmail, catalogue.data);
   }
 
   const reviewGroups = useMemo<ReviewGroup[]>(() => {
@@ -347,9 +371,9 @@ export function useOnboardingForm({
           editStep: 1,
           lines: [
             ...accountLines,
-            { label: "Subjects", value: <ReviewBadgeList items={form.subjects} />, wide: true },
+            { label: "Subjects", value: <ReviewBadgeList items={actualSubjects(form.subjects, form.otherSubjects)} />, wide: true },
             { label: "Key stages", value: <ReviewBadgeList items={form.keyStages} />, wide: true },
-            { label: "Skills", value: <ReviewBadgeList items={form.skills} />, wide: true },
+            { label: "Skills", value: <ReviewBadgeList items={actualSubjects(form.skills, form.otherSkills)} />, wide: true },
             { label: "Experience", value: form.yearsExperience ? `${form.yearsExperience} years` : "Not provided" },
             { label: "Daily rate", value: form.dailyRate ? `${form.currency || "GBP"} ${form.dailyRate}` : "Optional" },
             { label: "Hourly rate", value: form.hourlyRate ? `${form.currency || "GBP"} ${form.hourlyRate}` : "Optional" },
@@ -392,7 +416,8 @@ export function useOnboardingForm({
           { label: "City", value: form.institutionCity || "Not provided" },
           { label: "Registration ID", value: form.institutionRegistrationId || "Optional" },
           { label: "Pupil count", value: form.typicalPupilCount || "Optional" },
-          { label: "Needs", value: <ReviewBadgeList items={form.coverTypes} />, wide: true },
+          { label: "Cover types", value: <ReviewBadgeList items={form.coverTypes} />, wide: true },
+          { label: "Staffing needs", value: <ReviewBadgeList items={actualSubjects(form.staffingNeeds, form.otherSubjects)} />, wide: true },
         ],
       },
       {
@@ -419,7 +444,12 @@ export function useOnboardingForm({
   function updateField<FieldName extends keyof SignupForm>(field: FieldName, value: SignupForm[FieldName]) {
     if (field === "phone") phoneTouchedRef.current = true;
     setForm((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
+    setErrors((current) => {
+      const nextForm = { ...form, [field]: value };
+      const remaining = Object.assign({}, ...[1, 2, 3].map((target) => validateOnboardingStep(nextForm, activeRole, target as SignupStep, roleSelected, accountEmail)));
+      const key = field as keyof SignupErrors;
+      return { ...current, [key]: current[key] ? remaining[key] : undefined };
+    });
     setSubmitError(undefined);
   }
 
@@ -446,7 +476,7 @@ export function useOnboardingForm({
   }
 
   async function uploadRequirementDocument(requirementId: string, file: UploadedFile) {
-    if (mutationPendingRef.current || !lockedDocumentStage) return;
+    if (mutationPendingRef.current || pendingRequirementIdsRef.current.has(requirementId) || !lockedDocumentStage) return;
 
     const requirement = documentRequirements.find((item) => item.id === requirementId);
     const label = requirement?.documentType.name || "Document";
@@ -475,14 +505,15 @@ export function useOnboardingForm({
       return;
     }
 
-    const data = buildPayload();
+    // Uploads need only the requirement and file; profile fields exceed the multipart field limit.
+    const data = new FormData();
     data.set("requirementId", requirementId);
     data.set("file", selectedFile!, file.name);
 
     setRequirementDocumentErrors((current) => ({ ...current, [requirementId]: undefined }));
     setSubmitError(undefined);
-    mutationPendingRef.current = true;
-    setRequirementUploadPending(requirementId);
+    pendingRequirementIdsRef.current.add(requirementId);
+    setPendingRequirementIds(new Set(pendingRequirementIdsRef.current));
 
     try {
       const result = await onDocumentUpload(data);
@@ -507,8 +538,8 @@ export function useOnboardingForm({
         [requirementId]: error instanceof Error && error.message ? error.message : `${label} could not be uploaded. Choose the file again.`,
       }));
     } finally {
-      mutationPendingRef.current = false;
-      if (mountedRef.current) setRequirementUploadPending(null);
+      pendingRequirementIdsRef.current.delete(requirementId);
+      if (mountedRef.current) setPendingRequirementIds(new Set(pendingRequirementIdsRef.current));
     }
   }
 
@@ -566,77 +597,53 @@ export function useOnboardingForm({
   }
 
   function validateStep(targetStep: SignupStep) {
-    const nextErrors: SignupErrors = {};
-
-    if (targetStep === 1) {
-      if (!roleSelected) nextErrors.accountRole = "Choose how you want to use SupplyED.";
-      if (!form.fullName.trim()) nextErrors.fullName = "Enter your full name.";
-      if (!form.phone.trim()) nextErrors.phone = "Enter a contact number.";
-      else if (!phonePattern.test(form.phone.trim())) nextErrors.phone = "Use a valid phone number.";
-      if (roleSelected && activeRole !== "institution") {
-        if (!form.profileCountryCode.trim()) nextErrors.profileCountryCode = "Select your country.";
-        if (!form.profileCity.trim()) nextErrors.profileCity = "Select your city.";
-      }
-      if (activeRole === "teacher" && !form.postcode.trim()) nextErrors.postcode = "Enter your postal code.";
-
-      if (activeRole === "teacher") {
-        if (form.subjects.length === 0) nextErrors.subjects = "Choose at least one subject.";
-        if (form.keyStages.length === 0) nextErrors.keyStages = "Choose at least one key stage.";
-        if (!form.yearsExperience.trim()) nextErrors.yearsExperience = "Enter your years of experience.";
-        else if (Number(form.yearsExperience) < 0) nextErrors.yearsExperience = "Experience cannot be negative.";
-        if (form.hourlyRate && Number(form.hourlyRate) < 0) nextErrors.hourlyRate = "Hourly rate cannot be negative.";
-        if (form.dailyRate && Number(form.dailyRate) < 0) nextErrors.dailyRate = "Daily rate cannot be negative.";
-        if (form.maxTravelDistance && Number(form.maxTravelDistance) < 0) nextErrors.maxTravelDistance = "Travel distance cannot be negative.";
-        if (form.bio.trim().length < 40) nextErrors.bio = "Write at least 40 characters so schools understand your teaching style.";
-      }
-    }
-
-    if (targetStep === 2 && activeRole === "institution") {
-      if (!form.schoolName.trim()) nextErrors.schoolName = "Enter the school or MAT name.";
-      if (!form.contactRole.trim()) nextErrors.contactRole = "Enter your role.";
-      if (!form.institutionDomain.trim()) nextErrors.institutionDomain = "Enter the school or trust domain.";
-      else if (!domainPattern.test(form.institutionDomain.trim())) nextErrors.institutionDomain = "Use a valid domain, for example greenfield.ac.uk.";
-      if (!form.institutionAddress.trim()) nextErrors.institutionAddress = "Enter the institution address.";
-      if (!form.postcode.trim()) nextErrors.postcode = "Enter the institution postal code.";
-      if (!form.institutionCountryCode.trim()) nextErrors.institutionCountryCode = "Select the institution country.";
-      if (!form.institutionCity.trim()) nextErrors.institutionCity = "Select the institution city.";
-      if (form.coverTypes.length === 0) nextErrors.coverTypes = "Choose at least one staffing need.";
-      if (form.institutionType === "MAT_SCHOOL") {
-        if (!form.trustName.trim()) nextErrors.trustName = "Enter the multi-academy trust name.";
-        else if (form.trustName.trim().length > 200) nextErrors.trustName = "Trust name must be 200 characters or fewer.";
-        const companyNumber = form.trustCompanyNumber.replace(/\s+/g, "");
-        if (companyNumber && !companyNumberPattern.test(companyNumber)) {
-          nextErrors.trustCompanyNumber = "Use up to 8 digits, or 2 letters followed by 6 digits.";
-        }
-      }
-    }
-
-    if (targetStep === 3 && activeRole === "institution") {
-      if (!form.complianceContact.trim()) nextErrors.complianceContact = "Enter the safeguarding or compliance lead.";
-      if (!form.complianceEmail.trim()) nextErrors.complianceEmail = "Enter the compliance email.";
-      else if (!emailPattern.test(form.complianceEmail.trim())) nextErrors.complianceEmail = "Use a valid email address.";
-      if (!form.safeguardingConfirmed) nextErrors.safeguardingConfirmed = "Confirm safeguarding responsibility.";
-      if (form.institutionType === "MAT_SCHOOL") {
-        if (!form.signatoryName.trim()) nextErrors.signatoryName = "Enter the trust signatory's name.";
-        else if (form.signatoryName.trim().length > 200) nextErrors.signatoryName = "Signatory name must be 200 characters or fewer.";
-        if (!form.signatoryEmail.trim()) nextErrors.signatoryEmail = "Enter the trust signatory's email.";
-        else if (!emailPattern.test(form.signatoryEmail.trim())) nextErrors.signatoryEmail = "Use a valid email address.";
-        else if (form.signatoryEmail.trim().length > 254) nextErrors.signatoryEmail = "Signatory email must be 254 characters or fewer.";
-        else if (form.signatoryEmail.trim().toLowerCase() === (form.email || accountEmail || "").trim().toLowerCase()) {
-          nextErrors.signatoryEmail = "The trust signatory must be someone other than you.";
-        }
-        if (!form.signatoryJobTitle.trim()) nextErrors.signatoryJobTitle = "Enter the trust signatory's job title.";
-        else if (form.signatoryJobTitle.trim().length > 150) nextErrors.signatoryJobTitle = "Signatory job title must be 150 characters or fewer.";
-      }
-    }
-
+    const nextErrors = validateOnboardingStep(form, activeRole, targetStep, roleSelected, accountEmail);
     setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0 && typeof document !== "undefined") {
+      requestAnimationFrame(() => document.querySelector<HTMLElement>(".onboarding-canvas [aria-invalid='true']")?.focus());
+    }
     return Object.keys(nextErrors).length === 0;
+  }
+
+  function validateThrough(targetStep: number, unlockForCorrection = false) {
+    for (let index = 1; index <= Math.min(targetStep, steps.length - 1); index += 1) {
+      if (!validateStep(index as SignupStep)) {
+        if (unlockForCorrection) {
+          setLockedDocumentStage(false);
+          setStatusStage(false);
+          setSubmitError("Update the highlighted profile details before continuing. Your existing profile and uploaded documents are preserved.");
+        }
+        setStep(index);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function navigateStep(nextStep: number) {
+    if (lockedDocumentStage || mutationPendingRef.current || phoneVerificationPending) return;
+    const target = Math.max(1, Math.min(steps.length, nextStep));
+    if (target > currentStep && !validateThrough(target - 1)) return;
+    setStep(target);
+  }
+
+  function applyServerFieldErrors(result: OnboardingFinishResult, allowCorrection = false) {
+    if (!result.fieldErrors || !Object.keys(result.fieldErrors).length) return;
+    setErrors(result.fieldErrors);
+    if (!lockedDocumentStage || allowCorrection) {
+      const fields = Object.keys(result.fieldErrors);
+      const target = activeRole === "teacher" || fields.some((key) => ["accountRole", "fullName", "phone", "email"].includes(key))
+        ? 1
+        : fields.some((key) => !["complianceContact", "complianceEmail", "safeguardingConfirmed", "signatoryName", "signatoryEmail", "signatoryJobTitle"].includes(key)) ? 2 : 3;
+      if (allowCorrection) { setLockedDocumentStage(false); setStatusStage(false); }
+      setStep(target);
+    }
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(".onboarding-canvas [aria-invalid='true']")?.focus());
   }
 
   async function continueStep() {
     if (lockedDocumentStage || mutationPendingRef.current || phoneVerificationPending) return;
-    if (!validateStep(currentStep)) return;
+    if (!validateThrough(currentStep)) return;
 
     mutationPendingRef.current = true;
     setPending("step");
@@ -645,6 +652,8 @@ export function useOnboardingForm({
     try {
       const result = await onStepSave(buildPayload());
       if (!result.ok) {
+        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: ["dropdown"] });
+        applyServerFieldErrors(result);
         setSubmitError(result.message || "This step could not be saved. Try again.");
         return;
       }
@@ -662,11 +671,15 @@ export function useOnboardingForm({
 
   async function submitSignup() {
     if (lockedDocumentStage || mutationPendingRef.current || phoneVerificationPending) return;
-    for (let targetStep = 1; targetStep < steps.length; targetStep += 1) {
-      if (!validateStep(targetStep as SignupStep)) {
-        setStep(targetStep);
-        return;
-      }
+    if (!validateThrough(steps.length - 1)) return;
+    const savedPhone = validateUkPhone(currentUserQuery.data?.phone ?? initialSnapshot?.user?.phone, { required: true });
+    const currentPhone = validateUkPhone(form.phone, { required: true });
+    const savedPhoneVerified = currentUserQuery.data?.phoneVerified ?? initialSnapshot?.user?.phoneVerified;
+    if ((form.teacherProfileId || form.institutionProfileId || savedPhoneVerified) &&
+      (!savedPhone.valid || (savedPhoneVerified && savedPhone.value !== currentPhone.value))) {
+      setErrors({ phone: "Verify this UK phone number before saving the profile." });
+      setStep(1);
+      return;
     }
 
     mutationPendingRef.current = true;
@@ -686,6 +699,8 @@ export function useOnboardingForm({
       }
 
       if (!result.ok) {
+        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: ["dropdown"] });
+        applyServerFieldErrors(result);
         setSubmitError(result.message || "Onboarding could not be submitted. Try again.");
       }
     } catch (error) {
@@ -697,7 +712,8 @@ export function useOnboardingForm({
   }
 
   async function submitDocumentsForReview() {
-    if (!lockedDocumentStage || mutationPendingRef.current) return;
+    if (!lockedDocumentStage || mutationPendingRef.current || pendingRequirementIdsRef.current.size > 0) return;
+    if (!validateThrough(steps.length - 1, true)) return;
     if (documentRequirementsLoading || documentRequirementsError) {
       setSubmitError("Wait for the document requirements to load, or retry the check before submitting.");
       return;
@@ -723,6 +739,8 @@ export function useOnboardingForm({
 
       const result = await onFinish(payload);
       if (!result.ok) {
+        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: ["dropdown"] });
+        applyServerFieldErrors(result, true);
         void requirementsQuery.refetch();
         setSubmitError(result.message || "Profile could not be sent for review. Try again.");
         return;
@@ -757,7 +775,7 @@ export function useOnboardingForm({
   }
 
   async function refreshSignatoryApproval() {
-    if (mutationPendingRef.current) return;
+    if (mutationPendingRef.current || pendingRequirementIdsRef.current.size > 0) return;
     mutationPendingRef.current = true;
     setPending("status");
     setSubmitError(undefined);
@@ -775,7 +793,7 @@ export function useOnboardingForm({
   }
 
   async function requestSignatoryApproval() {
-    if (!lockedDocumentStage || activeRole !== "institution" || form.institutionType !== "MAT_SCHOOL" || mutationPendingRef.current) return;
+    if (!lockedDocumentStage || activeRole !== "institution" || form.institutionType !== "MAT_SCHOOL" || mutationPendingRef.current || pendingRequirementIdsRef.current.size > 0) return;
     if (!validateStep(3)) return;
 
     mutationPendingRef.current = true;
@@ -787,7 +805,11 @@ export function useOnboardingForm({
       payload.set("intent", "signatory");
       const result = await onFinish(payload);
       applySnapshot(result.data?.snapshot);
-      if (!result.ok) setSubmitError(result.message || "The trust approval request could not be sent.");
+      if (!result.ok) {
+        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: ["dropdown"] });
+        applyServerFieldErrors(result, Object.keys(result.fieldErrors ?? {}).some((key) => !key.startsWith("signatory")));
+        setSubmitError(result.message || "The trust approval request could not be sent.");
+      }
     } catch (error) {
       setSubmitError(error instanceof Error && error.message ? error.message : "The trust approval request could not be sent.");
     } finally {
@@ -820,6 +842,7 @@ export function useOnboardingForm({
     requirementDocumentErrors,
     requirementDocuments,
     requirementUploadPending,
+    pendingRequirementIds,
     requirementViewPending,
     refreshSignatoryApproval,
     requestSignatoryApproval,
@@ -828,7 +851,7 @@ export function useOnboardingForm({
     statusStage,
     returnToDocuments: () => setStatusStage(false),
     retryDocumentRequirements,
-    setStep,
+    setStep: navigateStep,
     steps,
     submitDocumentsForReview,
     submitError,

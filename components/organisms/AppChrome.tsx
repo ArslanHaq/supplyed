@@ -19,6 +19,7 @@ const institutionNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
   { id: "find-teachers", label: "Teachers", icon: "search" },
   { id: "applications", label: "Applications", icon: "users" },
+  { id: "job-invitations", label: "Invitations", icon: "mail" },
   { id: "bookings", label: "Bookings", icon: "file" },
   { id: "messaging", label: "Messages", icon: "message" },
   { id: "billing", label: "Billing", icon: "pound" },
@@ -30,9 +31,8 @@ const teacherNav: NavItem[] = [
   { id: "applications", label: "Applications", icon: "users" },
   { id: "bookings", label: "Bookings", icon: "file" },
   { id: "billing", label: "Earnings", icon: "pound" },
-  { id: "calendar", label: "Calendar", icon: "calendar" },
   { id: "messaging", label: "Messages", icon: "message" },
-  { id: "teacher-profile", label: "Profile", icon: "user" },
+  { id: "job-invitations", label: "Invitations", icon: "mail" },
 ];
 
 const adminNav: NavItem[] = [
@@ -61,7 +61,7 @@ export function AppChrome({
   const menuButton = useRef<HTMLButtonElement>(null);
   const navigationRef = useRef<HTMLElement>(null);
   const activeLabel = navItems.find((item) => item.id === state.page)?.label
-    ?? ({ settings: "Settings", security: "Security", "post-job": "Post job", "job-detail": "Job details", "institution-profile": "School profile", "teacher-profile": "Teacher profile" } as Partial<Record<AppPage, string>>)[state.page]
+    ?? ({ settings: "Settings", security: "Security", calendar: "Calendar", "my-profile": "My Profile", "post-job": "Post job", "job-detail": "Job details", "institution-profile": "School profile", "teacher-profile": "Teacher profile" } as Partial<Record<AppPage, string>>)[state.page]
     ?? "Workspace";
   // Teachers and schools message each other; one live connection keeps every screen up to date.
   const messagingEnabled = state.role === "teacher" || state.role === "institution";
@@ -143,6 +143,7 @@ export function AppChrome({
             <input
               aria-label={searchPlaceholder.replace("...", "")}
               className="border-0 bg-transparent"
+              maxLength={100}
               onChange={(event) => setNavSearch(event.target.value)}
               placeholder={searchPlaceholder}
               value={navSearch}
@@ -155,6 +156,7 @@ export function AppChrome({
             onDashboard={() => go("dashboard")}
             onLanding={onLanding}
             onLogout={onLogout}
+            onProfile={state.role === "admin" ? undefined : () => go("my-profile")}
             onSecurity={() => go("security")}
             onSettings={onSettings}
             roleLabel={userSub}

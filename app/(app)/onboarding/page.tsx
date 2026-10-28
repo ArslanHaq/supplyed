@@ -10,6 +10,7 @@ import { getServerAuthContext } from "@/lib/server/auth-context";
 import { noIndexMetadata } from "@/lib/seo";
 import type { OnboardingProfileSnapshot } from "@/features/onboarding/types";
 import { profileEntryStatus } from "@/features/onboarding/profile-progress";
+import { invitationLoginHref, invitationReturnPath } from "@/lib/invitation-links";
 
 export const metadata = noIndexMetadata("Onboarding", "Complete your SupplyED account setup.");
 
@@ -54,13 +55,14 @@ async function createSessionRepairTicket(session: Session, snapshot: OnboardingP
   return createVerifiedEmailSessionTicket(response);
 }
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ returnTo?: string }> }) {
   const session = await auth();
+  const returnTo = invitationReturnPath((await searchParams).returnTo);
 
   if (!session?.user) {
-    redirect("/login");
+    redirect(invitationLoginHref(returnTo));
   }
-  if (!session.user.isEmailVerified) redirect("/post-auth");
+  if (!session.user.isEmailVerified) redirect(returnTo ? `/post-auth?returnTo=${encodeURIComponent(returnTo)}` : "/post-auth");
   if (session.user.role === "admin") redirect("/dashboard");
 
   const snapshot = await getOnboardingProfileSnapshot();

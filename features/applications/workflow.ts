@@ -1,7 +1,7 @@
 import type { JobApplicationStatus } from "./types";
 
 export const applicationPipeline: readonly Exclude<JobApplicationStatus, "REJECTED">[] = [
-  "APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEW", "HIRED",
+  "APPLIED", "VIEWED", "SHORTLISTED", "HIRED",
 ];
 
 /** Applications may skip ahead, but never return to a previous or terminal stage. */

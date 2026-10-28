@@ -133,7 +133,7 @@ export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: A
 
   return (
     <div className="account-status-shell min-h-screen bg-chalk">
-      <header className="flex min-h-[76px] items-center justify-between border-b border-border bg-white px-4 py-3 sm:px-6 lg:px-12">
+      <header className="flex min-h-[76px] items-center justify-between border-b border-border bg-surface px-4 py-3 sm:px-6 lg:px-12">
         <Logo size={20} onClick={onLanding} />
         <div className="flex items-center gap-2">
           <Btn variant="secondary" onClick={onLanding}>
@@ -146,7 +146,7 @@ export function ApplicationStatusPage({ state, onLanding, onLogout }: { state: A
       </header>
 
       <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[960px] items-center px-4 py-10 sm:px-6 lg:px-8">
-        <section className="account-status-card w-full border border-border bg-white">
+        <section className="account-status-card w-full border border-border bg-surface">
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-brand-tint text-brand">
             <Icon name={copy.icon} size={26} />
           </div>

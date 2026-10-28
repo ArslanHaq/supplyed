@@ -63,9 +63,9 @@ export function Avatar({
     <div
       aria-label={`${name} profile`}
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-tint font-bold text-brand",
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold",
         sizeClass[size],
-        tone ? toneClass[tone] : null,
+        tone ? toneClass[tone] : "bg-brand-tint text-brand",
       )}
       role="img"
     >

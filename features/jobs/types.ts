@@ -33,6 +33,9 @@ export type MyJobs = PaginatedJobs & {
 };
 
 export type BackendJobResponse = {
+  canDelete: boolean;
+  termsLocked: boolean;
+  hasBeenPublished: boolean;
   id: string;
   institution?: { id: string; imageUrl: string | null; name: string } | null;
   postedByUserId: string;
@@ -42,6 +45,7 @@ export type BackendJobResponse = {
   mode?: string | null;
   postingMode?: string | null;
   subject?: string | null;
+  subjects?: string[];
   requiredSkills?: string[];
   minExperienceYears?: number | string | null;
   address?: string | null;
@@ -55,15 +59,19 @@ export type BackendJobResponse = {
   endDate?: string | null;
   keyStages?: string[];
   parkingInfo?: string | null;
+  hours?: number | null;
+  days?: number | null;
   payAmount?: number | string | null;
   payType?: JobPayType | string | null;
   status: JobStatus;
+  liveFrom?: string | null;
   expiresAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 };
 
 export type JobCreateInput = {
+  otherSubjects?: string[]; otherSkills?: string[];
   address?: string;
   city?: string;
   countryCode?: string;
@@ -71,23 +79,27 @@ export type JobCreateInput = {
   description: string;
   endDate?: string;
   expiresAt?: string;
+  liveFrom?: string;
   keyStages: string[];
   latitude?: number;
   longitude?: number;
   minExperienceYears?: number;
   parkingInfo?: string;
+  hours?: number | null;
+  days?: number | null;
   payAmount?: number;
   payType?: JobPayType;
   postalCode?: string;
   requiredSkills?: string[];
   startDate?: string;
   status?: Extract<JobStatus, "ACTIVE" | "DRAFT">;
-  subject?: string;
+  subjects?: string[];
   title: string;
 };
 
-export type JobUpdateInput = Partial<Omit<JobCreateInput, "status">> & {
+export type JobUpdateInput = Partial<Omit<JobCreateInput, "status" | "liveFrom">> & {
   id: string;
+  liveFrom?: string | null;
   status?: JobStatus;
 };
 

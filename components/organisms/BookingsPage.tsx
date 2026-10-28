@@ -1,4 +1,13 @@
 "use client";
+import { AgreedTerms } from "../molecules/AgreedTerms";
+
+import { formatPlannedUnits } from "@/features/jobs/work-units";
+
+import { useDropdown } from "@/features/dropdowns/use-dropdown";
+import { DropdownStatus } from "@/components/molecules/DynamicDropdown";
+
+import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
+
 
 import { WorkspaceEmptyState } from "./WorkspacePanels";
 
@@ -7,13 +16,13 @@ import { useMemo, useState } from "react";
 
 import type { Booking, BookingInvoiceFilter, BookingListQuery, BookingStatus } from "@/features/bookings/types";
 import { bookingDays, invoiceUnitsLimit } from "@/features/bookings/schemas";
-import { useBookings, useCreateBookingReview, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
+import { useBooking, useBookings, useCreateBookingReview, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
 import { formatPence } from "@/features/payments/schemas";
 import { useCreateInvoice, useInvoice } from "@/features/payments/use-payments";
 import type { Invoice, PayableInvoice } from "@/features/payments/types";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, buttonClassName, Icon, Tag } from "../atoms";
+import { Avatar, Btn, buttonClassName, Field, Icon, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { PayInvoiceModal } from "./PayInvoiceModal";
@@ -28,20 +37,15 @@ const tabStatus: Record<Tab, BookingStatus | undefined> = {
   "no-show": "NO_SHOW",
 };
 
-const tabs: Array<{ label: string; value: Tab }> = [
-  { label: "All", value: "all" },
-  { label: "Active", value: "active" },
-  { label: "Completed", value: "completed" },
-  { label: "Cancelled", value: "cancelled" },
-  { label: "No-show", value: "no-show" },
-];
 
 type BookingFilters = Pick<BookingListQuery, "from" | "invoice" | "search" | "to">;
 
 const emptyFilters: BookingFilters = { from: "", invoice: undefined, search: "", to: "" };
 
-export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role" | "toast">) {
-  const [tab, setTab] = useState<Tab>("active");
+export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "role" | "toast"> & { ctx?: RouteProps["ctx"] }) {
+  const choices = useDropdown("bookingStatus");
+  const tabs: Array<{ label: string; value: Tab }> = [{ label: "All", value: "all" }, ...(choices.data?.options ?? []).flatMap(option => { const value = (Object.keys(tabStatus) as Tab[]).find(key => tabStatus[key] === option.value); return value ? [{ label: option.label, value }] : []; })];
+  const [tab, setTab] = useState<Tab>(ctx?.jobId ? "all" : "active");
   const [page, setPage] = useState(1);
   const [filterDraft, setFilterDraft] = useState<BookingFilters>(emptyFilters);
   const [filters, setFilters] = useState<BookingFilters>(emptyFilters);
@@ -52,7 +56,9 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
   const [invoiceDetailsId, setInvoiceDetailsId] = useState<string | null>(null);
   const [payTarget, setPayTarget] = useState<PayableInvoice | null>(null);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
-  const bookingsQuery = useBookings({ limit: 20, page, status: tabStatus[tab], ...filters });
+  const listQuery = useBookings({ jobId: ctx?.jobId, limit: 20, page, status: tabStatus[tab], ...filters }, !ctx?.bookingId);
+  const detailQuery = useBooking(ctx?.bookingId);
+  const bookingsQuery = ctx?.bookingId ? { ...detailQuery, data: detailQuery.data ? { bookings: [detailQuery.data], pagination: { total: 1, totalPages: 1, page: 1, hasNextPage: false, limit: 1 } } : undefined } : listQuery;
   const bookings = bookingsQuery.data?.bookings ?? [];
   const updateBooking = useUpdateBookingStatus({
     onSuccess: (result) => {
@@ -84,7 +90,7 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
     onSuccess: (result) => {
       toast({
         title: result.ok ? "Invoice sent" : "Could not create invoice",
-        msg: !result.ok && result.requestId ? `${result.message} Support reference: ${result.requestId}` : result.message ?? "The school has been sent the invoice.",
+        msg: result.message ?? "The school has been sent the invoice.",
         tone: result.ok ? "success" : "danger",
       });
       if (result.ok) {
@@ -92,7 +98,7 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
         setInvoiceError(null);
         setInvoiceDetailsId(result.data.id);
       } else {
-        setInvoiceError(result.requestId ? `${result.message} Support reference: ${result.requestId}` : result.message);
+        setInvoiceError(result.message);
       }
     },
   });
@@ -129,12 +135,14 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
     <>
       <div className="app-page bookings-page">
         <PageHead
-          title="Bookings"
+          title={ctx?.bookingId ? "Booking details" : "Bookings"}
           subtitle={subtitle}
           actions={<><Tag tone="ghost">{bookingsQuery.data?.pagination.total ?? 0} bookings</Tag><Btn loading={bookingsQuery.isFetching} loadingLabel="Refreshing" size="sm" variant="ghost" onClick={() => { void bookingsQuery.refetch(); }}>Refresh</Btn></>}
         />
 
-        <div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center gap-3">
+        {ctx?.bookingId ? <div className="mb-5"><Btn icon="arrowLeft" variant="secondary" onClick={() => go("bookings")}>All bookings</Btn></div> : <><div className="workspace-toolbar card card-pad mb-6 flex flex-wrap items-center gap-3">
+          {ctx?.jobId ? <><Tag tone="ghost">Bookings for this job</Tag><Btn size="sm" variant="ghost" onClick={() => go("bookings")}>Show all jobs</Btn></> : null}
+          <DropdownStatus name="bookingStatus" />
           {tabs.map((item) => (
             <Btn
               key={item.value}
@@ -169,22 +177,17 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
               To
               <input className="input mt-2" min={filterDraft.from || undefined} type="date" value={filterDraft.to ?? ""} onChange={(event) => setFilterDraft((current) => ({ ...current, to: event.target.value }))} />
             </label>
-            <label className="block text-xs font-semibold text-graphite">
-              Invoice
-              <select className="select mt-2" value={filterDraft.invoice ?? ""} onChange={(event) => setFilterDraft((current) => ({ ...current, invoice: (event.target.value || undefined) as BookingInvoiceFilter | undefined }))}>
-                <option value="">Any invoice state</option>
-                <option value="none">No invoice</option>
-                <option value="unpaid">Unpaid</option>
-                <option value="paid">Paid</option>
-              </select>
-            </label>
+            <div className="text-xs font-semibold text-graphite">
+              <label htmlFor="booking-invoice-filter">Invoice</label>
+              <DynamicSelect aria-label="Invoice" className="mt-2" id="booking-invoice-filter" collection="bookingInvoiceState" emptyLabel="Any invoice state" placeholder="Any invoice state" value={filterDraft.invoice ?? ""} onChange={(value) => setFilterDraft((current) => ({ ...current, invoice: (value || undefined) as BookingInvoiceFilter | undefined }))} />
+            </div>
           </div>
           {filterError ? <p className="mt-3 text-sm font-medium text-danger" role="alert">{filterError}</p> : null}
           <div className="mt-4 flex flex-wrap justify-end gap-2">
             <Btn size="sm" variant="ghost" onClick={clearFilters}>Clear filters</Btn>
             <Btn size="sm" type="submit">Apply filters</Btn>
           </div>
-        </form>
+        </form></>}
 
         {bookingsQuery.isLoading ? <SectionLoader rows={4} /> : null}
         {bookingsQuery.error && !bookingsQuery.isLoading ? (
@@ -205,7 +208,8 @@ export function BookingsPage({ go, role, toast }: Pick<RouteProps, "go" | "role"
                 onComplete={(id) => updateBooking.mutate({ action: "complete", id })}
                 onInvoice={(booking) => { setInvoiceError(null); setInvoiceTarget(booking); }}
                 onInvoiceDetails={setInvoiceDetailsId}
-                onMessage={(selectedBooking) => go("messaging", { applicationId: selectedBooking.applicationId })}
+                onMessage={(selectedBooking) => go("messaging", { bookingId: selectedBooking.id })}
+                onOpenJob={(selectedBooking) => go("job-detail", { bookingId: selectedBooking.id, jobId: selectedBooking.job.id })}
                 onOpenProfile={(selectedBooking) => role === "teacher"
                   ? go("institution-profile", { institutionId: selectedBooking.institution.id })
                   : go("teacher-profile", { teacherId: selectedBooking.instructor.id })}
@@ -287,6 +291,7 @@ function BookingCard({
   onMessage,
   onNoShow,
   onOpenProfile,
+  onOpenJob,
   onPay,
   onReview,
   pending,
@@ -301,6 +306,7 @@ function BookingCard({
   onMessage: (booking: Booking) => void;
   onNoShow: (id: string) => void;
   onOpenProfile: (booking: Booking) => void;
+  onOpenJob: (booking: Booking) => void;
   onPay: (invoice: PayableInvoice) => void;
   onReview: (booking: Booking) => void;
   pending: boolean;
@@ -312,55 +318,51 @@ function BookingCard({
   const ownReview = booking.reviews.find((review) => review.reviewerType === reviewerType(role));
   const reviewable = isReviewableBookingStatus(booking.status);
   const canReview = reviewable && !ownReview;
-  const location = [booking.job.city, booking.job.county, booking.job.postalCode].filter(Boolean).join(", ") || "Location TBC";
+  const address = [booking.job.address, booking.job.city, booking.job.county, booking.job.postalCode]
+    .map(part => part?.trim()).filter(Boolean).join(", ") || "Address not provided";
 
   return (
-    <article className="booking-card card card-pad-lg">
-      <div className="flex flex-wrap items-start gap-4">
-        <Avatar name={otherParty.name} src={otherParty.imageUrl} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-heading text-2xl leading-tight">{booking.job.title}</h2>
-            <BookingStatusTag status={booking.status} />
-          </div>
-          <div className="mt-1 text-sm text-muted">
-            <button className="font-semibold text-ink hover:text-brand hover:underline disabled:cursor-default disabled:text-muted disabled:no-underline" disabled={!otherParty.id} onClick={() => onOpenProfile(booking)} type="button">
-              {otherParty.name}
-            </button>
-            {` - ${location}`}
+    <article className="booking-card booking-placement card">
+      <header className="booking-placement-header">
+        <div className="booking-placement-identity">
+          <Avatar name={otherParty.name} src={otherParty.imageUrl} size="lg" />
+          <div className="min-w-0">
+            <button className="booking-placement-party" disabled={!otherParty.id} onClick={() => onOpenProfile(booking)} type="button">{otherParty.name}<Icon name="arrowRight" size={13} /></button>
+            <h2>{booking.job.title}</h2>
+            {booking.termsStatus === "LEGACY_PARTIAL" ? <AgreedTerms terms={null} legacy /> : null}
           </div>
         </div>
-        <div className="text-left text-sm sm:text-right">
-          <div className="font-semibold">{formatDateRange(booking.startDate, booking.endDate)}</div>
-          <div className="text-muted">{formatPay(booking.payAmount, booking.payType)}</div>
-        </div>
-      </div>
+        <div className="booking-placement-badges"><BookingStatusTag status={booking.status} />{booking.source === "DIRECT_HIRE" ? <span className="booking-placement-source">Direct hire</span> : null}</div>
+      </header>
 
-      <div className="booking-facts mt-5 grid gap-3 text-sm sm:grid-cols-3">
-        <Detail icon="calendar" label="Dates" value={formatDateRange(booking.startDate, booking.endDate)} />
-        <Detail icon="pound" label="Pay" value={formatPay(booking.payAmount, booking.payType)} />
-        <Detail icon="pin" label="Arrival" value={booking.job.parkingInfo || "Shared by the school"} />
+      <div className="booking-placement-overview">
+        <Detail icon="calendar" label="Placement dates" value={formatDateRange(booking.startDate, booking.endDate)} />
+        <Detail icon="pound" label="Agreed rate" value={formatPay(booking.payAmount, booking.payType)} />
+        {booking.hours != null || booking.days != null ? <Detail icon="clock" label="Planned work" value={formatPlannedUnits(booking)} /> : null}
       </div>
+      <div className="booking-placement-location"><Icon name="pin" size={17} /><div><span className="booking-placement-label">Location</span><p>{address}</p></div></div>
+      {booking.job.parkingInfo ? <details className="booking-placement-arrival"><summary>Parking &amp; arrival instructions</summary><p>{booking.job.parkingInfo}</p></details> : null}
 
       {booking.cancelReason ? <p className="mt-4 rounded-lg bg-danger-tint px-3 py-2 text-sm text-danger">{booking.cancelReason}</p> : null}
 
       {booking.status === "COMPLETED" ? <InvoiceStrip booking={booking} onInvoice={onInvoice} onInvoiceDetails={onInvoiceDetails} onPay={onPay} role={role} /> : (
-        booking.status === "CONFIRMED" ? <p className="mt-4 rounded-lg bg-chalk px-4 py-3 text-sm text-muted">Payment is handled through a Stripe invoice after this booking is completed.</p> : null
+        booking.status === "CONFIRMED" ? <p className="booking-placement-payment"><Icon name="pound" size={14} />Payment by invoice after completion</p> : null
       )}
 
-      <div className="booking-actions mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+      <footer className="booking-placement-footer">
         <div className="text-xs text-muted">
           {reviewable
             ? ownReview
               ? `Reviewed with ${ownReview.rating}/5`
               : `${formatClosedStatus(booking.status)} booking ready for review`
             : booking.status === "CONFIRMED"
-              ? "Active booking contract"
+              ? "Confirmed placement"
               : "Booking closed"}
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Btn icon="message" size="sm" variant="secondary" onClick={() => onMessage(booking)}>
+          <Btn icon="file" size="sm" variant="secondary" onClick={() => onOpenJob(booking)}>View job details</Btn>
+          <Btn icon="message" size="sm" variant={canReview ? "secondary" : "primary"} onClick={() => onMessage(booking)}>
             Message {role === "teacher" ? "school" : "teacher"}
           </Btn>
           {booking.status === "CONFIRMED" && role === "institution" ? (
@@ -370,15 +372,13 @@ function BookingCard({
             </>
           ) : null}
           {booking.status === "CONFIRMED" ? (
-            <Btn disabled={pending} loading={cancelling} loadingLabel="Cancelling" size="sm" variant="ghost" onClick={() => onCancel(booking)}>Cancel</Btn>
+            <Btn disabled={pending} loading={cancelling} loadingLabel="Cancelling" size="sm" variant="ghost" className="booking-placement-cancel" onClick={() => onCancel(booking)}>Cancel booking</Btn>
           ) : null}
           {canReview ? (
             <Btn icon="star" size="sm" onClick={() => onReview(booking)}>Review {role === "teacher" ? "school" : "teacher"}</Btn>
-          ) : (
-            <Btn disabled size="sm" variant="ghost">{ownReview ? "Review submitted" : "Review after close"}</Btn>
-          )}
+          ) : null}
         </div>
-      </div>
+      </footer>
     </article>
   );
 }
@@ -458,6 +458,8 @@ function CreateInvoiceModal({
   const unit = payType === "hourly" ? "hours" : "days";
   const [units, setUnits] = useState(() => (booking && payType === "daily" ? String(bookingDays(booking) ?? "") : ""));
   const [poNumber, setPoNumber] = useState("");
+  const [inputError, setInputError] = useState<string>();
+  const [poError, setPoError] = useState<string>();
   const unitsValue = Number(units);
   const maxUnits = booking ? invoiceUnitsLimit(booking) : 9999.99;
   const validPay = ["daily", "hourly", "fixed"].includes(payType ?? "") && typeof booking?.payAmount === "number" && booking.payAmount > 0;
@@ -469,9 +471,15 @@ function CreateInvoiceModal({
     <Modal open={Boolean(booking)} onClose={onClose}>
       <form
         className="p-6 sm:p-7"
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
-          if (!loading && unitsValid) onSubmit(fixed ? undefined : unitsValue, poNumber.trim() || undefined);
+          if (loading) return;
+          if (!unitsValid) { setInputError(`Enter valid ${unit} between 0.01 and ${maxUnits}, with up to two decimal places.`); return; }
+          setInputError(undefined);
+          if (poNumber.trim().length > 100) { setPoError("Use 100 characters or fewer for the PO number."); return; }
+          setPoError(undefined);
+          onSubmit(fixed ? undefined : unitsValue, poNumber.trim() || undefined);
         }}
       >
         <Tag tone="green">Invoice</Tag>
@@ -487,6 +495,8 @@ function CreateInvoiceModal({
           <label className="mt-4 block text-sm font-semibold">
             {payType === "hourly" ? "Hours worked" : "Days worked"}
             <input
+              aria-invalid={Boolean(inputError)}
+              aria-describedby={inputError ? "invoice-units-error" : undefined}
               className="input mt-2 w-full"
               inputMode="decimal"
               type="number"
@@ -501,12 +511,14 @@ function CreateInvoiceModal({
             <span className="mt-1 block text-xs font-normal text-muted">
               At {formatPence(Math.round(rate * 100))} per {unit === "hours" ? "hour" : "day"}. Enter 0.01–{maxUnits} {unit}, with up to two decimal places.
             </span>
+            {inputError ? <span className="mt-1 block text-sm font-normal text-danger" id="invoice-units-error" role="alert">{inputError}</span> : null}
           </label>
         )}
 
         <label className="mt-4 block text-sm font-semibold">
           PO number <span className="font-normal text-muted">(optional)</span>
-          <input className="input mt-2 w-full" maxLength={100} onChange={(event) => setPoNumber(event.target.value)} value={poNumber} />
+          <input aria-invalid={Boolean(poError)} aria-describedby={poError ? "invoice-po-error" : undefined} className="input mt-2 w-full" maxLength={100} onChange={(event) => setPoNumber(event.target.value)} value={poNumber} />
+          {poError ? <span className="mt-1 block text-sm font-normal text-danger" id="invoice-po-error" role="alert">{poError}</span> : null}
         </label>
 
         {unitsValid ? (
@@ -519,7 +531,7 @@ function CreateInvoiceModal({
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Btn disabled={loading} variant="ghost" onClick={onClose}>Cancel</Btn>
-          <Btn disabled={!unitsValid} loading={loading} loadingLabel="Sending" type="submit">Send invoice</Btn>
+          <Btn loading={loading} loadingLabel="Sending" type="submit">Send invoice</Btn>
         </div>
       </form>
     </Modal>
@@ -542,6 +554,7 @@ function CancelBookingModal({
   onSubmit: (reason: string) => void;
 }) {
   const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState<string>();
 
   return (
     <Modal open={Boolean(booking)} onClose={onClose}>
@@ -549,22 +562,28 @@ function CancelBookingModal({
         className="p-6 sm:p-7"
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit(reason);
+          if (loading || !booking) return;
+          const problem = validateCancellationReason(reason);
+          setReasonError(problem);
+          if (problem) return;
+          onSubmit(reason.trim());
         }}
       >
         <Tag tone="red">Cancel booking</Tag>
         <h2 className="mt-4 font-heading text-2xl">Cancel this booking?</h2>
         <p className="mt-3 text-sm leading-6 text-muted">Add a short reason so both sides have a clear record.</p>
-        <textarea
-          className="input mt-4 min-h-28 w-full"
-          maxLength={1000}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder="Reason for cancellation"
-          value={reason}
-        />
+        <div className="mt-4"><Field error={reasonError} label="Reason for cancellation" required>
+          <textarea
+            className="textarea min-h-28 w-full"
+            maxLength={1000}
+            onChange={(event) => { setReason(event.target.value); if (reasonError) setReasonError(validateCancellationReason(event.target.value)); }}
+            placeholder="Reason for cancellation"
+            value={reason}
+          />
+        </Field></div>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Btn disabled={loading} variant="ghost" onClick={onClose}>Keep booking</Btn>
-          <Btn disabled={!reason.trim()} loading={loading} loadingLabel="Cancelling" type="submit" variant="danger">Cancel booking</Btn>
+          <Btn loading={loading} loadingLabel="Cancelling" type="submit" variant="danger">Cancel booking</Btn>
         </div>
       </form>
     </Modal>
@@ -586,6 +605,7 @@ function ReviewBookingModal({
 }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+  const [reviewError, setReviewError] = useState<string>();
   const reviewee = useMemo(() => {
     if (!booking) return role === "teacher" ? "school" : "teacher";
     return role === "teacher" ? booking.institution.name ?? "school" : booking.instructor.fullName ?? "teacher";
@@ -597,30 +617,38 @@ function ReviewBookingModal({
         className="p-6 sm:p-7"
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit(rating, comment);
+          if (loading || !booking) return;
+          const problem = validateBookingReview(rating, comment);
+          setReviewError(problem);
+          if (problem) return;
+          onSubmit(rating, comment.trim());
         }}
       >
         <Tag tone="green">Booking review</Tag>
         <h2 className="mt-4 font-heading text-2xl">Review {reviewee}</h2>
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div aria-label="Rating" className="mt-5 flex flex-wrap gap-2" role="group">
           {[1, 2, 3, 4, 5].map((value) => (
             <button
               key={value}
+              aria-label={`${value} ${value === 1 ? "star" : "stars"}`}
+              aria-pressed={rating === value}
               className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border ${rating >= value ? "border-brand bg-brand-tint text-brand" : "border-border text-muted"}`}
               onClick={() => setRating(value)}
               type="button"
             >
-              <Icon name="star" size={16} />
+              <Icon className={rating >= value ? "fill-current" : "fill-none"} name="star" size={16} />
             </button>
           ))}
         </div>
-        <textarea
-          className="input mt-4 min-h-28 w-full"
-          maxLength={2000}
-          onChange={(event) => setComment(event.target.value)}
-          placeholder="Optional review note"
-          value={comment}
-        />
+        <div className="mt-4"><Field error={reviewError} label="Review note (optional)">
+          <textarea
+            className="textarea min-h-28 w-full"
+            maxLength={2000}
+            onChange={(event) => { setComment(event.target.value); if (reviewError) setReviewError(validateBookingReview(rating, event.target.value)); }}
+            placeholder="Optional review note"
+            value={comment}
+          />
+        </Field></div>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Btn disabled={loading} variant="ghost" onClick={onClose}>Cancel</Btn>
           <Btn loading={loading} loadingLabel="Submitting" type="submit">Submit review</Btn>
@@ -631,12 +659,22 @@ function ReviewBookingModal({
 }
 
 function Detail({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return <div className="rounded-lg bg-chalk p-3"><div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted"><Icon name={icon} size={13} />{label}</div><div className="font-medium">{value}</div></div>;
+  return <div className="booking-placement-fact"><div className="booking-placement-label"><Icon name={icon} size={15} />{label}</div><p>{value}</p></div>;
+}
+
+function validateCancellationReason(reason: string) {
+  if (!reason.trim()) return "Enter a reason for cancelling this booking.";
+  if (reason.trim().length > 1000) return "Use 1,000 characters or fewer.";
+}
+
+function validateBookingReview(rating: number, comment: string) {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) return "Choose a rating between 1 and 5.";
+  if (comment.trim().length > 2000) return "Use 2,000 characters or fewer for your review.";
 }
 
 function BookingStatusTag({ status }: { status: BookingStatus }) {
-  const tone = status === "COMPLETED" ? "green" : status === "CANCELLED" || status === "NO_SHOW" ? "red" : "purple";
-  return <Tag tone={tone}>{status.toLowerCase().replace(/_/g, " ")}</Tag>;
+  const tone = status === "CANCELLED" || status === "NO_SHOW" ? "red" : "green";
+  return <Tag tone={tone}>{status === "NO_SHOW" ? "No-show" : status.charAt(0) + status.slice(1).toLowerCase()}</Tag>;
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {

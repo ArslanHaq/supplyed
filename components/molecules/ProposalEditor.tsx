@@ -1,4 +1,5 @@
 "use client";
+import { DynamicSelect } from "./DynamicDropdown";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type QuillType from "quill";
@@ -48,11 +49,12 @@ function normalizeLink(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
-  const candidate = /^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  const candidate = /^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? `mailto:${trimmed}` : `https://${trimmed}`;
 
   try {
     const url = new URL(candidate);
-    return ["http:", "https:", "mailto:"].includes(url.protocol) ? url.toString() : null;
+    if (url.protocol === "mailto:") return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(url.pathname) ? url.toString() : null;
+    return ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname) && !/\s/.test(trimmed) ? url.toString() : null;
   } catch {
     return null;
   }
@@ -61,22 +63,39 @@ function normalizeLink(value: string) {
 export function ProposalEditor({
   id,
   invalid = false,
+  label = "Application proposal",
+  placeholder = "Introduce yourself, highlight relevant experience, and explain why you are a strong fit for this role.",
+  "aria-describedby": describedBy,
+  "aria-labelledby": labelledBy,
   maxLength,
   onChange,
   value,
 }: {
   id: string;
   invalid?: boolean;
+  label?: string;
+  placeholder?: string;
+  "aria-describedby"?: string;
+  "aria-labelledby"?: string;
   maxLength: number;
   onChange: (value: string, textLength: number) => void;
   value: string;
 }) {
+  const [formats, setFormats] = useState<Record<string, string>>({});
+  function applyFormat(format: string, value: string) {
+    const quill = quillRef.current;
+    if (!quill) return;
+    quill.focus();
+    quill.format(format, value || false, "user");
+    setFormats(current => ({ ...current, [format]: value }));
+  }
   const editorRef = useRef<HTMLDivElement | null>(null);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const quillRef = useRef<QuillType | null>(null);
   const onChangeRef = useRef(onChange);
   const valueRef = useRef(value);
   const invalidRef = useRef(invalid);
+  const ariaRef = useRef({ describedBy, labelledBy });
   const lastEmittedValueRef = useRef<string | undefined>(undefined);
   const [linkEditor, setLinkEditor] = useState<LinkEditorState | null>(null);
   const [linkError, setLinkError] = useState<string>();
@@ -93,6 +112,15 @@ export function ProposalEditor({
     invalidRef.current = invalid;
     quillRef.current?.root.setAttribute("aria-invalid", String(invalid));
   }, [invalid]);
+
+  useEffect(() => {
+    ariaRef.current = { describedBy, labelledBy };
+    const root = quillRef.current?.root;
+    for (const [attribute, value] of [["aria-describedby", describedBy], ["aria-labelledby", labelledBy]] as const) {
+      if (value) root?.setAttribute(attribute, value);
+      else root?.removeAttribute(attribute);
+    }
+  }, [describedBy, labelledBy]);
 
   const openLinkEditor = useCallback(() => {
     const quill = quillRef.current;
@@ -135,13 +163,15 @@ export function ProposalEditor({
             },
           },
         },
-        placeholder: "Introduce yourself, highlight relevant experience, and explain why you are a strong fit for this role.",
+        placeholder,
         theme: "snow",
       });
 
       quill.root.id = id;
       quill.root.setAttribute("role", "textbox");
-      quill.root.setAttribute("aria-label", "Application proposal");
+      quill.root.setAttribute("aria-label", label);
+      if (ariaRef.current.describedBy) quill.root.setAttribute("aria-describedby", ariaRef.current.describedBy);
+      if (ariaRef.current.labelledBy) quill.root.setAttribute("aria-labelledby", ariaRef.current.labelledBy);
       quill.root.setAttribute("aria-multiline", "true");
       quill.root.setAttribute("aria-required", "true");
       quill.root.setAttribute("aria-invalid", String(invalidRef.current));
@@ -149,25 +179,28 @@ export function ProposalEditor({
       for (const [format, label] of [["font", "Font family"], ["size", "Font size"], ["color", "Text color"]]) {
         toolbarElement.querySelector(`.ql-${format} .ql-picker-label`)?.setAttribute("aria-label", label);
       }
-      quill.clipboard.dangerouslyPasteHTML(proposalToHtml(valueRef.current), "silent");
+      // Loading content must not move focus away from another form field.
+      quill.setContents(quill.clipboard.convert({ html: proposalToHtml(valueRef.current), text: "" }), "silent");
       quillRef.current = quill;
       onChangeRef.current(valueRef.current, editorTextLength(quill));
 
       const handleTextChange = () => {
-        const length = editorTextLength(quill);
-        if (length > maxLength) {
-          quill.deleteText(maxLength, length - maxLength, "silent");
-          quill.setSelection(maxLength, 0, "silent");
-        }
-
         const nextValue = editorHtml(quill);
         const nextLength = editorTextLength(quill);
         lastEmittedValueRef.current = nextValue;
         onChangeRef.current(nextValue, nextLength);
       };
 
+      const syncFormats = (range: { index: number; length: number } | null) => {
+        // A null range means focus left the editor. getFormat() without a range
+        // calls getSelection(true), which would immediately steal it back.
+        if (!range) return;
+        const format = quill.getFormat(range);
+        setFormats(Object.fromEntries(["font", "size", "color"].map(name => [name, typeof format[name] === "string" ? format[name] as string : ""])));
+      };
+      quill.on("selection-change", syncFormats);
       quill.on("text-change", handleTextChange);
-      cleanupEditor = () => quill.off("text-change", handleTextChange);
+      cleanupEditor = () => { quill.off("text-change", handleTextChange); quill.off("selection-change", syncFormats); };
     });
 
     return () => {
@@ -176,7 +209,7 @@ export function ProposalEditor({
       quillRef.current = null;
       editorElement?.replaceChildren();
     };
-  }, [id, maxLength, openLinkEditor]);
+  }, [id, label, placeholder, maxLength, openLinkEditor]);
 
   useEffect(() => {
     const quill = quillRef.current;
@@ -185,8 +218,8 @@ export function ProposalEditor({
     const nextHtml = proposalToHtml(value);
     if (quill.root.innerHTML === nextHtml || (editorTextLength(quill) === 0 && !nextHtml)) return;
 
-    const selection = quill.getSelection();
-    quill.clipboard.dangerouslyPasteHTML(nextHtml, "silent");
+    const selection = quill.hasFocus() ? quill.getSelection() : null;
+    quill.setContents(quill.clipboard.convert({ html: nextHtml, text: "" }), "silent");
     if (selection) quill.setSelection(Math.min(selection.index, quill.getLength() - 1), selection.length, "silent");
   }, [value]);
 
@@ -230,23 +263,12 @@ export function ProposalEditor({
 
   return (
     <div className="proposal-editor" data-invalid={invalid}>
-      <div ref={toolbarRef} aria-label="Proposal formatting" role="toolbar">
-        <span aria-label="Font and size" className="ql-formats proposal-font-controls" role="group">
-          <select aria-label="Font family" className="ql-font" defaultValue="" title="Font family">
-            <option value="">SupplyEd Sans</option>
-            <option value="Arial">Arial</option>
-            <option value="Georgia">Georgia</option>
-            <option value="Times New Roman">Times New Roman</option>
-          </select>
-          <select aria-label="Font size" className="ql-size" defaultValue="" title="Font size">
-            <option value="12px">12</option>
-            <option value="14px">14</option>
-            <option value="">16</option>
-            <option value="18px">18</option>
-            <option value="20px">20</option>
-            <option value="24px">24</option>
-          </select>
-        </span>
+      <div className="editor-appearance-controls" aria-label="Text appearance">
+        <DynamicSelect aria-label="Font family" collection="proposalFontFamily" emptyLabel="SupplyEd Sans" value={formats.font ?? ""} onChange={value => applyFormat("font", value)} />
+        <DynamicSelect aria-label="Font size" collection="proposalFontSize" emptyLabel="16" value={formats.size ?? ""} onChange={value => applyFormat("size", value)} />
+        <DynamicSelect aria-label="Text color" collection="proposalTextColor" emptyLabel="Default" value={formats.color ?? ""} onChange={value => applyFormat("color", value)} />
+      </div>
+      <div ref={toolbarRef} aria-label={`${label} formatting`} role="toolbar">
         <span aria-label="Text style" className="ql-formats" role="group">
           <button aria-label="Bold" className="ql-bold" title="Bold" type="button" />
           <button aria-label="Italic" className="ql-italic" title="Italic" type="button" />
@@ -256,15 +278,7 @@ export function ProposalEditor({
           <button aria-label="Bullet list" className="ql-list" title="Bullet list" type="button" value="bullet" />
           <button aria-label="Numbered list" className="ql-list" title="Numbered list" type="button" value="ordered" />
         </span>
-        <span aria-label="Color, links and formatting" className="ql-formats" role="group">
-          <select aria-label="Text color" className="ql-color" defaultValue="" title="Text color">
-            <option value="" />
-            <option value="#17211c" />
-            <option value="#227557" />
-            <option value="#315ca8" />
-            <option value="#7a4a9e" />
-            <option value="#a1483f" />
-          </select>
+        <span aria-label="Links and formatting" className="ql-formats" role="group">
           <button aria-label="Add link" className="ql-link" title="Add link" type="button" />
           <button aria-label="Clear formatting" className="ql-clean" title="Clear formatting" type="button" />
         </span>
@@ -272,6 +286,11 @@ export function ProposalEditor({
 
       {linkEditor ? (
         <div className="proposal-link-panel" onKeyDownCapture={(event) => {
+          if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+            event.preventDefault();
+            event.stopPropagation();
+            applyLink();
+          }
           if (event.key === "Escape") {
             event.preventDefault();
             event.stopPropagation();
@@ -294,16 +313,12 @@ export function ProposalEditor({
               Website or email address
               <input
                 autoFocus
+                aria-invalid={Boolean(linkError)}
+                aria-describedby={linkError ? `${id}-link-error` : undefined}
                 className="input h-10"
                 onChange={(event) => {
                   setLinkEditor((current) => current ? { ...current, url: event.target.value } : current);
-                  if (linkError) setLinkError(undefined);
-                }}
-                onKeyDownCapture={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    applyLink();
-                  }
+                  if (linkError) setLinkError(normalizeLink(event.target.value) ? undefined : "Enter a valid website or email link.");
                 }}
                 placeholder="https://example.com"
                 value={linkEditor.url}
@@ -315,7 +330,7 @@ export function ProposalEditor({
               <button className="editor-link-action editor-link-action-primary" onClick={applyLink} type="button">Apply</button>
             </div>
           </div>
-          {linkError ? <p className="mt-2 text-xs text-danger" role="alert">{linkError}</p> : null}
+          {linkError ? <p className="mt-2 text-xs text-danger" id={`${id}-link-error`} role="alert">{linkError}</p> : null}
         </div>
       ) : null}
 

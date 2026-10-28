@@ -1,3 +1,4 @@
+import { assertValidQuery } from "@/lib/server/query-validation";
 import { listApplicationsByJob } from "@/features/applications/queries";
 import type { JobApplicationsQuery } from "@/features/applications/types";
 import { routeError } from "@/lib/server/route-error";
@@ -8,6 +9,7 @@ export async function GET(request: Request, context: { params: Promise<{ jobId: 
   try {
     const { jobId } = await context.params;
     const { searchParams } = new URL(request.url);
+    assertValidQuery(searchParams, { status: { values: ["APPLIED", "HIRED", "REJECTED", "SHORTLISTED", "VIEWED"] } });
     const status = searchParams.get("status");
 
     const query: JobApplicationsQuery = {
@@ -16,7 +18,6 @@ export async function GET(request: Request, context: { params: Promise<{ jobId: 
       status:
         status === "APPLIED" ||
         status === "HIRED" ||
-        status === "INTERVIEW" ||
         status === "REJECTED" ||
         status === "SHORTLISTED" ||
         status === "VIEWED"

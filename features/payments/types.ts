@@ -63,6 +63,8 @@ export type InvoiceParty = {
 export type Invoice = {
   amountRefundedPence: number;
   booking: {
+    hours?: number | null;
+    days?: number | null;
     endDate: string | null;
     id: string;
     institution: InvoiceParty;
