@@ -13,7 +13,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const strongPasswordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 export const passwordRequirementsMessage =
-  "Use 8–128 characters with an uppercase letter, a number, and a special character.";
+  "Use at least 8 characters, at most 72 UTF-8 bytes, with an uppercase letter, a number, and a special character.";
 
 export function normalizeEmail(email: FormDataEntryValue | string | null): string {
   return String(email ?? "").trim().toLowerCase();
@@ -75,5 +75,5 @@ export function validateEmail(email: string) {
 }
 
 export function validatePassword(password: string) {
-  return typeof password === "string" && password.length <= 128 && strongPasswordPattern.test(password);
+  return typeof password === "string" && new TextEncoder().encode(password).length <= 72 && strongPasswordPattern.test(password);
 }

@@ -151,6 +151,7 @@ async function requestTokenRefresh(refreshToken: string): Promise<RefreshResult 
     cache: "no-store",
     headers: {
       Accept: "application/json",
+        ...(process.env.BFF_SHARED_SECRET ? { "X-SupplyEd-BFF": process.env.BFF_SHARED_SECRET } : {}),
       "Content-Type": "application/json",
     },
     method: "POST",

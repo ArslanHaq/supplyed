@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { describeRequirement } from "@/features/payments/schemas";
 import { usePayoutAccount } from "@/features/payments/use-payments";
@@ -9,7 +9,11 @@ import { queryKeys } from "@/lib/query/keys";
 
 import { Btn, Icon, Tag } from "../atoms";
 import { SectionLoader } from "../molecules";
-import { StripePayoutComponents } from "./StripePayoutComponents";
+
+const StripePayoutComponents = lazy(async () => {
+  const payoutComponents = await import("./StripePayoutComponents");
+  return { default: payoutComponents.StripePayoutComponents };
+});
 
 type PayoutSettingsProps = {
   /** Open the setup form straight away, for example when a hosted Stripe link expired. */
@@ -121,7 +125,9 @@ export function PayoutSettings({ openSetup = false, returnedFromStripe = false }
 
       {panel ? (
         <div className="mt-5 border-t border-border pt-5">
-          <StripePayoutComponents view={panel} onExit={finishSetup} />
+          <Suspense fallback={<div role="status" aria-label="Loading secure payout form"><SectionLoader rows={3} /></div>}>
+            <StripePayoutComponents view={panel} onExit={finishSetup} />
+          </Suspense>
           {panel === "setup" ? (
             <div className="mt-4 flex justify-end">
               <Btn size="sm" variant="ghost" onClick={finishSetup}>Finish later</Btn>

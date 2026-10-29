@@ -43,7 +43,7 @@ export function useNotifications(enabled: boolean) {
     enabled,
     getNextPageParam: (page: NotificationsPage) => (page.pagination.hasNextPage ? page.pagination.page + 1 : undefined),
     initialPageParam: 1,
-    queryFn: ({ pageParam }) => fetchJson<NotificationsPage>("/api/notifications", { query: { limit: PAGE_SIZE, page: pageParam } }),
+    queryFn: ({ pageParam, signal }) => fetchJson<NotificationsPage>("/api/notifications", { query: { limit: PAGE_SIZE, page: pageParam }, signal }),
     queryKey: queryKeys.notifications.list(),
   });
 }
@@ -52,7 +52,7 @@ export function useNotifications(enabled: boolean) {
 export function useRecentNotifications(enabled = true, limit = 4) {
   return useQuery({
     enabled,
-    queryFn: () => fetchJson<NotificationsPage>("/api/notifications", { query: { limit, page: 1 } }),
+    queryFn: ({ signal }) => fetchJson<NotificationsPage>("/api/notifications", { query: { limit, page: 1 }, signal }),
     queryKey: queryKeys.notifications.recent(limit),
   });
 }
@@ -72,7 +72,7 @@ export function flattenNotifications(data: InfiniteData<NotificationsPage, unkno
 export function useUnreadNotifications(enabled: boolean) {
   return useQuery({
     enabled,
-    queryFn: () => fetchJson<{ total: number }>("/api/notifications/unread-count"),
+    queryFn: ({ signal }) => fetchJson<{ total: number }>("/api/notifications/unread-count", { signal }),
     queryKey: queryKeys.notifications.unread(),
     refetchInterval: 60_000,
   });
@@ -138,7 +138,7 @@ export function useMarkAllNotificationsRead() {
 export function useNotificationPreferences(enabled = true) {
   return useQuery({
     enabled,
-    queryFn: () => fetchJson<NotificationPreferences>("/api/notifications/preferences"),
+    queryFn: ({ signal }) => fetchJson<NotificationPreferences>("/api/notifications/preferences", { signal }),
     queryKey: queryKeys.notifications.preferences(),
   });
 }

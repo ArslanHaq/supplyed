@@ -13,7 +13,7 @@ export function TeacherBookingDates({ bookings, compact = false }: { bookings: I
   const remaining = compact ? bookings?.slice(2) : [];
   return (
     <section aria-label="Confirmed booking dates" className="mt-4 rounded-xl border border-border bg-chalk p-4">
-      <h3 className="flex items-center gap-2 text-sm font-semibold text-ink"><Icon name="calendar" size={16} />Confirmed bookings</h3>
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-ink"><Icon name="calendar" size={16} />Confirmed bookings</h2>
       {bookings == null ? <p className="mt-2 text-xs text-muted">Booking dates are currently unavailable.</p>
         : bookings.length === 0 ? <p className="mt-2 text-xs text-muted">No current or upcoming confirmed bookings.</p>
           : <>

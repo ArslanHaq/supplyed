@@ -2,23 +2,20 @@
 
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
-import { createInvoicePaymentSessionAction, syncInvoiceAction } from "@/features/payments/actions";
+import { createInvoicePaymentSessionAction } from "@/features/payments/actions";
 import { formatPence } from "@/features/payments/schemas";
 import { getPaymentAppearance, getStripe, observeStripeTheme, stripeFonts } from "@/features/payments/stripe-client";
-import type { InvoiceStatus, PayableInvoice } from "@/features/payments/types";
+import type { PayableInvoice } from "@/features/payments/types";
+import { announcePayment, PAYMENT_RETURN_PARAM, refreshPayments, settleInvoice } from "@/features/payments/use-payment-return";
 import { unwrapActionResult } from "@/lib/server/action-response";
-import { queryKeys } from "@/lib/query/keys";
 import type { ToastFn } from "@/types/supplyed";
 
 import { Btn, Tag } from "../atoms";
 import { Modal, SectionLoader } from "../molecules";
 
 /** Where Stripe sends the school back after a payment method that leaves the page (most never do). */
-const RETURN_PARAM = "paidInvoice";
-
 /**
  * Pays an invoice without leaving SupplyEd. Stripe's Payment Element runs in
  * a Stripe frame inside the modal, so card details go straight to Stripe; it
@@ -113,7 +110,7 @@ function PaymentForm({ amount, invoice, onBusy, onClose, toast }: { amount: stri
 
       const status = await settleInvoice(invoice.id);
       await refreshPayments(queryClient);
-      announce(toast, status);
+      announcePayment(toast, status);
       onClose();
     } catch {
       setError("The payment could not be completed. Please try again.");
@@ -138,66 +135,6 @@ function PaymentForm({ amount, invoice, onBusy, onClose, toast }: { amount: stri
   );
 }
 
-/**
- * Handles the return from a payment method that left the page (a bank's own
- * approval page, say): checks the invoice and tells the school how it went.
- * Mount on the page Stripe returns to (Billing).
- */
-export function usePaymentReturn(toast: ToastFn) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-  const queryClient = useQueryClient();
-  const invoiceId = searchParams.get(RETURN_PARAM);
-  const redirectStatus = searchParams.get("redirect_status");
-  const handled = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!invoiceId || handled.current === invoiceId) return;
-    handled.current = invoiceId;
-    router.replace(pathname, { scroll: false });
-
-    if (redirectStatus === "failed") {
-      toast({ msg: "The payment did not go through. Try again or use another payment method.", title: "Payment failed", tone: "danger" });
-      return;
-    }
-
-    void settleInvoice(invoiceId).then(async (status) => {
-      await refreshPayments(queryClient);
-      announce(toast, status);
-    });
-  }, [invoiceId, pathname, queryClient, redirectStatus, router, toast]);
-}
-
 function paymentReturnUrl(invoiceId: string) {
-  return `${window.location.origin}/billing?${RETURN_PARAM}=${encodeURIComponent(invoiceId)}`;
-}
-
-/** Asks the backend to re-read the invoice from Stripe until it shows as paid; card payments settle within seconds. */
-async function settleInvoice(invoiceId: string): Promise<InvoiceStatus | null> {
-  let status: InvoiceStatus | null = null;
-
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 1500));
-    const result = await syncInvoiceAction(invoiceId);
-    if (result.ok) status = result.data.status;
-    if (status === "PAID" || status === "VOID") break;
-  }
-
-  return status;
-}
-
-async function refreshPayments(queryClient: ReturnType<typeof useQueryClient>) {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: queryKeys.payments.all }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
-  ]);
-}
-
-function announce(toast: ToastFn, status: InvoiceStatus | null) {
-  if (status === "PAID") {
-    toast({ msg: "Thank you. The teacher is paid automatically.", title: "Payment received", tone: "success" });
-  } else {
-    toast({ msg: "Your payment is being processed. The invoice will show as paid once it clears.", title: "Payment submitted", tone: "success" });
-  }
+  return `${window.location.origin}/billing?${PAYMENT_RETURN_PARAM}=${encodeURIComponent(invoiceId)}`;
 }

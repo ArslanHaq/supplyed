@@ -191,9 +191,9 @@ export async function loginWithEmailAction(_previousState: unknown, formData: Fo
     });
   }
 
-  if (input.password.length < 8 || input.password.length > 128) {
-    return actionError("Password must be between 8 and 128 characters.", {
-      fieldErrors: { password: "Password must be between 8 and 128 characters." },
+  if (input.password.length < 8 || new TextEncoder().encode(input.password).length > 72) {
+    return actionError("Use at least 8 characters and at most 72 UTF-8 bytes.", {
+      fieldErrors: { password: "Use at least 8 characters and at most 72 UTF-8 bytes." },
     });
   }
 

@@ -1,0 +1,119 @@
+▲ Next.js 16.2.9 (webpack)
+- Experiments (use with caution):
+  · serverActions
+
+  Creating an optimized production build ...
+(node:34016) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Usman%20Cheema/Desktop/Waleed/SupplyEd/supplyed-web/audit-evidence/build-web/tailwind.config.ts?id=1793168017742 is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Usman Cheema\Desktop\Waleed\SupplyEd\supplyed-web\audit-evidence\build-web\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✓ Compiled successfully in 3.2min
+  Running TypeScript ...
+  Finished TypeScript in 11.2s ...
+  Collecting page data using 15 workers ...
+  Generating static pages using 15 workers (0/33) ...
+  Generating static pages using 15 workers (8/33) 
+  Generating static pages using 15 workers (16/33) 
+  Generating static pages using 15 workers (24/33) 
+✓ Generating static pages using 15 workers (33/33) in 678ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/applications/[id]
+├ ƒ /api/applications/[id]/history
+├ ƒ /api/applications/active-jobs/count
+├ ƒ /api/applications/job/[jobId]
+├ ƒ /api/applications/me
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/auth/me
+├ ƒ /api/bookings/[id]
+├ ƒ /api/bookings/me
+├ ƒ /api/conversations
+├ ƒ /api/conversations/[id]
+├ ƒ /api/conversations/[id]/attachments
+├ ƒ /api/conversations/[id]/attachments/[attachmentId]/preview
+├ ƒ /api/conversations/[id]/messages
+├ ƒ /api/conversations/[id]/threads
+├ ƒ /api/conversations/socket-ticket
+├ ƒ /api/conversations/unread-count
+├ ƒ /api/dropdowns
+├ ƒ /api/dropdowns/[name]
+├ ƒ /api/health
+├ ƒ /api/institutions/profile/[id]
+├ ƒ /api/instructors/directory
+├ ƒ /api/instructors/profile/[id]
+├ ƒ /api/invoices
+├ ƒ /api/invoices/[id]
+├ ƒ /api/invoices/me
+├ ƒ /api/job-invitations/[id]
+├ ƒ /api/job-invitations/me
+├ ƒ /api/jobs
+├ ƒ /api/jobs/[id]
+├ ƒ /api/jobs/mine
+├ ƒ /api/matching/jobs/[jobId]/applications
+├ ƒ /api/matching/jobs/[jobId]/instructors
+├ ƒ /api/matching/jobs/[jobId]/score
+├ ƒ /api/matching/jobs/recommended
+├ ƒ /api/my-profile/applications
+├ ƒ /api/my-profile/reviews
+├ ƒ /api/notifications
+├ ƒ /api/notifications/preferences
+├ ƒ /api/notifications/unread-count
+├ ƒ /api/onboarding/document-requirements
+├ ƒ /api/onboarding/documents
+├ ƒ /api/onboarding/documents/[documentId]/preview
+├ ƒ /api/onboarding/me
+├ ƒ /api/payments/payout-account
+├ ƒ /api/payments/payout-account/balance
+├ ƒ /api/payments/payout-account/instant-payout
+├ ƒ /api/payments/payout-accounts/instructor/[instructorId]
+├ ƒ /api/reviews/institution/[institutionId]
+├ ƒ /api/reviews/instructor/[instructorId]
+├ ƒ /api/settings/profile
+├ ƒ /api/signatory-approvals/[token]
+├ ƒ /api/teachers
+├ ƒ /api/teachers/[id]
+├ ƒ /api/teaching-catalogue
+├ ƒ /applications
+├ ƒ /billing
+├ ƒ /bookings
+├ ƒ /calendar
+├ ƒ /dashboard
+├ ƒ /find-jobs
+├ ƒ /find-teachers
+├ ○ /forgot-password
+├ ƒ /founding-schools
+├ ƒ /founding-teachers
+├ ○ /how-it-works
+├ ƒ /institution-profile
+├ ƒ /job-detail
+├ ƒ /job-invitations
+├ ƒ /job-invitations/[id]
+├ ƒ /login
+├ ○ /manifest.webmanifest
+├ ƒ /messaging
+├ ƒ /my-profile
+├ ƒ /onboarding
+├ ƒ /payouts/refresh
+├ ƒ /payouts/return
+├ ƒ /post-auth
+├ ƒ /post-job
+├ ○ /robots.txt
+├ ƒ /security
+├ ƒ /settings
+├ ƒ /signatory-approval/[token]
+├ ƒ /signup
+├ ○ /sitemap.xml
+├ ƒ /teacher-profile
+├ ○ /terms
+└ ƒ /theme-bootstrap.js
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

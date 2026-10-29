@@ -17,7 +17,7 @@ import type {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-const JOB_STATUSES: JobStatus[] = ["DRAFT", "ACTIVE", "RESERVED", "EXPIRED", "FILLED", "CLOSED", "SUSPENDED"];
+export const jobStatuses = ["DRAFT", "ACTIVE", "RESERVED", "EXPIRED", "FILLED", "CLOSED", "SUSPENDED"] as const satisfies readonly JobStatus[];
 
 export function normalizeJobFilters(filters: JobListFilters = {}): JobListFilters {
   return {
@@ -25,7 +25,7 @@ export function normalizeJobFilters(filters: JobListFilters = {}): JobListFilter
     limit: wholeNumberBetween(filters.limit, 1, 100),
     page: wholeNumberBetween(filters.page, 1, Number.MAX_SAFE_INTEGER),
     search: filters.search?.trim().slice(0, 100) || undefined,
-    status: filters.status && JOB_STATUSES.includes(filters.status) ? filters.status : undefined,
+    status: filters.status && jobStatuses.includes(filters.status) ? filters.status : undefined,
     subject: filters.subject?.trim() || undefined,
     urgent: filters.urgent,
   };

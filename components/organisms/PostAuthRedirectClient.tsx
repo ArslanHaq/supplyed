@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { getAuthenticatedEntryHref } from "@/lib/routes";
-import { invitationReturnPath, invitationLoginHref } from "@/lib/invitation-links";
+import { authReturnPath, loginHref } from "@/lib/invitation-links";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
 import { AuthFlowLoader } from "../molecules";
@@ -26,7 +26,7 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
 
   useEffect(() => {
     const authSource = searchParams.get("authSource") === "signup" ? "signup" : "login";
-    const returnTo = invitationReturnPath(searchParams.get("returnTo"));
+    const returnTo = authReturnPath(searchParams.get("returnTo"));
     startRouteLoading();
 
     if (sessionUser.authErrorMessage) {
@@ -45,7 +45,7 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
 
     if (!sessionUser.emailVerified) {
       void signOut({ redirect: false }).finally(() => {
-        router.replace(invitationLoginHref(returnTo));
+        router.replace(loginHref(returnTo));
       });
       return;
     }

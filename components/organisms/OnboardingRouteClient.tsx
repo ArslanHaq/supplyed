@@ -19,7 +19,7 @@ import {
 } from "@/lib/founding-signup-intent";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { getAuthenticatedEntryHref } from "@/lib/routes";
-import { invitationReturnPath } from "@/lib/invitation-links";
+import { authReturnPath } from "@/lib/invitation-links";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppRole, ApplicationStatus } from "@/types/supplyed";
 
@@ -224,7 +224,7 @@ function OnboardingRouteClientInner({
   sessionRepairTicket?: string;
 }) {
   const router = useRouter();
-  const returnTo = invitationReturnPath(useSearchParams().get("returnTo"));
+  const returnTo = authReturnPath(useSearchParams().get("returnTo"));
   const [foundingIntent, setFoundingIntent] = useState(() => readMatchingFoundingIntent(initialRole, accountEmail));
   const foundingRole = foundingIntent ? foundingSignupRole(foundingIntent.type) : null;
   const [sessionRepairError, setSessionRepairError] = useState<string>();

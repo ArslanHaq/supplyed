@@ -1,6 +1,6 @@
 @layer components {
   /* Secure access: a quiet brand panel and a focused, consistent form canvas. */
-  .auth-shell { display: grid; align-content: start; min-height: 100svh; background: var(--surface); }
+  .auth-shell { display: grid; align-content: start; min-height: 100vh; min-height: 100svh; background: var(--surface); }
   .auth-aside { position: relative; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; padding: 28px; background: #101a21; color: #fff; }
   .auth-aside-rule { position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--se); }
   .auth-aside::after { content: ""; position: absolute; width: 460px; height: 460px; bottom: -340px; right: -180px; border: 1px solid rgb(var(--se-rgb) / .25); border-radius: 50%; box-shadow: 0 0 0 60px rgb(var(--se-rgb) / .035), 0 0 0 120px rgb(var(--se-rgb) / .025); pointer-events: none; }
@@ -18,7 +18,7 @@
   .auth-benefits li { gap: 13px; }
   .auth-benefits li > span:first-child { width: 26px; height: 26px; background: #ffffff0a; color: color-mix(in srgb, var(--se) 65%, white); border: 1px solid #ffffff12; }
   .auth-main { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 48px 28px; }
-  .auth-main-inner { width: 100%; max-width: 432px; }
+  .auth-main-inner { width: 100%; max-width: 432px; min-height: 548px; }
   .auth-main-inner-wide { max-width: 570px; }
   .auth-form-heading { margin-bottom: 28px; }
   .auth-form-heading h2 { font-size: clamp(27px, 2.6vw, 36px); letter-spacing: -.035em; font-weight: 600; line-height: 1.2; }
@@ -27,6 +27,21 @@
   .auth-form .input, .auth-form .select { min-height: var(--control-height); }
   .auth-form .input { font-size: var(--control-font-size); }
   .auth-security-note { display: flex; flex-wrap: wrap; text-align: center; justify-content: center; align-items: center; gap: 7px; padding-top: 24px; margin-top: 26px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+  .auth-placeholder-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .auth-placeholder-logo { width: 112px; height: 24px; }
+  .auth-placeholder-small-button { width: 72px; height: 36px; }
+  .auth-placeholder-story { display: grid; justify-items: start; gap: 13px; }
+  .auth-placeholder-kicker { display: block; width: 132px; height: 11px; }
+  .auth-placeholder-hero { display: block; width: min(92%, 390px); height: 56px; }
+  .auth-placeholder-hero.short { width: min(68%, 290px); }
+  .auth-placeholder-copy { display: block; width: min(88%, 360px); height: 14px; }
+  .auth-placeholder-heading { display: grid; justify-items: start; gap: 13px; }
+  .auth-placeholder-title { display: block; width: min(82%, 320px); height: 38px; }
+  .auth-placeholder-form { display: grid; gap: 15px; }
+  .auth-placeholder-control { display: block; width: 100%; height: 48px; }
+  .auth-placeholder-divider { display: block; width: 100%; height: 1px; margin-block: 5px; }
+  .auth-placeholder-label { display: block; width: 104px; height: 12px; }
+  .auth-placeholder-submit { display: block; width: 100%; height: 48px; margin-top: 13px; }
   .auth-security-badge { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 27px; color: var(--se-dark); border: 1px solid rgb(var(--se-rgb) / .16); background: var(--se-tint); border-radius: 8px; padding: 10px 12px; font-size: 11px; font-weight: 600; }
   .auth-journey { display: grid; gap: 0; margin-top: 36px; }
   .auth-journey-item { display: flex; align-items: flex-start; gap: 14px; padding: 17px 0; border-top: 1px solid #ffffff12; }
@@ -198,7 +213,8 @@
     .auth-story h1 { font-size: 28px; }
     .auth-shell-signup .auth-story h1 { font-size: 28px; }
     .auth-shell-signup .auth-story > p { font-size: 12px; line-height: 1.75; }
-    .auth-main { padding: 30px 20px 48px; }
+    .auth-main { min-height: 650px; padding: 30px 20px 48px; }
+    .auth-main-inner { min-height: 540px; }
     .auth-progress { gap: 12px; margin-bottom: 28px; }
     .auth-progress li { flex-direction: column; align-items: flex-start; gap: 6px; flex: 1; }
     .auth-code-grid { gap: 7px; }

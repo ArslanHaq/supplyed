@@ -75,7 +75,7 @@ export function TwoFactorChallengePage({
 
   return (
     <div className="auth-shell">
-      <aside className="auth-aside">
+      <aside aria-label="SupplyED two-factor verification" className="auth-aside">
         <div className="auth-aside-rule" aria-hidden="true" />
         <div className="relative flex items-center justify-between gap-4">
           <Logo size={22} className="text-white" onClick={onLanding} />
@@ -99,14 +99,14 @@ export function TwoFactorChallengePage({
         <div className="auth-aside-footer">Protected by two-factor authentication</div>
       </aside>
 
-      <section className="auth-main">
+      <main className="auth-main">
         <div className="auth-main-inner">
           <div className="auth-security-badge"><Icon name="shield" size={18} /> Two-factor authentication</div>
           <div className="auth-form-heading">
             <div className="eyebrow mb-2 text-brand">Authenticator code</div>
             <h2 className="font-heading">Enter your security code.</h2>
             <p className="mt-3 text-muted">
-              We verified the password for <span className="font-semibold text-ink">{email || "this account"}</span>.
+              Complete sign-in for <span className="font-semibold text-ink">{email || "this account"}</span>.
             </p>
           </div>
 
@@ -150,7 +150,7 @@ export function TwoFactorChallengePage({
             </Btn>
           </form>
         </div>
-      </section>
+      </main>
     </div>
   );
 }

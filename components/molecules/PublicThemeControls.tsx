@@ -48,7 +48,7 @@ export function PublicThemeControls() {
         ref={triggerRef}
         aria-label="Open theme colors"
         aria-expanded={false}
-        className="fixed bottom-5 right-5 z-[70] flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface/95 text-ink shadow-panel backdrop-blur transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+        className="public-theme-trigger fixed bottom-5 right-5 z-[70] flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface/95 text-ink shadow-panel backdrop-blur transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         onClick={openControls}
         type="button"
       >
@@ -63,7 +63,7 @@ export function PublicThemeControls() {
       ref={controlsRef}
       role="group"
       aria-label="Theme colors"
-      className="fixed bottom-5 right-5 z-[70] flex max-w-[calc(100vw-40px)] flex-wrap items-center gap-1 rounded-panel border border-border bg-surface/95 p-2 shadow-panel backdrop-blur"
+      className="public-theme-panel fixed bottom-5 right-5 z-[70] flex max-w-[calc(100vw-40px)] flex-wrap items-center gap-1 rounded-panel border border-border bg-surface/95 p-2 shadow-panel backdrop-blur"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault();

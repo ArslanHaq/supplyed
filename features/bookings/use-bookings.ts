@@ -9,7 +9,7 @@ import { createBookingReviewAction, updateBookingStatusAction } from "./actions"
 import type { Booking, BookingListQuery, BookingReviewInput, BookingStatusUpdateInput, PaginatedBookings } from "./types";
 
 export function useBooking(id?: string) {
-  return useQuery({ enabled: Boolean(id), queryKey: queryKeys.bookings.detail(id ?? ""), queryFn: () => fetchJson<Booking>(`/api/bookings/${id}`), refetchOnMount: "always" });
+  return useQuery({ enabled: Boolean(id), queryKey: queryKeys.bookings.detail(id ?? ""), queryFn: ({ signal }) => fetchJson<Booking>(`/api/bookings/${id}`, { signal }), refetchOnMount: "always" });
 }
 
 type BookingActionResult = Awaited<ReturnType<typeof updateBookingStatusAction>>;
@@ -23,7 +23,7 @@ type MutationOptions<Result> = {
 export function useBookings(query: BookingListQuery = {}, enabled = true) {
   return useQuery({
     enabled,
-    queryFn: () => fetchJson<PaginatedBookings>("/api/bookings/me", { query }),
+    queryFn: ({ signal }) => fetchJson<PaginatedBookings>("/api/bookings/me", { query, signal }),
     queryKey: queryKeys.bookings.mine(query),
     refetchOnMount: "always",
     refetchOnWindowFocus: "always",

@@ -24,7 +24,7 @@ export function TweaksPanel({
   if (!state.tweaksOpen) {
     return (
       <button
-        className="fixed bottom-5 right-5 z-[70] inline-flex items-center gap-2 rounded-full border border-border bg-white px-3.5 py-2.5 text-ink shadow-panel"
+        className="workspace-theme-trigger fixed bottom-5 right-5 z-[70] inline-flex items-center gap-2 rounded-full border border-border bg-white px-3.5 py-2.5 text-ink shadow-panel"
         onClick={() => setState((current) => ({ ...current, tweaksOpen: true }))}
         type="button"
       >

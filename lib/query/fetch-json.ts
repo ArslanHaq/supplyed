@@ -10,6 +10,7 @@ type QueryValue = boolean | number | string | null | undefined;
 
 type FetchJsonOptions = {
   query?: Record<string, QueryValue>;
+  signal?: AbortSignal;
 };
 
 function withQuery(path: string, query?: FetchJsonOptions["query"]) {
@@ -31,9 +32,14 @@ export async function fetchJson<Data>(path: string, options: FetchJsonOptions = 
   try {
     response = await fetch(withQuery(path, options.query), {
       credentials: "same-origin",
-      signal: AbortSignal.timeout(60_000),
+      signal: options.signal
+        ? AbortSignal.any([options.signal, AbortSignal.timeout(60_000)])
+        : AbortSignal.timeout(60_000),
     });
   } catch (error) {
+    // TanStack Query uses AbortError to restore the previous query state when
+    // a component unmounts or its key changes. Preserve that cancellation.
+    if (error && typeof error === "object" && "name" in error && error.name === "AbortError") throw error;
     throw new Error(userFacingError(error instanceof Error ? error.message : "Failed to fetch"));
   }
 

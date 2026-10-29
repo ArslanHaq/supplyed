@@ -1,13 +1,4 @@
 import "./globals.css";
-import "@/components/styles/foundation.css";
-import "@/components/styles/account.css";
-import "@/components/styles/selectors.css";
-import "@/components/styles/workspace.css";
-import "@/components/styles/teacher-dashboard.css";
-import "@/components/styles/proposal.css";
-import "@/components/styles/proposal-preview.css";
-import "@/components/styles/public.css";
-import "@/components/styles/waitlist.css";
 
 import type { Metadata } from "next";
 import localFont from "next/font/local";
@@ -18,12 +9,13 @@ import { themeBootScript } from "@/lib/theme-bootstrap";
 import { seoKeywords, siteConfig } from "@/lib/seo";
 
 const inter = localFont({
-  src: [
-    { path: "./fonts/InterVariable.woff2", weight: "100 900", style: "normal" },
-    { path: "./fonts/InterVariable-Italic.woff2", weight: "100 900", style: "italic" },
-  ],
+  src: "./fonts/InterLatinVariable.woff2",
+  weight: "400 800",
+  style: "normal",
   variable: "--font-inter",
-  display: "swap",
+  // Avoid a late font swap moving hydrated controls on slow connections.
+  display: "optional",
+  adjustFontFallback: "Arial",
   fallback: ["Arial", "sans-serif"],
 });
 

@@ -9,7 +9,7 @@ import type { AuthUser } from "./types";
 
 export function useCurrentUser() {
   return useQuery({
-    queryFn: () => fetchJson<AuthUser | null>("/api/auth/me"),
+    queryFn: ({ signal }) => fetchJson<AuthUser | null>("/api/auth/me", { signal }),
     queryKey: queryKeys.auth.me(),
   });
 }

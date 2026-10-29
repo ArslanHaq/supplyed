@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { MouseEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { QueryProvider } from "@/lib/query/query-client";
 
 import { Icon, Logo, buttonClassName } from "../atoms";
 import { PublicHeaderAccountSlot } from "./PublicHeaderAccountSlot";
@@ -28,6 +28,9 @@ const navItems = [
 ] as const;
 
 export function PublicHeader({ active = "home" }: PublicHeaderProps) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDetailsElement | null>(null);
+  const mobileTriggerRef = useRef<HTMLElement | null>(null);
   const waitlistHref =
     active === "founding-schools"
       ? "#school-registration"
@@ -35,17 +38,19 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
         ? "#teacher-registration"
         : "/#register-interest";
 
-  function scrollToWaitlist(event: MouseEvent<HTMLAnchorElement>) {
+  function followPublicLink(event: MouseEvent<HTMLAnchorElement>, closeMobileMenu = false) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (closeMobileMenu) setMobileOpen(false);
 
     const destination = new URL(event.currentTarget.href);
-    if (destination.pathname !== window.location.pathname) return;
+    if (destination.pathname !== window.location.pathname || !destination.hash) return;
 
     const registration = document.getElementById(destination.hash.slice(1));
     if (!registration) return;
 
     event.preventDefault();
-    event.currentTarget.closest("details")?.removeAttribute("open");
+    registration.setAttribute("tabindex", "-1");
+    registration.focus({ preventScroll: true });
     registration.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
         ? "auto"
@@ -53,6 +58,20 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
       block: "start",
     });
   }
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMobileOpen(false);
+      requestAnimationFrame(() => mobileTriggerRef.current?.focus());
+    }
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [mobileOpen]);
 
   return (
     <header className="marketing-header">
@@ -79,16 +98,19 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
               className: "marketing-nav-waitlist",
             })}
             href={waitlistHref}
-            onClick={scrollToWaitlist}
+            onClick={followPublicLink}
           >
             Join the waitlist
           </Link>
-          <QueryProvider>
-            <PublicHeaderAccountSlot />
-          </QueryProvider>
+          <PublicHeaderAccountSlot />
         </div>
-        <details className="marketing-mobile-nav">
-          <summary aria-label="Navigation menu">
+        <details
+          ref={mobileMenuRef}
+          className="marketing-mobile-nav"
+          onToggle={(event) => setMobileOpen(event.currentTarget.open)}
+          open={mobileOpen}
+        >
+          <summary ref={mobileTriggerRef} aria-expanded={mobileOpen} aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}>
             <Icon name="list" size={21} />
           </summary>
           <nav aria-label="Mobile public navigation">
@@ -97,12 +119,13 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
                 aria-current={active === item.id ? "page" : undefined}
                 href={item.href}
                 key={item.id}
+                onClick={(event) => followPublicLink(event, true)}
               >
                 {item.label}
                 <Icon name="arrow" size={15} />
               </Link>
             ))}
-            <Link href={waitlistHref} onClick={scrollToWaitlist}>
+            <Link href={waitlistHref} onClick={(event) => followPublicLink(event, true)}>
               Join the waitlist
               <Icon name="arrow" size={15} />
             </Link>

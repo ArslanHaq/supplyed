@@ -49,6 +49,8 @@ export async function proxy(request: NextRequest) {
     secureCookie: shouldUseSecureAuthCookies(),
   });
 
+  if (typeof token?.oauthTwoFactorToken === "string" && Number(token.oauthTwoFactorExpiresAt) > Date.now())
+    return redirectTo(request, "/two-factor");
   const userId = typeof token?.userId === "string" ? token.userId : token?.sub;
 
   if (!userId) {

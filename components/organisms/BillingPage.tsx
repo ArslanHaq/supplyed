@@ -28,7 +28,8 @@ import type { AppRole, RouteProps, ToastFn } from "@/types/supplyed";
 import { Btn, buttonClassName, Stat, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
-import { PayInvoiceModal, usePaymentReturn } from "./PayInvoiceModal";
+import { DeferredPayInvoiceModal } from "./DeferredPayInvoiceModal";
+import { usePaymentReturn } from "@/features/payments/use-payment-return";
 import { PayoutSettings } from "./PayoutSettings";
 import { AdminPayoutLookup } from "./AdminPayoutLookup";
 
@@ -109,7 +110,7 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
         role="institution"
       />
       <InvoiceDetailsModal id={detailId} onClose={() => setDetailId(null)} onPay={(invoice) => { setDetailId(null); setPayTarget(payable(invoice)); }} role="institution" />
-      <PayInvoiceModal invoice={payTarget} onClose={() => setPayTarget(null)} toast={toast} />
+      {payTarget ? <DeferredPayInvoiceModal invoice={payTarget} onClose={() => setPayTarget(null)} toast={toast} /> : null}
     </div>
   );
 }

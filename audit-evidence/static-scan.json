@@ -1,0 +1,1684 @@
+{
+  "filesScanned": 1006,
+  "rules": [
+    "htmlSink",
+    "dynamicExecution",
+    "browserStorage",
+    "request",
+    "emptyHandler",
+    "suppressedError",
+    "unsafeTyping",
+    "databaseRaw",
+    "browserRedirect"
+  ],
+  "hits": [
+    {
+      "repo": "web",
+      "path": "app/api/bookings/[id]/route.ts",
+      "line": 10,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/conversations/socket-ticket/route.ts",
+      "line": 13,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/conversations/[id]/attachments/route.ts",
+      "line": 33,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/conversations/[id]/attachments/route.ts",
+      "line": 38,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/conversations/[id]/attachments/[attachmentId]/preview/route.ts",
+      "line": 14,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/conversations/[id]/attachments/[attachmentId]/preview/route.ts",
+      "line": 18,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/dropdowns/route.ts",
+      "line": 5,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/dropdowns/[name]/route.ts",
+      "line": 8,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/onboarding/documents/[documentId]/preview/route.ts",
+      "line": 27,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/onboarding/documents/[documentId]/preview/route.ts",
+      "line": 34,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/payments/payout-account/instant-payout/route.ts",
+      "line": 10,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/payments/payout-account/instant-payout/route.ts",
+      "line": 13,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/signatory-approvals/[token]/route.ts",
+      "line": 17,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/signatory-approvals/[token]/route.ts",
+      "line": 36,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/signatory-approvals/[token]/route.ts",
+      "line": 40,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/signatory-approvals/[token]/route.ts",
+      "line": 48,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/api/teaching-catalogue/route.ts",
+      "line": 7,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "app/layout.tsx",
+      "line": 75,
+      "rule": "htmlSink"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/PostcodeLookup.tsx",
+      "line": 28,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/ProposalContent.tsx",
+      "line": 32,
+      "rule": "htmlSink"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/ProposalContent.tsx",
+      "line": 101,
+      "rule": "htmlSink"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/ProposalEditor.tsx",
+      "line": 219,
+      "rule": "htmlSink"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/RouteErrorState.tsx",
+      "line": 29,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/RouteLoader.tsx",
+      "line": 16,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/RouteLoader.tsx",
+      "line": 84,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/RouteLoader.tsx",
+      "line": 86,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/RouteLoader.tsx",
+      "line": 96,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "components/molecules/RouteLoader.tsx",
+      "line": 98,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/CalendarPage.tsx",
+      "line": 21,
+      "rule": "emptyHandler"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/InvitationModal.tsx",
+      "line": 43,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/InvitationModal.tsx",
+      "line": 106,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/InvitationModal.tsx",
+      "line": 118,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/InvitationModal.tsx",
+      "line": 123,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 76,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 88,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 88,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 95,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 95,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 101,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 101,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 106,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 111,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobInvitationsPage.tsx",
+      "line": 111,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/JobsMap.tsx",
+      "line": 126,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/MessageAttachmentPreview.tsx",
+      "line": 60,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/OnboardingRouteClient.tsx",
+      "line": 202,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/OnboardingRouteClient.tsx",
+      "line": 203,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/SignatoryApprovalPage.tsx",
+      "line": 32,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/SignatoryApprovalPage.tsx",
+      "line": 56,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/SignatoryApprovalPage.tsx",
+      "line": 65,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "components/organisms/SignatoryApprovalPage.tsx",
+      "line": 94,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/applications/actions.ts",
+      "line": 31,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/applications/actions.ts",
+      "line": 49,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/applications/queries.ts",
+      "line": 15,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/applications/queries.ts",
+      "line": 27,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/applications/queries.ts",
+      "line": 38,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/applications/queries.ts",
+      "line": 58,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/applications/use-applications.ts",
+      "line": 85,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/actions.ts",
+      "line": 93,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/backend.ts",
+      "line": 370,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/backend.ts",
+      "line": 391,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/backend.ts",
+      "line": 420,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/backend.ts",
+      "line": 449,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/backend.ts",
+      "line": 472,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/backend.ts",
+      "line": 492,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/backend.ts",
+      "line": 520,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/backend.ts",
+      "line": 560,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/backend.ts",
+      "line": 585,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/phone-actions.ts",
+      "line": 37,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/phone-actions.ts",
+      "line": 62,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/queries.ts",
+      "line": 14,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/two-factor-actions.ts",
+      "line": 92,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/two-factor-actions.ts",
+      "line": 100,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/two-factor-actions.ts",
+      "line": 116,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/two-factor-actions.ts",
+      "line": 135,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/auth/two-factor-actions.ts",
+      "line": 155,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/bookings/actions.ts",
+      "line": 29,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/bookings/actions.ts",
+      "line": 51,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/bookings/queries.ts",
+      "line": 29,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/contact/actions.ts",
+      "line": 89,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/contact/actions.ts",
+      "line": 143,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/contact/actions.ts",
+      "line": 182,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/actions.ts",
+      "line": 18,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/actions.ts",
+      "line": 30,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/actions.ts",
+      "line": 40,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/actions.ts",
+      "line": 54,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/actions.ts",
+      "line": 66,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/actions.ts",
+      "line": 75,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/queries.ts",
+      "line": 16,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/queries.ts",
+      "line": 30,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/queries.ts",
+      "line": 35,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/queries.ts",
+      "line": 39,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/queries.ts",
+      "line": 48,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/socket.ts",
+      "line": 51,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/use-conversations.ts",
+      "line": 213,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/use-conversations.ts",
+      "line": 214,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "features/conversations/use-conversations.ts",
+      "line": 237,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "features/invitations/actions.ts",
+      "line": 28,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/invitations/actions.ts",
+      "line": 35,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/invitations/actions.ts",
+      "line": 41,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/invitations/actions.ts",
+      "line": 46,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/invitations/actions.ts",
+      "line": 74,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/invitations/actions.ts",
+      "line": 79,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/invitations/queries.ts",
+      "line": 15,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/invitations/queries.ts",
+      "line": 20,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/actions.ts",
+      "line": 20,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/actions.ts",
+      "line": 23,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/actions.ts",
+      "line": 64,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/actions.ts",
+      "line": 72,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/actions.ts",
+      "line": 84,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/actions.ts",
+      "line": 106,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/actions.ts",
+      "line": 108,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/queries.ts",
+      "line": 13,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/queries.ts",
+      "line": 24,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/queries.ts",
+      "line": 34,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/queries.ts",
+      "line": 48,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/queries.ts",
+      "line": 62,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/jobs/use-jobs.ts",
+      "line": 38,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "features/matching/queries.ts",
+      "line": 16,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/matching/queries.ts",
+      "line": 21,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/matching/queries.ts",
+      "line": 26,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/matching/queries.ts",
+      "line": 31,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/notifications/actions.ts",
+      "line": 15,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/notifications/actions.ts",
+      "line": 23,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/notifications/actions.ts",
+      "line": 35,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/notifications/queries.ts",
+      "line": 15,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/notifications/queries.ts",
+      "line": 26,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/notifications/queries.ts",
+      "line": 31,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 395,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 402,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 419,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 435,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 460,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 512,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 577,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 597,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 622,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 650,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 654,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 673,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 677,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 694,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 714,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/actions.ts",
+      "line": 777,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/documents.ts",
+      "line": 217,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/documents.ts",
+      "line": 245,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/documents.ts",
+      "line": 340,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/documents.ts",
+      "line": 366,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/documents.ts",
+      "line": 379,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/documents.ts",
+      "line": 390,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/onboarding/queries.ts",
+      "line": 36,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/actions.ts",
+      "line": 19,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/actions.ts",
+      "line": 36,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/actions.ts",
+      "line": 60,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/actions.ts",
+      "line": 76,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/actions.ts",
+      "line": 100,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/actions.ts",
+      "line": 133,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/actions.ts",
+      "line": 149,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/admin-payout-queries.ts",
+      "line": 19,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/queries.ts",
+      "line": 38,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/queries.ts",
+      "line": 45,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/queries.ts",
+      "line": 53,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/queries.ts",
+      "line": 66,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/payments/queries.ts",
+      "line": 76,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/public-profiles/queries.ts",
+      "line": 10,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/public-profiles/queries.ts",
+      "line": 16,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/reviews/queries.ts",
+      "line": 22,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/reviews/queries.ts",
+      "line": 33,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/actions.ts",
+      "line": 243,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/actions.ts",
+      "line": 254,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/actions.ts",
+      "line": 265,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/actions.ts",
+      "line": 327,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/actions.ts",
+      "line": 334,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/actions.ts",
+      "line": 341,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/queries.ts",
+      "line": 203,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/queries.ts",
+      "line": 205,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/queries.ts",
+      "line": 252,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/use-settings.ts",
+      "line": 44,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/validation.ts",
+      "line": 25,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "web",
+      "path": "features/settings/validation.ts",
+      "line": 29,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "web",
+      "path": "features/teachers/actions.ts",
+      "line": 26,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/teachers/queries.ts",
+      "line": 22,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/teachers/queries.ts",
+      "line": 45,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "features/teachers/queries.ts",
+      "line": 72,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "lib/founding-signup-intent.ts",
+      "line": 140,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "lib/founding-signup-intent.ts",
+      "line": 189,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "lib/founding-signup-intent.ts",
+      "line": 239,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "lib/query/fetch-json.ts",
+      "line": 33,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "lib/query/fetch-json.ts",
+      "line": 56,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "lib/server/api-client.ts",
+      "line": 182,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "lib/server/api-client.ts",
+      "line": 189,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "lib/server/token-refresh.ts",
+      "line": 149,
+      "rule": "request"
+    },
+    {
+      "repo": "web",
+      "path": "lib/server/token-refresh.ts",
+      "line": 166,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "web",
+      "path": "lib/supplyed-preferences.ts",
+      "line": 16,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "lib/supplyed-preferences.ts",
+      "line": 29,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "lib/theme-bootstrap.ts",
+      "line": 5,
+      "rule": "browserStorage"
+    },
+    {
+      "repo": "web",
+      "path": "lib/use-auth-toasts.ts",
+      "line": 53,
+      "rule": "browserRedirect"
+    },
+    {
+      "repo": "web",
+      "path": "public/dynamic-dropdowns.js",
+      "line": 12,
+      "rule": "request"
+    },
+    {
+      "repo": "backend",
+      "path": "src/common/guards/rate-limit.guard.ts",
+      "line": 72,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/common/profile/profile-claim.ts",
+      "line": 15,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/job-audit.spec.ts",
+      "line": 433,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/job-audit.spec.ts",
+      "line": 457,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/applications/applications.repository.ts",
+      "line": 88,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/applications/applications.repository.ts",
+      "line": 277,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/auth/email-verification-otp.repository.ts",
+      "line": 92,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/auth/password-reset-otp.repository.ts",
+      "line": 92,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/bookings/direct-hire.service.ts",
+      "line": 73,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/bookings/direct-hire.service.ts",
+      "line": 401,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/bookings/direct-hire.service.ts",
+      "line": 440,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/bookings/direct-hire.service.ts",
+      "line": 499,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/bookings/direct-hire.service.ts",
+      "line": 510,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/bookings/dto/job-invitation-response.dto.ts",
+      "line": 52,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/bookings/hiring-transaction.ts",
+      "line": 9,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/bookings/hiring-transaction.ts",
+      "line": 10,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/bookings/invitation-availability.spec.ts",
+      "line": 36,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/contact/contact.waitlist.spec.ts",
+      "line": 100,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/contact/contact.waitlist.spec.ts",
+      "line": 101,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/contact/contact.waitlist.spec.ts",
+      "line": 102,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/contact/contact.waitlist.spec.ts",
+      "line": 254,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/conversations/conversation-topics.spec.ts",
+      "line": 20,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/conversations/conversation-topics.spec.ts",
+      "line": 27,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/conversations/conversations.repository.ts",
+      "line": 164,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/conversations/conversations.repository.ts",
+      "line": 295,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/conversations/conversations.repository.ts",
+      "line": 320,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/dropdowns/dropdowns.spec.ts",
+      "line": 124,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/dropdowns/dropdowns.spec.ts",
+      "line": 309,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/geocoding/geocoding.service.ts",
+      "line": 154,
+      "rule": "request"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/google-oauth/google-oauth.repository.ts",
+      "line": 33,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/google-oauth/google-oauth.repository.ts",
+      "line": 57,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/instructors/teacher-dashboard.service.spec.ts",
+      "line": 38,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/jobs/job-listing-window.spec.ts",
+      "line": 238,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/jobs/job-listing-window.spec.ts",
+      "line": 275,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/jobs/job-policy.ts",
+      "line": 8,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/jobs/job-work-units.spec.ts",
+      "line": 230,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/jobs/jobs.repository.ts",
+      "line": 115,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/jobs/jobs.repository.ts",
+      "line": 195,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/matching/job-match-alerts.worker.ts",
+      "line": 98,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/matching/matching.repository.ts",
+      "line": 127,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/notifications/notifications.repository.ts",
+      "line": 108,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/payments/invoices.repository.ts",
+      "line": 76,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/phone-verification/phone-verification-otp.repository.ts",
+      "line": 102,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/reviews/reviews.repository.ts",
+      "line": 121,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/reviews/reviews.repository.ts",
+      "line": 123,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/users/profile-image-display.service.spec.ts",
+      "line": 10,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/users/users.repository.ts",
+      "line": 218,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/modules/users/workspace-status.service.spec.ts",
+      "line": 47,
+      "rule": "unsafeTyping"
+    },
+    {
+      "repo": "backend",
+      "path": "src/prisma/prisma.service.ts",
+      "line": 23,
+      "rule": "databaseRaw"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/contact/founding-interest/[id]/status/route.ts",
+      "line": 48,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/document-requirements/route.ts",
+      "line": 37,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/document-requirements/[id]/route.ts",
+      "line": 75,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/document-types/route.ts",
+      "line": 43,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/document-types/[id]/route.ts",
+      "line": 60,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/documents/[id]/content/route.ts",
+      "line": 59,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/documents/[id]/content/route.ts",
+      "line": 109,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/documents/[id]/review/route.ts",
+      "line": 53,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/dropdowns/[name]/route.ts",
+      "line": 17,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/institutions/[id]/status/route.ts",
+      "line": 55,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/instructors/[id]/status/route.ts",
+      "line": 55,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/jobs/route.ts",
+      "line": 31,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/recruiters/[id]/status/route.ts",
+      "line": 55,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/users/route.ts",
+      "line": 27,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "app/api/users/[id]/route.ts",
+      "line": 140,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "components/conversations/conversation-messages.tsx",
+      "line": 39,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "components/conversations/conversation-messages.tsx",
+      "line": 44,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "components/jobs/create-job-form.tsx",
+      "line": 60,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "components/jobs/create-job-form.tsx",
+      "line": 68,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "components/users/instructor-status-control.tsx",
+      "line": 64,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "components/users/instructor-status-control.tsx",
+      "line": 75,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "components/waiting-list/export-waiting-list-button.tsx",
+      "line": 23,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "components/waiting-list/export-waiting-list-button.tsx",
+      "line": 28,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "lib/api/admin-api-client.ts",
+      "line": 130,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "lib/api/admin-api-client.ts",
+      "line": 150,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "lib/api/route-request.ts",
+      "line": 61,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "lib/api/route-request.ts",
+      "line": 76,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "lib/auth/authenticate.ts",
+      "line": 67,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "lib/auth/authenticate.ts",
+      "line": 80,
+      "rule": "suppressedError"
+    },
+    {
+      "repo": "admin",
+      "path": "lib/auth/refresh.ts",
+      "line": 60,
+      "rule": "request"
+    },
+    {
+      "repo": "admin",
+      "path": "lib/auth/refresh.ts",
+      "line": 77,
+      "rule": "suppressedError"
+    }
+  ]
+}

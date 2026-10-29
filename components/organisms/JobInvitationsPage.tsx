@@ -182,7 +182,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
           </section>
           {invitation.message ? <section className="card p-5 sm:p-7"><h2 className="mb-3 font-heading text-lg font-semibold">Message from the school</h2><p className="whitespace-pre-wrap text-sm leading-7 text-slate">{invitation.message}</p></section> : null}
         </div>
-        <aside className="card row-start-1 p-5 sm:p-6 xl:sticky xl:top-6 xl:col-start-2">
+        <aside aria-label="Invitation response" className="card row-start-1 p-5 sm:p-6 xl:sticky xl:top-6 xl:col-start-2">
           <h2 className="font-heading text-lg font-semibold">{role === "institution" ? "Manage invitation" : "Your response"}</h2>
           {role === "teacher" && pending ? <p className="mt-2 text-sm leading-6 text-muted">Review the offered job details, then accept or decline. Accepting confirms your booking with the school.</p> : null}
           {error && !(confirm && pending) ? <InvitationErrorNotice error={error} /> : null}

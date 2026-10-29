@@ -1,7 +1,9 @@
 import "server-only";
 
+import type { Session } from "next-auth";
 import { getToken } from "next-auth/jwt";
 import { headers } from "next/headers";
+import { cache } from "react";
 
 export type ServerAuthContext = {
   accessToken?: string | null;
@@ -36,9 +38,10 @@ function getAuthCookieSecret() {
   );
 }
 
-export async function getServerAuthContext(): Promise<ServerAuthContext> {
-  const { auth } = await import("@/auth");
-  const session = await auth();
+const resolveServerAuthContext = cache(async (requestSession?: Session | null): Promise<ServerAuthContext> => {
+  const session = requestSession === undefined
+    ? await (await import("@/auth")).auth()
+    : requestSession;
 
   if (!session?.user?.id) return null;
 
@@ -58,4 +61,11 @@ export async function getServerAuthContext(): Promise<ServerAuthContext> {
     role: session.user.role,
     userId: session.user.id,
   };
+});
+
+// React's request-local cache avoids decoding the same private session more
+// than once during a server render. Nothing is retained between users or
+// requests, and callers can pass a session they already authenticated.
+export function getServerAuthContext(requestSession?: Session | null): Promise<ServerAuthContext> {
+  return resolveServerAuthContext(requestSession);
 }

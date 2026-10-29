@@ -63,7 +63,7 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
       </section>
 
       <div className="profile-detail-grid grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <main className="min-w-0">
+        <div className="min-w-0">
           <ProfileSection description="What this school looks for when hiring" icon="search" title="Staffing needs">
             <p className="whitespace-pre-line text-[15px] leading-7 text-slate">{profile.staffingNeeds.join(", ") || "This school has not added a public staffing summary yet. School details and preferred cover types are shown below."}</p>
           </ProfileSection>
@@ -78,9 +78,9 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
           </section>
 
           <ProfileReviewsPanel data={reviewsQuery.data} error={reviewsQuery.error} loading={reviewsQuery.isLoading} />
-        </main>
+        </div>
 
-        <aside className="profile-overview sidebar-panel overflow-hidden xl:sticky xl:top-6">
+        <aside aria-label="School overview" className="profile-overview sidebar-panel overflow-hidden xl:sticky xl:top-6">
           <div className="border-b border-border px-6 py-5 text-white">
             <div className="flex items-center gap-2 text-base font-semibold"><Icon name="building" size={18} />School overview</div>
             <p className="mt-1 text-xs leading-5 text-white">Details to help teachers book with confidence</p>

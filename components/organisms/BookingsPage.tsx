@@ -25,7 +25,7 @@ import type { AppRole, RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, buttonClassName, Field, Icon, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
-import { PayInvoiceModal } from "./PayInvoiceModal";
+import { DeferredPayInvoiceModal } from "./DeferredPayInvoiceModal";
 
 type Tab = "active" | "all" | "cancelled" | "completed" | "no-show";
 
@@ -264,7 +264,7 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
         }}
         role={role}
       />
-      <PayInvoiceModal invoice={payTarget} onClose={() => setPayTarget(null)} toast={toast} />
+      {payTarget ? <DeferredPayInvoiceModal invoice={payTarget} onClose={() => setPayTarget(null)} toast={toast} /> : null}
 
       <ReviewBookingModal
         booking={reviewTarget}
@@ -398,12 +398,14 @@ function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, onPay, role }: { b
         totalAmountPence: latestInvoice.totalAmountPence,
       }
     : bookingInvoice;
-  const canInvoice = ["daily", "hourly", "fixed"].includes(booking.payType ?? "") && typeof booking.payAmount === "number" && booking.payAmount > 0;
+  const contractedUnits = contractedInvoiceUnits(booking);
+  const hasContractedQuantity = booking.payType === "fixed" || contractedUnits !== null;
+  const canInvoice = ["daily", "hourly", "fixed"].includes(booking.payType ?? "") && typeof booking.payAmount === "number" && booking.payAmount > 0 && hasContractedQuantity;
   let label: string;
   let tag: { text: string; tone: "amber" | "green" | "red" } | null = null;
 
   if (!invoice) {
-    label = role === "teacher" ? "The school can invoice this booking once your Stripe payouts are ready." : canInvoice ? "Send an invoice to pay the teacher. Their Stripe payout setup must be complete." : "This booking needs an agreed rate and pay type before it can be invoiced.";
+    label = role === "teacher" ? "The school can invoice this booking once your Stripe payouts are ready." : canInvoice ? "Send an invoice using the accepted booking terms. The teacher's Stripe payout setup must be complete." : "This booking needs an agreed rate and contracted hours or days before it can be invoiced.";
   } else if (invoice.status === "PAID") {
     label = `${formatPence(invoice.totalAmountPence)} paid${invoice.paidAt ? ` on ${formatDate(invoice.paidAt)}` : ""}.`;
     tag = { text: "Paid", tone: "green" };
@@ -456,14 +458,15 @@ function CreateInvoiceModal({
   const payType = booking?.payType;
   const fixed = payType === "fixed";
   const unit = payType === "hourly" ? "hours" : "days";
-  const [units, setUnits] = useState(() => (booking && payType === "daily" ? String(bookingDays(booking) ?? "") : ""));
+  const contractedUnits = booking ? contractedInvoiceUnits(booking) : null;
+  const [units, setUnits] = useState(() => contractedUnits === null ? "" : String(contractedUnits));
   const [poNumber, setPoNumber] = useState("");
   const [inputError, setInputError] = useState<string>();
   const [poError, setPoError] = useState<string>();
   const unitsValue = Number(units);
-  const maxUnits = booking ? invoiceUnitsLimit(booking) : 9999.99;
+  const maxUnits = booking ? Math.max(contractedUnits ?? 0, invoiceUnitsLimit(booking)) : 9999.99;
   const validPay = ["daily", "hourly", "fixed"].includes(payType ?? "") && typeof booking?.payAmount === "number" && booking.payAmount > 0;
-  const unitsValid = validPay && (fixed || (units.trim() !== "" && Number.isFinite(unitsValue) && unitsValue >= 0.01 && unitsValue <= maxUnits && /^\d+(\.\d{1,2})?$/.test(units.trim())));
+  const unitsValid = validPay && (fixed || (contractedUnits !== null && units.trim() !== "" && Number.isFinite(unitsValue) && unitsValue >= contractedUnits && unitsValue <= maxUnits && /^\d+(\.\d{1,2})?$/.test(units.trim())));
   const rate = booking?.payAmount ?? 0;
   const teacherPay = fixed ? rate : unitsValid ? rate * unitsValue : 0;
 
@@ -475,7 +478,7 @@ function CreateInvoiceModal({
         onSubmit={(event) => {
           event.preventDefault();
           if (loading) return;
-          if (!unitsValid) { setInputError(`Enter valid ${unit} between 0.01 and ${maxUnits}, with up to two decimal places.`); return; }
+          if (!unitsValid) { setInputError(`Enter valid ${unit} between ${contractedUnits ?? 0.01} and ${maxUnits}, with up to two decimal places.`); return; }
           setInputError(undefined);
           if (poNumber.trim().length > 100) { setPoError("Use 100 characters or fewer for the PO number."); return; }
           setPoError(undefined);
@@ -500,7 +503,7 @@ function CreateInvoiceModal({
               className="input mt-2 w-full"
               inputMode="decimal"
               type="number"
-              min="0.01"
+              min={contractedUnits ?? 0.01}
               max={maxUnits}
               step="0.01"
               required
@@ -509,7 +512,7 @@ function CreateInvoiceModal({
               value={units}
             />
             <span className="mt-1 block text-xs font-normal text-muted">
-              At {formatPence(Math.round(rate * 100))} per {unit === "hours" ? "hour" : "day"}. Enter 0.01–{maxUnits} {unit}, with up to two decimal places.
+              At {formatPence(Math.round(rate * 100))} per {unit === "hours" ? "hour" : "day"}. The accepted booking includes {contractedUnits} {unit}; you can add extra time, but cannot reduce the agreed quantity. Maximum {maxUnits}.
             </span>
             {inputError ? <span className="mt-1 block text-sm font-normal text-danger" id="invoice-units-error" role="alert">{inputError}</span> : null}
           </label>
@@ -536,6 +539,15 @@ function CreateInvoiceModal({
       </form>
     </Modal>
   );
+}
+
+function contractedInvoiceUnits(booking: Booking): number | null {
+  const units = booking.payType === "hourly"
+    ? booking.agreedTerms?.hours ?? booking.hours
+    : booking.payType === "daily"
+      ? booking.agreedTerms?.days ?? booking.days ?? bookingDays(booking)
+      : null;
+  return typeof units === "number" && Number.isFinite(units) && units > 0 ? units : null;
 }
 
 function isPastDue(dueAt?: string | null) {

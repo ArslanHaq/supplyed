@@ -1,15 +1,16 @@
 import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
 import { CatalogueSubjectFilter } from "@/components/molecules/TeachingSelectionFields";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { JobListFilters } from "@/features/jobs/types";
 import { useJobs } from "@/features/jobs/use-jobs";
 import { useRecommendedJobs } from "@/features/matching/use-matching";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Btn, Field, Icon } from "../atoms";
+import { Btn, Field } from "../atoms";
 import { JobListingPreview, jobListingPreviewData, MatchScorePanel, PageHead, SectionLoader } from "../molecules";
 import { WorkspaceEmptyState } from "./WorkspacePanels";
+import { JobsMap } from "./JobsMap";
 
 export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
   const [tab, setTab] = useState<"recommended" | "all">("recommended");
@@ -21,34 +22,54 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
   const [urgency, setUrgency] = useState("All jobs");
   const [keyStage, setKeyStage] = useState("All stages");
   const [subject, setSubject] = useState("");
+  const [appliedSubject, setAppliedSubject] = useState("");
   const filters: JobListFilters = {
     keyStage: keyStage === "All stages" ? undefined : keyStage,
     limit: 20,
     page: allPage,
-    subject: subject || undefined,
+    subject: appliedSubject || undefined,
     urgent: urgency === "Urgent only" ? true : undefined,
   };
-  const jobsQuery = useJobs(filters);
+  const jobsQuery = useJobs(filters, tab === "all");
   const jobs = jobsQuery.data?.jobs ?? [];
   const allPagination = jobsQuery.data?.pagination;
-  const recommendedQuery = useRecommendedJobs({ limit: 20, minScore, page });
+  const recommendedQuery = useRecommendedJobs({ limit: 20, minScore, page }, tab === "recommended");
   const recommendedJobs = recommendedQuery.data?.jobs ?? [];
   const activeCount = tab === "recommended" ? recommendedQuery.data?.pagination.total ?? recommendedJobs.length : allPagination?.total ?? 0;
   const activeLoading = tab === "recommended" ? recommendedQuery.isLoading : jobsQuery.isLoading;
   const activeError = tab === "recommended" ? recommendedQuery.error : jobsQuery.error;
+  const activeJobs = tab === "recommended" ? recommendedJobs.map(({ job }) => job) : jobs;
+  const openJob = useCallback((jobId: string) => go("job-detail", { jobId }), [go]);
+
+  useEffect(() => {
+    const score = Number(scoreInput);
+    if (!Number.isFinite(score) || score < 0 || score > 100) return;
+    const timer = window.setTimeout(() => {
+      setMinScore(score);
+      setPage(1);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [scoreInput]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAppliedSubject(subject), 350);
+    return () => window.clearTimeout(timer);
+  }, [subject]);
 
   return (
     <div className="app-page discovery-page jobs-discovery">
       <PageHead title="Find jobs" subtitle={`${activeCount} ${tab === "recommended" ? "matched" : "open"} roles`} />
-      <div className="workspace-toolbar mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface p-3 shadow-(--shadow-xs)">
-        <Btn aria-pressed={tab === "recommended"} size="sm" variant={tab === "recommended" ? "secondary" : "ghost"} onClick={() => setTab("recommended")}>For you</Btn>
-        <Btn aria-pressed={tab === "all"} size="sm" variant={tab === "all" ? "secondary" : "ghost"} onClick={() => setTab("all")}>All jobs</Btn>
-        {tab === "recommended" ? <div className="ml-auto"><label className="flex items-center gap-2 text-xs font-semibold">Minimum score<input aria-describedby={scoreError ? "job-score-error" : undefined} aria-invalid={Boolean(scoreError)} className="input w-24" min={0} max={100} type="number" value={scoreInput} onChange={(event) => {
+      <div className="workspace-toolbar jobs-view-toolbar mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface p-3 shadow-(--shadow-xs)">
+        <div className="jobs-view-tabs flex items-center gap-2" role="group" aria-label="Job results">
+          <Btn aria-pressed={tab === "recommended"} size="sm" variant={tab === "recommended" ? "secondary" : "ghost"} onClick={() => setTab("recommended")}>For you</Btn>
+          <Btn aria-pressed={tab === "all"} size="sm" variant={tab === "all" ? "secondary" : "ghost"} onClick={() => setTab("all")}>All jobs</Btn>
+        </div>
+        {tab === "recommended" ? <div className="jobs-score-filter ml-auto"><label className="flex items-center gap-2 text-xs font-semibold">Minimum score<input aria-describedby={scoreError ? "job-score-error" : undefined} aria-invalid={Boolean(scoreError)} className="input w-24" min={0} max={100} type="number" value={scoreInput} onChange={(event) => {
           const input = event.target.value;
           setScoreInput(input);
           const score = Number(input);
           if (!Number.isFinite(score) || score < 0 || score > 100) { setScoreError("Enter a score between 0 and 100."); return; }
-          setScoreError(undefined); setMinScore(score); setPage(1);
+          setScoreError(undefined);
         }} /></label>{scoreError ? <p className="mt-1 text-xs text-danger" id="job-score-error" role="alert">{scoreError}</p> : null}</div> : null}
       </div>
       {tab === "all" ? <div className="workspace-filter-panel mb-5 grid gap-3 rounded-xl border border-border bg-surface p-3 shadow-(--shadow-xs) md:grid-cols-3">
@@ -70,8 +91,8 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
           <CatalogueSubjectFilter value={subject} onChange={value => { setSubject(value); setAllPage(1); }} />
         </Field>
       </div> : null}
-      <div className="two-col">
-        <div className="flex flex-col gap-3">
+      <div className="jobs-discovery-grid">
+        <section className="jobs-results flex flex-col gap-4" aria-label={tab === "recommended" ? "Recommended jobs" : "All jobs"}>
           {activeLoading ? <SectionLoader rows={3} /> : null}
           {activeError ? <div className="card card-pad text-center" role="alert"><div className="font-semibold">Jobs could not be loaded</div><p className="mt-1 text-sm text-muted">{activeError.message}</p></div> : null}
           {tab === "all" ? jobs.map((job) => (
@@ -95,22 +116,8 @@ export function FindJobsPage({ go }: Pick<RouteProps, "go">) {
           ) : null}
           {tab === "all" && allPagination && allPagination.totalPages > 1 ? <div className="flex items-center justify-between"><Btn disabled={allPage <= 1 || jobsQuery.isFetching} variant="secondary" onClick={() => setAllPage((value) => Math.max(1, value - 1))}>Previous</Btn><span className="text-sm text-muted">Page {allPagination.page} of {allPagination.totalPages}</span><Btn disabled={!allPagination.hasNextPage || jobsQuery.isFetching} variant="secondary" onClick={() => setAllPage((value) => value + 1)}>Next</Btn></div> : null}
           {tab === "recommended" && (recommendedQuery.data?.pagination.totalPages ?? 0) > 1 ? <div className="flex items-center justify-between"><Btn disabled={page <= 1 || recommendedQuery.isFetching} variant="secondary" onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</Btn><span className="text-sm text-muted">Page {page} of {recommendedQuery.data?.pagination.totalPages}</span><Btn disabled={!recommendedQuery.data?.pagination.hasNextPage || recommendedQuery.isFetching} variant="secondary" onClick={() => setPage((value) => value + 1)}>Next</Btn></div> : null}
-        </div>
-        <div className="jobs-map-panel sidebar-panel card-pad">
-          <div className="sidebar-heading"><span className="flex items-center gap-2"><Icon name="pin" size={17} /> Map view</span></div>
-          <div className="jobs-map relative overflow-hidden rounded-lg">
-            {[[30, 25], [55, 40], [40, 65], [70, 55]].map(([x, y], index) => {
-              const job = jobs[index];
-              if (!job) return null;
-
-              return (
-                <div key={job.id} className="absolute -translate-x-1/2 -translate-y-full" style={{ left: `${x}%`, top: `${y}%` }}>
-                  <div className="flex h-[26px] w-[26px] -rotate-45 items-center justify-center rounded-[50%_50%_50%_0] text-[9px] font-bold text-white" style={{ background: index === 0 ? "var(--red)" : "var(--se)" }}><span className="rotate-45">£{job.rate}</span></div>
-                </div>
-              );
-            })}
-              </div>
-        </div>
+        </section>
+        {!activeLoading && !activeError && activeJobs.length > 0 ? <JobsMap key={activeJobs.map((job) => job.id).join(":")} jobs={activeJobs} onOpen={openJob} /> : null}
       </div>
     </div>
   );

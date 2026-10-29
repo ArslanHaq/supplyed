@@ -1,0 +1,2662 @@
+[
+  {
+    "repo": "web",
+    "path": "app/(app)/applications/page.tsx",
+    "lines": 9,
+    "sha256": "c704ddd4850b4c756ff371c268243c3f2f5bb99e7b4e252ca053030260444dbd",
+    "type": "page",
+    "route": "/applications"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/billing/page.tsx",
+    "lines": 9,
+    "sha256": "8e5a1602f29e1f5492444f797b46f7929feffed6e1eeaf396d57228e74c9bca0",
+    "type": "page",
+    "route": "/billing"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/bookings/page.tsx",
+    "lines": 9,
+    "sha256": "5ae8dc8bf9549ef4361c7b672fbcfaff87769cc6b50ecaeb8010b096f7475dda",
+    "type": "page",
+    "route": "/bookings"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/calendar/page.tsx",
+    "lines": 9,
+    "sha256": "5db2349956f743ec735c3b08472c479c214beb67005534e4b093196f3d92372a",
+    "type": "page",
+    "route": "/calendar"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/dashboard/page.tsx",
+    "lines": 9,
+    "sha256": "c93ff38af2dd0879f80b0f257413b7092e4b271afa7166fe83cfbeb5a8ae263a",
+    "type": "page",
+    "route": "/dashboard"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/find-jobs/page.tsx",
+    "lines": 9,
+    "sha256": "534281f3cfb7a19c1694d5c89fd54dc1c00428291b2b3de5f8a86243a8708c91",
+    "type": "page",
+    "route": "/find-jobs"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/find-teachers/page.tsx",
+    "lines": 9,
+    "sha256": "dba6cd5d620e8a7374c6201e525e61268d84d5fa41fac6e2ed423ccbed69ec0b",
+    "type": "page",
+    "route": "/find-teachers"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/institution-profile/page.tsx",
+    "lines": 9,
+    "sha256": "f4f82eeace8e19488e6f7dae2d4ee775643bca37434cae6f63af6e5ed1800a18",
+    "type": "page",
+    "route": "/institution-profile"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/job-detail/page.tsx",
+    "lines": 12,
+    "sha256": "b681eabd539aef414e08a3d599798896e0e917f8b7b72a8098ad75d979edf6f7",
+    "type": "page",
+    "route": "/job-detail"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/job-invitations/page.tsx",
+    "lines": 5,
+    "sha256": "e526e2e949567a10c2bc048a4741a0bd2961b58d798a77287ba8d305d834219c",
+    "type": "page",
+    "route": "/job-invitations"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/job-invitations/[id]/page.tsx",
+    "lines": 8,
+    "sha256": "62bca87200ce7623aabf12e0ace2394feaf653551be46492be02b10fa1e786d4",
+    "type": "page",
+    "route": "/job-invitations/[id]"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/messaging/page.tsx",
+    "lines": 9,
+    "sha256": "92227c634daf095e691eb0714e066a5043d2a67e87708641b937c01dfbd07c15",
+    "type": "page",
+    "route": "/messaging"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/my-profile/page.tsx",
+    "lines": 9,
+    "sha256": "8e447a8430ea6bd3ef0d5f913558d994368d1cdd38ecbb7be2eaf947842800a2",
+    "type": "page",
+    "route": "/my-profile"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/onboarding/page.tsx",
+    "lines": 114,
+    "sha256": "368befd2a905e682697bd6ba6d0bc8b8582e7a9a592cd6984ab02fac19633781",
+    "type": "page",
+    "route": "/onboarding"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/payouts/refresh/page.tsx",
+    "lines": 11,
+    "sha256": "39ec2a269b112bc7498f93922696004da82a74906f6c486ad55484ac844ae79a",
+    "type": "page",
+    "route": "/payouts/refresh"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/payouts/return/page.tsx",
+    "lines": 11,
+    "sha256": "75b484f9280a985f7ebdb5f976422c3882a0e76884af2f51da43ea0f8b0b63d8",
+    "type": "page",
+    "route": "/payouts/return"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/post-job/page.tsx",
+    "lines": 9,
+    "sha256": "2d444bae5d23004811a2eb9526e14b4fed29c36e935da753980788672271788d",
+    "type": "page",
+    "route": "/post-job"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/security/page.tsx",
+    "lines": 9,
+    "sha256": "1d4db98d398d8592b1f4bd2196887f95963e54240697a7f57ab1cba010579226",
+    "type": "page",
+    "route": "/security"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/settings/page.tsx",
+    "lines": 9,
+    "sha256": "40d13c7133818786ab58e21fec6ebcc586fe75de69d0f2cb40dcd830fcc2d496",
+    "type": "page",
+    "route": "/settings"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/teacher-profile/page.tsx",
+    "lines": 9,
+    "sha256": "20bbaa6daa176fbb27640a38c420b46d0031079fda2c510b31f1e1bbaf48bd43",
+    "type": "page",
+    "route": "/teacher-profile"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/forgot-password/page.tsx",
+    "lines": 9,
+    "sha256": "122d33bee1534fb7fc777d37624734f14f7e10ef52cc3071ed550c95a4a23569",
+    "type": "page",
+    "route": "/forgot-password"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/login/page.tsx",
+    "lines": 17,
+    "sha256": "ddf5c536bb6ade222b5c099ddb5e836eadecab50cce7403a57970e024ad8e81f",
+    "type": "page",
+    "route": "/login"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/signup/page.tsx",
+    "lines": 29,
+    "sha256": "61f45bff846f86c9e2d1c4f2276db1cc36f95e22166836a5a7108178282deb31",
+    "type": "page",
+    "route": "/signup"
+  },
+  {
+    "repo": "web",
+    "path": "app/(public)/founding-schools/page.tsx",
+    "lines": 50,
+    "sha256": "8e6de34828b7b846a49a101bf0b47cbeb6286c63e7bf071e88e10326c959ed36",
+    "type": "page",
+    "route": "/founding-schools"
+  },
+  {
+    "repo": "web",
+    "path": "app/(public)/founding-teachers/page.tsx",
+    "lines": 50,
+    "sha256": "03a5f0773d3f566fd709cfb1708a4e0a145397d20e7f5a2b25b3d3b0109ec8ae",
+    "type": "page",
+    "route": "/founding-teachers"
+  },
+  {
+    "repo": "web",
+    "path": "app/(public)/how-it-works/page.tsx",
+    "lines": 180,
+    "sha256": "7668f12abce9959f868563b1c3c0ea2a29f915397dfabde693202d5f888b4060",
+    "type": "page",
+    "route": "/how-it-works"
+  },
+  {
+    "repo": "web",
+    "path": "app/(public)/page.tsx",
+    "lines": 27,
+    "sha256": "c27fffc1619b951e9f0e7b91b764ff6ab7db788e6e728897ea3d29160b017d35",
+    "type": "page",
+    "route": "/"
+  },
+  {
+    "repo": "web",
+    "path": "app/(public)/signatory-approval/[token]/page.tsx",
+    "lines": 16,
+    "sha256": "fc2e6f1e2e0c8b723ff26b94cc97fa5222a3dc1094c600c0bf1b3af5c7940f4e",
+    "type": "page",
+    "route": "/signatory-approval/[token]"
+  },
+  {
+    "repo": "web",
+    "path": "app/(public)/terms/page.tsx",
+    "lines": 217,
+    "sha256": "9630f94c0e3b50cebe1bae83d9ad0c82298835f8200b93fabcfac4d3aed4b177",
+    "type": "page",
+    "route": "/terms"
+  },
+  {
+    "repo": "web",
+    "path": "app/api/applications/active-jobs/count/route.ts",
+    "lines": 13,
+    "sha256": "bc347757e29eac1c3fc8125e7fc5b6ea85cac030b2042e1f54012f912aa0652b",
+    "type": "BFF",
+    "route": "/api/applications/active-jobs/count",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/applications/job/[jobId]/route.ts",
+    "lines": 33,
+    "sha256": "a4a1840d58d79048df85dfbaee047e98bd0894996491db7ee56298df63e51cfe",
+    "type": "BFF",
+    "route": "/api/applications/job/[jobId]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/applications/me/route.ts",
+    "lines": 33,
+    "sha256": "14aaa5834001d661d17b9e984da26880356c3ea680279a1a04aef793393305df",
+    "type": "BFF",
+    "route": "/api/applications/me",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/applications/[id]/history/route.ts",
+    "lines": 20,
+    "sha256": "2e61a847a711abd6332d72ec010c839dc9a73b432d7a7b926ce14bc31b80e0c8",
+    "type": "BFF",
+    "route": "/api/applications/[id]/history",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/applications/[id]/route.ts",
+    "lines": 20,
+    "sha256": "9535350f10004f81a68db10674d46afd0a6e3249cc0d5386f9cd7363527caea1",
+    "type": "BFF",
+    "route": "/api/applications/[id]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/auth/me/route.ts",
+    "lines": 13,
+    "sha256": "fe54b2a2736f56950ad09f056f925d733e9e033ca3fea62533a7ac1e5bc62ea2",
+    "type": "BFF",
+    "route": "/api/auth/me",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/auth/[...nextauth]/route.ts",
+    "lines": 2,
+    "sha256": "f3cbb00c59a2c251ecb04fb3adae51ca97b846872a5a9867ad33bd097028d5bf",
+    "type": "BFF",
+    "route": "/api/auth/[...nextauth]",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/bookings/me/route.ts",
+    "lines": 34,
+    "sha256": "f45e26aba4e9cf1a3adfa5c92209a5dce912b2c97980de9dc2db2b71b48f68e5",
+    "type": "BFF",
+    "route": "/api/bookings/me",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/bookings/[id]/route.ts",
+    "lines": 13,
+    "sha256": "865fa72a9898616f22ea2f0d80800df485632d845250a982fa94f975ddb8e799",
+    "type": "BFF",
+    "route": "/api/bookings/[id]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/conversations/route.ts",
+    "lines": 24,
+    "sha256": "87d9d0c732d1a2705a2decb84b986704c890072e220b32dc458081f2ef07c47c",
+    "type": "BFF",
+    "route": "/api/conversations",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/conversations/socket-ticket/route.ts",
+    "lines": 18,
+    "sha256": "c216b5c602904c79458984a6836d13b1fed46f3e5289e4ce29ba41b6b31a0c78",
+    "type": "BFF",
+    "route": "/api/conversations/socket-ticket",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/conversations/unread-count/route.ts",
+    "lines": 13,
+    "sha256": "9a2dba4eb8c32b582f6f59a92badab579b156e96208662fad4a905ec93bceb0f",
+    "type": "BFF",
+    "route": "/api/conversations/unread-count",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/conversations/[id]/attachments/route.ts",
+    "lines": 54,
+    "sha256": "14cc857b8fdc865bbb02ce722d217996c04d0d6ef62e40d3a2b5c5e58057ce25",
+    "type": "BFF",
+    "route": "/api/conversations/[id]/attachments",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/conversations/[id]/attachments/[attachmentId]/preview/route.ts",
+    "lines": 49,
+    "sha256": "1891308c80ed5e1b98b4225e59772f617d4aadbe044a9da5b2c926303353b920",
+    "type": "BFF",
+    "route": "/api/conversations/[id]/attachments/[attachmentId]/preview",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/conversations/[id]/messages/route.ts",
+    "lines": 16,
+    "sha256": "846f6dbf8be23ef691193b2979fbc5f331703fb5aba2a929a173108b3a53e93d",
+    "type": "BFF",
+    "route": "/api/conversations/[id]/messages",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/conversations/[id]/route.ts",
+    "lines": 9,
+    "sha256": "8d5d41b3a253c063674d2e391025ab42344f712f0d099a80627549aae01725f6",
+    "type": "BFF",
+    "route": "/api/conversations/[id]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/conversations/[id]/threads/route.ts",
+    "lines": 19,
+    "sha256": "773601acb9c32ee1020e79a62fa4447836f351e25ed8996cc3e0bd2520aaee61",
+    "type": "BFF",
+    "route": "/api/conversations/[id]/threads",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/dropdowns/route.ts",
+    "lines": 8,
+    "sha256": "ec75d729b94cc2956991a556963837a0ef1bdcf9dc2e504c2ea48d2dd7b71060",
+    "type": "BFF",
+    "route": "/api/dropdowns",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/dropdowns/[name]/route.ts",
+    "lines": 11,
+    "sha256": "00d888ea967b53bd2c56d981aec4c727079303e24bccbbfb8923b68d05e703ec",
+    "type": "BFF",
+    "route": "/api/dropdowns/[name]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/health/route.ts",
+    "lines": 16,
+    "sha256": "0de3edeb3a2f0d7b56c5a19ebfb614a34d3f52b2a1ed627ab5c6121cb1d03d68",
+    "type": "BFF",
+    "route": "/api/health",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/institutions/profile/[id]/route.ts",
+    "lines": 17,
+    "sha256": "e09ebf8dea0f5455206400094ba9f0ee07bb878b4c778de8affd6192a26a6d8f",
+    "type": "BFF",
+    "route": "/api/institutions/profile/[id]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/instructors/directory/route.ts",
+    "lines": 57,
+    "sha256": "d23c3c7cc55f4bd2db25ab67b1ac38678e45bae4f9b992082fa4000970484edb",
+    "type": "BFF",
+    "route": "/api/instructors/directory",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/instructors/profile/[id]/route.ts",
+    "lines": 17,
+    "sha256": "b1e3ae6b09665f71d52bc15f2a0323297f04481da0ab3049d067aaea830af9d1",
+    "type": "BFF",
+    "route": "/api/instructors/profile/[id]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/invoices/me/route.ts",
+    "lines": 14,
+    "sha256": "2ff5f3c639e45e8cec479c57b3353eada778d0ebbb7d94b9e6b7827155d7c51c",
+    "type": "BFF",
+    "route": "/api/invoices/me",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/invoices/route.ts",
+    "lines": 15,
+    "sha256": "0766fed5c63c50cc1ff94df2ce7742c87a9cf477d33cf6026136e8f5fd4a21d0",
+    "type": "BFF",
+    "route": "/api/invoices",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/invoices/[id]/route.ts",
+    "lines": 14,
+    "sha256": "40518c81de3193305172e93f651a72b4f0cd6bcb2858b09a43bce2603b9ce387",
+    "type": "BFF",
+    "route": "/api/invoices/[id]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/job-invitations/me/route.ts",
+    "lines": 14,
+    "sha256": "78676b708a05b7da6f2ecbcd04a9d888de7b2805194c6ac6c66245563a0bba20",
+    "type": "BFF",
+    "route": "/api/job-invitations/me",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/job-invitations/[id]/route.ts",
+    "lines": 9,
+    "sha256": "730de726b3cafe6139ab517c9a9cd2b2e46aa32a51a7a41d9ce04d18c6213f43",
+    "type": "BFF",
+    "route": "/api/job-invitations/[id]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/jobs/mine/route.ts",
+    "lines": 16,
+    "sha256": "a219a611843e7341225b34262f68723cc5b5393b08120b0d310636d8d8f77066",
+    "type": "BFF",
+    "route": "/api/jobs/mine",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/jobs/route.ts",
+    "lines": 16,
+    "sha256": "a6493f5d9df877e13125c04c822d953809f0943c5130784b9d61ba316c33ad93",
+    "type": "BFF",
+    "route": "/api/jobs",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/jobs/[id]/route.ts",
+    "lines": 26,
+    "sha256": "2e5ee30e52bce4fe4bc2775ffc5d3c91dc19da8a48d86f9faa4be92c3080003b",
+    "type": "BFF",
+    "route": "/api/jobs/[id]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/matching/jobs/recommended/route.ts",
+    "lines": 16,
+    "sha256": "2c4592ed84eadddc274530c10711b5a65f30bb68882a9149f5f08c727baf438b",
+    "type": "BFF",
+    "route": "/api/matching/jobs/recommended",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/matching/jobs/[jobId]/applications/route.ts",
+    "lines": 17,
+    "sha256": "3bc522c043c52f0b6d9f77489b036dc5b1f30fd417d53138ac0174f1064bed19",
+    "type": "BFF",
+    "route": "/api/matching/jobs/[jobId]/applications",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/matching/jobs/[jobId]/instructors/route.ts",
+    "lines": 17,
+    "sha256": "a623a7918dcac7bff075c1edfabe8038a46f8bf4e60b49a407846722644f3b41",
+    "type": "BFF",
+    "route": "/api/matching/jobs/[jobId]/instructors",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/matching/jobs/[jobId]/score/route.ts",
+    "lines": 14,
+    "sha256": "09538af2b2b8fb2e28802fdd2f09a7545c86b2512cb716b9ab4dbc49a0eb27f3",
+    "type": "BFF",
+    "route": "/api/matching/jobs/[jobId]/score",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/my-profile/applications/route.ts",
+    "lines": 14,
+    "sha256": "8858b13dfc07bb7f20a55bd43d0f2a7937424cbf9dfb32f48e9b878addffb8b1",
+    "type": "BFF",
+    "route": "/api/my-profile/applications",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/my-profile/reviews/route.ts",
+    "lines": 15,
+    "sha256": "d4325b53cfbabc7c24580e9f483273bea711808951aafcc67860326c567a4ef4",
+    "type": "BFF",
+    "route": "/api/my-profile/reviews",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/notifications/preferences/route.ts",
+    "lines": 13,
+    "sha256": "984325c836186cf48450c960ef2a02746ce96925056be095188cc83ca7e9bdf7",
+    "type": "BFF",
+    "route": "/api/notifications/preferences",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/notifications/route.ts",
+    "lines": 25,
+    "sha256": "946c012359fdf4c912631226a16d392293ce4247e015d89fb28012a8301a5c90",
+    "type": "BFF",
+    "route": "/api/notifications",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/notifications/unread-count/route.ts",
+    "lines": 13,
+    "sha256": "a4b3ea6b464708381184141c2dfe3600820a821b63d768817c62f98e3f8f726a",
+    "type": "BFF",
+    "route": "/api/notifications/unread-count",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/onboarding/document-requirements/route.ts",
+    "lines": 15,
+    "sha256": "7fc85a705c68487168ac57e663bcc6bc084ec4b5cf6d30e8a127bd4922092cca",
+    "type": "BFF",
+    "route": "/api/onboarding/document-requirements",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/onboarding/documents/route.ts",
+    "lines": 28,
+    "sha256": "0d32dd3baa82269033d7bd0bd46b4d4b925a6bad438757456d4ca09e23b2f0fa",
+    "type": "BFF",
+    "route": "/api/onboarding/documents",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/onboarding/documents/[documentId]/preview/route.ts",
+    "lines": 66,
+    "sha256": "58a60fe368992e5c7de6f36dbd1f8dda12b5fac3d5628f0f8a4a3d87221543ae",
+    "type": "BFF",
+    "route": "/api/onboarding/documents/[documentId]/preview",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/onboarding/me/route.ts",
+    "lines": 13,
+    "sha256": "6c3514c1c166be99c3e2f63cb5bb857d315a5affb4221f543ba8cbdb19d56f4f",
+    "type": "BFF",
+    "route": "/api/onboarding/me",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/payments/payout-account/balance/route.ts",
+    "lines": 13,
+    "sha256": "1249987823f63d0762059ec921f3466cffcaa3ab8ebe4de6705153f5dc99886b",
+    "type": "BFF",
+    "route": "/api/payments/payout-account/balance",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/payments/payout-account/instant-payout/route.ts",
+    "lines": 20,
+    "sha256": "934eda388784bbe7bfff052dcc8b166309f5af304b8c8e75ea74b50439647354",
+    "type": "BFF",
+    "route": "/api/payments/payout-account/instant-payout",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/payments/payout-account/route.ts",
+    "lines": 13,
+    "sha256": "b084b1d0a756ae9870950a4a6c97e4441d0ce5bc078c2b90cd658ffb541935aa",
+    "type": "BFF",
+    "route": "/api/payments/payout-account",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/payments/payout-accounts/instructor/[instructorId]/route.ts",
+    "lines": 14,
+    "sha256": "9c9f902b81f16587b4c2553394e37968b44f639c3bc0b430b7d3726bfc9dc2d6",
+    "type": "BFF",
+    "route": "/api/payments/payout-accounts/instructor/[instructorId]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/reviews/institution/[institutionId]/route.ts",
+    "lines": 14,
+    "sha256": "86e8ad98b082c3c8d41a888bad1c0d2aa5e0affde20b412c6ea0487e13162ed2",
+    "type": "BFF",
+    "route": "/api/reviews/institution/[institutionId]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/reviews/instructor/[instructorId]/route.ts",
+    "lines": 14,
+    "sha256": "d29a948acfbea81a0c0acaa5195de648ab45dea2acf765d42438ff58e04c768f",
+    "type": "BFF",
+    "route": "/api/reviews/instructor/[instructorId]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/settings/profile/route.ts",
+    "lines": 13,
+    "sha256": "c9a37d62649d9e4ab6e27cbfd2d087cd1df2c0d4dcd4ab74b23a950211ffd9f1",
+    "type": "BFF",
+    "route": "/api/settings/profile",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/signatory-approvals/[token]/route.ts",
+    "lines": 59,
+    "sha256": "7f2a1bb8bf7fd1e0ad8cdf55fe6799b9043476a5fb89763257ca94d76eb34298",
+    "type": "BFF",
+    "route": "/api/signatory-approvals/[token]",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/teachers/route.ts",
+    "lines": 24,
+    "sha256": "fa1e39bc1c1bb2a056e7ffe5f8dfeb37ad6dc93f99be7fa3a6a42f36711940df",
+    "type": "BFF",
+    "route": "/api/teachers",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/teachers/[id]/route.ts",
+    "lines": 20,
+    "sha256": "38366ca6a0d46c7d0655f9dc49aa85c4d207cac4507f52167a968692dd2ff56e",
+    "type": "BFF",
+    "route": "/api/teachers/[id]",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/api/teaching-catalogue/route.ts",
+    "lines": 10,
+    "sha256": "322cbfbe96695a6890e9f6d26920499ccd9949c9f7bb279a9e50fc4d127af3e7",
+    "type": "BFF",
+    "route": "/api/teaching-catalogue",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "web",
+    "path": "app/post-auth/page.tsx",
+    "lines": 50,
+    "sha256": "4dd7d547bb9afbeb1aba7c34ce819479a9063cf292275106c6e404e542577a37",
+    "type": "page",
+    "route": "/post-auth"
+  },
+  {
+    "repo": "web",
+    "path": "app/theme-bootstrap.js/route.ts",
+    "lines": 9,
+    "sha256": "1ef94d651cd94c17f313952120968be0a0f21b2c3820c9f04a277e5b29949ab5",
+    "type": "BFF",
+    "route": "/theme-bootstrap.js",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "backend",
+    "path": "src/app.controller.ts",
+    "line": 8,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/applications/applications.controller.ts",
+    "line": 23,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/applications"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/applications/applications.controller.ts",
+    "line": 33,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/applications/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/applications/applications.controller.ts",
+    "line": 43,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/applications/institution/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/applications/applications.controller.ts",
+    "line": 50,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/applications/job/:jobId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/applications/applications.controller.ts",
+    "line": 64,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/applications/instructor/:instructorId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/applications/applications.controller.ts",
+    "line": 77,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/applications/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/applications/applications.controller.ts",
+    "line": 86,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/applications/:id/history"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/applications/applications.controller.ts",
+    "line": 97,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/applications/:id/status"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 25,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/login"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 34,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/oauth/google"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 43,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/register"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 51,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/refresh"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 60,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/email/otp/resend"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 69,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/email/otp/verify"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 79,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/password/forgot"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 88,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/password/reset"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 98,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/2fa/verify"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/auth/auth.controller.ts",
+    "line": 112,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/auth/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/bookings.controller.ts",
+    "line": 25,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/bookings/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/bookings.controller.ts",
+    "line": 33,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/bookings"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/bookings.controller.ts",
+    "line": 41,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/bookings/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/bookings.controller.ts",
+    "line": 48,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/bookings/:id/complete"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/bookings.controller.ts",
+    "line": 56,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/bookings/:id/no-show"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/bookings.controller.ts",
+    "line": 64,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/bookings/:id/cancel"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/direct-hire.controller.ts",
+    "line": 19,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/bookings/direct-hire"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/job-invitations.controller.ts",
+    "line": 38,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/job-invitations"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/job-invitations.controller.ts",
+    "line": 52,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/job-invitations/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/job-invitations.controller.ts",
+    "line": 72,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/job-invitations/me/pending"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/job-invitations.controller.ts",
+    "line": 84,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/job-invitations/me/summaries"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/job-invitations.controller.ts",
+    "line": 93,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/job-invitations/me/history"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/job-invitations.controller.ts",
+    "line": 105,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/job-invitations/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/job-invitations.controller.ts",
+    "line": 114,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/job-invitations/:id/accept"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/job-invitations.controller.ts",
+    "line": 124,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/job-invitations/:id/decline"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/bookings/job-invitations.controller.ts",
+    "line": 134,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/job-invitations/:id/cancel"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/contact/contact.controller.ts",
+    "line": 21,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/contact/register-interest"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/contact/contact.controller.ts",
+    "line": 29,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/contact/founding-interest"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/contact/contact.controller.ts",
+    "line": 37,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/contact/founding-interest/:id/details"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/contact/contact.controller.ts",
+    "line": 44,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/contact/founding-interest/all"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/contact/contact.controller.ts",
+    "line": 51,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/contact/founding-interest"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/contact/contact.controller.ts",
+    "line": 58,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/contact/founding-interest/:id/status"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 22,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/conversations"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 31,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/conversations"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 39,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/conversations/unread-count"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 48,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/conversations/socket-ticket"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 57,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/conversations/application/:applicationId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 64,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/conversations/booking/:bookingId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 71,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/conversations/job/:jobId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 83,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/conversations/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 90,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/conversations/:id/threads"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 99,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/conversations/:id/messages"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 106,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/conversations/:id/messages"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 114,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/conversations/:id/read"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 122,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/conversations/:id/attachments"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/conversations/conversations.controller.ts",
+    "line": 130,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/conversations/:id/attachments/:attachmentId/download-url"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-requirements/document-requirements.controller.ts",
+    "line": 21,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/document-requirements"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-requirements/document-requirements.controller.ts",
+    "line": 28,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/document-requirements"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-requirements/document-requirements.controller.ts",
+    "line": 35,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/document-requirements/profile"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-requirements/document-requirements.controller.ts",
+    "line": 42,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/document-requirements/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-requirements/document-requirements.controller.ts",
+    "line": 49,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/document-requirements/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-requirements/document-requirements.controller.ts",
+    "line": 56,
+    "type": "API",
+    "method": "DELETE",
+    "route": "/api/document-requirements/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-reviews/document-reviews.controller.ts",
+    "line": 16,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/document-reviews"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-reviews/document-reviews.controller.ts",
+    "line": 23,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/document-reviews/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-types/document-types.controller.ts",
+    "line": 15,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/document-types"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-types/document-types.controller.ts",
+    "line": 22,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/document-types"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-types/document-types.controller.ts",
+    "line": 29,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/document-types/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-types/document-types.controller.ts",
+    "line": 36,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/document-types/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/document-types/document-types.controller.ts",
+    "line": 43,
+    "type": "API",
+    "method": "DELETE",
+    "route": "/api/document-types/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 29,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/documents"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 36,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/documents"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 52,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/documents/admin"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 60,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/documents/admin/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 67,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/documents/admin/:id/download-url"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 74,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/documents/admin/:id/review"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 85,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/documents/:id/upload-url"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 96,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/documents/:id/upload-complete"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 107,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/documents/:id/download-url"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 114,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/documents/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/documents/documents.controller.ts",
+    "line": 125,
+    "type": "API",
+    "method": "DELETE",
+    "route": "/api/documents/admin/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/dropdowns/dropdowns.controller.ts",
+    "line": 15,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/dropdowns"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/dropdowns/dropdowns.controller.ts",
+    "line": 23,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/dropdowns/admin"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/dropdowns/dropdowns.controller.ts",
+    "line": 32,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/dropdowns/admin/:name"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/dropdowns/dropdowns.controller.ts",
+    "line": 42,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/dropdowns/:name"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/dropdowns/dropdowns.controller.ts",
+    "line": 50,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/dropdowns/:name"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/dropdowns/dropdowns.controller.ts",
+    "line": 58,
+    "type": "API",
+    "method": "DELETE",
+    "route": "/api/dropdowns/:name"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/health/health.controller.ts",
+    "line": 15,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/health"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/institutions/institutions.controller.ts",
+    "line": 26,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/institutions"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/institutions/institutions.controller.ts",
+    "line": 36,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/institutions"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/institutions/institutions.controller.ts",
+    "line": 49,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/institutions/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/institutions/institutions.controller.ts",
+    "line": 59,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/institutions/profile/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/institutions/institutions.controller.ts",
+    "line": 67,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/institutions/me/status"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/institutions/institutions.controller.ts",
+    "line": 77,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/institutions/admin/:id/status"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/institutions/institutions.controller.ts",
+    "line": 87,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/institutions/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/institutions/institutions.controller.ts",
+    "line": 97,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/institutions/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/institutions/institutions.controller.ts",
+    "line": 111,
+    "type": "API",
+    "method": "DELETE",
+    "route": "/api/institutions/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 33,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/instructors"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 43,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/instructors"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 56,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/instructors/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 64,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/instructors/me/dashboard-summary"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 75,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/instructors/directory"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 83,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/instructors/me/status"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 93,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/instructors/profile/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 101,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/instructors/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 110,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/instructors/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 124,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/instructors/admin/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/instructors/instructors.controller.ts",
+    "line": 134,
+    "type": "API",
+    "method": "DELETE",
+    "route": "/api/instructors/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 23,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/jobs"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 33,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/jobs"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 43,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/jobs/mine"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 53,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/jobs/mine/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 61,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/jobs/accessible/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 69,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/jobs/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 79,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/jobs/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 80,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/jobs/admin/all"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 93,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/jobs/institution/:institutionId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 102,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/jobs/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/jobs/jobs.controller.ts",
+    "line": 112,
+    "type": "API",
+    "method": "DELETE",
+    "route": "/api/jobs/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/matching/matching.controller.ts",
+    "line": 21,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/matching/jobs/recommended"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/matching/matching.controller.ts",
+    "line": 37,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/matching/jobs/:jobId/applications"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/matching/matching.controller.ts",
+    "line": 58,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/matching/jobs/:jobId/instructors"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/matching/matching.controller.ts",
+    "line": 78,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/matching/jobs/:jobId/score"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/notifications/notifications.controller.ts",
+    "line": 16,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/notifications"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/notifications/notifications.controller.ts",
+    "line": 24,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/notifications/unread-count"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/notifications/notifications.controller.ts",
+    "line": 31,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/notifications/read-all"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/notifications/notifications.controller.ts",
+    "line": 39,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/notifications/preferences"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/notifications/notifications.controller.ts",
+    "line": 46,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/notifications/preferences"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/notifications/notifications.controller.ts",
+    "line": 53,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/notifications/:id/read"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 55,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/payments/payout-account/balance"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 63,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/payments/payout-account/instant-payout"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 71,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/payments/payout-account"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 79,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/payments/payout-account/session"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 88,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/payments/payout-account/onboarding-link"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 97,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/payments/payout-account/dashboard-link"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 106,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/payments/payout-accounts/instructor/:instructorId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 124,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/payments/webhooks/stripe"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 146,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/invoices"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 154,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/invoices/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 162,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/invoices"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 170,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/invoices/job/:jobId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 182,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/invoices/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 189,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/invoices/:id/payment-session"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 201,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/invoices/:id/sync"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 209,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/invoices/:id/send"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 218,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/invoices/:id/void"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/payments/payments.controller.ts",
+    "line": 227,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/invoices/:id/refund"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/phone-verification/phone-verification.controller.ts",
+    "line": 15,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/phone/otp/send"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/phone-verification/phone-verification.controller.ts",
+    "line": 23,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/phone/otp/verify"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/reviews/reviews.controller.ts",
+    "line": 26,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/reviews"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/reviews/reviews.controller.ts",
+    "line": 34,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/reviews/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/reviews/reviews.controller.ts",
+    "line": 41,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/reviews/instructor/:instructorId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/reviews/reviews.controller.ts",
+    "line": 51,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/reviews/institution/:institutionId"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/reviews/reviews.controller.ts",
+    "line": 61,
+    "type": "API",
+    "method": "DELETE",
+    "route": "/api/reviews/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/signatory-approvals/signatory-approvals.controller.ts",
+    "line": 29,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/institutions/me/signatory-approval"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/signatory-approvals/signatory-approvals.controller.ts",
+    "line": 37,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/institutions/me/signatory-approval"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/signatory-approvals/signatory-approvals.controller.ts",
+    "line": 54,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/signatory-approvals/token/:token"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/signatory-approvals/signatory-approvals.controller.ts",
+    "line": 62,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/signatory-approvals/token/:token/approve"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/signatory-approvals/signatory-approvals.controller.ts",
+    "line": 79,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/signatory-approvals/token/:token/decline"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/signatory-approvals/signatory-approvals.controller.ts",
+    "line": 95,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/signatory-approvals"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/signatory-approvals/signatory-approvals.controller.ts",
+    "line": 109,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/signatory-approvals/:id/override-approve"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/two-factor/two-factor.controller.ts",
+    "line": 17,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/2fa/setup"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/two-factor/two-factor.controller.ts",
+    "line": 24,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/2fa/enable"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/two-factor/two-factor.controller.ts",
+    "line": 32,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/auth/2fa/status"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/two-factor/two-factor.controller.ts",
+    "line": 39,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/2fa/disable"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/two-factor/two-factor.controller.ts",
+    "line": 47,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/2fa/admin/:userId/disable"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/two-factor/two-factor.controller.ts",
+    "line": 56,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/auth/2fa/recovery-codes"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 35,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/users/me/profile-image/upload-url"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 43,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/users/me/profile-image/upload-complete"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 54,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/users/me/profile-image"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 62,
+    "type": "API",
+    "method": "POST",
+    "route": "/api/users/admin"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 70,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/users"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 83,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/users/me/workspace-status"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 91,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/users/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 99,
+    "type": "API",
+    "method": "GET",
+    "route": "/api/users/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 109,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/users/me"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 118,
+    "type": "API",
+    "method": "PATCH",
+    "route": "/api/users/admin/:id"
+  },
+  {
+    "repo": "backend",
+    "path": "src/modules/users/users.controller.ts",
+    "line": 128,
+    "type": "API",
+    "method": "DELETE",
+    "route": "/api/users/admin/:id"
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/auth/[...nextauth]/route.ts",
+    "lines": 4,
+    "sha256": "c884f78c740670b2ee4cf0d926c6d109b233fafe4ad60fc32af1c7d903f8d9cf",
+    "type": "BFF",
+    "route": "/api/auth/[...nextauth]",
+    "methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/contact/founding-interest/export/route.ts",
+    "lines": 37,
+    "sha256": "a21c67017c96462d57c525e98afe235b99c414cc77f21bf9da0d06b6c62d7314",
+    "type": "BFF",
+    "route": "/api/contact/founding-interest/export",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/contact/founding-interest/[id]/status/route.ts",
+    "lines": 77,
+    "sha256": "99b37bda9eeb7ff570c4a1e72bfeb2a9f159721c344c953e3a4c4fb7e5d83e1a",
+    "type": "BFF",
+    "route": "/api/contact/founding-interest/[id]/status",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/conversations/[id]/attachments/[attachmentId]/download/route.ts",
+    "lines": 18,
+    "sha256": "c1d0b940ac7a5acc3af16b38a84825d882316281f0d9a70bdd228d22015ffb81",
+    "type": "BFF",
+    "route": "/api/conversations/[id]/attachments/[attachmentId]/download",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/conversations/[id]/messages/route.ts",
+    "lines": 19,
+    "sha256": "fc74a54d7a5dc4189bdc8c1a4fcd86ad9e65a00637a0bcc2a57453f33f7e53d2",
+    "type": "BFF",
+    "route": "/api/conversations/[id]/messages",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/document-requirements/route.ts",
+    "lines": 84,
+    "sha256": "1ae5add917897a2de317b6259414a3c2779dfa61690b70a28e695d6b52632f89",
+    "type": "BFF",
+    "route": "/api/document-requirements",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/document-requirements/[id]/route.ts",
+    "lines": 148,
+    "sha256": "65625b5b64bd1e422a7333052c4cc3380cea3aa98ae0f52c2dfdf5cf34e11bb4",
+    "type": "BFF",
+    "route": "/api/document-requirements/[id]",
+    "methods": [
+      "PATCH",
+      "DELETE"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/document-types/route.ts",
+    "lines": 121,
+    "sha256": "c485927ac01d374798196848ad5fb717f325292ddbbc81ed23696861aaa86106",
+    "type": "BFF",
+    "route": "/api/document-types",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/document-types/[id]/route.ts",
+    "lines": 143,
+    "sha256": "978b9642797d66bd04e2285a88761e0df8336b54637f0b10c15e8bed6903364b",
+    "type": "BFF",
+    "route": "/api/document-types/[id]",
+    "methods": [
+      "PATCH",
+      "DELETE"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/documents/[id]/content/route.ts",
+    "lines": 176,
+    "sha256": "922adf3173a870eafd459ae4c47fae445fb8478387047f7e9b773ce36ce25bbc",
+    "type": "BFF",
+    "route": "/api/documents/[id]/content",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/documents/[id]/download/route.ts",
+    "lines": 31,
+    "sha256": "a9416e31ea5e347307a375d75a79fc2fbafa011c12ac9b098115549ef251febb",
+    "type": "BFF",
+    "route": "/api/documents/[id]/download",
+    "methods": [
+      "GET"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/documents/[id]/review/route.ts",
+    "lines": 89,
+    "sha256": "95d4593f690591e06b93f75cca9799fca436941d394d03ea49ea0ebf5dff54dc",
+    "type": "BFF",
+    "route": "/api/documents/[id]/review",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/dropdowns/[name]/route.ts",
+    "lines": 28,
+    "sha256": "abc0526a317fa12a6c36d49f3e7d6d61c69355558299a1cab18e4d7ed5100c16",
+    "type": "BFF",
+    "route": "/api/dropdowns/[name]",
+    "methods": [
+      "GET",
+      "PATCH",
+      "DELETE"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/institutions/[id]/status/route.ts",
+    "lines": 86,
+    "sha256": "12eaf1c5688e9ab752df108729fc69767e75a2227422906365ed2833751d6bd0",
+    "type": "BFF",
+    "route": "/api/institutions/[id]/status",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/instructors/[id]/status/route.ts",
+    "lines": 86,
+    "sha256": "286b5db390d57e9161adbe38507add85ef865dbde948940f35bebaebcb35b021",
+    "type": "BFF",
+    "route": "/api/instructors/[id]/status",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/jobs/route.ts",
+    "lines": 64,
+    "sha256": "2876b59ccb987205b60d4a311529aa902140b9f59614c04ac795ae36cc59c763",
+    "type": "BFF",
+    "route": "/api/jobs",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/recruiters/[id]/status/route.ts",
+    "lines": 86,
+    "sha256": "abae476677308696efc80d56fddd0960d2760bb050c36ff458b10ab9acd0e647",
+    "type": "BFF",
+    "route": "/api/recruiters/[id]/status",
+    "methods": [
+      "PATCH"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/users/route.ts",
+    "lines": 50,
+    "sha256": "e2b02354c5ed71f746340c1ca50eabf9e55479bc5bccc1c543653ca32292c822",
+    "type": "BFF",
+    "route": "/api/users",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/users/[id]/route.ts",
+    "lines": 174,
+    "sha256": "017bc67230ed3891a4e7993880465561a3401aa939c91d9f75200cb76db4b1d9",
+    "type": "BFF",
+    "route": "/api/users/[id]",
+    "methods": [
+      "DELETE",
+      "PATCH"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/api/users/[id]/two-factor/disable/route.ts",
+    "lines": 45,
+    "sha256": "708608ad6ef77fef8346d7a5fc5dd2754409a71f035c220f73bc8a9909016db6",
+    "type": "BFF",
+    "route": "/api/users/[id]/two-factor/disable",
+    "methods": [
+      "POST"
+    ]
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/billing-history/page.tsx",
+    "lines": 42,
+    "sha256": "590dfaa3453f3ae5b59d40c50209d3e9a96aa15108331ec6fad21f0e02af1c62",
+    "type": "page",
+    "route": "/dashboard/billing-history"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/document-queue/page.tsx",
+    "lines": 67,
+    "sha256": "c2557ce577dd5aa6e42cea70d24e591eded0a215edefb578923dc0dee0cb3e7b",
+    "type": "page",
+    "route": "/dashboard/document-queue"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/document-types/new/page.tsx",
+    "lines": 49,
+    "sha256": "e9fa69215a2999e82567388ec48924b514d159294b1ec9a56f9f956ff1bcc1f9",
+    "type": "page",
+    "route": "/dashboard/document-types/new"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/document-types/page.tsx",
+    "lines": 58,
+    "sha256": "d5e637f8e3a6732d48d8b7fa6b191b862ad68512359bcdd79e12fc256dbe1f5d",
+    "type": "page",
+    "route": "/dashboard/document-types"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/document-types/[id]/edit/page.tsx",
+    "lines": 107,
+    "sha256": "bf0e1fb97ea27f1457129edf67e447e5afac06635d62a750635222e812edf0cc",
+    "type": "page",
+    "route": "/dashboard/document-types/[id]/edit"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/dropdowns/page.tsx",
+    "lines": 8,
+    "sha256": "9ee8e0f7e6400b04037f8528b22918f270115165e5bbf928c28c49d418753109",
+    "type": "page",
+    "route": "/dashboard/dropdowns"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/dropdowns/[name]/page.tsx",
+    "lines": 14,
+    "sha256": "c8c60f7c17d1c2d92b83621fa25935bae9868d163a32cba09c590b355a83721a",
+    "type": "page",
+    "route": "/dashboard/dropdowns/[name]"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/jobs/new/page.tsx",
+    "lines": 47,
+    "sha256": "7544fa840e3bd98f61c7f377fe242442dcdc5d5f92b871651b34cab7f5fb0111",
+    "type": "page",
+    "route": "/dashboard/jobs/new"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/jobs/page.tsx",
+    "lines": 139,
+    "sha256": "e28595e5d7fb54c7098c689e5d18bf36b5a949266fafba93cf42e1b2d53a7688",
+    "type": "page",
+    "route": "/dashboard/jobs"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/jobs/[id]/conversations/page.tsx",
+    "lines": 116,
+    "sha256": "479d9107d6c36772e4aca5159a2986d3f5b00697a64c670328be0effff08f24d",
+    "type": "page",
+    "route": "/dashboard/jobs/[id]/conversations"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/jobs/[id]/page.tsx",
+    "lines": 266,
+    "sha256": "e0e1cca69671bdefadf0515e964c9893da440cdf5db53fbf1624a902f06f6a64",
+    "type": "page",
+    "route": "/dashboard/jobs/[id]"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/jobs/[id]/payments/page.tsx",
+    "lines": 51,
+    "sha256": "fc7f55f07f81c6aebd2d6a72ad4170065eca95d948a37367bdcb7f5145bba3be",
+    "type": "page",
+    "route": "/dashboard/jobs/[id]/payments"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/page.tsx",
+    "lines": 185,
+    "sha256": "442428fa42661b632cd25e1cc041317856f794667dcf483a440bf688b7447c56",
+    "type": "page",
+    "route": "/dashboard"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/settings/page.tsx",
+    "lines": 105,
+    "sha256": "81ecb858cd44dbd9e1ee76b4b8837f64cd44128c03f0b349318fcb53c64054c7",
+    "type": "page",
+    "route": "/dashboard/settings"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/users/page.tsx",
+    "lines": 284,
+    "sha256": "40d90e6608ed7530dd3f2f1043b19611bf172dd55080c860a005ba5da6af1a6d",
+    "type": "page",
+    "route": "/dashboard/users"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/users/[id]/documents/[documentId]/page.tsx",
+    "lines": 260,
+    "sha256": "1c4092a31de8a0510076d6addd46beeaca3ab533e619803fe87ab13a0feb52eb",
+    "type": "page",
+    "route": "/dashboard/users/[id]/documents/[documentId]"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/users/[id]/page.tsx",
+    "lines": 447,
+    "sha256": "96aa907c1f8ea339fc2ecf7a67f5525c9d1af2a288317c0b780ea80fb77cfee9",
+    "type": "page",
+    "route": "/dashboard/users/[id]"
+  },
+  {
+    "repo": "admin",
+    "path": "app/dashboard/waiting-list/page.tsx",
+    "lines": 156,
+    "sha256": "2885ca8f284ea5b31693798241d7165ddbb3b97b1cc6890704e87f4bdea2bacd",
+    "type": "page",
+    "route": "/dashboard/waiting-list"
+  },
+  {
+    "repo": "admin",
+    "path": "app/login/page.tsx",
+    "lines": 12,
+    "sha256": "53c302d074af675a7b1c2cf5f9fd3e15a8b89adc89138b81e441456ec30aa3d0",
+    "type": "page",
+    "route": "/login"
+  },
+  {
+    "repo": "admin",
+    "path": "app/page.tsx",
+    "lines": 12,
+    "sha256": "6e7bdabdd554fac36de2419a28cfcd467fc24b94372e807121b7b77a50006d28",
+    "type": "page",
+    "route": "/page.tsx"
+  },
+  {
+    "repo": "admin",
+    "path": "app/terms-and-conditions/page.tsx",
+    "lines": 92,
+    "sha256": "3e06925371513a541532dd1e28acb12f05166a2f636f0529b587713e84e3092b",
+    "type": "page",
+    "route": "/terms-and-conditions"
+  }
+]

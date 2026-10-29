@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
+import { summarizeOnboardingProfile } from "@/features/onboarding/snapshot";
 import { actualSubjects, catalogueError } from "@/features/teaching-catalogue/selection";
 import { teachingCatalogueKey, useTeachingCatalogue } from "@/features/teaching-catalogue/use-teaching-catalogue";
 import { Country } from "country-state-city";
@@ -260,6 +262,7 @@ export function useOnboardingForm({
   const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
   const requirementsQuery = useOnboardingDocumentRequirements(activeRole, { enabled: roleSelected });
   const onboardingStatusQuery = useOnboardingSnapshot(accountEmail ?? "", {
+    mode: "approval",
     enabled: Boolean(accountEmail && lockedDocumentStage && activeRole === "institution" && form.institutionType === "MAT_SCHOOL"),
   });
   const documentRequirements = filterProfileDocumentRequirements(
@@ -589,6 +592,9 @@ export function useOnboardingForm({
 
   function applySnapshot(snapshot?: OnboardingProfileSnapshot) {
     if (!snapshot) return;
+    // A successful save/resend can create a new PENDING approval. Update the
+    // shared status immediately so conditional polling starts/stops correctly.
+    if (accountEmail) queryClient.setQueryData([...queryKeys.onboarding.current(), accountEmail], summarizeOnboardingProfile(snapshot));
     setForm((current) => mergeSnapshotForm(current, accountEmail, snapshot,
       phoneTouchedRef.current || currentUserQuery.data?.phoneVerified === true));
     setDocumentRequirementsSnapshot(snapshot.documentRequirements);

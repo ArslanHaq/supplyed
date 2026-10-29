@@ -1,0 +1,458 @@
+[
+  {
+    "id": "A01",
+    "severity": "P1",
+    "status": "Code-inspection",
+    "title": "Both Next.js applications use a version affected by a published Server Actions denial of service",
+    "category": "Dependency security",
+    "locations": [
+      "web/package.json:22",
+      "admin/package.json:18",
+      "web/features/auth/actions.ts:1",
+      "admin/app/actions/auth.ts:1",
+      "web/next.config.mjs:2"
+    ],
+    "explanation": "Installed Next.js is 16.2.9 in both applications. The web uses App Router and Server Actions; admin also has server action code. This meets the documented conditions for GHSA-p3m5-59mp-jv5r. The finding is version/configuration matching, not an exploit test.",
+    "impact": "An unauthenticated crafted action request can consume CPU and block request processing according to the upstream advisory. Separately, the same version is within the range for a Windows-filesystem RCE advisory; this local workspace is Windows, but public runtime applicability is UNVERIFIED and infrastructure is outside scope.",
+    "evidence": "Compare audit-evidence/installed-versions.json with the [official Server Actions advisory](https://github.com/vercel/next.js/security/advisories/GHSA-p3m5-59mp-jv5r), published 2026-10-14: affected 16.0.0–16.4.0, fixed 16.4.1. The [Windows RCE advisory](https://github.com/vercel/next.js/security/advisories/GHSA-p293-qw3h-jr36) affects 16.x before 16.3.3 when using Windows filesystem hosting without Cache Components. No attack payload was sent.",
+    "fix": "Upgrade both applications to a supported patched Next.js release, at least 16.4.1 for the cited Server Actions issue; check the compatible React/RSC packages and regenerate lockfiles in the implementation phase. Repeat advisory scanning and auth/action regression tests. Treat any externally reachable affected Windows instance as urgent without waiting for an exploit demonstration.",
+    "difficulty": "Medium",
+    "journey": "All public pages, authentication and server actions"
+  },
+  {
+    "id": "A02",
+    "severity": "P1",
+    "status": "Verified",
+    "title": "Password reset does not revoke refresh sessions, and refresh tokens are reusable",
+    "category": "Authentication/session management",
+    "locations": [
+      "backend/src/modules/auth/auth.service.ts:109",
+      "backend/src/modules/auth/auth.service.ts:231",
+      "backend/src/modules/auth/auth.service.ts:296",
+      "backend/prisma/schema.prisma:326"
+    ],
+    "explanation": "Refresh verifies the JWT, current user and 2FA flag, then issues another token pair without checking a persisted session or invalidating the presented token. Reset changes the password and consumes OTPs but never invalidates existing sessions. The RefreshToken schema is not used by this auth path.",
+    "impact": "A stolen refresh token remains useful after account recovery. An attacker can repeatedly renew the session; clearing the legitimate browser cookie does not revoke the stolen backend credential.",
+    "evidence": "Run node audit-evidence/verify-findings.cjs; AUTH-REVOCATION logs in a synthetic fixture, resets its password using real bcrypt, then successfully refreshes the same old token twice. Persistence is mocked; no real account was accessed. JWTStrategy also has no password-change epoch/session check.",
+    "fix": "Persist hashed refresh tokens with session/family identifiers, rotate atomically and detect reuse. Revoke sessions on reset, sensitive credential changes and explicit logout. Define whether access tokens expire naturally or are invalidated through a user/session epoch.",
+    "difficulty": "Hard",
+    "journey": "Login → refresh → logout/password recovery"
+  },
+  {
+    "id": "A03",
+    "severity": "P1",
+    "status": "Verified",
+    "title": "BFF requests share a very small backend IP rate-limit budget",
+    "category": "Authentication availability",
+    "locations": [
+      "backend/src/common/guards/rate-limit.guard.ts:33",
+      "backend/src/common/guards/rate-limit.guard.ts:43",
+      "web/lib/server/api-client.ts:170",
+      "admin/lib/auth/authenticate.ts:67"
+    ],
+    "explanation": "The backend permits five email-send operations and ten other POST operations per IP per fifteen minutes. Browser operations are forwarded by the Next server without a trusted per-client identity for this limiter. In the normal server-to-server path users therefore share the BFF source-IP bucket. Additional email/token buckets do not prevent the earlier shared-IP rejection.",
+    "impact": "A handful of legitimate registrations/resets can deny service to unrelated users behind the same BFF. The same mismatch affects login and refresh under modest concurrent usage.",
+    "evidence": "BFF-RATE-BUDGET invokes the actual guard with six different emails and one source IP: five allowed, sixth 429 with Retry-After 900. SQL counter is mocked. Runtime proxy topology was not inspected; the shared-IP consequence is conditional on the ordinary BFF source-IP path evidenced in the clients.",
+    "fix": "Design distinct end-user, account, and service budgets. Establish a trusted authenticated BFF-to-API client identity/forwarding contract and enforce per-client limits at the appropriate layer. Never trust arbitrary public X-Forwarded-For values. Test multiple users through one BFF and direct API abuse.",
+    "difficulty": "Medium",
+    "journey": "Registration, OTP resend, password recovery, login and refresh"
+  },
+  {
+    "id": "A04",
+    "severity": "P1",
+    "status": "Verified",
+    "title": "An administrator with 2FA enabled cannot complete admin login",
+    "category": "Authentication/frontend contract",
+    "locations": [
+      "admin/lib/auth/authenticate.ts:99",
+      "admin/auth.ts:2",
+      "backend/src/modules/auth/auth.service.ts:40"
+    ],
+    "explanation": "The backend correctly returns a two-factor challenge, but authenticateAdmin treats it as a terminal failure. The admin credentials provider has no challenge/code exchange path.",
+    "impact": "Enabling a desirable security control can lock an administrator out of the administration application until another recovery path is used.",
+    "evidence": "ADMIN-2FA substitutes a valid-shaped backend challenge and executes authenticateAdmin: result is {ok:false, code:two_factor_required}. Source inspection confirms no matching admin challenge-completion flow. Browser login was not executed.",
+    "fix": "Add an admin 2FA challenge screen and server-side verification exchange before issuing the admin session. Keep challenge tokens off general browser session objects and cover invalid/replayed codes and recovery codes.",
+    "difficulty": "Medium",
+    "journey": "Admin login with TOTP or recovery code"
+  },
+  {
+    "id": "A05",
+    "severity": "P1",
+    "status": "Verified",
+    "title": "Admin user creation always omits a mandatory backend role",
+    "category": "Frontend/backend validation contract",
+    "locations": [
+      "admin/app/api/users/route.ts:8",
+      "admin/app/api/users/route.ts:35",
+      "backend/src/modules/users/dto/admin-create-user.dto.ts:5",
+      "backend/src/modules/auth/dto/register.dto.ts:25"
+    ],
+    "explanation": "The admin request schema contains no role and Zod strips unknown role fields. AdminCreateUserDto inherits RegisterDto, which requires a signup role. The UI intent of creating a generic USER and the backend registration contract disagree.",
+    "impact": "Administrators cannot create users through this form; retries cannot resolve the validation failure.",
+    "evidence": "ADMIN-USER-ROLE-CONTRACT executes the real BFF input parsing, captures the forwarded body, and runs actual class-validator validation against AdminCreateUserDto. Even a supplied INSTRUCTOR role is removed; the backend DTO rejects the missing role. The HTTP backend response is mocked as 400; no account was created.",
+    "fix": "Define a dedicated admin-create contract: either create USER explicitly on the backend or expose a permitted role selector and retain its validated value. Share/generate contract types and test BFF → DTO validation together.",
+    "difficulty": "Easy",
+    "journey": "Admin → Users → Create user"
+  },
+  {
+    "id": "A06",
+    "severity": "P1",
+    "status": "Code-inspection",
+    "title": "Required-document workspace gating is not rechecked by hiring mutations",
+    "category": "Authorization/business rules",
+    "locations": [
+      "web/features/onboarding/profile-progress.ts:39",
+      "web/components/route-shell.tsx:47",
+      "backend/src/modules/applications/applications.repository.ts:97",
+      "backend/src/modules/jobs/job-policy.ts:10",
+      "backend/src/modules/documents/documents.repository.ts:157"
+    ],
+    "explanation": "The web treats missing required documents as no completed profile and redirects to onboarding. Deleting a document only soft-deletes the document; it does not change the ACTIVE profile status. Application creation and school eligibility check ACTIVE status without the current document requirements. Thus an already-approved user can remove a required document and use the backend mutation directly despite the web gate.",
+    "impact": "Previously approved participants can continue marketplace actions with required evidence missing. This is a concrete frontend/backend policy mismatch; the intended legal/compliance consequences and whether every document review must gate hiring are not assumed.",
+    "evidence": "Trace ACTIVE profile → DocumentsRepository.softDelete → profileEntryStatus returns none → direct application create checks only teacher ACTIVE and lockEligibleSchool ACTIVE. Global JWT validation returns current user role, not current document eligibility. This sequence was inspected, not executed against a database.",
+    "fix": "Define one backend eligibility policy and enforce it inside relevant hiring transactions, including document removal/replacement and required trust approvals. Make the frontend consume that policy result. Specify expiry/review rules explicitly; stored documentExpiryDate currently does not supply a hiring gate.",
+    "difficulty": "Hard",
+    "journey": "Approved teacher/school changes evidence → apply/post/hire"
+  },
+  {
+    "id": "A07",
+    "severity": "P2",
+    "status": "Verified",
+    "title": "A password-reset OTP can be consumed twice under concurrency",
+    "category": "Recovery/data integrity",
+    "locations": [
+      "backend/src/modules/auth/auth.service.ts:231",
+      "backend/src/modules/auth/auth.service.ts:258",
+      "backend/src/modules/auth/password-reset-otp.repository.ts:78"
+    ],
+    "explanation": "Reading an active OTP, comparing it, changing the password and consuming the OTP are separate operations. Two requests can both read the unused OTP before either consumes it.",
+    "impact": "Two password writes can succeed for one supposedly single-use code, leaving the final password dependent on request order. This requires knowledge of a valid OTP; it is not an OTP-guessing or unauthenticated account-takeover demonstration.",
+    "evidence": "OTP-CONCURRENCY sends two concurrent resetPassword calls with the same synthetic valid OTP and different passwords; both fulfill and two password writes occur. Uses actual service/bcrypt with mocked persistence, so real database scheduling remains untested.",
+    "fix": "Atomically claim/consume the unexpired OTP with a conditional update and update the password in the same transaction. Require exactly one successful claim; invalidate sessions in that transaction as part of A02. Review email verification consumption for the same pattern.",
+    "difficulty": "Medium",
+    "journey": "Password recovery, duplicate submissions"
+  },
+  {
+    "id": "A08",
+    "severity": "P2",
+    "status": "Verified",
+    "title": "Forgot-password decoy JWTs disclose account existence and role",
+    "category": "Information disclosure",
+    "locations": [
+      "backend/src/modules/auth/auth.service.ts:210",
+      "backend/src/modules/auth/auth.service.ts:220",
+      "backend/src/modules/auth/auth.service.ts:223"
+    ],
+    "explanation": "The public response uses a signed, readable JWT containing the actual user ID and role for existing users. Unknown emails get a fresh random ID and INSTRUCTOR role. Signing does not hide the payload.",
+    "impact": "A caller can identify administrator/institution accounts from one response and distinguish instructor existence by comparing stable versus changing subjects across two requests. The OTP is still required to reset a password.",
+    "evidence": "RESET-ENUMERATION uses existing ADMIN and absent fixture emails: decoded roles differ. Source confirms existing subjects remain stable and absent subjects are freshly randomized. No production emails or tokens were used.",
+    "fix": "Return an opaque, uniformly shaped recovery transaction identifier with the user mapping kept server-side; make existing and absent requests indistinguishable in payload and handling. Avoid exposing role and stable account identifiers in public recovery challenges.",
+    "difficulty": "Medium",
+    "journey": "Public forgot-password form"
+  },
+  {
+    "id": "A09",
+    "severity": "P2",
+    "status": "Verified",
+    "title": "Accepted long passwords collide after bcrypt’s first 72 bytes",
+    "category": "Password validation",
+    "locations": [
+      "web/features/auth/schemas.ts:16",
+      "backend/src/modules/auth/auth.service.ts:65",
+      "backend/src/modules/auth/dto/register.dto.ts:21"
+    ],
+    "explanation": "The web accepts passwords up to 128 characters, while bcrypt uses only the first 72 bytes. Backend registration does not impose a compatible byte-length maximum. Multibyte characters can hit the limit earlier than a character count suggests.",
+    "impact": "Users can believe distinct long passwords differ when authentication treats them as identical. This reduces the effective password and can make a suffix-only password change ineffective.",
+    "evidence": "PASSWORD-72-BYTES hashes a valid 72-byte prefix plus one suffix; bcrypt.compare accepts the same prefix with a different suffix. The first password also passes the actual frontend validator. No real password is printed.",
+    "fix": "Choose an explicit hashing/length strategy. Prefer a modern password hash with a deliberate migration plan, or reject inputs exceeding bcrypt’s byte limit consistently before hashing. Do not silently truncate or introduce ad hoc prehashing.",
+    "difficulty": "Medium",
+    "journey": "Signup, password reset/change, login"
+  },
+  {
+    "id": "A10",
+    "severity": "P2",
+    "status": "Verified",
+    "title": "Distinct instant withdrawals can reuse the same Stripe idempotency key",
+    "category": "Payments/idempotency",
+    "locations": [
+      "backend/src/modules/payments/instant-payouts.service.ts:60",
+      "backend/src/modules/payments/instant-payouts.service.ts:99"
+    ],
+    "explanation": "The key is constructed from account, currently available balance and withdrawal amount. Those values can recur after new earnings, and the destination is not part of the identity. Balance is not a unique business-operation ID.",
+    "impact": "A later legitimate withdrawal may receive the old success response without a new payout, or a parameter mismatch if the destination changed. This is not evidence of a duplicate debit or stolen funds.",
+    "evidence": "PAYOUT-KEY-COLLISION executes two distinct service calls with a recurring mocked balance and observes identical provider keys. Stripe was not called. [Stripe’s idempotency documentation](https://docs.stripe.com/api/idempotent_requests) describes replay of the first result and retention for at least 24 hours.",
+    "fix": "Persist a withdrawal intent with a unique ID and immutable amount/destination. Reuse its key only for retries of that intent; create a new key for new business requests. Reconcile returned provider IDs to intent state.",
+    "difficulty": "Medium",
+    "journey": "Teacher → payouts → cash out, retry and later withdrawal"
+  },
+  {
+    "id": "A11",
+    "severity": "P2",
+    "status": "Verified",
+    "title": "Instant-payout BFF lacks the origin/content-type guard used on other mutations",
+    "category": "CSRF defense",
+    "locations": [
+      "web/app/api/payments/payout-account/instant-payout/route.ts:8",
+      "web/app/api/payments/payout-account/instant-payout/route.ts:10"
+    ],
+    "explanation": "The cookie-authenticated route accepts JSON parsed from text/plain and does not check Origin or Fetch Metadata. Unlike a Next Server Action, this ordinary POST handler does not receive Server Action origin protection.",
+    "impact": "A hostile same-site sibling origin could submit a payout request when the browser sends the session cookie. SameSite=Lax normally blocks cookies on ordinary cross-site POSTs, so this is not a demonstrated arbitrary cross-site exploit. Real cookie delivery and host relationships were not tested.",
+    "evidence": "PAYOUT-ORIGIN invokes the real handler with a sibling Origin and text/plain JSON body, forwarding to a mocked API and returning 201. The mock bypasses session acquisition, so the verified fact is acceptance at the route boundary, not a completed browser CSRF attack.",
+    "fix": "Apply the shared same-origin mutation guard, validate application/json and/or a CSRF token, and enforce appropriate Fetch Metadata policy. Cover sibling-origin, missing-origin and valid same-origin cases while preserving intentional non-browser API clients at the bearer-authenticated backend.",
+    "difficulty": "Easy",
+    "journey": "Teacher instant payout"
+  },
+  {
+    "id": "A12",
+    "severity": "P2",
+    "status": "Verified",
+    "title": "Socket per-conversation throttles have unbounded keys and no aggregate event cap",
+    "category": "Messaging/resource exhaustion",
+    "locations": [
+      "backend/src/modules/conversations/conversations.gateway.ts:58",
+      "backend/src/modules/conversations/conversations.gateway.ts:238",
+      "backend/src/modules/conversations/conversations.gateway.ts:253",
+      "backend/src/modules/conversations/conversations.gateway.ts:228"
+    ],
+    "explanation": "A connected authenticated user can vary UUID-shaped conversation IDs. IDs enter readAt/typing maps before service ownership verification; entries are retained for the socket lifetime. Per-ID throttles do not bound aggregate events.",
+    "impact": "A long-lived client can grow server memory and cause repeated database lookups using IDs it does not own. Service ownership checks still protect conversation data.",
+    "evidence": "SOCKET-UNBOUNDED-MAPS makes only 50 local method calls with random UUIDs: 50 retained entries and 50 service lookups. Service/persistence is mocked, no network sockets or load test used.",
+    "fix": "Add per-socket/user aggregate event limits, bounded TTL/LRU state, and validated conversation membership before retaining ID-specific state. Include disconnect cleanup and tests with varied invalid IDs.",
+    "difficulty": "Medium",
+    "journey": "Messaging read receipts and typing indicators"
+  },
+  {
+    "id": "A13",
+    "severity": "P2",
+    "status": "Code-inspection",
+    "title": "Socket session recheck timer drops rejected promises",
+    "category": "Async error handling",
+    "locations": [
+      "backend/src/modules/conversations/conversations.gateway.ts:168",
+      "backend/src/modules/conversations/conversations.gateway.ts:336",
+      "backend/src/modules/conversations/conversations.gateway.ts:344"
+    ],
+    "explanation": "The interval discards the recheckSessions promise. fetchSockets or the user lookup can reject outside the per-event run() catch handler.",
+    "impact": "A transient adapter/database failure can become an unhandled rejection. Depending on runtime rejection policy it can terminate the process; at minimum the security recheck fails without a controlled recovery path. Process termination was not induced.",
+    "evidence": "Inspect the timer callback and the entire async method: neither awaits/catches the rejection nor guards overlapping ticks. The event-handler wrapper is not used by the timer.",
+    "fix": "Catch and log timer failures with redacted context, prevent overlapping runs, and define retry/disconnect behavior during authorization-store outages. Add a controlled rejected-lookup unit test.",
+    "difficulty": "Easy",
+    "journey": "Live chat during database/adapter interruption"
+  },
+  {
+    "id": "A14",
+    "severity": "P2",
+    "status": "Code-inspection",
+    "title": "A crash after claiming job alerts can permanently skip delivery",
+    "category": "Notification durability",
+    "locations": [
+      "backend/src/modules/matching/matching.repository.ts:128",
+      "backend/src/modules/matching/job-match-alerts.worker.ts:48",
+      "backend/src/modules/matching/job-match-alerts.worker.ts:98"
+    ],
+    "explanation": "Claiming sets the final sent timestamp before delivery. Catch handlers can release a failed job, but process interruption after claiming cannot run that cleanup. Later claims select only null timestamps and there is no expiring claim lease.",
+    "impact": "Some published jobs silently miss matching notifications after a crash. Catch-and-release retries do not cover interruption, and the in-memory retry counter is not a durable work record.",
+    "evidence": "Trace claim SQL → alert loop → notification creation → release on caught error. Unlike the separate email-delivery worker’s stale-lease recovery, this claim has no reclaim path. No process crash or database mutation was performed.",
+    "fix": "Separate claimedAt/leaseExpiresAt from sentAt, reclaim stale claims, and mark sent only after durable notification creation. Prefer an outbox/work table with idempotent recipient records and a visible dead-letter state.",
+    "difficulty": "Medium",
+    "journey": "Publish job → notify matching teachers"
+  },
+  {
+    "id": "A15",
+    "severity": "P2",
+    "status": "Code-inspection",
+    "title": "Some admin BFF routes bypass the refresh proxy and fail after token expiry",
+    "category": "Session reliability",
+    "locations": [
+      "admin/proxy.ts:16",
+      "admin/lib/auth/session.ts:102",
+      "admin/app/api/users/route.ts:5"
+    ],
+    "explanation": "The proxy performs session refresh but its matcher omits /api/users, /api/dropdowns, /api/conversations and /api/recruiters. getAdminAccessToken only decodes the cookie and rejects expired access tokens; it does not refresh them.",
+    "impact": "An administrator who leaves a page open past access-token expiry can receive a 401 on the next affected mutation/read despite having a valid refresh token. A full matched page navigation may conceal the issue by refreshing first.",
+    "evidence": "Compare all admin BFF paths in route-inventory.json with proxy.ts. Follow an omitted route into adminApiRequest → getAdminAccessToken → expired. Real timed browser session behavior was not exercised.",
+    "fix": "Ensure every authenticated BFF path gets a refresh-capable cookie-writing context, or centralize this in a wrapper. Preserve public/auth exemptions explicitly and test expiry without page navigation.",
+    "difficulty": "Easy",
+    "journey": "Long-lived admin sessions and user/dropdown/conversation actions"
+  },
+  {
+    "id": "A16",
+    "severity": "P2",
+    "status": "Code-inspection",
+    "title": "Google-only users with 2FA are sent to a password login they cannot use",
+    "category": "Social-auth contract",
+    "locations": [
+      "web/features/auth/backend.ts:535",
+      "web/features/auth/backend.ts:565",
+      "backend/src/modules/google-oauth/google-oauth.repository.ts:43"
+    ],
+    "explanation": "The backend supports returning a 2FA challenge after Google authentication. The web OAuth exchange throws an instruction to use email/password instead. Newly created Google users have no password.",
+    "impact": "A Google-only user who enables 2FA cannot complete the normal Google sign-in flow. Password recovery may provide an alternative, but the primary login is broken and the instruction is misleading.",
+    "evidence": "Trace Google user creation with password null → AuthService.createAuthenticatedResponse challenge → exchangeOAuthAccount terminal throw. OAuth provider interaction was not run.",
+    "fix": "Carry the short-lived backend challenge through a secure server-side continuation and present the existing code/recovery-code screen. Test both password and Google accounts with 2FA enabled.",
+    "difficulty": "Medium",
+    "journey": "Google login after enabling 2FA"
+  },
+  {
+    "id": "A17",
+    "severity": "P2",
+    "status": "Code-inspection",
+    "title": "The availability calendar is a static mock with nonfunctional controls",
+    "category": "Frontend functionality",
+    "locations": [
+      "web/components/organisms/CalendarPage.tsx:5",
+      "web/components/organisms/CalendarPage.tsx:9",
+      "web/components/organisms/CalendarPage.tsx:12",
+      "web/components/organisms/RouteShell.tsx:170"
+    ],
+    "explanation": "The routed page hardcodes March 2026 and fixed booked/available states. Prev, Next and Save have no handlers, and preference toggles use no-op callbacks. The day generator also produces days beyond March 31.",
+    "impact": "Teachers cannot manage availability through a screen that promises to control matching. Displayed booked days are invented UI data rather than the user’s bookings.",
+    "evidence": "Read CalendarPage and its live RouteShell branch. There is no state, query or mutation wiring. This is source verification, not a browser interaction test.",
+    "fix": "Connect a real month model and backend availability/booking data, validate date ranges, persist edits and show save/error state. Until implemented, clearly label or remove the unavailable workflow instead of displaying fictional bookings.",
+    "difficulty": "Medium",
+    "journey": "Teacher availability calendar"
+  },
+  {
+    "id": "A18",
+    "severity": "P2",
+    "status": "Code-inspection",
+    "title": "Direct upload tickets do not enforce byte limits before storage or track abandoned uploads",
+    "category": "Upload resource controls",
+    "locations": [
+      "backend/src/modules/s3/s3.service.ts:35",
+      "backend/src/modules/s3/s3.service.ts:36",
+      "backend/src/modules/documents/documents.service.ts:109",
+      "backend/src/modules/documents/documents.service.ts:149"
+    ],
+    "explanation": "Upload authorization validates the declared size, but the signed PUT binds MIME and immutability rather than a byte range. Actual size is checked at upload-complete, which the caller can skip. Document upload tickets are not persisted for application-level expiry cleanup. The bounded web multipart handler does not prevent a bearer-authenticated direct API caller from using the ticket endpoint.",
+    "impact": "Authenticated users can leave oversized or abandoned objects outside the normal document lifecycle. Approved document replacement is still protected by ownership/CAS, so this is storage/resource abuse rather than arbitrary overwrite.",
+    "evidence": "Trace issue ticket → S3Service signed PUT → optional complete → HEAD size check. No file upload or external storage call was made. Storage-side policies are out of scope and could mitigate the application gap; none are assumed.",
+    "fix": "Bind upload size through a suitable provider policy or controlled bounded upload path. Persist pending upload intents, enforce per-user quotas and reclaim expired intents/objects. Continue verifying actual bytes and allowed content at completion.",
+    "difficulty": "Medium",
+    "journey": "Document/profile upload, interrupted or malicious upload"
+  },
+  {
+    "id": "A19",
+    "severity": "P2",
+    "status": "Verified",
+    "title": "Application HTML responses lack baseline framing and content security headers",
+    "category": "Browser security hardening",
+    "locations": [
+      "web/next.config.mjs:6",
+      "admin/next.config.ts:3"
+    ],
+    "explanation": "All tested web HTML responses lacked Content-Security-Policy, X-Frame-Options, X-Content-Type-Options and Referrer-Policy. The web config sets API cache headers only; admin config also defines no general policy. The separate document-preview CSP is a positive exception.",
+    "impact": "The application supplies no general frame-ancestor protection and has less defense in depth against content injection or referrer leakage. This is not evidence that XSS was found. Upstream-added headers were not audited.",
+    "evidence": "audit-evidence/http-smoke.json records headers for all 30 local page routes from the isolated production build. Admin header absence is code-inspection only because its production build was blocked by font fetching.",
+    "fix": "Add application-level frame-ancestors (and compatible framing fallback where needed), nosniff, a deliberate referrer policy, and a nonce/hash-based CSP compatible with Next, Stripe, OAuth and required assets. Stage/report CSP violations before enforcement; avoid simply breaking integrations.",
+    "difficulty": "Medium",
+    "journey": "Public and authenticated pages"
+  },
+  {
+    "id": "A20",
+    "severity": "P2",
+    "status": "Verified",
+    "title": "Concurrent founding-interest submissions can create duplicates",
+    "category": "Database integrity",
+    "locations": [
+      "backend/src/modules/contact/contact.service.ts:207",
+      "backend/prisma/schema.prisma:282",
+      "backend/prisma/schema.prisma:322"
+    ],
+    "explanation": "The service implements deduplication with find-then-create but the schema has no unique key for normalized email plus interest type. An index improves lookup but does not enforce uniqueness.",
+    "impact": "Duplicate clicks or concurrent retries can create duplicate waitlist records and duplicate downstream email/admin work.",
+    "evidence": "WAITLIST-DUPLICATE runs two concurrent calls through the actual service with a mocked repository, obtaining two creates. Schema inspection confirms there is no uniqueness backstop. A real PostgreSQL race was not executed.",
+    "fix": "After reviewing existing duplicates, add the intended unique business key and use upsert or handle unique-conflict responses idempotently. Decide whether historical multiple submissions are intended before choosing the key.",
+    "difficulty": "Medium",
+    "journey": "Founding teacher/school signup"
+  },
+  {
+    "id": "A21",
+    "severity": "P2",
+    "status": "Code-inspection",
+    "title": "Applicant ranking materializes and sorts all applicants before pagination",
+    "category": "Query/memory scalability",
+    "locations": [
+      "backend/src/modules/matching/matching.repository.ts:34",
+      "backend/src/modules/matching/matching.service.ts:63",
+      "backend/src/modules/matching/matching.service.ts:89"
+    ],
+    "explanation": "The applicant query has no take limit and includes full instructor records. Each page request scores every applicant and sorts the complete list before slicing. The separate recommendation candidate pool has a 2,000-row cap; that cap does not apply here.",
+    "impact": "Popular jobs increase response memory, CPU and related availability query work even when the UI requests a small page. Repeated pagination repeats that cost.",
+    "evidence": "Trace findApplicationsWithInstructors → loadJobContext → map(scoreMatch) → sort → paginate. Complexity is at least O(n) materialization/scoring and O(n log n) sorting. No large dataset was loaded, so latency thresholds are unmeasured.",
+    "fix": "Define a bounded ranking strategy: persisted/versioned scores, cached snapshots keyed by relevant inputs, or an asynchronous ranked result with database pagination. Retain fairness and expose stale-score behavior explicitly.",
+    "difficulty": "Hard",
+    "journey": "School applicant ranking and pagination"
+  },
+  {
+    "id": "A22",
+    "severity": "P2",
+    "status": "Code-inspection",
+    "title": "Closing a popular job performs two sequential writes per application inside one transaction",
+    "category": "Database/transaction scalability",
+    "locations": [
+      "backend/src/modules/jobs/jobs.repository.ts:165",
+      "backend/src/modules/jobs/jobs.repository.ts:167"
+    ],
+    "explanation": "Closing/suspending a job loads all open applications, then individually updates each application and inserts its history in a serial loop within the job transaction.",
+    "impact": "As applicants grow, transaction duration and lock holding grow linearly with database round trips. The operation can time out and roll back, preventing a popular listing from being closed promptly. No data corruption is claimed because the writes are transactional.",
+    "evidence": "Inspect the CLOSED/SUSPENDED branch of JobsRepository.update. It uses two awaited statements per application before invitation updates. Database timeout behavior under load was not executed.",
+    "fix": "Use set-based updates and batched history insertion while preserving exact prior statuses and locking invariants. Consider bounded asynchronous closure with an explicit closing state if the product permits it; do not merely increase timeouts.",
+    "difficulty": "Medium",
+    "journey": "School/admin closes or suspends a job"
+  },
+  {
+    "id": "A23",
+    "severity": "P2",
+    "status": "Code-inspection",
+    "title": "Admin upstream requests have no application deadline or cancellation budget",
+    "category": "Integration reliability",
+    "locations": [
+      "admin/lib/api/admin-api-client.ts:130",
+      "admin/lib/auth/authenticate.ts:67",
+      "admin/lib/auth/refresh.ts:60"
+    ],
+    "explanation": "The central admin API client, login and refresh calls await fetch and response decoding without an AbortSignal deadline. Network errors are caught, but a stalled response is not converted to a timely application error.",
+    "impact": "A stalled backend can tie up admin requests and leave login/mutations waiting for lower-level network timeouts. Concurrent stuck calls consume more resources and worsen recovery.",
+    "evidence": "Inspect the fetch options and body reads at the referenced sites. No hung network server was used; this finding concerns the missing application deadline, not a claim of infinite OS-level socket lifetime.",
+    "fix": "Add bounded connect/overall request deadlines, cancellation propagation, and consistent timeout error codes. Retry only operations known to be safe/idempotent, within the original deadline. Align auth refresh and UI retry behavior.",
+    "difficulty": "Easy",
+    "journey": "Admin login, refresh, reads and writes"
+  },
+  {
+    "id": "A24",
+    "severity": "P3",
+    "status": "Verified",
+    "title": "Backend lint currently fails with 55 errors",
+    "category": "Maintainability/check health",
+    "locations": [
+      "backend/src/modules/conversations/conversation-migration.integration.spec.ts:53",
+      "backend/src/modules/conversations/conversation-topics.spec.ts:44",
+      "backend/src/modules/conversations/conversations.controller.ts:67"
+    ],
+    "explanation": "The read-only lint invocation reports 52 formatting errors and three unsafe-member-access errors. Errors span conversation source/tests and invoice source/tests. Type checking still passes.",
+    "impact": "The lint gate is already red, making future new errors harder to distinguish. This does not establish a runtime security flaw.",
+    "evidence": "audit-evidence/backend-lint.txt: 55 errors, zero warnings. Ran eslint without --fix because the repository lint script would modify files. No formatting changes were made.",
+    "fix": "In the later fix phase, format the affected files and replace the unsafe test result accesses with typed fixtures/results. Keep lint non-mutating in verification commands.",
+    "difficulty": "Easy",
+    "journey": "Developer change validation"
+  },
+  {
+    "id": "A25",
+    "severity": "P2",
+    "status": "Unverified",
+    "title": "Word preview has no explicit expanded-document resource budget",
+    "category": "Untrusted document processing",
+    "locations": [
+      "admin/lib/documents/word-preview.ts:9",
+      "admin/lib/documents/word-preview.ts:35",
+      "admin/lib/documents/word-preview.ts:44"
+    ],
+    "explanation": "The code correctly limits downloaded compressed bytes to 20 MiB and sanitizes preview HTML, but passes DOCX buffers to conversion in-process without an explicit expanded-byte, image-total, entry-count or processing-time budget.",
+    "impact": "A highly compressed or complex document could consume disproportionate memory/CPU when an administrator previews it. Exploitability and actual library behavior were not measured; this is a resource-exhaustion risk, not a verified ZIP bomb or XSS vulnerability.",
+    "evidence": "Source trace only. No hostile compressed archive was generated or parsed. externalFileAccess:false, restricted image types, sanitization and sandbox CSP are positive controls against different threats.",
+    "fix": "Before expanding preview usage, test bounded synthetic compression/complexity fixtures in an isolated worker with memory/time limits. Add archive/expanded-content budgets and abortable worker processing or disable inline preview for unsupported cases.",
+    "difficulty": "Medium",
+    "journey": "Admin previews an uploaded Word document"
+  }
+]

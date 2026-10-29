@@ -1,7 +1,11 @@
 "use client";
 
 import type { AppearanceOptions } from "@stripe/connect-js";
-import { loadStripe, type Appearance, type CssFontSource, type Stripe } from "@stripe/stripe-js";
+import { loadStripe } from "@stripe/stripe-js/pure";
+import type { Appearance, CssFontSource, Stripe } from "@stripe/stripe-js";
+
+// The pure loader prevents import-time script injection. Calling loadStripe
+// still loads Stripe.js from Stripe's domain with its fraud signals enabled.
 
 /**
  * Stripe's forms run in Stripe-hosted frames inside SupplyEd's pages, so card

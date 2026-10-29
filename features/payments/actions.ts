@@ -67,13 +67,14 @@ export async function syncInvoiceAction(id: string) {
 }
 
 /** Cashes out the teacher's instantly available balance (or part of it) to their bank or debit card. */
-export async function instantPayoutAction(amountPence?: number) {
+export async function instantPayoutAction(amountPence?: number, requestKey?: string) {
+  if (!requestKey || !isUuid(requestKey)) return actionError("Start a new withdrawal request.");
   if (amountPence !== undefined && (!Number.isSafeInteger(amountPence) || amountPence < 40)) {
     return actionError("Cash-outs start at £0.40.", { code: "PAYOUT_AMOUNT_INVALID" });
   }
 
   try {
-    const payout = await api.post<PayoutSummary>("/payments/payout-account/instant-payout", { amountPence });
+    const payout = await api.post<PayoutSummary>("/payments/payout-account/instant-payout", { amountPence, requestKey });
     return actionOk(normalizePayoutSummary(payout), "On its way. It usually arrives within 30 minutes.");
   } catch (error) {
     return actionError(readPaymentError(error, "The cash-out could not be sent."), { code: errorCode(error) });

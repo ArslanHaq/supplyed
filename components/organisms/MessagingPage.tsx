@@ -398,7 +398,7 @@ function Thread({ conversation, activeThread, onSelectThread, invitationsLoading
 
 function GeneralConversationContext({ invitations, conversation, go }: { invitations: Invitation[]; conversation: Conversation; go: RouteProps["go"] }) {
   const person = conversationPerson(conversation);
-  return <aside className="messaging-context sidebar-panel overflow-y-auto">
+  return <aside aria-label="Conversation contact and invitations" className="messaging-context sidebar-panel overflow-y-auto">
     <div className="border-b border-border p-5">
       <p className="context-label">General conversation</p>
       <h2 className="mt-1 font-heading text-lg font-bold text-ink">{person.name}</h2>
@@ -434,7 +434,7 @@ function InvitationContextCard({ invitation, go }: { invitation: Invitation; go:
 }
 
 function BookingConversationContext({ booking, conversation, loading, error, go }: { booking?: Booking; conversation: Conversation; loading: boolean; error?: string; go: RouteProps["go"] }) {
-  return <aside className="messaging-context sidebar-panel overflow-y-auto">
+  return <aside aria-label="Booking conversation details" className="messaging-context sidebar-panel overflow-y-auto">
     <div className="border-b border-border p-5"><p className="context-label">Booking details</p><h2 className="mt-1 font-heading text-lg font-bold">{booking?.job.title ?? conversation.job?.title}</h2><Tag tone="ghost">{formatStatus(booking?.status ?? conversation.booking?.status ?? "CONFIRMED")}</Tag></div>
     <div className="space-y-4 p-5">
       {loading ? <SectionLoader rows={2} /> : null}
@@ -474,7 +474,7 @@ function ConversationContextPanel({
 
   return (
     <>
-    <aside className="messaging-context sidebar-panel overflow-y-auto">
+    <aside aria-label="Application and job conversation details" className="messaging-context sidebar-panel overflow-y-auto">
       <div className="border-b border-border p-5">
         <div className="flex items-start justify-between gap-3">
           <div>

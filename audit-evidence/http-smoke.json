@@ -1,0 +1,576 @@
+[
+  {
+    "route": "/applications",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 45,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/billing",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 4,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/bookings",
+    "status": 200,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": true,
+    "location": null,
+    "milliseconds": 23,
+    "htmlBytes": 30873,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/calendar",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 18,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/dashboard",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 5,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/find-jobs",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 5,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/find-teachers",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 3,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/institution-profile",
+    "status": 200,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": true,
+    "location": null,
+    "milliseconds": 28,
+    "htmlBytes": 30907,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/job-detail",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 4,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/job-invitations",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login?returnTo=%2Fjob-invitations",
+    "milliseconds": 16,
+    "htmlBytes": 34,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/job-invitations/[id]",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 15,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/messaging",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 16,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/my-profile",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 15,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/onboarding",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 2,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/payouts/refresh",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 13,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/payouts/return",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 15,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/post-job",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 17,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/security",
+    "status": 200,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": true,
+    "location": null,
+    "milliseconds": 22,
+    "htmlBytes": 30873,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/settings",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 9,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/teacher-profile",
+    "status": 307,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": "/login",
+    "milliseconds": 17,
+    "htmlBytes": 6,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/forgot-password",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": null,
+    "milliseconds": 18,
+    "htmlBytes": 32819,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/login",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": null,
+    "milliseconds": 21,
+    "htmlBytes": 40281,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/signup",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": null,
+    "milliseconds": 17,
+    "htmlBytes": 28328,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/founding-schools",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": null,
+    "milliseconds": 31,
+    "htmlBytes": 128551,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/founding-teachers",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": null,
+    "milliseconds": 23,
+    "htmlBytes": 118649,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/how-it-works",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": null,
+    "milliseconds": 7,
+    "htmlBytes": 69883,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": null,
+    "milliseconds": 6,
+    "htmlBytes": 103548,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/signatory-approval/audit-fixture-invalid",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": null,
+    "milliseconds": 20,
+    "htmlBytes": 36563,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/terms",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "streamedLoginRedirect": false,
+    "location": null,
+    "milliseconds": 12,
+    "htmlBytes": 86628,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/post-auth",
+    "status": 200,
+    "expected": "307 or a streamed login redirect",
+    "pass": true,
+    "streamedLoginRedirect": true,
+    "location": null,
+    "milliseconds": 21,
+    "htmlBytes": 24485,
+    "securityHeaders": {
+      "csp": null,
+      "frame": null,
+      "nosniff": null,
+      "referrer": null
+    },
+    "renderedError": false
+  },
+  {
+    "route": "/api/auth/session",
+    "status": 200,
+    "expected": 200,
+    "pass": true,
+    "cacheControl": "private, no-store, max-age=0, must-revalidate",
+    "test": "Guest BFF against auth-denying mock backend; no protected data"
+  },
+  {
+    "route": "/api/auth/me",
+    "status": 401,
+    "expected": 401,
+    "pass": true,
+    "cacheControl": "private, no-store, max-age=0, must-revalidate",
+    "test": "Guest BFF against auth-denying mock backend; no protected data"
+  },
+  {
+    "route": "/api/jobs/mine",
+    "status": 401,
+    "expected": 401,
+    "pass": true,
+    "cacheControl": "private, no-store, max-age=0, must-revalidate",
+    "test": "Guest BFF against auth-denying mock backend; no protected data"
+  },
+  {
+    "route": "/api/onboarding/me",
+    "status": 401,
+    "expected": 401,
+    "pass": true,
+    "cacheControl": "private, no-store, max-age=0, must-revalidate",
+    "test": "Guest BFF against auth-denying mock backend; no protected data"
+  },
+  {
+    "route": "/api/invoices/me",
+    "status": 401,
+    "expected": 401,
+    "pass": true,
+    "cacheControl": "private, no-store, max-age=0, must-revalidate",
+    "test": "Guest BFF against auth-denying mock backend; no protected data"
+  },
+  {
+    "route": "/api/conversations",
+    "status": 401,
+    "expected": 401,
+    "pass": true,
+    "cacheControl": "private, no-store, max-age=0, must-revalidate",
+    "test": "Guest BFF against auth-denying mock backend; no protected data"
+  },
+  {
+    "route": "/api/notifications",
+    "status": 401,
+    "expected": 401,
+    "pass": true,
+    "cacheControl": "private, no-store, max-age=0, must-revalidate",
+    "test": "Guest BFF against auth-denying mock backend; no protected data"
+  },
+  {
+    "route": "/api/payments/payout-account",
+    "status": 401,
+    "expected": 401,
+    "pass": true,
+    "cacheControl": "private, no-store, max-age=0, must-revalidate",
+    "test": "Guest BFF against auth-denying mock backend; no protected data"
+  }
+]

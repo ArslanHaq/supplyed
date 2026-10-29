@@ -49,10 +49,11 @@ function handleSessionExpiredResult(result: CreateJobResult | DeleteJobResult | 
 }
 
 /** One page of the job board; the previous page stays on screen while the next one loads. */
-export function useJobs(filters: JobListFilters = {}) {
+export function useJobs(filters: JobListFilters = {}, enabled = true) {
   return useQuery({
+    enabled,
     placeholderData: keepPreviousData,
-    queryFn: () => fetchJson<PaginatedJobs>("/api/jobs", { query: filters }),
+    queryFn: ({ signal }) => fetchJson<PaginatedJobs>("/api/jobs", { query: filters, signal }),
     queryKey: queryKeys.jobs.list(filters),
   });
 }
@@ -61,7 +62,7 @@ export function useJobs(filters: JobListFilters = {}) {
 export function useMyJobs(filters: JobListFilters = {}) {
   return useQuery({
     placeholderData: keepPreviousData,
-    queryFn: () => fetchJson<MyJobs>("/api/jobs/mine", { query: filters }),
+    queryFn: ({ signal }) => fetchJson<MyJobs>("/api/jobs/mine", { query: filters, signal }),
     queryKey: queryKeys.jobs.mine(filters),
   });
 }
@@ -70,7 +71,7 @@ export function useJob(id: string, view: boolean | "accessible" = false) {
   const scope = view === true ? "mine" : view === "accessible" ? "accessible" : "public";
   return useQuery({
     enabled: Boolean(id),
-    queryFn: () => fetchJson<Job>(`/api/jobs/${id}`, scope === "public" ? undefined : { query: { scope } }),
+    queryFn: ({ signal }) => fetchJson<Job>(`/api/jobs/${id}`, scope === "public" ? { signal } : { query: { scope }, signal }),
     queryKey: [...queryKeys.jobs.detail(id), scope],
     refetchOnMount: "always",
     refetchOnWindowFocus: "always",

@@ -17,7 +17,10 @@ type PublicHeaderAccount = {
 
 export function PublicHeaderAccountSlot() {
   const [account, setAccount] = useState<PublicHeaderAccount | null>(null);
-  const verification = useOnboardingSnapshot(account?.email ?? "", { enabled: Boolean(account?.email) });
+  const verification = useOnboardingSnapshot(account?.email ?? "", {
+    enabled: Boolean(account?.email) && account?.role !== "admin",
+    mode: "display",
+  });
 
   useEffect(() => {
     let mounted = true;

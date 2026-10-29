@@ -32,7 +32,7 @@ export function WorkspaceEmptyState({ action, icon = "file", message, title }: {
   return (
     <div className="workspace-empty card" role="status">
       <span aria-hidden="true" className="workspace-empty-icon"><Icon name={icon} size={24} /></span>
-      <h3>{title}</h3>
+      <h2>{title}</h2>
       <p>{message}</p>
       {action ? <div className="workspace-empty-action">{action}</div> : null}
     </div>

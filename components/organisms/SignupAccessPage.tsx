@@ -121,7 +121,7 @@ export function SignupAccessPage({
 
   return (
     <div className="auth-shell auth-shell-signup">
-      <aside className="auth-aside">
+      <aside aria-label="SupplyED account registration" className="auth-aside">
         <div className="auth-aside-rule" aria-hidden="true" />
         <div className="relative flex items-center justify-between gap-4">
           <Logo size={22} className="text-white" onClick={onLanding} />
@@ -172,7 +172,7 @@ export function SignupAccessPage({
         <div className="auth-aside-footer">Step 1 of 3 - Account</div>
       </aside>
 
-      <section className="auth-main">
+      <main className="auth-main">
         <div className="auth-main-inner auth-main-inner-wide">
           <AuthProgress current={1} />
           <div className="auth-form-heading">
@@ -311,7 +311,7 @@ export function SignupAccessPage({
             </Btn>
           </form>
         </div>
-      </section>
+      </main>
     </div>
   );
 }

@@ -66,13 +66,13 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
       <DeleteJobModal job={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={(job) => deleteJob.mutate(job.id)} pending={deleteJob.isPending} />
       <PageHead
         title="School hiring workspace"
-        subtitle={`${counts?.ALL ?? 0} posted roles - ${activeCount} active - ${draftCount} drafts`}
+        subtitle={jobsQuery.isLoading ? "Loading your hiring pipeline" : jobsQuery.isError ? "Job totals are temporarily unavailable. Your other workspace tools are still available." : `${counts?.ALL ?? 0} posted roles - ${activeCount} active - ${draftCount} drafts`}
       />
       <div aria-label="Hiring overview" className="hiring-metrics">
-        <HiringMetric context={`${draftCount} ${draftCount === 1 ? "draft" : "drafts"} to publish`} icon="file" label="Active jobs" value={activeCount} emphasis />
-        <HiringMetric context="Across all statuses" icon="building" label="Total posted" value={counts?.ALL ?? 0} />
-        <HiringMetric context="Kept for your records" icon="checkCircle" label="Closed roles" value={counts?.CLOSED ?? 0} />
-        <HiringMetric context={applicantCountQuery.isError ? "Count unavailable" : "Across your active jobs"} icon="users" label="Applicants" value={applicantCount ?? (applicantCountQuery.isError ? "-" : "...")} />
+        <HiringMetric context={jobsQuery.isError ? "Temporarily unavailable" : `${draftCount} ${draftCount === 1 ? "draft" : "drafts"} to publish`} icon="file" label="Active jobs" loading={jobsQuery.isLoading} value={jobsQuery.isError ? "—" : activeCount} emphasis />
+        <HiringMetric context={jobsQuery.isError ? "Temporarily unavailable" : "Across all statuses"} icon="building" label="Total posted" loading={jobsQuery.isLoading} value={jobsQuery.isError ? "—" : counts?.ALL ?? 0} />
+        <HiringMetric context={jobsQuery.isError ? "Temporarily unavailable" : "Kept for your records"} icon="checkCircle" label="Closed roles" loading={jobsQuery.isLoading} value={jobsQuery.isError ? "—" : counts?.CLOSED ?? 0} />
+        <HiringMetric context={applicantCountQuery.isError ? "Count unavailable" : "Across your active jobs"} icon="users" label="Applicants" loading={applicantCountQuery.isLoading} value={applicantCount ?? (applicantCountQuery.isError ? "-" : "...")} />
       </div>
       <div className="hiring-workspace-grid">
         <div className="hiring-workspace-main">
@@ -80,6 +80,7 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
             actionPending={updateJob.isPending || deleteJob.isPending}
             counts={counts}
             emptyMessage="Create a role to start matching with approved instructors."
+            error={jobsQuery.isError}
             filter={statusFilter}
             jobs={jobs}
             loading={jobsQuery.isLoading}
@@ -90,8 +91,10 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
             onEdit={(job) => go("post-job", { jobId: job.id })}
             onFilterChange={(filter) => { setStatusFilter(filter); setPage(1); }}
             onPageChange={setPage}
+            onRetry={() => void jobsQuery.refetch()}
             pagination={jobsQuery.data?.pagination}
             refreshing={jobsQuery.isFetching}
+            retrying={jobsQuery.isFetching}
             title="Job posts"
           />
           <RecentNotifications />
@@ -138,8 +141,8 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
   );
 }
 
-function HiringMetric({ context, emphasis, icon, label, value }: { context: string; emphasis?: boolean; icon: string; label: string; value: number | string }) {
-  return <div className={`hiring-metric${emphasis ? " is-primary" : ""}`}><div className="hiring-metric-top"><span>{label}</span><Icon name={icon} size={18} /></div><strong>{value}</strong><p>{context}</p></div>;
+function HiringMetric({ context, emphasis, icon, label, loading, value }: { context: string; emphasis?: boolean; icon: string; label: string; loading?: boolean; value: number | string }) {
+  return <div aria-busy={loading || undefined} className={`hiring-metric${emphasis ? " is-primary" : ""}`}><div className="hiring-metric-top"><span>{label}</span><Icon name={icon} size={18} /></div><strong>{loading ? <span aria-label={`Loading ${label.toLowerCase()}`} className="skeleton hiring-metric-value-placeholder" role="status" /> : value}</strong><p>{loading ? <span aria-hidden="true" className="skeleton hiring-metric-context-placeholder" /> : context}</p></div>;
 }
 
 function HiringAction({ description, icon, label, onClick }: { description: string; icon: string; label: string; onClick: () => void }) {

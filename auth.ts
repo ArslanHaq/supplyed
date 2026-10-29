@@ -197,6 +197,19 @@ export const {
   signOut,
   unstable_update: updateAuthSession,
 } = NextAuth({
+  events: {
+    async signOut(message) {
+      if (!("token" in message) || !message.token?.refreshToken || !process.env.API_BASE_URL) return;
+      const url = `${process.env.API_BASE_URL.replace(/\/+$/, "")}/auth/logout`;
+      try {
+        const response = await fetch(url, { method: "POST", cache: "no-store", signal: AbortSignal.timeout(15_000),
+          headers: { "Content-Type": "application/json", ...(process.env.BFF_SHARED_SECRET ? { "X-SupplyEd-BFF": process.env.BFF_SHARED_SECRET } : {}) },
+          body: JSON.stringify({ refreshToken: message.token.refreshToken }) });
+        await response.body?.cancel();
+        if (!response.ok) throw new Error("Logout revocation failed");
+      } catch { console.error("Backend session revocation could not be completed during sign-out"); }
+    },
+  },
   callbacks: {
     async jwt({ account, session, token, trigger, user }) {
       if (trigger === "update") {
@@ -204,6 +217,8 @@ export const {
       }
 
       if (user) {
+        delete token.oauthTwoFactorToken;
+        delete token.oauthTwoFactorExpiresAt;
         token.userId = user.id;
         token.role = normalizeRole(user.role);
         token.applicationStatus = normalizeStatus(user.applicationStatus);
@@ -240,7 +255,15 @@ export const {
             role: signupRole,
           });
 
-          assignBackendSession(token, response);
+          if ("twoFactorRequired" in response) {
+            assignBackendAuthError(token, provider, "Complete two-factor verification to continue.");
+            token.oauthTwoFactorToken = response.twoFactorToken;
+            token.oauthTwoFactorExpiresAt = Date.now() + (response.expiresInMinutes ?? 5) * 60_000;
+          } else {
+            delete token.oauthTwoFactorToken;
+            delete token.oauthTwoFactorExpiresAt;
+            assignBackendSession(token, response);
+          }
         } catch (error) {
           assignBackendAuthError(token, provider, error);
         }
@@ -306,7 +329,7 @@ export const {
 
         const password = readCredential(credentials, "password");
 
-        if (password.length < 8 || password.length > 128) return null;
+        if (password.length < 8 || new TextEncoder().encode(password).length > 72) return null;
 
         const response = await loginWithEmail({ email, password });
         if ("twoFactorRequired" in response) return null;

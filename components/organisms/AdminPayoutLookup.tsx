@@ -16,7 +16,7 @@ export function AdminPayoutLookup() {
   const [inputError, setInputError] = useState<string>();
   const payoutQuery = useQuery({
     enabled: Boolean(instructorId),
-    queryFn: () => fetchJson<PayoutAccount>(`/api/payments/payout-accounts/instructor/${encodeURIComponent(instructorId)}`),
+    queryFn: ({ signal }) => fetchJson<PayoutAccount>(`/api/payments/payout-accounts/instructor/${encodeURIComponent(instructorId)}`, { signal }),
     queryKey: [...queryKeys.payments.all, "instructor-payout-account", instructorId],
     refetchOnMount: "always",
     refetchOnWindowFocus: "always",

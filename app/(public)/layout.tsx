@@ -1,3 +1,7 @@
+import "@/components/styles/public.css";
+import "@/components/styles/waitlist.css";
+import "@/components/styles/selectors.css";
+
 import type { ReactNode } from "react";
 import { PublicThemeControls } from "@/components/molecules/PublicThemeControls";
 import { PublicFooter } from "@/components/organisms/PublicFooter";

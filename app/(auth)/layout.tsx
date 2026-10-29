@@ -1,3 +1,6 @@
+import "@/components/styles/account.css";
+import "@/components/styles/selectors.css";
+
 import type { ReactNode } from "react";
 import { QueryProvider } from "@/lib/query/query-client";
 

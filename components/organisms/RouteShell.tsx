@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 
@@ -12,30 +12,30 @@ import { startRouteLoading } from "@/lib/navigation-loading";
 import { buildAppHref, shouldShowApplicationStatusPage } from "@/lib/routes";
 import { useTweaks } from "@/lib/use-tweaks";
 import type { AppPage, AppRole, ApplicationStatus, AppState, GoFn, RouteContext, RouteProps, ToastFn } from "@/types/supplyed";
-import { JobInvitationsPage } from "./JobInvitationsPage";
-
-import { ToastStack } from "../molecules";
+import { SectionLoader, ToastStack } from "../molecules";
 import { ApplicationStatusPage } from "./ApplicationStatusPage";
-import { AdminDashboard } from "./AdminDashboard";
 import { AppChrome } from "./AppChrome";
-import { ApplicationsPage } from "./ApplicationsWorkspacePage";
-import { BillingPage } from "./BillingPage";
-import { BookingsPage } from "./BookingsPage";
-import { CalendarPage } from "./CalendarPage";
-import { FindJobsPage } from "./FindJobsPage";
-import { FindTeachersPage } from "./FindTeachersPage";
-import { InstitutionDashboard } from "./InstitutionDashboard";
-import { InstitutionProfilePage } from "./InstitutionProfilePage";
-import { JobDetailPage } from "./JobDetailPage";
-import { MessagingPage } from "./MessagingPage";
-import { MyProfilePage } from "./MyProfilePage";
-import { PostJobPage } from "./PostJobPage";
-import { SecurityPage } from "./SecurityPage";
-import { SettingsPage } from "./SettingsPage";
-import { TeacherDashboard } from "./TeacherDashboard";
-import { TeacherApplicationsPage } from "./TeacherApplicationsPage";
-import { PublicTeacherProfilePage as TeacherProfilePage } from "./PublicTeacherProfilePage";
 import { TweaksPanel } from "./TweaksPanel";
+
+const AdminDashboard = lazy(async () => ({ default: (await import("./AdminDashboard")).AdminDashboard }));
+const ApplicationsPage = lazy(async () => ({ default: (await import("./ApplicationsWorkspacePage")).ApplicationsPage }));
+const BillingPage = lazy(async () => ({ default: (await import("./BillingPage")).BillingPage }));
+const BookingsPage = lazy(async () => ({ default: (await import("./BookingsPage")).BookingsPage }));
+const CalendarPage = lazy(async () => ({ default: (await import("./CalendarPage")).CalendarPage }));
+const FindJobsPage = lazy(async () => ({ default: (await import("./FindJobsPage")).FindJobsPage }));
+const FindTeachersPage = lazy(async () => ({ default: (await import("./FindTeachersPage")).FindTeachersPage }));
+const InstitutionDashboard = lazy(async () => ({ default: (await import("./InstitutionDashboard")).InstitutionDashboard }));
+const InstitutionProfilePage = lazy(async () => ({ default: (await import("./InstitutionProfilePage")).InstitutionProfilePage }));
+const JobDetailPage = lazy(async () => ({ default: (await import("./JobDetailPage")).JobDetailPage }));
+const JobInvitationsPage = lazy(async () => ({ default: (await import("./JobInvitationsPage")).JobInvitationsPage }));
+const MessagingPage = lazy(async () => ({ default: (await import("./MessagingPage")).MessagingPage }));
+const MyProfilePage = lazy(async () => ({ default: (await import("./MyProfilePage")).MyProfilePage }));
+const PostJobPage = lazy(async () => ({ default: (await import("./PostJobPage")).PostJobPage }));
+const SecurityPage = lazy(async () => ({ default: (await import("./SecurityPage")).SecurityPage }));
+const SettingsPage = lazy(async () => ({ default: (await import("./SettingsPage")).SettingsPage }));
+const TeacherDashboard = lazy(async () => ({ default: (await import("./TeacherDashboard")).TeacherDashboard }));
+const TeacherApplicationsPage = lazy(async () => ({ default: (await import("./TeacherApplicationsPage")).TeacherApplicationsPage }));
+const TeacherProfilePage = lazy(async () => ({ default: (await import("./PublicTeacherProfilePage")).PublicTeacherProfilePage }));
 
 function readContext(searchParams: URLSearchParams) {
   return {
@@ -78,8 +78,9 @@ function RouteShell({ page, sessionState, initialContext }: { page: AppPage; ses
   const searchParams = useSearchParams();
   const [localState, setState] = useState<AppState>(() => createInitialRouteState(page, sessionState));
   const onboardingQuery = useOnboardingSnapshot(sessionState.email, { enabled: sessionState.role !== "admin" });
-  // Ignore a cached result until this visit has checked the latest documents.
-  const onboarding = onboardingQuery.isSuccess && onboardingQuery.isFetchedAfterMount ? onboardingQuery.data : undefined;
+  // The server seeds this account's query after its authoritative access check.
+  // Keep the last successful display status during a background retry.
+  const onboarding = onboardingQuery.data;
   const state: AppState = {
     ...localState,
     accountName: sessionState.name?.trim() || localState.accountName,
@@ -198,12 +199,24 @@ function RouteShell({ page, sessionState, initialContext }: { page: AppPage; ses
         onLanding={goHome}
         onLogout={logout}
         onSettings={() => go("settings")}
+        onTheme={() => setState((current) => ({ ...current, tweaksOpen: true }))}
       >
-        {content}
+        <Suspense fallback={<WorkspaceScreenLoader />}>
+          {content}
+        </Suspense>
       </AppChrome>
       <TweaksPanel state={routeProps.state} setState={setState} tweaks={tweaks} setTweaks={setTweaks} />
       <ToastStack autoCloseMs={3200} onDismiss={dismissToast} toasts={state.toasts} />
     </WorkspaceAccountProvider>
+  );
+}
+
+function WorkspaceScreenLoader() {
+  return (
+    <div className="app-page" aria-label="Loading workspace screen" role="status">
+      <div className="mb-7 h-9 w-64 max-w-full rounded-md bg-border" aria-hidden="true" />
+      <SectionLoader rows={4} />
+    </div>
   );
 }
 

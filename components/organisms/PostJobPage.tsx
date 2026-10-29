@@ -575,7 +575,7 @@ function PostJobEditor({
               </section>
             </div>
 
-            <aside className="xl:sticky xl:top-[92px] xl:self-start">
+            <aside aria-label="Job preview" className="xl:sticky xl:top-[92px] xl:self-start">
               {renderReviewSummary("Live preview")}
             </aside>
           </div>

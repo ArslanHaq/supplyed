@@ -532,7 +532,7 @@ export async function resetPassword(input: PasswordResetInput): Promise<Password
   return { passwordReset: true };
 }
 
-export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<BackendAuthResponse> {
+export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<BackendAuthResponse | TwoFactorLoginChallenge> {
   logBackendPayload(`POST ${backendAuthEndpoints.oauthGoogle}`, {
     email: input.email,
     image: input.image,
@@ -560,10 +560,6 @@ export async function exchangeOAuthAccount(input: OAuthBackendInput): Promise<Ba
       await api.post<unknown>(backendAuthEndpoints.oauthGoogle, { credential: input.providerIdToken, role: toBackendRole(input.role) }, { auth: false }),
       input.email,
     );
-
-    if ("twoFactorRequired" in response) {
-      throw new Error("This account has two-factor authentication enabled. Sign in with email and password to enter your security code.");
-    }
 
     return response;
   }

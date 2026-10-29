@@ -133,7 +133,7 @@ export function SignupVerifyPage({
 
   return (
     <div className="auth-shell">
-      <aside className="auth-aside">
+      <aside aria-label="SupplyED account verification" className="auth-aside">
         <div className="auth-aside-rule" aria-hidden="true" />
         <div className="relative flex items-center justify-between gap-4">
           <Logo size={22} className="text-white" onClick={onLanding} />
@@ -157,7 +157,7 @@ export function SignupVerifyPage({
         <div className="auth-aside-footer">Step 2 of 3 - Verification</div>
       </aside>
 
-      <section className="auth-main">
+      <main className="auth-main">
         <div className="auth-main-inner">
           <AuthProgress current={2} />
           <div className="auth-form-heading">
@@ -234,7 +234,7 @@ export function SignupVerifyPage({
             </div>
           </form>
         </div>
-      </section>
+      </main>
     </div>
   );
 }

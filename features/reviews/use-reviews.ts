@@ -12,7 +12,7 @@ export function useInstructorReviews(instructorId?: string | null) {
 
   return useQuery({
     enabled: Boolean(id),
-    queryFn: () => fetchJson<ProfileReviews>(`/api/reviews/instructor/${encodeURIComponent(id)}`),
+    queryFn: ({ signal }) => fetchJson<ProfileReviews>(`/api/reviews/instructor/${encodeURIComponent(id)}`, { signal }),
     queryKey: queryKeys.reviews.instructor(id),
   });
 }
@@ -22,7 +22,7 @@ export function useInstitutionReviews(institutionId?: string | null) {
 
   return useQuery({
     enabled: Boolean(id),
-    queryFn: () => fetchJson<ProfileReviews>(`/api/reviews/institution/${encodeURIComponent(id)}`),
+    queryFn: ({ signal }) => fetchJson<ProfileReviews>(`/api/reviews/institution/${encodeURIComponent(id)}`, { signal }),
     queryKey: queryKeys.reviews.institution(id),
   });
 }

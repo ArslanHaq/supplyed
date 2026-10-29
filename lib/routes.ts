@@ -58,3 +58,21 @@ export function getAuthenticatedEntryHref({
   if (!role || !hasSubmittedApplicationStatus(applicationStatus)) return "/onboarding";
   return buildAppHref("dashboard");
 }
+
+const pagesByRole: Record<AppRole, ReadonlySet<AppPage>> = {
+  admin: new Set(["dashboard", "settings", "security", "billing"]),
+  institution: new Set([
+    "dashboard", "post-job", "applications", "bookings", "job-invitations",
+    "find-teachers", "job-detail", "teacher-profile", "institution-profile",
+    "my-profile", "messaging", "settings", "security", "billing",
+  ]),
+  teacher: new Set([
+    "dashboard", "applications", "bookings", "job-invitations", "find-jobs",
+    "job-detail", "teacher-profile", "institution-profile", "my-profile",
+    "messaging", "calendar", "settings", "security", "billing",
+  ]),
+};
+
+export function isAppPageAllowedForRole(page: AppPage, role: AppRole) {
+  return pagesByRole[role].has(page);
+}

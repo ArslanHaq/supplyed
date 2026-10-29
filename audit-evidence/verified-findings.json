@@ -1,0 +1,57 @@
+[
+  {
+    "id": "AUTH-REVOCATION",
+    "status": "REPRODUCED",
+    "evidence": "One pre-reset refresh token succeeded twice after the password changed; real JWT verification and bcrypt, mocked user/OTP persistence."
+  },
+  {
+    "id": "OTP-CONCURRENCY",
+    "status": "REPRODUCED",
+    "evidence": "Two concurrent calls using one reset OTP both succeeded and each wrote a different password; no database used."
+  },
+  {
+    "id": "RESET-ENUMERATION",
+    "status": "REPRODUCED",
+    "evidence": "Public forgot-password token discloses ADMIN for an existing fixture account and INSTRUCTOR for an absent fixture account."
+  },
+  {
+    "id": "BFF-RATE-BUDGET",
+    "status": "REPRODUCED",
+    "evidence": "Six distinct emails sharing the BFF source IP: five accepted by guard, sixth rejected for 900 seconds; counter mocked."
+  },
+  {
+    "id": "PAYOUT-KEY-COLLISION",
+    "status": "REPRODUCED",
+    "evidence": "Two separate withdrawal intents at a recurring balance produced the same Stripe idempotency key."
+  },
+  {
+    "id": "SOCKET-UNBOUNDED-MAPS",
+    "status": "REPRODUCED",
+    "evidence": "Fifty bounded events with different UUIDs created fifty retained map entries and fifty service lookups; no sockets/network used."
+  },
+  {
+    "id": "ADMIN-2FA",
+    "status": "REPRODUCED",
+    "evidence": "A valid two-factor challenge is returned as terminal login failure; only email/password credentials are accepted by the admin provider."
+  },
+  {
+    "id": "PAYOUT-ORIGIN",
+    "status": "REPRODUCED",
+    "evidence": "A sibling-origin text/plain request reached the mocked payout API and returned 201; real-browser cookie delivery remains untested."
+  },
+  {
+    "id": "PASSWORD-72-BYTES",
+    "status": "REPRODUCED",
+    "evidence": "Two web-valid passwords with the same first 72 bytes and different suffixes compare equal under installed bcrypt."
+  },
+  {
+    "id": "WAITLIST-DUPLICATE",
+    "status": "REPRODUCED",
+    "evidence": "Two concurrent duplicate checks both created a waitlist row; persistence mocked. Schema has no email/type unique constraint."
+  },
+  {
+    "id": "ADMIN-USER-ROLE-CONTRACT",
+    "status": "REPRODUCED",
+    "evidence": "Admin BFF strips a supplied role; actual backend DTO validation rejects the forwarded body for missing role. No account created."
+  }
+]

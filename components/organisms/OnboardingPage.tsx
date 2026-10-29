@@ -167,7 +167,7 @@ export function OnboardingPage({
       </header>
 
       <main className="onboarding-layout">
-        <aside className="onboarding-rail">
+        <aside aria-label="Onboarding progress" className="onboarding-rail">
           <div className="onboarding-rail-inner">
             <div>
               <div className="eyebrow mb-5 text-brand">Join SupplyED</div>

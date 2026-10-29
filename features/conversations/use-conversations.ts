@@ -44,7 +44,7 @@ export function useConversations(options: { enabled?: boolean; limit?: number } 
     enabled: options.enabled ?? true,
     getNextPageParam: (page: ConversationsPage) => (page.pagination.hasNextPage ? page.pagination.page + 1 : undefined),
     initialPageParam: 1,
-    queryFn: ({ pageParam }) => fetchJson<ConversationsPage>("/api/conversations", { query: { page: pageParam, limit } }),
+    queryFn: ({ pageParam, signal }) => fetchJson<ConversationsPage>("/api/conversations", { query: { page: pageParam, limit }, signal }),
     queryKey: limit === 100 ? queryKeys.conversations.list() : [...queryKeys.conversations.list(), { limit }],
     // New application/booking threads may be empty and therefore emit no message event.
     refetchInterval: FALLBACK_REFETCH_MS,
@@ -56,7 +56,7 @@ export function useConversationThreads(conversation: Conversation, topic: Conver
   return useInfiniteQuery({
     queryKey: [...queryKeys.conversations.list(), "threads", conversation.participants.poster?.userId ?? conversation.participants.poster?.id, conversation.participants.instructor?.id, topic],
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => fetchJson<ConversationThreadsPage>(`/api/conversations/${conversation.id}/threads`, { query: { topic, before: pageParam, limit: 20 } }),
+    queryFn: ({ pageParam, signal }) => fetchJson<ConversationThreadsPage>(`/api/conversations/${conversation.id}/threads`, { query: { topic, before: pageParam, limit: 20 }, signal }),
     getNextPageParam: page => page.hasMore ? page.nextCursor ?? undefined : undefined,
     staleTime: 30_000,
   });
@@ -80,7 +80,7 @@ export function flattenConversations(data: InfiniteData<Pick<ConversationsPage, 
 export function useUnreadMessages(options: { enabled?: boolean } = {}) {
   return useQuery({
     enabled: options.enabled ?? true,
-    queryFn: () => fetchJson<{ total: number }>("/api/conversations/unread-count"),
+    queryFn: ({ signal }) => fetchJson<{ total: number }>("/api/conversations/unread-count", { signal }),
     queryKey: queryKeys.conversations.unread(),
     refetchInterval: 60_000,
   });
@@ -112,7 +112,7 @@ export function useConversationForBooking(bookingId: string | undefined) {
 }
 
 export function useConversation(id?: string) {
-  return useQuery({ enabled: Boolean(id), queryKey: queryKeys.conversations.detail(id ?? ""), queryFn: () => fetchJson<Conversation>(`/api/conversations/${id}`) });
+  return useQuery({ enabled: Boolean(id), queryKey: queryKeys.conversations.detail(id ?? ""), queryFn: ({ signal }) => fetchJson<Conversation>(`/api/conversations/${id}`, { signal }) });
 }
 
 export function useStartConversation() {
@@ -137,8 +137,8 @@ export function useMessages(conversationId: string | undefined) {
     enabled: Boolean(conversationId),
     getNextPageParam: (page: MessagesPage) => (page.hasMore ? page.messages[0]?.id : undefined),
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) =>
-      fetchJson<MessagesPage>(`/api/conversations/${conversationId}/messages`, { query: { before: pageParam } }),
+    queryFn: ({ pageParam, signal }) =>
+      fetchJson<MessagesPage>(`/api/conversations/${conversationId}/messages`, { query: { before: pageParam }, signal }),
     queryKey: queryKeys.conversations.messages(conversationId ?? ""),
     refetchInterval: connected ? false : FALLBACK_REFETCH_MS,
   });
@@ -234,7 +234,7 @@ export function useConversationStream(enabled: boolean) {
     const typingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     const onMessage = (payload: MessageEventPayload) => {
-      void queryClient.fetchQuery({ queryKey: queryKeys.conversations.detail(payload.conversationId), queryFn: () => fetchJson<Conversation>(`/api/conversations/${payload.conversationId}`), staleTime: 0 }).catch(() => undefined);
+      void queryClient.fetchQuery({ queryKey: queryKeys.conversations.detail(payload.conversationId), queryFn: ({ signal }) => fetchJson<Conversation>(`/api/conversations/${payload.conversationId}`, { signal }), staleTime: 0 }).catch(() => undefined);
       // A thread still loading its first page is refetched instead, so the new message is not lost.
       if (!appendMessage(queryClient, payload.message)) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.conversations.messages(payload.conversationId) });

@@ -103,7 +103,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
     return (
       <div className="app-page job-detail-page">
         <div className="card card-pad-lg text-center">
-          <div className="font-heading text-[26px]">Choose a job</div>
+          <h1 className="font-heading text-[26px]">Choose a job</h1>
           <p className="mx-auto mt-2 max-w-[420px] text-sm leading-6 text-muted">Open a job from your dashboard or the jobs list to view details.</p>
           <Btn className="mt-5" onClick={() => ctx.bookingId ? go("bookings", { bookingId: ctx.bookingId }) : go(role === "teacher" ? "find-jobs" : "dashboard")}>Back</Btn>
         </div>
@@ -119,7 +119,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
     return (
       <div className="app-page job-detail-page">
         <div className="card card-pad-lg text-center">
-          <div className="font-heading text-[26px]">Job not available</div>
+          <h1 className="font-heading text-[26px]">Job not available</h1>
           <p className="mx-auto mt-2 max-w-[420px] text-sm leading-6 text-muted">This role is unavailable or you do not have permission to view it.</p>
           <Btn className="mt-5" onClick={() => ctx.bookingId ? go("bookings", { bookingId: ctx.bookingId }) : go(role === "teacher" ? "find-jobs" : "dashboard")}>Back</Btn>
         </div>

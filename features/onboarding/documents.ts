@@ -75,6 +75,7 @@ type BackendDocument = {
   sizeBytes?: unknown;
   status?: string;
   uploadedAt?: Date | string | null;
+  documentExpiryDate?: Date | string | null;
 };
 
 type BackendUploadUrl = {
@@ -202,6 +203,7 @@ function normalizeDocument(document: BackendDocument): OnboardingDocumentSnapsho
     requirementId: document.requirementId,
     size: readNumber(document.sizeBytes) ?? 0,
     status: readString(document.status) ?? null,
+    documentExpiryDate: readIsoDate(document.documentExpiryDate) ?? null,
     type: readString(document.contentType) ?? "",
     uploadedAt: readString(document.fileKey) ? (readIsoDate(document.uploadedAt) ?? null) : null,
   };

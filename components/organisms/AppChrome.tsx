@@ -49,7 +49,8 @@ export function AppChrome({
   onLanding,
   onLogout,
   onSettings,
-}: Pick<RouteProps, "state" | "go"> & { children: ReactNode; verified: boolean; onLanding: () => void; onLogout: () => void; onSettings: () => void }) {
+  onTheme,
+}: Pick<RouteProps, "state" | "go"> & { children: ReactNode; verified: boolean; onLanding: () => void; onLogout: () => void; onSettings: () => void; onTheme: () => void }) {
   const navItems = state.role === "admin" ? adminNav : state.role === "institution" ? institutionNav : teacherNav;
   const fallbackUserName = state.role === "admin" ? "Administrator" : state.role === "institution" ? "School workspace" : "Instructor";
   const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
@@ -90,7 +91,7 @@ export function AppChrome({
   return (
     <div className={`workspace-shell workspace-frame ${collapsed ? "is-collapsed" : ""}`}>
       <a className="skip-link" href="#workspace-content">Skip to content</a>
-      <aside ref={navigationRef} className={`workspace-sidebar ${navigationOpen ? "is-open" : ""}`} id="workspace-navigation" onKeyDown={(event) => {
+      <aside ref={navigationRef} aria-label="Workspace navigation" className={`workspace-sidebar ${navigationOpen ? "is-open" : ""}`} id="workspace-navigation" onKeyDown={(event) => {
         if (event.key === "Escape") {
           setNavigationOpen(false);
           menuButton.current?.focus();
@@ -159,6 +160,7 @@ export function AppChrome({
             onProfile={state.role === "admin" ? undefined : () => go("my-profile")}
             onSecurity={() => go("security")}
             onSettings={onSettings}
+            onTheme={onTheme}
             roleLabel={userSub}
           />
           </div>

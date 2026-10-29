@@ -31,8 +31,8 @@ export function useTeacherDashboard() {
   const profileQuery = useSettingsProfile();
   const bookingsQuery = useQuery({
     queryKey: [...queryKeys.bookings.all, "teacher-dashboard", from],
-    queryFn: async () => ({ bookings: await loadDashboardPages(async (pagination) => {
-      const result = await fetchJson<PaginatedBookings>("/api/bookings/me", { query: { ...pagination, from, status: "CONFIRMED" } });
+    queryFn: async ({ signal }) => ({ bookings: await loadDashboardPages(async (pagination) => {
+      const result = await fetchJson<PaginatedBookings>("/api/bookings/me", { query: { ...pagination, from, status: "CONFIRMED" }, signal });
       return { items: result.bookings, pagination: result.pagination };
     }) }),
     refetchOnMount: "always",
@@ -42,9 +42,9 @@ export function useTeacherDashboard() {
   });
   const applicationsQuery = useQuery({
     queryKey: [...queryKeys.applications.all, "teacher-dashboard"],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const applications = await loadDashboardPages(async (pagination) => {
-        const result = await fetchJson<PaginatedApplications>("/api/applications/me", { query: pagination });
+        const result = await fetchJson<PaginatedApplications>("/api/applications/me", { query: pagination, signal });
         return { items: result.applications, pagination: result.pagination };
       });
       return { applications, summary: summarizeDashboardApplications(applications) };
@@ -56,8 +56,8 @@ export function useTeacherDashboard() {
   });
   const invitationsQuery = useQuery({
     queryKey: [...queryKeys.invitations.all, "teacher-dashboard"],
-    queryFn: async () => ({ invitations: await loadDashboardPages(async (pagination) => {
-      const result = await fetchJson<InvitationsPage>("/api/job-invitations/me", { query: { ...pagination, status: "PENDING" } });
+    queryFn: async ({ signal }) => ({ invitations: await loadDashboardPages(async (pagination) => {
+      const result = await fetchJson<InvitationsPage>("/api/job-invitations/me", { query: { ...pagination, status: "PENDING" }, signal });
       return { items: result.invitations, pagination: result.pagination };
     }) }),
     refetchOnMount: "always",

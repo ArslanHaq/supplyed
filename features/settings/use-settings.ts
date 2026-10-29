@@ -47,7 +47,7 @@ function signOutExpiredSession() {
 
 export function useSettingsProfile() {
   return useQuery({
-    queryFn: () => fetchJson<SettingsProfileSnapshot>("/api/settings/profile"),
+    queryFn: ({ signal }) => fetchJson<SettingsProfileSnapshot>("/api/settings/profile", { signal }),
     queryKey: queryKeys.settings.profile(),
   });
 }

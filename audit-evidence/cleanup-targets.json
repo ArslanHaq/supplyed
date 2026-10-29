@@ -1,0 +1,21 @@
+{
+  "directories": [
+    "C:\\Users\\Usman Cheema\\Desktop\\Waleed\\SupplyEd\\supplyed-web\\audit-evidence\\build-web",
+    "C:\\Users\\Usman Cheema\\Desktop\\Waleed\\SupplyEd\\supplyed-web\\audit-evidence\\build-admin",
+    "C:\\Users\\Usman Cheema\\Desktop\\Waleed\\SupplyEd\\supplyed-web\\audit-evidence\\backend-build"
+  ],
+  "links": [
+    {
+      "path": "C:\\Users\\Usman Cheema\\Desktop\\Waleed\\SupplyEd\\supplyed-web\\audit-evidence\\build-web\\.next\\standalone\\node_modules",
+      "target": "C:\\Users\\Usman Cheema\\Desktop\\Waleed\\SupplyEd\\supplyed-web\\node_modules"
+    },
+    {
+      "path": "C:\\Users\\Usman Cheema\\Desktop\\Waleed\\SupplyEd\\supplyed-web\\audit-evidence\\build-web\\node_modules",
+      "target": "C:\\Users\\Usman Cheema\\Desktop\\Waleed\\SupplyEd\\supplyed-web\\node_modules"
+    },
+    {
+      "path": "C:\\Users\\Usman Cheema\\Desktop\\Waleed\\SupplyEd\\supplyed-web\\audit-evidence\\build-admin\\node_modules",
+      "target": "C:\\Users\\Usman Cheema\\Desktop\\Waleed\\SupplyEd\\supplyed-admin\\node_modules"
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import { useJobApplications } from "@/features/applications/use-applications";
 import type { Job, JobsPagination, JobStatus, JobStatusCounts } from "@/features/jobs/types";
 import { formatJobVisibilityLabel, getJobVisibilityLabel, type JobVisibilityLabel } from "@/features/jobs/listing-window";
 
-import { Btn } from "../atoms";
+import { Btn, Icon } from "../atoms";
 import { JobListingPreview, jobListingPreviewData, SectionLoader } from "../molecules";
 
 export type JobStatusFilter = "ALL" | JobStatus;
@@ -15,6 +15,7 @@ type JobManagementListProps = {
   counts?: JobStatusCounts;
   emptyActionLabel?: string;
   emptyMessage: string;
+  error?: boolean;
   filter: JobStatusFilter;
   jobs: Job[];
   loading?: boolean;
@@ -25,8 +26,10 @@ type JobManagementListProps = {
   onEdit: (job: Job) => void;
   onFilterChange: (filter: JobStatusFilter) => void;
   onPageChange?: (page: number) => void;
+  onRetry?: () => void;
   pagination?: JobsPagination;
   refreshing?: boolean;
+  retrying?: boolean;
   title: string;
 };
 
@@ -36,6 +39,7 @@ export function JobManagementList({
   counts,
   emptyActionLabel = "Post a job",
   emptyMessage,
+  error = false,
   filter,
   jobs,
   loading,
@@ -46,8 +50,10 @@ export function JobManagementList({
   onEdit,
   onFilterChange,
   onPageChange,
+  onRetry,
   pagination,
   refreshing = false,
+  retrying = false,
   title,
 }: JobManagementListProps) {
   const choices = useDropdown("jobStatus");
@@ -66,7 +72,7 @@ export function JobManagementList({
         <div><h2>{title}</h2><p>Manage your roles and find your next great teacher.</p></div>
         <Btn icon="plus" size="sm" variant="secondary" onClick={onCreate}>New role</Btn>
       </header>
-        <div aria-label="Filter roles by status" className="workspace-status-filters job-status-toolbar">
+      {!error ? <div aria-label="Filter roles by status" className="workspace-status-filters job-status-toolbar">
           <DropdownStatus name="jobStatus" />
           {statusFilters.map((statusFilter) => {
             const count = counts?.[statusFilter.value];
@@ -80,22 +86,33 @@ export function JobManagementList({
                 onClick={() => onFilterChange(statusFilter.value)}
                 type="button"
               >
-                <span>{statusFilter.label}</span>{count === undefined ? null : <span className="job-status-count">{count}</span>}
+                <span>{statusFilter.label}</span><span aria-hidden={count === undefined ? true : undefined} className={`job-status-count${count === undefined ? " is-placeholder" : ""}`}>{count ?? 0}</span>
               </button>
             );
           })}
-        </div>
+      </div> : null}
 
       <div className="job-management-list">
-        {loading ? <div className="p-5"><SectionLoader rows={3} /></div> : null}
-        {!loading && filteredJobs.length === 0 ? (
+        {error ? (
+          <div className="jobs-service-unavailable" role="alert">
+            <span aria-hidden="true" className="jobs-service-unavailable-icon"><Icon name="refresh" size={22} /></span>
+            <div>
+              <p className="eyebrow">Service temporarily unavailable</p>
+              <h3>We couldn&apos;t load your job posts</h3>
+              <p>Your job data is safe. The service may be briefly unavailable, so please try again in a moment.</p>
+            </div>
+            <Btn icon="refresh" loading={retrying} loadingLabel="Trying again" variant="secondary" onClick={onRetry}>Try again</Btn>
+          </div>
+        ) : null}
+        {!error && loading ? <div className="p-5"><SectionLoader rows={3} /></div> : null}
+        {!error && !loading && filteredJobs.length === 0 ? (
           <div className="px-5 py-8 text-center">
             <div className="font-heading text-[22px]">No roles found</div>
             <p className="mx-auto mt-2 max-w-[380px] text-sm leading-6 text-muted">{emptyMessage}</p>
             <Btn className="mt-4" icon="plus" onClick={onCreate}>{emptyActionLabel}</Btn>
           </div>
         ) : null}
-        {filteredJobs.map((job) => (
+        {!error ? filteredJobs.map((job) => (
           <JobManagementRow
             key={job.id}
             actionPending={actionPending}
@@ -105,9 +122,9 @@ export function JobManagementList({
             onDelete={onDelete}
             onEdit={onEdit}
           />
-        ))}
+        )) : null}
       </div>
-      {pagination && onPageChange ? (
+      {!error && pagination && onPageChange ? (
         <footer className="job-pagination">
           <p aria-live="polite" className="job-pagination-summary">{loading || refreshing ? "Loading roles…" : pagination.total > 0 ? `Showing ${resultStart}–${resultEnd} of ${pagination.total} ${pagination.total === 1 ? "role" : "roles"}` : "No roles to show"}</p>
           <nav aria-label="Job pages" className="job-pagination-controls">

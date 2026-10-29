@@ -122,7 +122,7 @@ export function isImageRequirement(requirement: Pick<OnboardingDocumentRequireme
   return allowed.length > 0 && allowed.every((mime) => mime.startsWith("image/"));
 }
 
-export function missingRequiredDocuments<T extends { id: string; isRequired: boolean }>(requirements: T[], documents: OnboardingDocumentMap) {
+export function missingRequiredDocuments<T extends { id: string; isRequired: boolean }>(requirements: T[], documents: Record<string, { uploadedAt?: string | null; documentExpiryDate?: string | null; status?: string | null }>) {
   return requirements.filter((requirement) => {
     const document = documents[requirement.id];
     const needsReplacement = ["REJECTED", "REQUIRES_INFO"].includes(document?.status?.toUpperCase() ?? "");
@@ -130,8 +130,8 @@ export function missingRequiredDocuments<T extends { id: string; isRequired: boo
   });
 }
 
-export function isDocumentReadyForReview(document?: { uploadedAt?: string | null; status?: string | null }) {
-  return Boolean(document?.uploadedAt && ["PENDING", "APPROVED", "NOT_REQUIRED"].includes(document.status?.toUpperCase() ?? ""));
+export function isDocumentReadyForReview(document?: { uploadedAt?: string | null; documentExpiryDate?: string | null; status?: string | null }) {
+  return Boolean((!document?.documentExpiryDate || Date.parse(document.documentExpiryDate) > Date.now()) && document?.uploadedAt && ["PENDING", "APPROVED", "NOT_REQUIRED"].includes(document.status?.toUpperCase() ?? ""));
 }
 
 export function hasRequiredDocuments(requirements: OnboardingDocumentRequirement[], documents: OnboardingDocumentMap) {

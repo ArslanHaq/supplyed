@@ -7,7 +7,7 @@ import { effectiveInvitationStatus } from "./schemas";
 import type { Invitation, InvitationListQuery, InvitationsPage } from "./types";
 
 export function useInvitations(query: InvitationListQuery, enabled = true) {
-  return useQuery({ enabled, queryKey: queryKeys.invitations.list(query), queryFn: () => fetchJson<InvitationsPage>("/api/job-invitations/me", { query }), refetchOnMount: "always", refetchOnWindowFocus: "always", refetchInterval: current => current.state.data?.invitations.some(item => item.status === "PENDING") || query.status === "PENDING" ? 30000 : false, refetchIntervalInBackground: false });
+  return useQuery({ enabled, queryKey: queryKeys.invitations.list(query), queryFn: ({ signal }) => fetchJson<InvitationsPage>("/api/job-invitations/me", { query, signal }), refetchOnMount: "always", refetchOnWindowFocus: "always", refetchInterval: current => current.state.data?.invitations.some(item => item.status === "PENDING") || query.status === "PENDING" ? 30000 : false, refetchIntervalInBackground: false });
 }
 
 /** All invitations for job-level summaries. The API is paginated, so one page is never treated as the full filter set. */
@@ -15,12 +15,12 @@ export function useAllInvitations(enabled = true) {
   return useQuery({
     enabled,
     queryKey: [...queryKeys.invitations.all, "all-pages"],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const invitations: Invitation[] = [];
       const seen = new Set<string>();
       let page = 1;
       while (true) {
-        const result = await fetchJson<InvitationsPage>("/api/job-invitations/me", { query: { limit: 100, page } });
+        const result = await fetchJson<InvitationsPage>("/api/job-invitations/me", { query: { limit: 100, page }, signal });
         for (const invitation of result.invitations) {
           if (!seen.has(invitation.id)) { seen.add(invitation.id); invitations.push(invitation); }
         }
@@ -36,7 +36,7 @@ export function useAllInvitations(enabled = true) {
   });
 }
 export function useInvitation(id?: string, enabled = true) {
-  return useQuery({ enabled: enabled && Boolean(id), queryKey: queryKeys.invitations.detail(id ?? ""), queryFn: () => fetchJson<Invitation>(`/api/job-invitations/${id}`), refetchOnMount: "always", refetchOnWindowFocus: "always", refetchInterval: query => query.state.data?.status === "PENDING" ? 15000 : false, refetchIntervalInBackground: false, retry: false });
+  return useQuery({ enabled: enabled && Boolean(id), queryKey: queryKeys.invitations.detail(id ?? ""), queryFn: ({ signal }) => fetchJson<Invitation>(`/api/job-invitations/${id}`, { signal }), refetchOnMount: "always", refetchOnWindowFocus: "always", refetchInterval: query => query.state.data?.status === "PENDING" ? 15000 : false, refetchIntervalInBackground: false, retry: false });
 }
 /** Update controls at the deadline even before the backend expiry worker runs. */
 export function useInvitationClock(invitation?: Invitation) {

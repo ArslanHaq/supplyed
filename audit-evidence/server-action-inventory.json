@@ -1,0 +1,440 @@
+[
+  {
+    "repo": "web",
+    "path": "app/(app)/onboarding/actions.ts",
+    "line": 10,
+    "name": "saveOnboardingAction"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/onboarding/actions.ts",
+    "line": 14,
+    "name": "saveOnboardingStep"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/onboarding/actions.ts",
+    "line": 18,
+    "name": "uploadOnboardingDocument"
+  },
+  {
+    "repo": "web",
+    "path": "app/(app)/onboarding/actions.ts",
+    "line": 22,
+    "name": "downloadOnboardingDocument"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/forgot-password/actions.ts",
+    "line": 5,
+    "name": "requestPasswordResetAction"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/forgot-password/actions.ts",
+    "line": 9,
+    "name": "confirmPasswordResetAction"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/login/actions.ts",
+    "line": 12,
+    "name": "loginAction"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/login/actions.ts",
+    "line": 16,
+    "name": "googleLoginAction"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/login/actions.ts",
+    "line": 20,
+    "name": "microsoftLoginAction"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/login/actions.ts",
+    "line": 24,
+    "name": "verifyLoginEmail"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/login/actions.ts",
+    "line": 28,
+    "name": "verifyLoginTwoFactor"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/login/actions.ts",
+    "line": 32,
+    "name": "resendLoginVerification"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/signup/actions.ts",
+    "line": 11,
+    "name": "signupAction"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/signup/actions.ts",
+    "line": 15,
+    "name": "googleSignupAction"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/signup/actions.ts",
+    "line": 19,
+    "name": "microsoftSignupAction"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/signup/actions.ts",
+    "line": 23,
+    "name": "verifySignupEmail"
+  },
+  {
+    "repo": "web",
+    "path": "app/(auth)/signup/actions.ts",
+    "line": 27,
+    "name": "resendSignupVerification"
+  },
+  {
+    "repo": "web",
+    "path": "features/applications/actions.ts",
+    "line": 12,
+    "name": "createApplicationAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/applications/actions.ts",
+    "line": 45,
+    "name": "updateApplicationStatusAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 185,
+    "name": "loginWithEmailAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 235,
+    "name": "verifyTwoFactorLoginAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 259,
+    "name": "signupWithEmailAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 326,
+    "name": "forgotPasswordAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 343,
+    "name": "resetPasswordAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 371,
+    "name": "verifyEmailAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 399,
+    "name": "verifyEmailSessionAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 434,
+    "name": "resendEmailVerificationAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 456,
+    "name": "refreshApplicationStatusAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 496,
+    "name": "signInWithGoogleAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/actions.ts",
+    "line": 500,
+    "name": "signInWithMicrosoftAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/phone-actions.ts",
+    "line": 24,
+    "name": "sendPhoneOtpAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/phone-actions.ts",
+    "line": 49,
+    "name": "verifyPhoneOtpAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/two-factor-actions.ts",
+    "line": 90,
+    "name": "getTwoFactorStatusAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/two-factor-actions.ts",
+    "line": 98,
+    "name": "startTwoFactorSetupAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/two-factor-actions.ts",
+    "line": 106,
+    "name": "enableTwoFactorAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/two-factor-actions.ts",
+    "line": 125,
+    "name": "disableTwoFactorAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/auth/two-factor-actions.ts",
+    "line": 144,
+    "name": "regenerateTwoFactorRecoveryCodesAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/bookings/actions.ts",
+    "line": 17,
+    "name": "updateBookingStatusAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/bookings/actions.ts",
+    "line": 41,
+    "name": "createBookingReviewAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/contact/actions.ts",
+    "line": 62,
+    "name": "registerInterestAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/contact/actions.ts",
+    "line": 99,
+    "name": "foundingInterestAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/contact/actions.ts",
+    "line": 159,
+    "name": "saveWaitlistDetailsAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/conversations/actions.ts",
+    "line": 11,
+    "name": "startConversationAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/conversations/actions.ts",
+    "line": 25,
+    "name": "openConversationForApplicationAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/conversations/actions.ts",
+    "line": 37,
+    "name": "openConversationForBookingAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/conversations/actions.ts",
+    "line": 46,
+    "name": "sendMessageAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/conversations/actions.ts",
+    "line": 64,
+    "name": "markConversationReadAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/conversations/actions.ts",
+    "line": 73,
+    "name": "attachmentDownloadUrlAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/invitations/actions.ts",
+    "line": 19,
+    "name": "createInvitationAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/invitations/actions.ts",
+    "line": 66,
+    "name": "decideInvitationAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/jobs/actions.ts",
+    "line": 13,
+    "name": "createJobAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/jobs/actions.ts",
+    "line": 56,
+    "name": "updateJobAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/jobs/actions.ts",
+    "line": 102,
+    "name": "deleteJobAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/notifications/actions.ts",
+    "line": 11,
+    "name": "markNotificationReadAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/notifications/actions.ts",
+    "line": 21,
+    "name": "markAllNotificationsReadAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/notifications/actions.ts",
+    "line": 30,
+    "name": "updateNotificationPreferencesAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/onboarding/actions.ts",
+    "line": 503,
+    "name": "getOnboardingProfileSnapshot"
+  },
+  {
+    "repo": "web",
+    "path": "features/onboarding/actions.ts",
+    "line": 729,
+    "name": "uploadOnboardingDocumentAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/onboarding/actions.ts",
+    "line": 764,
+    "name": "downloadOnboardingDocumentAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/onboarding/actions.ts",
+    "line": 800,
+    "name": "saveOnboardingStepAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/onboarding/actions.ts",
+    "line": 1214,
+    "name": "submitOnboardingAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/payments/actions.ts",
+    "line": 16,
+    "name": "createPayoutSessionAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/payments/actions.ts",
+    "line": 31,
+    "name": "createInvoicePaymentSessionAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/payments/actions.ts",
+    "line": 55,
+    "name": "syncInvoiceAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/payments/actions.ts",
+    "line": 70,
+    "name": "instantPayoutAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/payments/actions.ts",
+    "line": 83,
+    "name": "createInvoiceAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/payments/actions.ts",
+    "line": 113,
+    "name": "resendInvoiceAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/payments/actions.ts",
+    "line": 117,
+    "name": "voidInvoiceAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/payments/actions.ts",
+    "line": 121,
+    "name": "refundInvoiceAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/settings/actions.ts",
+    "line": 224,
+    "name": "uploadSettingsProfileImageAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/settings/actions.ts",
+    "line": 284,
+    "name": "updateSettingsAction"
+  },
+  {
+    "repo": "web",
+    "path": "features/teachers/actions.ts",
+    "line": 15,
+    "name": "updateTeacherProfileAction"
+  },
+  {
+    "repo": "admin",
+    "path": "app/actions/auth.ts",
+    "line": 5,
+    "name": "logoutAction"
+  }
+]

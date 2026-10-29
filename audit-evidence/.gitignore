@@ -1,0 +1,4 @@
+build-web/
+build-admin/
+backend-build/
+*.tsbuildinfo

@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    return Response.json(await getOnboardingSnapshot());
+    return Response.json(await getOnboardingSnapshot(), { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return routeError(error);
   }

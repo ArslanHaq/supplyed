@@ -60,7 +60,7 @@ export type OnboardingDocumentSnapshot = {
   size: number;
   status?: string | null;
   type: string;
-  uploadedAt?: string | null;
+  uploadedAt?: string | null; documentExpiryDate?: string | null;
   versionId?: string | null;
   versionNumber?: number | null;
 };

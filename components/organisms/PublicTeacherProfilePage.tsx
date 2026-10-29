@@ -61,7 +61,7 @@ export function PublicTeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ct
       </section>
 
       <div className="profile-detail-grid grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <main className="min-w-0">
+        <div className="min-w-0">
           <ProfileSection description="A professional introduction from the teacher" icon="user" title="About this teacher">
             <p className="whitespace-pre-line text-[15px] leading-7 text-slate">{profile.bio || "This teacher has not added a public introduction yet. Their verified experience and teaching preferences are shown below."}</p>
           </ProfileSection>
@@ -76,9 +76,9 @@ export function PublicTeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ct
           </section>
 
           <ProfileReviewsPanel data={reviewsQuery.data} error={reviewsQuery.error} loading={reviewsQuery.isLoading} />
-        </main>
+        </div>
 
-        <aside className="profile-overview sidebar-panel overflow-hidden xl:sticky xl:top-6">
+        <aside aria-label="Teacher overview" className="profile-overview sidebar-panel overflow-hidden xl:sticky xl:top-6">
           <div className="border-b border-border px-6 py-5 text-white">
             <div className="flex items-center gap-2 text-base font-semibold"><Icon name="file" size={18} />Profile overview</div>
             <p className="mt-1 text-xs leading-5 text-white">Key information for your hiring decision</p>

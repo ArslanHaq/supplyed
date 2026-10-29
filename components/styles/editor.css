@@ -1,0 +1,48 @@
+/* Rich-text editor rules are loaded only inside the authenticated workspace. */
+.role-description-editor .ql-container,
+.role-description-editor .ql-toolbar,
+.role-description-editor .ql-picker,
+.proposal-editor .ql-container,
+.proposal-editor .ql-toolbar,
+.proposal-editor .ql-picker {
+  font-family: var(--sans);
+}
+
+.role-description-editor .ql-toolbar { padding: 12px; }
+.role-description-editor .ql-editor { min-height: 220px; padding: 16px; line-height: 1.7; }
+
+.proposal-editor .ql-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 11px 12px; }
+.proposal-editor .ql-formats { display: inline-flex; align-items: center; margin-right: 6px; }
+.proposal-editor .ql-editor { min-height: 250px; padding: 18px; line-height: 1.75; }
+.proposal-editor .ql-editor p,
+.proposal-editor .ql-editor ul,
+.proposal-editor .ql-editor ol { margin-bottom: .65rem; }
+.proposal-editor .ql-picker.ql-font { width: 138px; }
+.proposal-editor .ql-picker.ql-size { width: 76px; }
+.proposal-editor .ql-font .ql-picker-label::before,
+.proposal-editor .ql-font .ql-picker-item::before { content: "SupplyEd Sans"; }
+.proposal-editor .ql-font .ql-picker-label[data-value="Arial"]::before,
+.proposal-editor .ql-font .ql-picker-item[data-value="Arial"]::before { content: "Arial"; font-family: Arial, sans-serif; }
+.proposal-editor .ql-font .ql-picker-label[data-value="Georgia"]::before,
+.proposal-editor .ql-font .ql-picker-item[data-value="Georgia"]::before { content: "Georgia"; font-family: Georgia, serif; }
+.proposal-editor .ql-font .ql-picker-label[data-value="Times New Roman"]::before,
+.proposal-editor .ql-font .ql-picker-item[data-value="Times New Roman"]::before { content: "Times New Roman"; font-family: "Times New Roman", serif; }
+
+.editor-link-action { display: inline-flex; height: 40px; align-items: center; justify-content: center; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 700; transition: border-color 160ms ease, background 160ms ease, color 160ms ease; }
+.editor-link-action:hover { border-color: var(--border-2); background: var(--chalk); }
+.editor-link-action-primary,
+.editor-link-action-primary:hover { border-color: var(--se-dark); background: var(--se-dark); color: white; }
+
+.proposal-content > * + * { margin-top: .65rem; }
+.proposal-content ul,
+.proposal-content ol { padding-left: 1.35rem; }
+.proposal-content ul { list-style: disc; }
+.proposal-content ol { list-style: decimal; }
+.proposal-content li + li { margin-top: .25rem; }
+.proposal-content a { color: var(--text-brand); font-weight: 650; text-decoration: underline; text-decoration-color: rgb(var(--se-rgb) / .35); text-underline-offset: 3px; }
+
+@media (max-width: 640px) {
+  .proposal-editor .ql-toolbar { gap: 7px 2px; }
+  .proposal-editor .ql-formats { margin-right: 2px; }
+  .proposal-editor .ql-editor { min-height: 220px; }
+}

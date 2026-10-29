@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getServerAuthContext } from "./auth-context";
+import { getServerAuthContext, type ServerAuthContext } from "./auth-context";
 import { ApiError } from "./api-error";
 export { ApiError } from "./api-error";
 import { getValidAccessToken, markBackendSessionExpired, refreshBackendAccessToken } from "./token-refresh";
@@ -16,6 +16,7 @@ type NextFetchOptions = {
 
 type ApiRequestOptions = {
   auth?: boolean;
+  authContext?: ServerAuthContext;
   cache?: RequestCache;
   headers?: HeadersInit;
   timeoutMs?: number;
@@ -144,7 +145,11 @@ async function request<Data>(
   init: RequestInit = {},
   options: ApiRequestOptions = {},
 ): Promise<Data> {
-  const authContext = options.auth === false ? null : await getServerAuthContext();
+  const authContext = options.auth === false
+    ? null
+    : options.authContext === undefined
+      ? await getServerAuthContext()
+      : options.authContext;
   const accessToken = options.auth === false ? null : await getValidAccessToken(authContext);
   const url = buildUrl(path, options.query);
 
@@ -163,6 +168,7 @@ async function request<Data>(
       cache: options.cache,
       headers: {
         Accept: "application/json",
+        ...(process.env.BFF_SHARED_SECRET ? { "X-SupplyEd-BFF": process.env.BFF_SHARED_SECRET } : {}),
         ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,

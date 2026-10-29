@@ -1,0 +1,10 @@
+{
+  "findingCount": 25,
+  "distinctIds": 25,
+  "allFindingFields": true,
+  "reportSections": true,
+  "matrixContainsAllProbeIds": true,
+  "routeCount": 303,
+  "sourcePreserved": true,
+  "buildCopiesRemoved": true
+}

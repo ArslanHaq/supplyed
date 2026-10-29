@@ -3,7 +3,7 @@ import { recordRateLimit } from "@/lib/rate-limit";
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { invitationReturnPath } from "@/lib/invitation-links";
+import { authReturnPath } from "@/lib/invitation-links";
 import { signIn } from "next-auth/react";
 
 import { loginAction, resendLoginVerification, verifyLoginEmail, verifyLoginTwoFactor } from "@/app/(auth)/login/actions";
@@ -12,10 +12,9 @@ import { readAuthSessionTicketPayload } from "@/lib/auth-session-routing";
 import { nextCodeResendAvailableAt } from "@/lib/code-resend-cooldown";
 import { startRouteLoading } from "@/lib/navigation-loading";
 import { useAuthToasts } from "@/lib/use-auth-toasts";
-import { useMounted } from "@/lib/use-mounted";
 import type { SocialAuthAvailability } from "@/types/supplyed";
 
-import { AuthFlowLoader, PublicThemeControls, ToastStack } from "../molecules";
+import { PublicThemeControls, ToastStack } from "../molecules";
 import { LoginPage } from "./LoginPage";
 import { SignupVerifyPage } from "./SignupVerifyPage";
 import { TwoFactorChallengePage } from "./TwoFactorChallengePage";
@@ -67,7 +66,7 @@ function isSocialProviderAvailable(provider: "google" | "microsoft-entra-id", so
 
 function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
   const router = useRouter();
-  const returnTo = invitationReturnPath(useSearchParams().get("returnTo"));
+  const returnTo = authReturnPath(useSearchParams().get("returnTo"));
   const [stage, setStage] = useState<LoginStage>("login");
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationNotice, setVerificationNotice] = useState<string>();
@@ -434,16 +433,5 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
 }
 
 export function LoginRouteClient({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
-  const isClient = useMounted();
-
-  if (!isClient) {
-    return (
-      <AuthFlowLoader
-        description="Checking saved session state before showing sign in."
-        title="Preparing sign in"
-      />
-    );
-  }
-
   return <LoginRouteClientInner initialError={initialError} socialAuth={socialAuth} />;
 }

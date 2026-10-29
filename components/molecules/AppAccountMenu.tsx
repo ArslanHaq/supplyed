@@ -13,6 +13,7 @@ type AppAccountMenuProps = {
   onProfile?: () => void;
   onSecurity: () => void;
   onSettings: () => void;
+  onTheme?: () => void;
   roleLabel: string;
 };
 
@@ -66,6 +67,7 @@ export function AppAccountMenu({
   onProfile,
   onSecurity,
   onSettings,
+  onTheme,
   roleLabel,
 }: AppAccountMenuProps) {
   const [open, setOpen] = useState(false);
@@ -124,6 +126,12 @@ export function AppAccountMenu({
       onSelect: () => closeThen(onSettings),
       sub: "Update account and profile details",
     },
+    ...(onTheme ? [{
+      icon: "palette",
+      label: "Theme",
+      onSelect: () => closeThen(onTheme),
+      sub: "Choose your workspace colour",
+    }] : []),
     {
       icon: "shield",
       label: "Security",

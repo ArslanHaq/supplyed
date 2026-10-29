@@ -21,7 +21,7 @@ type UseCreateApplicationOptions = {
 export function useJobApplications(jobId: string | undefined, query: JobApplicationsQuery = {}) {
   return useQuery({
     enabled: Boolean(jobId),
-    queryFn: () => fetchJson<PaginatedApplications>(`/api/applications/job/${jobId}`, { query }),
+    queryFn: ({ signal }) => fetchJson<PaginatedApplications>(`/api/applications/job/${jobId}`, { query, signal }),
     queryKey: queryKeys.applications.byJob(jobId ?? "", query),
   });
 }
@@ -29,7 +29,7 @@ export function useJobApplications(jobId: string | undefined, query: JobApplicat
 export function useApplication(applicationId: string | undefined) {
   return useQuery({
     enabled: Boolean(applicationId),
-    queryFn: () => fetchJson<JobApplication>(`/api/applications/${applicationId}`),
+    queryFn: ({ signal }) => fetchJson<JobApplication>(`/api/applications/${applicationId}`, { signal }),
     queryKey: queryKeys.applications.detail(applicationId ?? ""),
   });
 }
@@ -37,7 +37,7 @@ export function useApplication(applicationId: string | undefined) {
 export function useApplicationHistory(applicationId: string | undefined, page = 1, limit = 10) {
   return useQuery({
     enabled: Boolean(applicationId),
-    queryFn: () => fetchJson<PaginatedApplicationHistory>(`/api/applications/${applicationId}/history`, { query: { page, limit } }),
+    queryFn: ({ signal }) => fetchJson<PaginatedApplicationHistory>(`/api/applications/${applicationId}/history`, { query: { page, limit }, signal }),
     queryKey: [...queryKeys.applications.history(applicationId ?? ""), { page, limit }],
   });
 }
@@ -45,14 +45,14 @@ export function useApplicationHistory(applicationId: string | undefined, page = 
 export function useMyApplications(query: JobApplicationsQuery = {}, enabled = true) {
   return useQuery({
     enabled,
-    queryFn: () => fetchJson<PaginatedApplications>("/api/applications/me", { query }),
+    queryFn: ({ signal }) => fetchJson<PaginatedApplications>("/api/applications/me", { query, signal }),
     queryKey: queryKeys.applications.mine(query),
   });
 }
 
 export function useActiveJobApplicantCount() {
   return useQuery({
-    queryFn: () => fetchJson<{ total: number }>("/api/applications/active-jobs/count"),
+    queryFn: ({ signal }) => fetchJson<{ total: number }>("/api/applications/active-jobs/count", { signal }),
     queryKey: queryKeys.applications.activeJobCount(),
   });
 }

@@ -226,10 +226,10 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
             ) : null}
           </div>
 
-          <aside className="marketing-founding-aside">
+          <section aria-labelledby="founding-marketplace-heading" className="marketing-founding-aside">
             <div className="relative">
               <div className="marketing-aside-label"><Icon name="shield" size={18} /> Verified marketplace</div>
-              <h2 className="mt-2 max-w-[410px] font-heading text-3xl leading-[1.04] sm:text-[38px]">
+              <h2 className="mt-2 max-w-[410px] font-heading text-3xl leading-[1.04] sm:text-[38px]" id="founding-marketplace-heading">
                 The right teacher, right now.
               </h2>
               <p className="mt-3 max-w-[440px] text-sm leading-6 text-muted">{content.rightCardCopy}</p>
@@ -265,7 +265,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
                 </div>
               </div>
             </div>
-          </aside>
+          </section>
         </div>
       </section>
 

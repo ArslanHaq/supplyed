@@ -262,7 +262,7 @@ export function ForgotPasswordRouteClient() {
   return (
     <>
       <div className="auth-shell">
-        <aside className="auth-aside">
+        <aside aria-label="SupplyED account recovery" className="auth-aside">
           <div className="auth-aside-rule" aria-hidden="true" />
           <div className="relative flex items-center justify-between gap-4">
             <Logo size={22} className="text-white" onClick={goLanding} />
@@ -286,7 +286,7 @@ export function ForgotPasswordRouteClient() {
           <div className="auth-aside-footer">Account recovery</div>
         </aside>
 
-        <section className="auth-main">
+        <main className="auth-main">
           <div className="auth-main-inner">
             <div className="auth-security-badge"><Icon name="shield" size={18} /> Account recovery</div>
             <div className="auth-form-heading">
@@ -434,7 +434,7 @@ export function ForgotPasswordRouteClient() {
               )}
             </div>
           </div>
-        </section>
+        </main>
       </div>
 
       <PublicThemeControls />

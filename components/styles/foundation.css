@@ -1,5 +1,7 @@
 /* Shared SupplyED design system. Component rules remain overridable by utilities. */
 @layer components {
+  .workspace-shell { min-height: 100vh; background: var(--chalk); }
+  .tweaks-panel { position: fixed; right: 20px; bottom: 20px; z-index: 70; width: 260px; padding: 16px; border: .5px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-lg); }
   .skip-link { position: fixed; top: 12px; left: 12px; z-index: 100; transform: translateY(-180%); padding: 12px 18px; border-radius: 8px; background: var(--ink); color: white; }
   .skip-link:focus { transform: none; }
   .workspace-frame { --sidebar-width: 232px; display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); min-height: 100dvh; }
@@ -129,6 +131,7 @@
     .app-page { padding: 28px 24px 48px; }
   }
   @media (max-width: 639px) {
+    .workspace-theme-trigger { display: none; }
     .phone-verification-action { --phone-control-height: 48px; }
     .phone-input-controls { grid-template-columns: minmax(0, 1fr); }
     .workspace-mobile-brand { display: inline-flex; margin-right: auto; }

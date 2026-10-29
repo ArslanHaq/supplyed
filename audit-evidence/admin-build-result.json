@@ -1,0 +1,9 @@
+{
+  "repo": "admin",
+  "code": 1,
+  "seconds": 35.852,
+  "command": "next build --webpack",
+  "isolated": true,
+  "backend": "closed loopback port",
+  "envFilesCopied": false
+}

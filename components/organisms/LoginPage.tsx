@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { SocialAuthAvailability } from "@/types/supplyed";
 import { validateEmail } from "@/features/auth/schemas";
 
-import { Btn, Checkbox, Field, Icon, Logo } from "../atoms";
+import { Btn, Field, Icon, Logo } from "../atoms";
 import { PasswordInput } from "../atoms/PasswordInput";
 import { SocialAuthButtons } from "../molecules";
 
@@ -37,7 +37,6 @@ export function LoginPage({
   const retryAfter = useRateLimit();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(true);
   const [errors, setErrors] = useState<LoginErrors>({});
   const [pending, setPending] = useState(false);
 
@@ -72,7 +71,7 @@ export function LoginPage({
 
   return (
     <div className="auth-shell">
-      <aside className="auth-aside">
+      <aside aria-label="SupplyED account access" className="auth-aside">
         <div className="auth-aside-rule" aria-hidden="true" />
         <div className="relative flex items-center justify-between gap-4">
           <Logo size={22} className="text-white" onClick={onLanding} />
@@ -111,7 +110,7 @@ export function LoginPage({
         <div className="auth-aside-footer"><span>© 2026 SupplyED</span><span>Built for education.</span></div>
       </aside>
 
-      <section className="auth-main">
+      <main className="auth-main">
         <div className="auth-main-inner">
           <div className="auth-form-heading">
             <div className="eyebrow mb-2 text-brand">Secure sign in</div>
@@ -161,8 +160,7 @@ export function LoginPage({
               />
             </Field>
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-              <Checkbox checked={remember} onChange={setRemember} label="Remember this device" />
+            <div className="mb-6 flex justify-end">
               <button
                 className="text-sm font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={pending}
@@ -179,7 +177,7 @@ export function LoginPage({
           </form>
           <p className="auth-security-note"><Icon name="shield" size={14} /> Secure access to your SupplyED workspace</p>
         </div>
-      </section>
+      </main>
     </div>
   );
 }

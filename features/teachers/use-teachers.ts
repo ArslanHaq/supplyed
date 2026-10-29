@@ -9,14 +9,14 @@ import type { Teacher, TeacherDirectoryFilters, TeacherDirectoryPage, TeacherLis
 
 export function useTeachers(filters: TeacherListFilters = {}) {
   return useQuery({
-    queryFn: () => fetchJson<Teacher[]>("/api/teachers", { query: filters }),
+    queryFn: ({ signal }) => fetchJson<Teacher[]>("/api/teachers", { query: filters, signal }),
     queryKey: queryKeys.teachers.list(filters),
   });
 }
 
 export function useTeacherDirectory(filters: TeacherDirectoryFilters = {}) {
   return useQuery({
-    queryFn: () => fetchJson<TeacherDirectoryPage>("/api/instructors/directory", { query: filters }),
+    queryFn: ({ signal }) => fetchJson<TeacherDirectoryPage>("/api/instructors/directory", { query: filters, signal }),
     queryKey: queryKeys.teachers.directory(filters),
     refetchOnMount: "always",
     refetchOnWindowFocus: "always",
@@ -28,7 +28,7 @@ export function useTeacherDirectory(filters: TeacherDirectoryFilters = {}) {
 export function useTeacher(id: string) {
   return useQuery({
     enabled: Boolean(id),
-    queryFn: () => fetchJson<Teacher>(`/api/teachers/${id}`),
+    queryFn: ({ signal }) => fetchJson<Teacher>(`/api/teachers/${id}`, { signal }),
     queryKey: queryKeys.teachers.detail(id),
   });
 }

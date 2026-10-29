@@ -7,15 +7,18 @@ import { queryKeys } from "@/lib/query/keys";
 import type { AppRole } from "@/types/supplyed";
 
 import type { OnboardingDocumentRequirement, OnboardingSnapshot } from "./types";
+import { onboardingRefreshInterval, onboardingStaleTime, type OnboardingRefreshMode } from "./query-policy";
 
-export function useOnboardingSnapshot(accountEmail: string, options: { enabled?: boolean } = {}) {
+export function useOnboardingSnapshot(accountEmail: string, options: { enabled?: boolean; mode?: OnboardingRefreshMode } = {}) {
   return useQuery({
     enabled: options.enabled ?? Boolean(accountEmail),
-    queryFn: () => fetchJson<OnboardingSnapshot>("/api/onboarding/me"),
+    queryFn: ({ signal }) => fetchJson<OnboardingSnapshot>("/api/onboarding/me", { signal }),
     queryKey: [...queryKeys.onboarding.current(), accountEmail],
     refetchOnWindowFocus: true,
-    refetchInterval: 60_000,
-    staleTime: 0,
+    refetchOnReconnect: true,
+    refetchInterval: query => onboardingRefreshInterval(options.mode ?? "workspace", query.state.data),
+    refetchIntervalInBackground: false,
+    staleTime: onboardingStaleTime,
   });
 }
 
@@ -30,7 +33,7 @@ export function useOnboardingDocumentRequirements(
   return useQuery({
     enabled: options.enabled ?? Boolean(role),
     initialData: options.initialData && options.initialData.length > 0 ? options.initialData : undefined,
-    queryFn: () => fetchJson<OnboardingDocumentRequirement[]>("/api/onboarding/document-requirements"),
+    queryFn: ({ signal }) => fetchJson<OnboardingDocumentRequirement[]>("/api/onboarding/document-requirements", { signal }),
     queryKey: queryKeys.onboarding.documentRequirements(role ?? "none"),
     staleTime: 0,
   });

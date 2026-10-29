@@ -546,7 +546,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
       />
 
       <div className="settings-layout">
-        <aside className="settings-navigation">
+        <aside aria-label="Settings navigation" className="settings-navigation">
           <div className="settings-navigation-label">Your account</div>
           <nav aria-label="Settings sections">
             <a aria-current={activeSection === "settings-profile" ? "location" : undefined} className={activeSection === "settings-profile" ? "active" : undefined} href="#settings-profile" onClick={() => setActiveSection("settings-profile")}><Icon name="user" size={17} /> My profile</a>
