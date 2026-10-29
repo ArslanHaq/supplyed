@@ -401,14 +401,13 @@ function PostJobEditor({
             {addressMode === "different" ? <div className="mt-4 grid gap-4 md:grid-cols-2">
               <PostcodeLookup
                 error={errors.postalCode}
-                hint="Check the postcode area, then select the city or town."
                 id="post-job-postcode"
                 onChange={(value) => updateForm("postalCode", value)}
                 onSelect={(selection) => {
                   updateForm("postalCode", selection.postcode);
-                  updateForm("countryCode", "GB");
-                  if (selection.city) updateForm("city", selection.city);
-                  if (selection.county) updateForm("county", selection.county);
+                  updateForm("countryCode", selection.countryCode);
+                  updateForm("city", selection.city);
+                  updateForm("county", selection.county);
                 }}
                 value={form.postalCode}
               />

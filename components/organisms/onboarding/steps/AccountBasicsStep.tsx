@@ -92,6 +92,17 @@ export function AccountBasicsStep({
         )}
         {roleSelected && activeRole !== "institution" ? (
           <>
+            <Field label="Address" htmlFor="signup-address" error={errors.profileAddress}>
+              <input
+                id="signup-address"
+                autoComplete="street-address"
+                className={fieldClass(errors.profileAddress)}
+                maxLength={250}
+                value={form.profileAddress}
+                onChange={(event) => updateField("profileAddress", event.target.value)}
+                placeholder="House number and street address"
+              />
+            </Field>
             <PostcodeLookup
               error={errors.postcode}
               id="signup-location"
@@ -99,7 +110,8 @@ export function AccountBasicsStep({
               onChange={(value) => updateField("postcode", value)}
               onSelect={(selection) => {
                 updateField("postcode", selection.postcode);
-                if (selection.city) updateField("profileCity", selection.city);
+                updateField("profileCountryCode", selection.countryCode);
+                updateField("profileCity", selection.city);
               }}
               placeholder="M1 1AE"
               required

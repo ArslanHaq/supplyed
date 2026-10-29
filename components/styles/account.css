@@ -17,23 +17,23 @@
   .auth-benefits { display: grid; gap: 19px; margin-top: 40px; color: #d0dae1; font-size: 13px; }
   .auth-benefits li { gap: 13px; }
   .auth-benefits li > span:first-child { width: 26px; height: 26px; background: #ffffff0a; color: color-mix(in srgb, var(--se) 65%, white); border: 1px solid #ffffff12; }
-  .auth-main { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 48px 28px; }
+  .auth-main { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 24px 28px; }
   .auth-main-inner { width: 100%; max-width: 432px; }
   .auth-main-inner-wide { max-width: 570px; }
-  .auth-form-heading { margin-bottom: 28px; }
+  .auth-form-heading { margin-bottom: 18px; }
   .auth-form-heading h2 { font-size: clamp(27px, 2.6vw, 36px); letter-spacing: -.035em; font-weight: 600; line-height: 1.2; }
   .auth-form-heading > p { font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
   .auth-form { padding: 0; }
   .auth-form .input, .auth-form .select { min-height: var(--control-height); }
   .auth-form .input { font-size: var(--control-font-size); }
-  .auth-security-note { display: flex; flex-wrap: wrap; text-align: center; justify-content: center; align-items: center; gap: 7px; padding-top: 24px; margin-top: 26px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+  .auth-security-note { display: flex; flex-wrap: wrap; text-align: center; justify-content: center; align-items: center; gap: 7px; padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
   .auth-security-badge { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 27px; color: var(--se-dark); border: 1px solid rgb(var(--se-rgb) / .16); background: var(--se-tint); border-radius: 8px; padding: 10px 12px; font-size: 11px; font-weight: 600; }
   .auth-journey { display: grid; gap: 0; margin-top: 36px; }
   .auth-journey-item { display: flex; align-items: flex-start; gap: 14px; padding: 17px 0; border-top: 1px solid #ffffff12; }
   .auth-journey-item > div:first-child { width: 27px; height: 27px; background: #ffffff08; border: 1px solid #ffffff1c; color: color-mix(in srgb, var(--se) 65%, white); font-size: 11px; }
   .auth-journey-item > div:last-child > div:first-child { font-size: 13px; }
   .auth-journey-item > div:last-child > div:last-child { margin-top: 2px; font-size: 12px; color: #aebbc5; line-height: 1.65; }
-  .auth-progress { display: flex; gap: 14px; margin-bottom: 35px; padding-bottom: 24px; border-bottom: 1px solid var(--border); list-style: none; }
+  .auth-progress { display: flex; gap: 14px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); list-style: none; }
   .auth-progress li { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 500; }
   .auth-progress-number { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--border); font-size: 9px; }
   .auth-progress li[aria-current] { color: var(--ink); font-weight: 650; }
@@ -41,6 +41,10 @@
   .auth-progress li[data-complete="true"] .auth-progress-number { background: var(--se-tint); color: var(--se-dark); border-color: transparent; }
   .signup-credentials > :first-child { grid-column: 1 / -1; }
   .account-role-option { position: relative; min-width: 0; }
+  .auth-role-option { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: center; gap: 4px 10px; padding: 12px; }
+  .auth-role-option > .font-heading { padding-right: 16px; }
+  .auth-role-copy { grid-column: 2; }
+  .auth-role-option .account-role-check { top: 12px; right: 10px; width: 16px; height: 16px; }
   .account-role-option[aria-pressed="true"] { box-shadow: 0 0 0 1px var(--se); }
   .account-role-check { position: absolute; display: grid; place-items: center; width: 18px; height: 18px; top: 16px; right: 16px; border-radius: 50%; border: 1px solid var(--border); color: #fff; }
   .account-role-option[aria-pressed="true"] .account-role-check { background: var(--se); border-color: var(--se-dark); }
@@ -149,7 +153,7 @@
   @media (min-width: 1024px) {
     .auth-shell { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
     .auth-aside { position: sticky; top: 0; min-height: 100svh; height: 100svh; padding: 40px clamp(32px, 4vw, 72px); }
-    .auth-main { min-height: 100svh; padding: 52px clamp(32px, 4vw, 72px); }
+    .auth-main { min-height: 100svh; padding: 24px clamp(24px, 3vw, 56px); }
   }
   @media (max-width: 1199px) {
     .settings-layout { grid-template-columns: 165px minmax(0, 1fr); gap: 22px; }
@@ -165,7 +169,7 @@
     .auth-story > p { max-width: 600px; margin-top: 12px; font-size: 13px; }
     .auth-story-label, .auth-benefits, .auth-journey, .auth-aside-footer { display: none; }
     .auth-story .eyebrow { margin-bottom: 12px; }
-    .auth-main { padding: 38px 28px 56px; }
+    .auth-main { padding: 24px 28px; }
     .auth-form .input, .auth-form .select { font-size: 16px; }
     .onboarding-layout { display: block; max-width: 860px; padding: 24px; }
     .onboarding-rail { position: static; padding: 0 0 25px; }
@@ -198,8 +202,8 @@
     .auth-story h1 { font-size: 28px; }
     .auth-shell-signup .auth-story h1 { font-size: 28px; }
     .auth-shell-signup .auth-story > p { font-size: 12px; line-height: 1.75; }
-    .auth-main { padding: 30px 20px 48px; }
-    .auth-progress { gap: 12px; margin-bottom: 28px; }
+    .auth-main { padding: 24px 20px; }
+    .auth-progress { gap: 12px; margin-bottom: 16px; }
     .auth-progress li { flex-direction: column; align-items: flex-start; gap: 6px; flex: 1; }
     .auth-code-grid { gap: 7px; }
     .auth-code-grid .auth-code-input { height: 50px; font-size: 21px; }
@@ -217,7 +221,20 @@
     .account-status-shell header { flex-wrap: wrap; gap: 12px; }
   }
   @media (min-width: 1024px) and (max-height: 780px) {
-    .auth-aside { position: relative; height: auto; }
-    .auth-shell-signup .auth-story { margin-top: 30px; margin-bottom: 30px; }
+    .auth-aside { position: relative; height: auto; padding-block: 24px; }
+    .auth-main { padding-block: 16px; }
+    .auth-story, .auth-shell-signup .auth-story { margin-block: 20px; }
+    .auth-shell-signup .auth-story h1 { font-size: 36px; }
+    .auth-story > p { margin-top: 16px; line-height: 1.6; }
+    .auth-journey { margin-top: 20px; }
+    .auth-journey-item { padding-block: 12px; }
+    .auth-form-heading h2 { font-size: 28px; }
   }
 }
+
+/* Auth spacing overrides the reusable fields' utility margins without clipping
+   validation messages or preventing scrolling on small/zoomed screens. */
+.auth-form .form-field { margin-bottom: 12px; }
+.auth-form .field-label { margin-bottom: 6px; }
+.auth-form .social-auth-divider { margin-block: 14px; }
+.auth-form-heading > p { margin-top: 6px; }

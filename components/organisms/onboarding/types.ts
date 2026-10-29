@@ -56,6 +56,7 @@ export type SignupField =
   | "signatoryJobTitle"
   | "phone"
   | "profileCity"
+  | "profileAddress"
   | "profileCountryCode"
   | "postcode"
   | "password"
@@ -129,6 +130,7 @@ export type SignupForm = {
   password: string;
   phone: string;
   profileCity: string;
+  profileAddress: string;
   profileCountryCode: string;
   postcode: string;
   safeguardingConfirmed: boolean;
@@ -171,6 +173,7 @@ export type OnboardingPrefill = Partial<
     | "maxTravelDistance"
     | "phone"
     | "profileCity"
+    | "profileAddress"
     | "profileCountryCode"
     | "postcode"
     | "schoolName"

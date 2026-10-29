@@ -31,6 +31,7 @@ export function validateOnboardingStep(form: SignupForm, activeRole: SignupRole,
         if (!city.valid) nextErrors.profileCity = city.error;
       }
       if (activeRole === "teacher") {
+        maxLength("profileAddress", 250);
         const postcode = validateUkPostcode(form.postcode, { required: true });
         if (!postcode.valid) nextErrors.postcode = postcode.error;
       }
@@ -86,11 +87,14 @@ export function validateOnboardingStep(form: SignupForm, activeRole: SignupRole,
     }
 
     if (targetStep === 3 && activeRole === "institution") {
+      if (form.institutionType === "SINGLE_SCHOOL") {
       if (!form.complianceContact.trim()) nextErrors.complianceContact = "Enter the safeguarding or compliance lead.";
       maxLength("complianceContact", 200);
       if (!form.complianceEmail.trim()) nextErrors.complianceEmail = "Enter the compliance email.";
       else if (!emailPattern.test(form.complianceEmail.trim())) nextErrors.complianceEmail = "Use a valid email address.";
+      else if (form.complianceEmail.trim().toLowerCase() === (form.email || accountEmail || "").trim().toLowerCase()) nextErrors.complianceEmail = "The compliance contact must be someone other than you.";
       maxLength("complianceEmail", 254);
+      }
       if (!form.safeguardingConfirmed) nextErrors.safeguardingConfirmed = "Confirm safeguarding responsibility.";
       if (form.institutionType === "MAT_SCHOOL") {
         if (!form.signatoryName.trim()) nextErrors.signatoryName = "Enter the trust signatory's name.";

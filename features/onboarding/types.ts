@@ -6,6 +6,7 @@ export type OnboardingSnapshot = {
   verified: boolean;
   role: AppRole | null;
   signatoryApproval?: SignatoryApprovalSnapshot | null;
+  complianceApproval?: ComplianceApprovalSnapshot | null;
   step: number;
 };
 
@@ -48,6 +49,18 @@ export type SignatoryApprovalSnapshot = {
   signatoryName: string;
   status: SignatoryApprovalStatus;
   termsVersion: string | null;
+};
+
+export type ComplianceApprovalSnapshot = {
+  id: string;
+  complianceName: string;
+  complianceEmail: string;
+  createdAt: string;
+  expiresAt: string;
+  decidedAt: string | null;
+  declineReason: string | null;
+  status: SignatoryApprovalStatus;
+  termsVersion: string;
 };
 
 export type OnboardingDocumentSnapshot = {
@@ -109,6 +122,7 @@ export type OnboardingUserSnapshot = {
 };
 
 export type OnboardingInstructorSnapshot = {
+  address: string;
   bio: string;
   city: string;
   countryCode: string;
@@ -127,6 +141,7 @@ export type OnboardingInstructorSnapshot = {
 };
 
 export type OnboardingInstitutionSnapshot = {
+  complianceApprovalRequired?: boolean;
   address: string;
   city: string;
   complianceContact: string;
@@ -150,6 +165,7 @@ export type OnboardingInstitutionSnapshot = {
 };
 
 export type OnboardingProfileSnapshot = {
+  complianceApproval?: ComplianceApprovalSnapshot | null;
   applicationStatus: ApplicationStatus;
   documentRequirements: OnboardingDocumentRequirementSnapshot[];
   documents: Partial<Record<OnboardingDocumentKind, OnboardingDocumentSnapshot>>;

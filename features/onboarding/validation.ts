@@ -35,6 +35,7 @@ export function validateOnboardingForm(form: FormData, options: { complete?: boo
   const schoolDetails = role === "institution" && (options.complete || step >= 2);
   if (role === "teacher" || schoolDetails) check("postcode", validateUkPostcode(form.get("postcode"), { required: true }));
   if (role === "teacher") {
+    if (read(form, "profileAddress").length > 250) errors.profileAddress = "Use 250 characters or fewer.";
     check("profileCountryCode", validateUkCountry(form.get("profileCountryCode"), { required: true }));
     check("profileCity", validateUkCity(form.get("profileCity"), { required: true }));
     list("subjects"); list("keyStages", true); list("skills");
@@ -62,8 +63,11 @@ export function validateOnboardingForm(form: FormData, options: { complete?: boo
       }
     }
     if (options.complete || step >= 3) {
+      if (read(form, "institutionType") === "SINGLE_SCHOOL") {
       requiredText("complianceContact", "the safeguarding or compliance lead");
       if (!validateEmail(read(form, "complianceEmail"))) errors.complianceEmail = "Use a valid compliance email address.";
+      else if (read(form, "complianceEmail").toLowerCase() === read(form, "email").toLowerCase()) errors.complianceEmail = "The compliance contact must be someone other than you.";
+      }
       if (read(form, "safeguardingConfirmed") !== "true") errors.safeguardingConfirmed = "Confirm safeguarding responsibility.";
       if (read(form, "institutionType") === "MAT_SCHOOL") {
         requiredText("signatoryName", "the trust signatory's name"); requiredText("signatoryJobTitle", "the trust signatory's job title", 150);

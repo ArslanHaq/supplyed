@@ -7,10 +7,13 @@ export function InstitutionComplianceStep({ controller }: StepComponentProps) {
 
   return (
     <div className="space-y-6">
+      {form.institutionType === "SINGLE_SCHOOL" ? <>
+      <p className="text-sm leading-6 text-muted">We will email your compliance contact a secure link to approve this school. They must be someone other than you. Their approval is required before you submit for SupplyED review.</p>
       <div className="grid gap-x-4 sm:grid-cols-2">
         <Field label="Compliance lead" htmlFor="compliance-contact" error={errors.complianceContact} required>
           <input
             id="compliance-contact"
+            maxLength={200}
             className={fieldClass(errors.complianceContact)}
             value={form.complianceContact}
             onChange={(event) => updateField("complianceContact", event.target.value)}
@@ -20,6 +23,7 @@ export function InstitutionComplianceStep({ controller }: StepComponentProps) {
         <Field label="Compliance email" htmlFor="compliance-email" error={errors.complianceEmail} required>
           <input
             id="compliance-email"
+            maxLength={254}
             className={fieldClass(errors.complianceEmail)}
             value={form.complianceEmail}
             onChange={(event) => updateField("complianceEmail", event.target.value)}
@@ -28,6 +32,7 @@ export function InstitutionComplianceStep({ controller }: StepComponentProps) {
           />
         </Field>
       </div>
+      </> : null}
 
       {form.institutionType === "MAT_SCHOOL" ? (
         <div className="rounded-xl border border-brand-tint-2 bg-brand-tint p-5">

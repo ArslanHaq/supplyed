@@ -39,7 +39,7 @@ export function SocialAuthButtons({
   const action = intent === "signup" ? "Sign up" : "Continue";
 
   return (
-    <div>
+    <div className="social-auth">
       <div className="grid gap-3 sm:grid-cols-2">
         {socialProviders.map((provider) => {
           const providerAvailable = provider.id === "google" ? available.google : available.microsoft;
@@ -68,7 +68,7 @@ export function SocialAuthButtons({
         </p>
       ) : null}
 
-      <div className="my-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+      <div className="social-auth-divider my-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
         <span className="h-px flex-1 bg-border" />
         <span>Email</span>
         <span className="h-px flex-1 bg-border" />

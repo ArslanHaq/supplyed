@@ -22,6 +22,7 @@ export async function getOnboardingSnapshot(): Promise<OnboardingSnapshot> {
     verified: isProfileVerified(profile),
     role: profile.role,
     signatoryApproval: profile.signatoryApproval ?? null,
+    complianceApproval: profile.complianceApproval ?? null,
     step: hasCreatedRoleProfile(profile) ? (profile.role === "institution" ? 4 : 2) : 1,
   };
 }
