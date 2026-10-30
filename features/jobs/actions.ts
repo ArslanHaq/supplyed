@@ -14,7 +14,7 @@ export async function createJobAction(input: JobCreateInput): Promise<ActionResu
   let savedJobId: string | undefined;
   try {
     const fieldErrors = validateJobInput(input);
-    if (Object.keys(fieldErrors).length) return actionError("Check the highlighted job details.", { fieldErrors });
+    if (Object.keys(fieldErrors).length) return actionError(Object.values(fieldErrors)[0] ?? "Check the highlighted job details.", { fieldErrors });
     const normalizedInput = normalizeJobCreateInput(input);
     const shouldActivate = normalizedInput.status === "ACTIVE";
     const created = await api.post<BackendJobResponse>("/jobs", toCreateJobPayload(normalizedInput));
@@ -57,9 +57,9 @@ export async function updateJobAction(input: JobUpdateInput) {
   try {
     if (!input || typeof input.id !== "string" || !input.id.trim()) return actionError("Choose a valid job.");
     let fieldErrors = validateJobInput(input, { partial: true });
-    if (Object.keys(fieldErrors).length) return actionError("Check the highlighted job details.", { fieldErrors });
+    if (Object.keys(fieldErrors).length) return actionError(Object.values(fieldErrors)[0] ?? "Check the highlighted job details.", { fieldErrors });
     const normalizedInput = normalizeJobUpdateInput(input);
-    const materialKeys = ["title", "description", "subjects", "otherSubjects", "requiredSkills", "otherSkills", "minExperienceYears", "keyStages", "address", "city", "county", "postalCode", "countryCode", "latitude", "longitude", "parkingInfo", "startDate", "endDate", "payAmount", "payType", "hours", "days"];
+    const materialKeys = ["jobType", "title", "description", "subjects", "otherSubjects", "requiredSkills", "otherSkills", "minExperienceYears", "keyStages", "address", "city", "county", "postalCode", "countryCode", "latitude", "longitude", "parkingInfo", "startDate", "endDate", "payAmount", "payType", "hours", "days"];
     if (materialKeys.some(key => key in input)) {
       const current = await api.get<BackendJobResponse>(`/jobs/mine/${encodeURIComponent(input.id)}`, { cache: "no-store" });
       if (current.termsLocked !== false) return actionError("Create a new job to offer different terms.", { code: "JOB_TERMS_LOCKED", status: 409 });

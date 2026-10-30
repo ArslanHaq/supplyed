@@ -11,6 +11,7 @@ type BackendPage = { jobs?: BackendJobResponse[]; pagination?: Partial<JobsPagin
 export async function listJobs(filters: JobListFilters = {}): Promise<PaginatedJobs> {
   const normalized = normalizeJobFilters(filters);
   const result = await api.get<BackendPage>("/jobs", {
+    auth: false,
     next: { tags: ["jobs"] },
     query: normalized,
   });
@@ -31,7 +32,8 @@ export async function listMyJobs(filters: JobListFilters = {}): Promise<MyJobs> 
 
 export async function getJob(id: string): Promise<Job | null> {
   try {
-    const job = await api.get<BackendJobResponse>(`/jobs/${id}`, {
+    const job = await api.get<BackendJobResponse>(`/jobs/${encodeURIComponent(id)}`, {
+      auth: false,
       next: { tags: ["jobs", `job:${id}`] },
     });
 

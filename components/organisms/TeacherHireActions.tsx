@@ -4,6 +4,7 @@ import { useSchoolHiringAllowed } from "@/features/auth/use-school-hiring";
 import { useState } from "react";
 import { useWorkspaceAccount } from "@/features/auth/workspace-account";
 import { useStartConversation } from "@/features/conversations/use-conversations";
+import { useJob } from "@/features/jobs/use-jobs";
 import type { GoFn } from "@/types/supplyed";
 import { Btn } from "../atoms";
 import { InvitationModal, type HireTeacher } from "./InvitationModal";
@@ -13,6 +14,7 @@ export function TeacherHireActions({ teacher, go, jobId, hideMessage = false }: 
   const account = useWorkspaceAccount();
   const hiringAllowed = useSchoolHiringAllowed();
   const message = useStartConversation();
+  const job = useJob(jobId ?? "", Boolean(jobId));
   if (account.role !== "institution") return null;
   // Do not hide school actions behind a second account request. The workspace
   // already resolved this account and its approval; the API authorizes mutations.
@@ -20,7 +22,7 @@ export function TeacherHireActions({ teacher, go, jobId, hideMessage = false }: 
   const disabled = blocked;
   return <div className="teacher-hire-actions mt-3 text-left">
     <div className="flex flex-wrap gap-2">
-      <Btn disabled={disabled} icon="send" size="sm" onClick={() => setHireOpen(true)}>Invite to job</Btn>
+      {jobId && job.data?.jobType === "BRIEF" ? null : <Btn disabled={disabled || (Boolean(jobId) && job.isLoading)} icon="send" size="sm" onClick={() => setHireOpen(true)}>Invite to job</Btn>}
       {!hideMessage ? <Btn disabled={disabled} icon="message" loading={message.isPending} loadingLabel="Opening" size="sm" variant="secondary" onClick={() => message.mutate({ instructorId: teacher.id }, { onSuccess: conversation => go("messaging", { conversationId: conversation.id }) })}>Message</Btn> : null}
     </div>
     {blocked ? <p className="mt-2 text-xs text-muted">Available when your school account is approved.</p> : null}

@@ -33,6 +33,8 @@ const { actionError } = load("lib/server/action-response.ts");
 const { createInitialForm, buildOnboardingPayload } = load("components/organisms/onboarding/utils.ts");
 const { validateOnboardingStep } = load("components/organisms/onboarding/validation.ts");
 const { validateOnboardingForm } = load("features/onboarding/validation.ts");
+const { jobDescriptionForDisplay } = load("features/jobs/description.ts");
+const { shouldShowInstantMatches } = load("features/jobs/post-publish.ts");
 const option = (value, label = value, aliases = [], isActive = true) => ({ value, label, aliases, isActive });
 
 test("invalid login credentials survive API and action error handling", () => {
@@ -57,6 +59,26 @@ test("document verification failures stay actionable through API and action erro
   assert.equal(result.status, 403);
   assert.match(result.message, /uploaded, current and approved/);
   assert.match(result.message, /pending reviews/);
+});
+
+test("job descriptions retain rich text but hide internal posting flags", () => {
+  const richDescription = "<p><strong>Year 6 cover</strong></p><ul><li>Teach mathematics</li></ul>\n\nPosting route: Instant matching.\n\nQTS requested.";
+  const display = jobDescriptionForDisplay(richDescription);
+  assert.match(display, /<strong>Year 6 cover<\/strong>/);
+  assert.match(display, /<ul><li>Teach mathematics<\/li><\/ul>/);
+  assert.doesNotMatch(display, /Posting route|QTS requested/);
+});
+
+test("job descriptions preserve long user text for safe visual wrapping", () => {
+  const longWord = "role".repeat(300);
+  assert.equal(jobDescriptionForDisplay(longWord), longWord);
+});
+
+test("only a newly published instant job opens proactive teacher matches", () => {
+  assert.equal(shouldShowInstantMatches({ jobType: "INSTANT", status: "ACTIVE" }, false), true);
+  assert.equal(shouldShowInstantMatches({ jobType: "BRIEF", status: "ACTIVE" }, false), false);
+  assert.equal(shouldShowInstantMatches({ jobType: "INSTANT", status: "DRAFT" }, false), false);
+  assert.equal(shouldShowInstantMatches({ jobType: "INSTANT", status: "ACTIVE" }, true), false);
 });
 
 test("postcode matches labels and aliases but returns exact catalogue values", () => {

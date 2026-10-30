@@ -1,4 +1,5 @@
 import type { ApplicantSummary, ApplicationsPagination, JobApplication } from "@/features/applications/types";
+import type { InvitationStatus } from "@/features/invitations/types";
 import type { BackendJobResponse, Job } from "@/features/jobs/types";
 
 export type MatchFactor = {
@@ -30,7 +31,22 @@ export type MatchedInstructor = ApplicantSummary & {
 };
 
 export type RankedApplication = { application: JobApplication; instructor: MatchedInstructor; match: MatchResult };
-export type RecommendedInstructor = { instructor: MatchedInstructor; match: MatchResult };
+export type RelatedTeacherApplication = Pick<JobApplication, "id" | "status">;
+export type RelatedTeacherInvitation = {
+  expiresAt: string;
+  id: string;
+  isExclusive: boolean;
+  status: InvitationStatus;
+};
+export type InviteDisabledReason = "JOB_UNAVAILABLE" | "ALREADY_BOOKED" | "APPLICATION_REJECTED" | "INVITATION_DECLINED" | "INVITATION_PENDING" | "SCHOOL_ONLY" | string;
+export type RecommendedInstructor = {
+  application: RelatedTeacherApplication | null;
+  canInvite: boolean;
+  instructor: MatchedInstructor;
+  invitation: RelatedTeacherInvitation | null;
+  inviteDisabledReason: InviteDisabledReason | null;
+  match: MatchResult;
+};
 export type RecommendedJob = { job: Job; match: MatchResult };
 
 export type RankedApplicationsPage = { applications: RankedApplication[]; pagination: ApplicationsPagination };

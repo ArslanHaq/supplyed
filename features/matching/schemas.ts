@@ -51,7 +51,15 @@ export function normalizeRankedApplications(payload: RankedApplicationsPage): Ra
 export function normalizeRecommendedInstructors(payload: RecommendedInstructorsPage): RecommendedInstructorsPage {
   return {
     ...payload,
-    instructors: (payload.instructors ?? []).map((item) => ({ ...item, instructor: normalizeInstructor(item.instructor), match: normalizeMatch(item.match) })),
+    instructors: (payload.instructors ?? []).map((item) => ({
+      ...item,
+      application: item.application?.id && item.application.status ? item.application : null,
+      canInvite: item.canInvite === true,
+      instructor: normalizeInstructor(item.instructor),
+      invitation: item.invitation?.id && item.invitation.status ? { ...item.invitation, isExclusive: item.invitation.isExclusive === true } : null,
+      inviteDisabledReason: typeof item.inviteDisabledReason === "string" ? item.inviteDisabledReason : null,
+      match: normalizeMatch(item.match),
+    })),
   };
 }
 

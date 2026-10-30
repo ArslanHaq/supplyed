@@ -75,6 +75,7 @@ export function OnboardingPage({
   onLogin: () => void;
 }) {
   const [confirmCreateOpen, setConfirmCreateOpen] = useState(false);
+  const [schoolPostProfilePage, setSchoolPostProfilePage] = useState<"documents" | "approval">("documents");
   const controller = useOnboardingForm({
     accountEmail,
     initialSnapshot,
@@ -110,15 +111,21 @@ export function OnboardingPage({
   } = controller;
   const contactPhone = validateUkPhone(controller.form.phone, { required: true });
   const phoneBlocksProgress = !lockedDocumentStage && (!contactPhone.valid || phoneVerificationPending);
-  const documentsBlockProgress = lockedDocumentStage && Boolean(
+  const schoolPostProfile = lockedDocumentStage && activeRole === "institution";
+  const hasRequiredDocuments = controller.documentRequirements.some((requirement) => requirement.isRequired);
+  const schoolApprovalPage = schoolPostProfile && (schoolPostProfilePage === "approval" || (!documentRequirementsLoading && !documentRequirementsError && !hasRequiredDocuments));
+  const documentPage = lockedDocumentStage && !schoolApprovalPage;
+  const documentsBlockProgress = documentPage && Boolean(
     documentRequirementsLoading || documentRequirementsError ||
     missingRequiredDocuments(controller.documentRequirements, controller.requirementDocuments).length,
   );
   const waitingForApproval = controller.approvalRequired && controller.institutionApproval?.status !== "APPROVED";
-  const displayProgress = lockedDocumentStage ? 100 : progress;
-  const pageTitle = lockedDocumentStage ? "Upload required documents" : roleSelected ? signupStepTitle(activeRole, currentStep) : "Choose account type";
-  const pageDescription = lockedDocumentStage
-    ? "Your profile has been created. Upload the admin-required documents before sending it for review."
+  const displayProgress = lockedDocumentStage ? schoolPostProfile && !schoolApprovalPage ? 80 : 100 : progress;
+  const pageTitle = schoolApprovalPage ? (controller.form.institutionType === "MAT_SCHOOL" ? "Trust signatory approval" : "School compliance approval") : lockedDocumentStage ? "Upload required documents" : roleSelected ? signupStepTitle(activeRole, currentStep) : "Choose account type";
+  const pageDescription = schoolApprovalPage
+    ? "Verify your phone if you wish, then send and track the approval required for this school."
+    : lockedDocumentStage
+      ? "Your profile has been created. Upload the admin-required documents before continuing."
     : steps[currentStep - 1].description;
 
   function closeConfirmCreate() {
@@ -129,6 +136,10 @@ export function OnboardingPage({
   function handlePrimaryAction() {
     if (pending || uploadPending || requirementUploadPending || phoneBlocksProgress || documentsBlockProgress) return;
     if (lockedDocumentStage) {
+      if (schoolPostProfile && !schoolApprovalPage) {
+        setSchoolPostProfilePage("approval");
+        return;
+      }
       void submitDocumentsForReview();
       return;
     }
@@ -224,23 +235,18 @@ export function OnboardingPage({
                 );
               })}
               {lockedDocumentStage ? (
-                <div className="flex w-full gap-3 text-left">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand bg-white text-xs font-bold text-ink">
-                    <Icon name="file" size={14} />
-                  </span>
-                  <span>
-                    <span className="onboarding-step-label">Required documents</span>
-                    <span className="onboarding-step-description">Upload documents and send for review</span>
-                  </span>
+                <div className="grid w-full gap-4">
+                  {activeRole === "institution" && hasRequiredDocuments ? <PostProfileStep active={!schoolApprovalPage} complete={schoolApprovalPage} icon="file" label="Required documents" description="Upload the documents required by SupplyED" /> : null}
+                  {activeRole === "institution" ? <PostProfileStep active={schoolApprovalPage} complete={false} icon="shield" label={controller.form.institutionType === "MAT_SCHOOL" ? "Signatory approval" : "Compliance approval"} description="Phone verification and school approval" /> : <PostProfileStep active icon="file" label="Required documents" description="Upload documents and send for review" />}
                 </div>
               ) : null}
             </div>
 
             <div className="onboarding-path-note">
               <div className="text-xs uppercase tracking-[1px] text-muted">Current path</div>
-              <div className="mt-1 font-heading">{lockedDocumentStage ? "Document review" : roleSelected ? roleLabel(activeRole) : "Role selection"}</div>
+              <div className="mt-1 font-heading">{schoolApprovalPage ? "School approval" : lockedDocumentStage ? "Document review" : roleSelected ? roleLabel(activeRole) : "Role selection"}</div>
               <p className="text-muted">
-                {lockedDocumentStage ? "Profile details are locked. Upload the required documents to continue." : "You can change this in the account step before submitting."}
+                {schoolApprovalPage ? "Complete the approval path for this school before SupplyED review." : lockedDocumentStage ? "Profile details are locked. Upload the required documents to continue." : "You can change this in the account step before submitting."}
               </p>
             </div>
           </div>
@@ -249,7 +255,7 @@ export function OnboardingPage({
         <form className="onboarding-canvas" noValidate onSubmit={(event) => { event.preventDefault(); handlePrimaryAction(); }}>
           <div className="onboarding-canvas-heading">
             <div>
-              <Tag>{lockedDocumentStage ? "Required documents" : `Step ${currentStep} of ${steps.length}`}</Tag>
+              <Tag>{schoolApprovalPage ? "School approval" : lockedDocumentStage ? "Required documents" : `Step ${currentStep} of ${steps.length}`}</Tag>
               <h2 className="mt-3 font-heading">
                 {pageTitle}
               </h2>
@@ -268,15 +274,9 @@ export function OnboardingPage({
 
           <fieldset className="min-w-0 flex-1" disabled={Boolean(pending) || (!lockedDocumentStage && phoneVerificationPending)}>
             {lockedDocumentStage ? (
-              <div className="space-y-6">
-                <PhoneVerificationCard controller={controller} />
-                <div className={controller.approvalRequired ? "grid items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "space-y-6"}>
-                  {controller.approvalRequired ? (
-                    <InstitutionApprovalCard controller={controller} onRefresh={onRefresh} />
-                  ) : null}
-                  <DocumentUploadStep controller={controller} />
-                </div>
-              </div>
+              schoolApprovalPage ? <div className="space-y-6"><PhoneVerificationCard controller={controller} />{controller.approvalRequired ? <InstitutionApprovalCard controller={controller} onRefresh={onRefresh} /> : null}</div>
+                : activeRole === "institution" ? <DocumentUploadStep controller={controller} />
+                  : <div className="space-y-6"><PhoneVerificationCard controller={controller} /><DocumentUploadStep controller={controller} /></div>
             ) : (
               <OnboardingStepContent
                 accountEmail={accountEmail}
@@ -295,23 +295,23 @@ export function OnboardingPage({
 
           <div className="onboarding-actions mt-8 flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
             {lockedDocumentStage ? (
-              <span className="text-sm font-semibold text-muted">Profile created. Previous onboarding steps are locked.</span>
+              schoolApprovalPage && hasRequiredDocuments ? <Btn variant="ghost" disabled={Boolean(pending)} onClick={() => setSchoolPostProfilePage("documents")}>Back to documents</Btn> : <span className="text-sm font-semibold text-muted">Profile created. Previous onboarding steps are locked.</span>
             ) : (
               <Btn variant="ghost" disabled={currentStep === 1 || Boolean(pending) || phoneVerificationPending} onClick={() => controller.setStep(Math.max(1, currentStep - 1))}>Back</Btn>
             )}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <span className="self-center text-xs font-semibold uppercase tracking-[1px] text-muted">
-                {lockedDocumentStage ? (waitingForApproval ? "Documents and school approval are checked separately" : "Documents required before review") : "Saved on continue"}
+                {schoolApprovalPage ? (waitingForApproval ? "Waiting for school approval" : "Ready for SupplyED review") : lockedDocumentStage ? (schoolPostProfile ? "Documents required before school approval" : "Documents required before review") : "Saved on continue"}
               </span>
               <Btn
                 loading={pending === "step" || pending === "submit"}
-                loadingLabel={lockedDocumentStage ? "Sending for review" : isLastStep ? "Creating profile" : "Saving step"}
+                loadingLabel={schoolApprovalPage || (lockedDocumentStage && activeRole === "teacher") ? "Sending for review" : lockedDocumentStage ? "Opening school approval" : isLastStep ? "Creating profile" : "Saving step"}
                 size="lg"
                 iconRight="arrow"
                 disabled={Boolean(phoneBlocksProgress || uploadPending || requirementUploadPending || documentsBlockProgress)}
                 type="submit"
               >
-                {lockedDocumentStage ? "Send for review" : isLastStep ? signupSubmitLabel(activeRole) : "Continue"}
+                {schoolApprovalPage || (lockedDocumentStage && activeRole === "teacher") ? "Send for review" : lockedDocumentStage ? "Continue to school approval" : isLastStep ? signupSubmitLabel(activeRole) : "Continue"}
               </Btn>
             </div>
           </div>
@@ -337,6 +337,20 @@ export function OnboardingPage({
         </div>
       </Modal>
       <DocumentPreviewModal preview={documentPreview} onClose={closeDocumentPreview} />
+    </div>
+  );
+}
+
+function PostProfileStep({ active = false, complete = false, description, icon, label }: { active?: boolean; complete?: boolean; description: string; icon: string; label: string }) {
+  return (
+    <div className="flex w-full gap-3 text-left" aria-current={active ? "step" : undefined}>
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white text-xs font-bold ${active ? "border-brand text-brand" : "border-border text-muted"}`}>
+        <Icon name={complete ? "check" : icon} size={14} />
+      </span>
+      <span>
+        <span className="onboarding-step-label">{label}</span>
+        <span className="onboarding-step-description">{description}</span>
+      </span>
     </div>
   );
 }

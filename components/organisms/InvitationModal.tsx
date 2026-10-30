@@ -37,7 +37,7 @@ const emptyDraft: Draft = { title: "", description: "", startDate: "", endDate: 
 
 export function InvitationModal({ teacher, accountId, initialJobId, onClose, go }: { teacher: HireTeacher; accountId: string; initialJobId?: string; onClose: () => void; go: GoFn }) {
   const client = useQueryClient();
-  const storageKey = `supplyed:job-invitation:v1:${accountId}:${teacher.id}`;
+  const storageKey = `supplyed:job-invitation:v2:${accountId}:${teacher.id}`;
   const [attempt, setAttempt] = useState<Attempt | null>(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null") as Attempt | null;
@@ -48,7 +48,7 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
   const [expiry, setExpiry] = useState("");
   const [timezone, setTimezone] = useState("Europe/London");
   const [mode, setMode] = useState<"existing" | "new">("existing");
-  const [status, setStatus] = useState<"ACTIVE" | "DRAFT">("ACTIVE");
+  const status = "ACTIVE" as const;
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchDraft, setSearchDraft] = useState("");
@@ -61,7 +61,7 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
   const [fields, setFields] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
-  const jobs = useMyJobs({ status, page, search, limit: 6 });
+  const jobs = useMyJobs({ status, page, search, limit: 6, jobType: "INSTANT" });
   const initialJob = useJob(initialJobId ?? "", true);
   const chosen = selected ?? initialJob.data ?? null;
   const summary = attempt?.summary ?? review;
@@ -82,13 +82,14 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
       const problem = jobInvitationProblem(chosen);
       if (problem) { setError(problem); return; }
       setSelected(chosen);
-      terms = { subjects: chosen.subjects, requiredSkills: chosen.requiredSkills, title: chosen.title, description: chosen.description ?? "", keyStages: chosen.keyStages ?? [], startDate: chosen.startDate!, endDate: chosen.endDate!, hours: chosen.hours ?? null, days: chosen.days ?? null, payAmount: chosen.payAmount!, payType: chosen.payType as JobPayType, address: chosen.address ?? "", city: chosen.city, postalCode: chosen.postalCode ?? "" };
+      terms = { jobType: "INSTANT", subjects: chosen.subjects, requiredSkills: chosen.requiredSkills, title: chosen.title, description: chosen.description ?? "", keyStages: chosen.keyStages ?? [], startDate: chosen.startDate!, endDate: chosen.endDate!, hours: chosen.hours ?? null, days: chosen.days ?? null, payAmount: chosen.payAmount!, payType: chosen.payType as JobPayType, address: chosen.address ?? "", city: chosen.city, postalCode: chosen.postalCode ?? "" };
       input = { ...base, jobId: chosen.id };
     } else {
       terms = {
+        jobType: "INSTANT",
         title: draft.title, description: draft.description,
         startDate: zonedDateTimeToIso(draft.startDate, timezone), endDate: zonedDateTimeToIso(draft.endDate, timezone),
-        liveFrom: draft.liveFrom || undefined, expiresAt: draft.expiresAt || undefined,
+        expiresAt: draft.expiresAt || undefined,
         ...plannedUnitsInput(draft.payType, draft.hours, draft.days), payAmount: Number(draft.payAmount), payType: draft.payType,
         minExperienceYears: draft.minExperienceYears ? Number(draft.minExperienceYears) : undefined, keyStages: draft.keyStages, countryCode: "GB",
         address: draft.address, city: draft.city, postalCode: draft.postalCode, subjects: draft.subjects, otherSubjects: draft.otherSubjects, otherSkills: draft.otherSkills, requiredSkills: draft.requiredSkills,
@@ -142,16 +143,16 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
       {error ? <InvitationErrorNotice error={error} /> : null}
       {summary ? <>
         <section className="overflow-hidden rounded-xl border border-border">
-          <div className="border-b border-border bg-chalk p-4"><h3 className="font-heading text-lg">{summary.title}</h3><p className="mt-1 text-xs text-muted">{attempt?.input.newJob || (!attempt && mode === "new") ? "New private job" : "Existing school job"}</p></div>
+          <div className="border-b border-border bg-chalk p-4"><h3 className="font-heading text-lg">{summary.title}</h3><p className="mt-1 text-xs text-muted">{attempt?.input.newJob || (!attempt && mode === "new") ? "New public instant job" : "Existing instant job"}</p></div>
           <dl className="grid gap-5 p-4 sm:grid-cols-2">
             <Detail label="Subjects" value={actualSubjects(summary.subjects ?? [], summary.otherSubjects).join(", ") || "Not specified"} /><Detail label="Required skills" value={actualSubjects(summary.requiredSkills ?? [], summary.otherSkills).join(", ") || "Not specified"} />
             <Detail label="Starts" value={displayDate(summary.startDate)} /><Detail label="Ends" value={displayDate(summary.endDate)} />
             <Detail label="Agreed pay" value={displayPay(summary.payAmount, summary.payType)} />{summary.payType !== "fixed" ? <Detail label="Planned work" value={formatPlannedUnits(summary)} /> : null}<Detail label="Location" value={[summary.address, summary.city, summary.postalCode].filter(Boolean).join(", ") || "Not specified"} />
-            {summary.liveFrom ? <Detail label="Public if declined from" value={summary.liveFrom} /> : null}{summary.expiresAt ? <Detail label="Public listing through" value={summary.expiresAt} /> : null}
+            {summary.expiresAt ? <Detail label="Public listing through" value={summary.expiresAt} /> : null}
           </dl>
         </section>
-        <p className="mt-4 rounded-xl bg-brand-tint p-4 text-sm leading-6 text-ink">Sending invites the teacher to review and accept these terms, starts your conversation, and posts an invitation message from your school. A booking is created only after acceptance. The position is reserved exclusively for this teacher while the invitation is pending.</p>
-        {(attempt?.input.newJob || (!attempt && mode === "new")) ? <p className="mt-3 text-sm leading-6 text-muted">The new job stays private while awaiting a response. If the teacher declines and the job is still eligible, it becomes public so other teachers can apply. Cancelling or expiry does not publish it.</p> : null}
+        <p className="mt-4 rounded-xl bg-brand-tint p-4 text-sm leading-6 text-ink">Sending invites the teacher to review and accept these terms and starts your conversation. The job remains active and open to applications and other invitations. The first valid acceptance or school hire fills it.</p>
+        {(attempt?.input.newJob || (!attempt && mode === "new")) ? <p className="mt-3 text-sm leading-6 text-muted">The new instant job is published with the invitation in one step. Sending the invitation does not reserve or fill it.</p> : null}
         {(attempt?.input.message ?? message) ? <div className="mt-4 rounded-xl border border-border p-4"><p className="text-xs text-muted">Your message</p><p className="mt-2 whitespace-pre-wrap text-sm">{attempt?.input.message ?? message}</p></div> : null}
         <p className="mt-3 text-xs text-muted">Response deadline: {(attempt?.input.expiresAt ?? (expiry ? zonedDateTimeToIso(expiry, timezone) : undefined)) ? displayDate(attempt?.input.expiresAt ?? zonedDateTimeToIso(expiry, timezone)) : "Automatically set to the earliest of seven days, the job start or listing expiry."}</p>
         {attempt ? <p className="mt-3 text-sm leading-6 text-muted">This invitation request has been saved. Retry it to retrieve the result safely. Your teacher, job and request reference will stay the same.</p> : null}
@@ -163,7 +164,7 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
         <div className="mb-5 grid grid-cols-2 gap-2 rounded-xl bg-chalk p-1.5"><Btn aria-pressed={mode === "existing"} variant={mode === "existing" ? "secondary" : "ghost"} onClick={() => { setMode("existing"); setError(""); }}>Use existing job</Btn><Btn aria-pressed={mode === "new"} variant={mode === "new" ? "secondary" : "ghost"} icon="plus" onClick={() => { setMode("new"); setError(""); }}>Create new job</Btn></div>
         <Field label="Timezone for dates and deadline" htmlFor="invitation-zone"><DynamicSelect collection="timezone" id="invitation-zone" value={timezone} onChange={value => { setTimezone(value); setDraft(current => syncWorkSchedule(current, "payType", current.payType, value)); setFields({}); }} /></Field>
         {mode === "existing" ? <>
-          <div className="mb-4 flex flex-wrap gap-2"><Btn size="sm" variant={status === "ACTIVE" ? "secondary" : "ghost"} onClick={() => { setStatus("ACTIVE"); setPage(1); }}>Active jobs</Btn><Btn size="sm" variant={status === "DRAFT" ? "secondary" : "ghost"} onClick={() => { setStatus("DRAFT"); setPage(1); }}>Draft jobs</Btn><Btn className="ml-auto" size="sm" variant="ghost" loading={jobs.isFetching} onClick={() => void jobs.refetch()}>Refresh</Btn></div>
+          <div className="mb-4 flex flex-wrap gap-2"><Tag tone="ghost">Active instant jobs</Tag><Btn className="ml-auto" size="sm" variant="ghost" loading={jobs.isFetching} onClick={() => void jobs.refetch()}>Refresh</Btn></div>
           <div className="mb-4 flex gap-2"><input aria-label="Search your jobs" className="input min-w-0 flex-1" placeholder="Search your jobs" value={searchDraft} maxLength={100} onChange={event => setSearchDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); setSearch(searchDraft.trim()); setPage(1); } }} /><Btn icon="search" size="sm" variant="secondary" onClick={() => { setSearch(searchDraft.trim()); setPage(1); }}>Search</Btn></div>
           {jobs.isLoading ? <SectionLoader rows={2} /> : null}
           {jobs.error ? <p className="text-sm text-danger" role="alert">{jobs.error.message} Use Refresh to try again.</p> : null}
@@ -173,10 +174,10 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
               {problem ? <div className="mt-2 pl-6"><p className="text-xs text-muted">{problem}</p><Btn className="mt-1" variant="ghost" size="sm" onClick={() => { onClose(); go("post-job", { jobId: job.id }); }}>Edit job</Btn></div> : null}
             </div>; })}
           </div>
-          {!jobs.isLoading && !jobs.error && !choices.length ? <div className="rounded-xl border border-dashed border-border p-6 text-center"><Icon className="mx-auto mb-2 text-brand" name="file" size={24} /><p className="font-semibold">{search ? "No jobs match your search" : `No ${status === "DRAFT" ? "draft" : "active"} jobs`}</p><p className="mt-1 text-sm text-muted">Create a new job here to invite this teacher.</p><Btn className="mt-4" size="sm" variant="secondary" onClick={() => setMode("new")}>Create new job</Btn></div> : null}
+          {!jobs.isLoading && !jobs.error && !choices.length ? <div className="rounded-xl border border-dashed border-border p-6 text-center"><Icon className="mx-auto mb-2 text-brand" name="file" size={24} /><p className="font-semibold">{search ? "No instant jobs match your search" : "No active instant jobs"}</p><p className="mt-1 text-sm text-muted">Create and publish a new instant job here to invite this teacher.</p><Btn className="mt-4" size="sm" variant="secondary" onClick={() => setMode("new")}>Create new job</Btn></div> : null}
           {jobs.data && jobs.data.pagination.totalPages > 1 ? <div className="mt-3 flex items-center justify-between"><Btn size="sm" variant="ghost" disabled={page <= 1 || jobs.isFetching} onClick={() => setPage(page - 1)}>Previous</Btn><span className="text-xs text-muted">Page {page} of {jobs.data.pagination.totalPages}</span><Btn size="sm" variant="ghost" disabled={!jobs.data.pagination.hasNextPage || jobs.isFetching} onClick={() => setPage(page + 1)}>Next</Btn></div> : null}
         </> : <div>
-          <p className="mb-4 text-sm leading-6 text-muted">This job is created and reserved for the invited teacher in one step. If the invitation is declined or cancelled, an eligible job can reopen for other teachers.</p>
+          <p className="mb-4 text-sm leading-6 text-muted">This instant job is published and the invitation is sent in one step. It remains open until the first valid acceptance or school hire.</p>
           <Field label="Job title" htmlFor="hire-title" required error={fields.title}><input className="input" id="hire-title" required maxLength={200} value={draft.title} onChange={e => update("title", e.target.value)} placeholder="e.g. Year 4 supply teacher" /></Field>
           <Field label="Key stages" required error={fields.keyStages}><DynamicMultiSelect collection="keyStage" value={draft.keyStages} onChange={value => setDraft(current => ({ ...current, keyStages: value }))} /></Field>
           <Field label="Role details" htmlFor="hire-description" required error={fields.description}><RoleDescriptionEditor id="hire-description" invalid={Boolean(fields.description)} value={draft.description} onChange={value => update("description", value)} /></Field>
@@ -187,8 +188,7 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
             <Field label="End date and time" htmlFor="hire-end" required error={fields.endDate}><input className="input" id="hire-end" type="datetime-local" required min={draft.startDate || undefined} value={draft.endDate} onChange={e => update("endDate", e.target.value)} /></Field>
             </>}
             <div className="col-span-full"><PlannedWorkUnitsField payType={draft.payType} hours={draft.hours} days={draft.days} errors={fields} onChange={update} /></div>
-            <Field label="Live from (optional)" htmlFor="hire-live-from" error={fields.liveFrom} hint="If declined, public applications open at the start of this UK date."><input className="input" id="hire-live-from" type="date" value={draft.liveFrom} onChange={e => update("liveFrom", e.target.value)} /></Field>
-            <Field label="Listing expiry (optional)" htmlFor="hire-listing-expiry" error={fields.listingExpiresAt} hint="If declined, public applications stay open through this UK date. Choose a day before work starts."><input className="input" id="hire-listing-expiry" type="date" max={draft.startDate ? shiftCalendarDay(ukCalendarDate(zonedDateTimeToIso(draft.startDate, timezone)), -1) || undefined : undefined} min={draft.liveFrom || undefined} value={draft.expiresAt} onChange={e => update("expiresAt", e.target.value)} /></Field>
+            <Field label="Listing expiry (optional)" htmlFor="hire-listing-expiry" error={fields.listingExpiresAt} hint="Applications remain open through this UK date. Choose a day before work starts."><input className="input" id="hire-listing-expiry" type="date" max={draft.startDate ? shiftCalendarDay(ukCalendarDate(zonedDateTimeToIso(draft.startDate, timezone)), -1) || undefined : undefined} value={draft.expiresAt} onChange={e => update("expiresAt", e.target.value)} /></Field>
             <Field label="Pay amount (£)" htmlFor="hire-pay" required error={fields.payAmount}><input className="input" id="hire-pay" type="number" required min="0.01" max="5000" step="0.01" value={draft.payAmount} onChange={e => update("payAmount", e.target.value)} /></Field>
             <Field label="Pay type" htmlFor="hire-pay-type" required error={fields.payType}><DynamicSelect collection="payType" id="hire-pay-type" value={draft.payType} onChange={value => update("payType", value)} /></Field>
             <Field label="Minimum experience (years)" htmlFor="hire-experience" error={fields.minExperienceYears}><input className="input" id="hire-experience" type="number" min="0" max="80" step="1" value={draft.minExperienceYears} onChange={e => update("minExperienceYears", e.target.value)} /></Field>

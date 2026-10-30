@@ -22,7 +22,6 @@ export function LoginPage({
   onLogin,
   onLanding,
   onForgotPassword,
-  onMicrosoftAuth,
   onSwitchSignup,
   socialAuth,
 }: {
@@ -30,7 +29,6 @@ export function LoginPage({
   onLogin: (email: string, password: string) => Promise<LoginResult>;
   onLanding: () => void;
   onForgotPassword: () => void;
-  onMicrosoftAuth: () => void;
   onSwitchSignup: () => void;
   socialAuth: SocialAuthAvailability;
 }) {
@@ -125,7 +123,7 @@ export function LoginPage({
           </div>
 
           <form className="auth-form" method="post" noValidate onSubmit={handleCredentialSubmit}>
-            <SocialAuthButtons available={socialAuth} disabled={pending} onGoogle={onGoogleAuth} onMicrosoft={onMicrosoftAuth} />
+            <SocialAuthButtons available={socialAuth} disabled={pending} onGoogle={onGoogleAuth} />
 
             <Field label="Email address" htmlFor="login-email" error={errors.email} required>
               <input

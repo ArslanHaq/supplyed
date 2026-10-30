@@ -17,6 +17,8 @@ import type { SettingsInstitutionProfile } from "@/features/settings/types";
 
 import { useCreateJob, useJob, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
+import { validateJobInput } from "@/features/jobs/validation";
+import { shouldShowInstantMatches } from "@/features/jobs/post-publish";
 import { formatUkListingInstant, getJobVisibilityLabel, ukCalendarDate, ukDateTimeInput, shiftCalendarDay } from "@/features/jobs/listing-window";
 import { isEmptyRichText, richTextToPlainText } from "@/features/applications/rich-text";
 import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
@@ -25,6 +27,7 @@ import type { RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field } from "../atoms";
 import { JobListingPreview, type JobListingPreviewData, PageHead, PostcodeLookup, previewDateRange } from "../molecules";
+import { InstantJobMatchesModal } from "./InstantJobTeachersPage";
 
 type PostingMode = "instant" | "brief";
 type AddressMode = "school" | "different";
@@ -57,7 +60,7 @@ type JobFormState = {
   urgent: boolean;
 };
 
-type JobFormErrors = Partial<Record<keyof JobFormState, string>>;
+type JobFormErrors = Partial<Record<keyof JobFormState | "jobType", string>>;
 type JobAddress = Pick<JobFormState, "address" | "city" | "countryCode" | "county" | "postalCode">;
 const addressKeys: Array<keyof JobAddress> = ["address", "city", "countryCode", "county", "postalCode"];
 
@@ -176,6 +179,7 @@ function PostJobEditor({
   );
   const [errors, setErrors] = useState<JobFormErrors>({});
   const [savingIntent, setSavingIntent] = useState<"draft" | "publish" | null>(null);
+  const [publishedInstantJob, setPublishedInstantJob] = useState<Job | null>(null);
   const savedJobIdRef = useRef<string | undefined>(editingJob?.id);
   const savingRef = useRef(false);
   const retryAfter = useRateLimit();
@@ -208,6 +212,10 @@ function PostJobEditor({
         tone: "success",
       });
       setSavingIntent(null);
+      if (shouldShowInstantMatches(result.data, isEditing)) {
+        setPublishedInstantJob(result.data);
+        return;
+      }
       go(published ? "applications" : "dashboard", published ? { jobId: result.data.id } : undefined);
     },
     onError: () => {
@@ -237,6 +245,10 @@ function PostJobEditor({
         tone: "success",
       });
       setSavingIntent(null);
+      if (result.data && shouldShowInstantMatches(result.data, isEditing)) {
+        setPublishedInstantJob(result.data);
+        return;
+      }
       go(published ? "applications" : "dashboard", published && result.data ? { jobId: result.data.id } : undefined);
     },
     onError: () => {
@@ -247,6 +259,7 @@ function PostJobEditor({
   });
 
   const saving = createJob.isPending || updateJob.isPending;
+  const firstError = Object.values(errors).find((value): value is string => Boolean(value));
 
   function updateForm<Key extends keyof JobFormState>(key: Key, value: JobFormState[Key]) {
     if (addressMode === "different" && isAddressKey(key)) {
@@ -288,7 +301,8 @@ function PostJobEditor({
   }
 
   function saveDraft() {
-    const draftErrors = { ...validateDraft(form), ...expiryClearError(editingJob, form) };
+    const payload = toJobCreateInput(form, mode, "DRAFT", catalogue.data);
+    const draftErrors = { ...validateDraft(form), ...validateJobInput(payload), ...expiryClearError(editingJob, form) } as JobFormErrors;
     setErrors(draftErrors);
     if (Object.keys(draftErrors).length > 0) {
       if (!isEditing) setStep(firstInvalidStep(draftErrors));
@@ -299,7 +313,8 @@ function PostJobEditor({
   }
 
   function publish() {
-    const nextErrors = { ...validateAll(form), ...expiryClearError(editingJob, form) };
+    const payload = toJobCreateInput(form, mode, "ACTIVE", catalogue.data);
+    const nextErrors = { ...validateAll(form), ...validateJobInput(payload), ...expiryClearError(editingJob, form) } as JobFormErrors;
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       if (!isEditing) setStep(firstInvalidStep(nextErrors));
@@ -330,14 +345,14 @@ function PostJobEditor({
         <h2 className="mb-5 font-heading text-[26px]">How do you want to staff this role?</h2>
         <div className="grid-2">
           {[
-            { value: "instant" as const, title: "Instant matching", desc: "Best for urgent or same-day cover.", color: "var(--se)", bg: "var(--se-tint)" },
-            { value: "brief" as const, title: "Open brief", desc: "Best for planned, long-term, or proposal-led cover.", color: "var(--purple)", bg: "var(--purple-tint)" },
+            { value: "instant" as const, title: "Instant matching", desc: "Post publicly and invite multiple related teachers.", color: "var(--se)", bg: "var(--se-tint)" },
+            { value: "brief" as const, title: "Open brief", desc: "Post publicly and notify every eligible matching teacher.", color: "var(--purple)", bg: "var(--purple-tint)" },
           ].map((option) => (
             <button
               key={option.value}
               aria-pressed={mode === option.value}
               className="posting-type-choice cursor-pointer rounded-xl border p-5 text-left transition"
-              onClick={() => setMode(option.value)}
+              onClick={() => { setMode(option.value); setErrors((current) => ({ ...current, jobType: undefined })); }}
               style={{
                 background: mode === option.value ? option.bg : "var(--surface)",
                 borderColor: mode === option.value ? option.color : "var(--border)",
@@ -350,6 +365,7 @@ function PostJobEditor({
             </button>
           ))}
         </div>
+        {errors.jobType ? <p className="mt-3 text-sm text-danger" role="alert">{errors.jobType}</p> : null}
       </div>
     );
   }
@@ -581,6 +597,7 @@ function PostJobEditor({
             </aside>
           </div>
 
+          {firstError ? <p className="mt-8 rounded-lg border border-danger/30 bg-danger-tint px-4 py-3 text-sm text-danger" role="alert">{firstError}</p> : null}
           <div className="job-editor-actions mt-8 flex items-center justify-between border-t border-border pt-6">
             <Btn variant="ghost" onClick={() => go("dashboard")}>
               Cancel
@@ -614,7 +631,16 @@ function PostJobEditor({
   }
 
   return (
-    <div className="app-page post-job-page">
+    <>
+      {publishedInstantJob ? (
+        <InstantJobMatchesModal
+          go={go}
+          job={publishedInstantJob}
+          onContinue={() => go("applications", { jobId: publishedInstantJob.id })}
+          toast={toast}
+        />
+      ) : null}
+      <div className="app-page post-job-page">
       <PageHead
         title={isEditing ? "Edit job post" : "Post a new role"}
         subtitle={isEditing ? "Update the role, keep it as draft, or publish the latest version." : "Create the role once, publish it to active listings, then review applications from the same workspace."}
@@ -638,6 +664,7 @@ function PostJobEditor({
 
         {step === 4 ? renderReviewSummary() : null}
 
+        {firstError ? <p className="mt-8 rounded-lg border border-danger/30 bg-danger-tint px-4 py-3 text-sm text-danger" role="alert">{firstError}</p> : null}
         <div className="job-editor-actions mt-8 flex items-center justify-between">
           <Btn variant="ghost" onClick={() => (step > 1 ? setStep(step - 1) : go("dashboard"))}>
             {step > 1 ? "Back" : "Cancel"}
@@ -666,7 +693,8 @@ function PostJobEditor({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -765,6 +793,7 @@ function pickErrors(errors: JobFormErrors, keys: Array<keyof JobFormState>) {
 }
 
 function firstInvalidStep(errors: JobFormErrors) {
+  if (errors.jobType) return 1;
   if (errors.title || errors.address || errors.city || errors.countryCode || errors.county || errors.subjects || errors.otherSubjects || errors.otherSkills || errors.startDate || errors.endDate || errors.liveFrom || errors.expiresAt || errors.payAmount || errors.hours || errors.days || errors.minExperienceYears || errors.postalCode || errors.description || errors.requiredSkills) return 2;
   if (errors.parkingInfo || errors.keyStages) return 3;
   return 4;
@@ -787,6 +816,7 @@ function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract
     expiresAt: form.expiresAt || undefined,
     liveFrom: form.liveFrom || undefined,
     keyStages: form.keyStages,
+    jobType: mode === "instant" ? "INSTANT" : "BRIEF",
     minExperienceYears: form.minExperienceYears ? Number(form.minExperienceYears) : undefined,
     parkingInfo: form.parkingInfo,
     payAmount: form.payAmount ? Number(form.payAmount) : undefined,

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 import { hasRichTextMarkup, isEmptyRichText } from "@/features/applications/rich-text";
+import { jobDescriptionForDisplay } from "@/features/jobs/description";
 import { ProposalContent } from "./ProposalContent";
 
 type DescriptionBlock =
@@ -87,17 +88,20 @@ export function FormattedJobDescription({
   description: string;
   emptyText?: string;
 }) {
-  if (hasRichTextMarkup(description) && !isEmptyRichText(description)) {
-    return <ProposalContent className={className} value={description} />;
-  }
-  const blocks = parseDescription(description.trim());
+  const displayDescription = jobDescriptionForDisplay(description);
+  const contentClassName = cn("job-description-content", className);
 
-  if (blocks.length === 0 || isEmptyRichText(description)) {
-    return <p className={cn("text-sm leading-6 text-muted", className)}>{emptyText}</p>;
+  if (hasRichTextMarkup(displayDescription) && !isEmptyRichText(displayDescription)) {
+    return <ProposalContent className={contentClassName} value={displayDescription} />;
+  }
+  const blocks = parseDescription(displayDescription);
+
+  if (blocks.length === 0 || isEmptyRichText(displayDescription)) {
+    return <p className={contentClassName}>{emptyText}</p>;
   }
 
   return (
-    <div className={cn("space-y-3 text-sm leading-6 text-muted", className)}>
+    <div className={cn(contentClassName, "space-y-3")}>
       {blocks.map((block, index) => {
         if (block.type === "heading") {
           return (

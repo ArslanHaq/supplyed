@@ -1,6 +1,6 @@
 import type { JobCreateInput } from "@/features/jobs/types";
 import type { OfferedJobTerms } from "@/features/jobs/offered-terms";
-import type { JobStatus } from "@/types/supplyed";
+import type { JobStatus, JobType } from "@/types/supplyed";
 
 export const invitationStatuses = ["PENDING", "ACCEPTED", "DECLINED", "CANCELLED", "EXPIRED"] as const;
 export type InvitationStatus = typeof invitationStatuses[number];
@@ -12,7 +12,9 @@ export type Invitation = {
   status: InvitationStatus;
   /** Frozen offered terms; listing visibility fields remain on the managed job. */
   job: OfferedJobTerms;
+  jobType: JobType;
   jobStatus: JobStatus;
+  isExclusive: boolean;
   instructor: { id: string; fullName: string; imageUrl: string | null };
   institution: { id: string; name: string; imageUrl: string | null };
   message: string | null;
