@@ -10,8 +10,8 @@ const cache = new Map();
 function load(relative) {
   const filename = path.resolve(root, relative);
   if (cache.has(filename)) return cache.get(filename).exports;
-  const module = { exports: {} };
-  cache.set(filename, module);
+  const loadedModule = { exports: {} };
+  cache.set(filename, loadedModule);
   const source = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
@@ -23,8 +23,8 @@ function load(relative) {
     if (!resolved) throw new Error(`Cannot resolve ${name}`);
     return load(resolved);
   };
-  new Function("require", "module", "exports", source)(localRequire, module, module.exports);
-  return module.exports;
+  new Function("require", "module", "exports", source)(localRequire, loadedModule, loadedModule.exports);
+  return loadedModule.exports;
 }
 
 const { resolvePostcodeLocation } = load("lib/postcode-location.ts");
