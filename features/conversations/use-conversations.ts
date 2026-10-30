@@ -5,6 +5,7 @@ import { useEffect } from "react";
 
 import { fetchJson } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
+import { userFacingError } from "@/lib/user-facing-error";
 
 import { markConversationReadAction, openConversationForApplicationAction, openConversationForBookingAction, sendMessageAction, startConversationAction } from "./actions";
 import { acquireConversationSocket, releaseConversationSocket, useConversationConnected } from "./socket";
@@ -211,9 +212,14 @@ export async function uploadAttachment(conversationId: string, file: File): Prom
   form.append("file", file);
 
   const response = await fetch(`/api/conversations/${conversationId}/attachments`, { body: form, method: "POST" });
-  const payload = (await response.json().catch(() => null)) as (MessageAttachment & { message?: string }) | null;
+  const payload = (await response.json().catch(() => null)) as (MessageAttachment & { code?: string; message?: string }) | null;
 
-  if (!response.ok || !payload?.id) throw new Error(payload?.message || `${file.name} could not be uploaded. Please try again.`);
+  if (!response.ok || !payload?.id) {
+    throw new Error(userFacingError(payload?.message || `${file.name} could not be uploaded. Please try again.`, {
+      code: payload?.code,
+      status: response.status,
+    }));
+  }
 
   return payload;
 }

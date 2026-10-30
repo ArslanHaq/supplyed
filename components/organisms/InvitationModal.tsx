@@ -31,9 +31,9 @@ import { Modal, SectionLoader } from "../molecules";
 import { InvitationErrorNotice, useInvitationError } from "./InvitationErrorNotice";
 
 export type HireTeacher = { id: string; fullName: string; imageUrl?: string | null };
-type Draft = { title: string; description: string; startDate: string; endDate: string; liveFrom: string; expiresAt: string; hours: string; days: string; payAmount: string; payType: JobPayType; address: string; city: string; postalCode: string; subjects: string[]; keyStages: string[]; requiredSkills: string[]; otherSubjects?: string[]; otherSkills?: string[] };
+type Draft = { title: string; description: string; startDate: string; endDate: string; liveFrom: string; expiresAt: string; hours: string; days: string; payAmount: string; payType: JobPayType; minExperienceYears: string; address: string; city: string; postalCode: string; subjects: string[]; keyStages: string[]; requiredSkills: string[]; otherSubjects?: string[]; otherSkills?: string[] };
 type Attempt = { input: InvitationInput; summary: JobCreateInput };
-const emptyDraft: Draft = { title: "", description: "", startDate: "", endDate: "", liveFrom: "", expiresAt: "", hours: "", days: "", payAmount: "", payType: "daily", address: "", city: "", postalCode: "", subjects: [], keyStages: [], requiredSkills: [] };
+const emptyDraft: Draft = { title: "", description: "", startDate: "", endDate: "", liveFrom: "", expiresAt: "", hours: "", days: "", payAmount: "", payType: "daily", minExperienceYears: "", address: "", city: "", postalCode: "", subjects: [], keyStages: [], requiredSkills: [] };
 
 export function InvitationModal({ teacher, accountId, initialJobId, onClose, go }: { teacher: HireTeacher; accountId: string; initialJobId?: string; onClose: () => void; go: GoFn }) {
   const client = useQueryClient();
@@ -89,7 +89,8 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
         title: draft.title, description: draft.description,
         startDate: zonedDateTimeToIso(draft.startDate, timezone), endDate: zonedDateTimeToIso(draft.endDate, timezone),
         liveFrom: draft.liveFrom || undefined, expiresAt: draft.expiresAt || undefined,
-        ...plannedUnitsInput(draft.payType, draft.hours, draft.days), payAmount: Number(draft.payAmount), payType: draft.payType, keyStages: draft.keyStages, countryCode: "GB",
+        ...plannedUnitsInput(draft.payType, draft.hours, draft.days), payAmount: Number(draft.payAmount), payType: draft.payType,
+        minExperienceYears: draft.minExperienceYears ? Number(draft.minExperienceYears) : undefined, keyStages: draft.keyStages, countryCode: "GB",
         address: draft.address, city: draft.city, postalCode: draft.postalCode, subjects: draft.subjects, otherSubjects: draft.otherSubjects, otherSkills: draft.otherSkills, requiredSkills: draft.requiredSkills,
       };
       input = { ...base, newJob: terms };
@@ -158,7 +159,7 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
           {!attempt ? <Btn variant="secondary" disabled={Boolean(retryAfter) || busy} onClick={() => { setReview(null); setError(""); }}>Back to job</Btn> : null}
           <Btn disabled={!hiringAllowed || Boolean(retryAfter) || busy} loading={busy} loadingLabel="Sending invitation" icon="check" onClick={() => void confirmHire()}>{attempt ? "Retry same invitation" : "Send invitation"}</Btn>
         </div>
-      </> : <form onSubmit={reviewDetails}>
+      </> : <form noValidate onSubmit={reviewDetails}>
         <div className="mb-5 grid grid-cols-2 gap-2 rounded-xl bg-chalk p-1.5"><Btn aria-pressed={mode === "existing"} variant={mode === "existing" ? "secondary" : "ghost"} onClick={() => { setMode("existing"); setError(""); }}>Use existing job</Btn><Btn aria-pressed={mode === "new"} variant={mode === "new" ? "secondary" : "ghost"} icon="plus" onClick={() => { setMode("new"); setError(""); }}>Create new job</Btn></div>
         <Field label="Timezone for dates and deadline" htmlFor="invitation-zone"><DynamicSelect collection="timezone" id="invitation-zone" value={timezone} onChange={value => { setTimezone(value); setDraft(current => syncWorkSchedule(current, "payType", current.payType, value)); setFields({}); }} /></Field>
         {mode === "existing" ? <>
@@ -188,8 +189,9 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
             <div className="col-span-full"><PlannedWorkUnitsField payType={draft.payType} hours={draft.hours} days={draft.days} errors={fields} onChange={update} /></div>
             <Field label="Live from (optional)" htmlFor="hire-live-from" error={fields.liveFrom} hint="If declined, public applications open at the start of this UK date."><input className="input" id="hire-live-from" type="date" value={draft.liveFrom} onChange={e => update("liveFrom", e.target.value)} /></Field>
             <Field label="Listing expiry (optional)" htmlFor="hire-listing-expiry" error={fields.listingExpiresAt} hint="If declined, public applications stay open through this UK date. Choose a day before work starts."><input className="input" id="hire-listing-expiry" type="date" max={draft.startDate ? shiftCalendarDay(ukCalendarDate(zonedDateTimeToIso(draft.startDate, timezone)), -1) || undefined : undefined} min={draft.liveFrom || undefined} value={draft.expiresAt} onChange={e => update("expiresAt", e.target.value)} /></Field>
-            <Field label="Pay amount (£)" htmlFor="hire-pay" required error={fields.payAmount}><input className="input" id="hire-pay" type="number" required min="0.01" step="0.01" value={draft.payAmount} onChange={e => update("payAmount", e.target.value)} /></Field>
+            <Field label="Pay amount (£)" htmlFor="hire-pay" required error={fields.payAmount}><input className="input" id="hire-pay" type="number" required min="0.01" max="5000" step="0.01" value={draft.payAmount} onChange={e => update("payAmount", e.target.value)} /></Field>
             <Field label="Pay type" htmlFor="hire-pay-type" required error={fields.payType}><DynamicSelect collection="payType" id="hire-pay-type" value={draft.payType} onChange={value => update("payType", value)} /></Field>
+            <Field label="Minimum experience (years)" htmlFor="hire-experience" error={fields.minExperienceYears}><input className="input" id="hire-experience" type="number" min="0" max="80" step="1" value={draft.minExperienceYears} onChange={e => update("minExperienceYears", e.target.value)} /></Field>
           </div>
           <div className="mt-2 border-t border-border pt-4"><h3 className="mb-3 font-semibold">Placement location</h3><Field label="Address" htmlFor="hire-address" error={fields.address}><input className="input" id="hire-address" maxLength={250} value={draft.address} onChange={e => update("address", e.target.value)} /></Field><div className="grid gap-x-4 sm:grid-cols-2"><Field label="UK city or town" htmlFor="hire-city" error={fields.city}><DynamicSelect id="hire-city" collection="city" emptyLabel="Not specified" placeholder="Select a UK city or town" searchable error={Boolean(fields.city)} value={draft.city} onChange={value => update("city", value)} /></Field><Field label="Postcode" htmlFor="hire-postcode" error={fields.postalCode}><input className="input" id="hire-postcode" value={draft.postalCode} onChange={e => update("postalCode", e.target.value)} /></Field></div><TeachingSelectionFields otherSkills={draft.otherSkills} otherSkillError={fields.otherSkills} otherSubjects={draft.otherSubjects} otherError={fields.otherSubjects} subjects={draft.subjects} skills={draft.requiredSkills} skillLabel="Required skills" subjectError={fields.subjects} skillError={fields.requiredSkills} onChange={(subjects, requiredSkills, otherSubjects, otherSkills) => setDraft(current => ({ ...current, subjects, requiredSkills, otherSubjects, otherSkills }))} /></div>
         </div>}

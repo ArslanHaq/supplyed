@@ -23,7 +23,12 @@ export function validateJobInput(input: JobCreateInput | JobUpdateInput, options
     countryCode: validateUkCountry(input.countryCode ?? (options.partial ? "" : "GB"), { required: input.countryCode !== undefined }),
     city: validateUkCity(input.city), county: validateUkRegion(input.county), postalCode: validateUkPostcode(input.postalCode),
   })) if (!validation.valid) errors[key] = validation.error!;
-  for (const key of ["payAmount", "minExperienceYears"] as const) if (input[key] !== undefined && (typeof input[key] !== "number" || !Number.isFinite(input[key]) || input[key]! < 0 || (key === "minExperienceYears" && !Number.isInteger(input[key])))) errors[key] = "Enter a valid non-negative number.";
+  for (const key of ["payAmount", "minExperienceYears"] as const) {
+    const value = input[key];
+    if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0 || (key === "minExperienceYears" && !Number.isInteger(value)))) errors[key] = "Enter a valid non-negative number.";
+    else if (key === "payAmount" && value !== undefined && value > 5000) errors.payAmount = "Pay amount cannot exceed £5,000.";
+    else if (key === "minExperienceYears" && value !== undefined && value > 80) errors.minExperienceYears = "Experience cannot exceed 80 years.";
+  }
   if (input.payType !== undefined && !["hourly", "daily", "fixed"].includes(input.payType)) errors.payType = "Choose hourly, daily or fixed pay.";
   if (input.status !== undefined && !(options.partial ? ["DRAFT", "ACTIVE", "CLOSED", "SUSPENDED"] : ["DRAFT", "ACTIVE"]).includes(input.status)) errors.status = "Choose a valid job status.";
   for (const key of ["keyStages", "requiredSkills", "subjects"] as const) {
@@ -53,6 +58,8 @@ export function validatePublishableTerms(input: Partial<Omit<JobCreateInput, "st
   if (!Number.isFinite(start) || start <= now) errors.startDate = "Choose a future start date and time.";
   if (!Number.isFinite(end) || end < start) errors.endDate = "Choose an end date on or after work starts.";
   if (!(Number(input.payAmount) > 0)) errors.payAmount = "Enter positive pay.";
+  else if (Number(input.payAmount) > 5000) errors.payAmount = "Pay amount cannot exceed £5,000.";
+  if (input.minExperienceYears != null && Number(input.minExperienceYears) > 80) errors.minExperienceYears = "Experience cannot exceed 80 years.";
   if (!["hourly", "daily", "fixed"].includes(input.payType ?? "")) errors.payType = "Choose hourly, daily or fixed pay.";
   const hours = (end - start) / 3600000;
   const days = Math.floor((Date.parse(`${ukCalendarDate(input.endDate)}T00:00:00Z`) - Date.parse(`${ukCalendarDate(input.startDate)}T00:00:00Z`)) / 86400000) + 1;

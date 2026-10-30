@@ -12,7 +12,15 @@ export function useRankedApplications(jobId: string | undefined, query: MatchLis
 }
 
 export function useRecommendedInstructors(jobId: string | undefined, query: MatchListQuery = {}) {
-  return useQuery({ enabled: Boolean(jobId), queryFn: () => fetchJson<RecommendedInstructorsPage>(`/api/matching/jobs/${jobId}/instructors`, { query }), queryKey: queryKeys.matching.instructors(jobId ?? "", query) });
+  return useQuery({
+    enabled: Boolean(jobId),
+    queryFn: () => fetchJson<RecommendedInstructorsPage>(`/api/matching/jobs/${jobId}/instructors`, { query }),
+    queryKey: queryKeys.matching.instructors(jobId ?? "", query),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+  });
 }
 
 export function useRecommendedJobs(query: MatchListQuery = {}, enabled = true) {

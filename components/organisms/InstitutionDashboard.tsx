@@ -17,8 +17,9 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
   const jobsQuery = useMyJobs({ limit: 6, page, status: statusFilter === "ALL" ? undefined : statusFilter });
+  const countsQuery = useMyJobs({ limit: 1, page: 1 });
   const jobs = jobsQuery.data?.jobs ?? [];
-  const counts = jobsQuery.data?.statusCounts;
+  const counts = countsQuery.data?.statusCounts ?? jobsQuery.data?.statusCounts;
   const activeCount = counts?.ACTIVE ?? 0;
   const draftCount = counts?.DRAFT ?? 0;
   const applicantCountQuery = useActiveJobApplicantCount();
@@ -88,6 +89,7 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
             onCreate={() => go("post-job")}
             onDelete={removeJob}
             onEdit={(job) => go("post-job", { jobId: job.id })}
+            onInvitations={() => go("job-invitations")}
             onFilterChange={(filter) => { setStatusFilter(filter); setPage(1); }}
             onPageChange={setPage}
             pagination={jobsQuery.data?.pagination}

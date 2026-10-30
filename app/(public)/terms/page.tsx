@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { PublicHeader } from "@/components/organisms/PublicHeader";
 import { Tag } from "@/components/atoms";
 import { siteConfig } from "@/lib/seo";
 
@@ -136,8 +135,6 @@ const sections: TermsSection[] = [
 export default function TermsPage() {
   return (
     <div className="marketing-page marketing-terms min-h-screen bg-chalk">
-      <PublicHeader />
-
       <main>
         <section className="marketing-info-hero px-4 sm:px-6 lg:px-12">
           <div className="mx-auto max-w-[1180px]">

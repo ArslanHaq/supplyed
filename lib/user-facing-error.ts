@@ -4,6 +4,7 @@ const fallbackMessage = "We couldn't complete this request. Please try again.";
 export function userFacingError(message: string, options: { status?: number; code?: string } = {}): string {
   const clean = message.replace(/\s*\(?Support reference:[\s\S]*$/i, "").trim();
   const marketplaceMessages: Record<string, string> = {
+    INSTRUCTOR_DOCUMENTS_NOT_VERIFIED: "Required teacher documents must be uploaded, current and approved before applications or messaging are available. Complete missing uploads, replace rejected or expired documents, and wait for pending reviews to be approved.",
     SCHOOL_INACTIVE: "Your school must be active and approved before publishing, inviting or hiring. Check your account status.",
     JOB_RESERVED: "This role is reserved for an invited teacher. Review its latest invitation status.",
     JOB_UNAVAILABLE: "This role is no longer available for applications or hiring.",

@@ -49,6 +49,16 @@ test("expired sessions still request sign-in", () => {
     "Your session expired. Sign in again to continue.");
 });
 
+test("document verification failures stay actionable through API and action errors", () => {
+  const code = "INSTRUCTOR_DOCUMENTS_NOT_VERIFIED";
+  const error = new ApiError("Forbidden", 403, undefined, code);
+  const result = actionError(error.message, { status: error.status, code: error.code });
+  assert.equal(result.code, code);
+  assert.equal(result.status, 403);
+  assert.match(result.message, /uploaded, current and approved/);
+  assert.match(result.message, /pending reviews/);
+});
+
 test("postcode matches labels and aliases but returns exact catalogue values", () => {
   assert.deepEqual(resolvePostcodeLocation(
     { bua: "Manchester", admin_county: "Greater Manchester" },

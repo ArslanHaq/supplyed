@@ -12,9 +12,10 @@ import { WorkspaceEmptyState } from "./WorkspacePanels";
 export type ApplicationsJobFilter = "ACTIVE" | "INVITED";
 type InvitationSummary = { job: Job; pending: number; total: number };
 
-export function ApplicationsJobList({ filter, onFilterChange, onOpenJob, onPageChange, page }: {
+export function ApplicationsJobList({ filter, onFilterChange, onOpenInvitationStatus, onOpenJob, onPageChange, page }: {
   filter: ApplicationsJobFilter;
   onFilterChange: (filter: ApplicationsJobFilter) => void;
+  onOpenInvitationStatus: () => void;
   onOpenJob: (jobId: string) => void;
   onPageChange: (page: number) => void;
   page: number;
@@ -76,7 +77,7 @@ export function ApplicationsJobList({ filter, onFilterChange, onOpenJob, onPageC
       <JobFilterHeader activeTotal={jobsQuery.data?.pagination.total ?? 0} filter={filter} invitedTotal={invitedTotal} onFilterChange={onFilterChange} />
       {filter === "ACTIVE" && invitationsQuery.error ? <p className="border-b border-border bg-amber-50 px-5 py-3 text-xs text-amber-900" role="status">Invitation tags are temporarily unavailable. Active jobs are still shown.</p> : null}
       <div>
-        {jobs.map((job) => <ApplicationJobRow invitation={invitationByJob.get(job.id)} job={job} key={job.id} onOpen={() => onOpenJob(job.id)} />)}
+        {jobs.map((job) => <ApplicationJobRow invitation={invitationByJob.get(job.id)} invitedView={filter === "INVITED"} job={job} key={job.id} onOpen={filter === "INVITED" ? onOpenInvitationStatus : () => onOpenJob(job.id)} />)}
         {!jobs.length ? <p className="p-6 text-sm text-muted">No jobs on this page. Choose a previous page to continue.</p> : null}
       </div>
       {pagination ? (
@@ -107,7 +108,7 @@ function JobFilterHeader({ activeTotal, filter, invitedTotal, onFilterChange }: 
   </div>;
 }
 
-function ApplicationJobRow({ invitation, job, onOpen }: { invitation?: InvitationSummary; job: Job; onOpen: () => void }) {
+function ApplicationJobRow({ invitation, invitedView, job, onOpen }: { invitation?: InvitationSummary; invitedView: boolean; job: Job; onOpen: () => void }) {
   const location = [job.city === "Location TBC" ? "" : job.city, job.county, job.postalCode].filter(Boolean).join(", ") || "Location TBC";
   const pay = !job.rate ? "Rate TBC" : `GBP ${job.rate}${job.payType === "hourly" ? "/hr" : job.payType === "fixed" ? " fixed" : "/day"}`;
   const visibility = getJobVisibilityLabel(job);
@@ -128,7 +129,7 @@ function ApplicationJobRow({ invitation, job, onOpen }: { invitation?: Invitatio
           <span>{pay}</span>
         </div>
       </div>
-      <Btn aria-label={`View applications for ${job.title}`} iconRight="arrow" onClick={onOpen}>View applications</Btn>
+      <Btn aria-label={invitedView ? `Check invitation status for ${job.title}` : `View applications for ${job.title}`} iconRight="arrow" onClick={onOpen}>{invitedView ? "Check invitation status" : "View applications"}</Btn>
     </article>
   );
 }
