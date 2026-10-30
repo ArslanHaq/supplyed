@@ -177,7 +177,7 @@ export function SignupAccessPage({
           <AuthProgress current={1} />
           <div className="auth-form-heading">
             <div className="eyebrow mb-2 text-brand">Account details</div>
-            <h2 className="font-heading">Create your SupplyED account.</h2>
+            <h2 className="font-heading">Create your account</h2>
             <p className="mt-3 text-muted">
               Already registered?{" "}
               <button className="font-semibold text-brand" onClick={onLogin} type="button">
@@ -193,7 +193,7 @@ export function SignupAccessPage({
           ) : null}
 
           <form className="auth-form" method="post" noValidate onSubmit={handleSubmit}>
-            <div className="mb-6">
+            <div className="auth-role-field">
               <Field label="Choose account type" error={errors.role} required>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {accountRoleOptions.map(([value, title, icon, copy]) => {
@@ -203,7 +203,7 @@ export function SignupAccessPage({
                       <button
                         key={value}
                         aria-pressed={selected}
-                        className="account-role-option rounded-xl border p-4 text-left transition hover:border-brand hover:bg-brand-tint"
+                        className="account-role-option auth-role-option rounded-xl border text-left transition hover:border-brand hover:bg-brand-tint"
                         onClick={() => {
                           setRole(value);
                           setErrors((current) => ({ ...current, role: undefined }));
@@ -215,11 +215,11 @@ export function SignupAccessPage({
                         type="button"
                       >
                         <span className="account-role-check" aria-hidden="true">{selected ? <Icon name="check" size={12} /> : null}</span>
-                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-surface text-brand shadow-sm">
+                        <div className="auth-role-icon flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-brand shadow-sm">
                           <Icon name={icon as "building" | "user" | "heart"} size={18} />
                         </div>
                         <div className="font-heading text-[17px] leading-snug">{title}</div>
-                        <p className="mt-1 text-[13px] leading-5 text-muted">{copy}</p>
+                        <p className="auth-role-copy text-xs leading-4 text-muted">{copy}</p>
                       </button>
                     );
                   })}

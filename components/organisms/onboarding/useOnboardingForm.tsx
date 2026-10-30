@@ -1,5 +1,6 @@
 "use client";
 
+import { waitingForInstitutionApproval } from "@/features/onboarding/institution-approval";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { actualSubjects, catalogueError } from "@/features/teaching-catalogue/selection";
@@ -57,6 +58,7 @@ function snapshotFingerprint(snapshot?: OnboardingProfileSnapshot) {
     requirementDocuments: snapshot.requirementDocuments,
     role: snapshot.role,
     signatoryApproval: snapshot.signatoryApproval,
+    complianceApproval: snapshot.complianceApproval,
     user: snapshot.user,
   });
 }
@@ -124,6 +126,7 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     maxTravelDistance: snapshotString(current.maxTravelDistance, next.maxTravelDistance),
     phone: preservePhone ? current.phone : snapshotString(current.phone, next.phone),
     profileCity: snapshotString(current.profileCity, next.profileCity),
+    profileAddress: snapshotString(current.profileAddress, next.profileAddress),
     profileCountryCode: snapshot.instructor?.countryCode || current.profileCountryCode || "GB",
     postcode: snapshotString(current.postcode, next.postcode),
     schoolName: snapshotString(current.schoolName, next.schoolName),
@@ -176,6 +179,7 @@ function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill, snap
     maxTravelDistance: fillEmpty(current.maxTravelDistance, prefill.maxTravelDistance),
     phone: fillEmpty(current.phone, prefill.phone),
     profileCity: fillEmpty(current.profileCity, prefill.profileCity),
+    profileAddress: fillEmpty(current.profileAddress, prefill.profileAddress),
     profileCountryCode: snapshot?.instructor?.countryCode ?? prefill.profileCountryCode ?? current.profileCountryCode,
     postcode: fillEmpty(current.postcode, prefill.postcode),
     schoolName: fillEmpty(current.schoolName, prefill.schoolName),
@@ -251,6 +255,12 @@ export function useOnboardingForm({
   const [requirementViewPending, setRequirementViewPending] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string>();
   const [signatoryApproval, setSignatoryApproval] = useState(initialSnapshot?.signatoryApproval ?? null);
+  const [complianceApproval, setComplianceApproval] = useState(initialSnapshot?.complianceApproval ?? null);
+  const [complianceApprovalRequired, setComplianceApprovalRequired] = useState(initialSnapshot?.institution?.complianceApprovalRequired ?? true);
+  const isMatSchool = form.institutionType === "MAT_SCHOOL";
+  const approvalRequired = activeRole === "institution" && (isMatSchool || complianceApprovalRequired);
+  const institutionApproval = isMatSchool ? signatoryApproval : complianceApproval;
+  const approvalContactName = isMatSchool ? signatoryApproval?.signatoryName : complianceApproval?.complianceName;
   const [statusStage, setStatusStage] = useState(false);
   const progress = Math.round((currentStep / steps.length) * 100);
   const isLastStep = currentStep === steps.length;
@@ -260,7 +270,7 @@ export function useOnboardingForm({
   const initialSnapshotFingerprint = useMemo(() => snapshotFingerprint(initialSnapshot), [initialSnapshot]);
   const requirementsQuery = useOnboardingDocumentRequirements(activeRole, { enabled: roleSelected });
   const onboardingStatusQuery = useOnboardingSnapshot(accountEmail ?? "", {
-    enabled: Boolean(accountEmail && lockedDocumentStage && activeRole === "institution" && form.institutionType === "MAT_SCHOOL"),
+    enabled: Boolean(accountEmail && lockedDocumentStage && approvalRequired),
   });
   const documentRequirements = filterProfileDocumentRequirements(
     requirementsQuery.data?.map((requirement) => ({
@@ -316,6 +326,8 @@ export function useOnboardingForm({
     }
     setRequirementDocuments(initialSnapshot?.requirementDocuments ?? {});
     setSignatoryApproval(initialSnapshot?.signatoryApproval ?? null);
+    setComplianceApproval(initialSnapshot?.complianceApproval ?? null);
+    setComplianceApprovalRequired(initialSnapshot?.institution?.complianceApprovalRequired ?? true);
     if (hasCreatedProfile(initialSnapshot, activeRole)) {
       setLockedDocumentStage(true);
     }
@@ -332,7 +344,8 @@ export function useOnboardingForm({
     if (onboardingStatusQuery.data?.signatoryApproval !== undefined) {
       setSignatoryApproval(onboardingStatusQuery.data.signatoryApproval);
     }
-  }, [onboardingStatusQuery.data?.signatoryApproval]);
+    if (onboardingStatusQuery.data?.complianceApproval !== undefined) setComplianceApproval(onboardingStatusQuery.data.complianceApproval);
+  }, [onboardingStatusQuery.data?.signatoryApproval, onboardingStatusQuery.data?.complianceApproval]);
 
   function buildPayload() {
     return buildOnboardingPayload(form, activeRole, currentStep, accountEmail, catalogue.data);
@@ -348,6 +361,7 @@ export function useOnboardingForm({
         ? [
             { label: "Country", value: countryLabel(form.profileCountryCode) },
             { label: "City", value: form.profileCity || "Not provided" },
+            { label: "Address", value: form.profileAddress || "Not provided", wide: true },
             { label: "Postal code", value: form.postcode || "Not provided" },
           ]
         : []),
@@ -421,13 +435,15 @@ export function useOnboardingForm({
         ],
       },
       {
-        title: "Compliance",
+        title: form.institutionType === "MAT_SCHOOL" ? "Trust signatory" : "Compliance",
         description: "Safeguarding approval",
         icon: "shield",
         editStep: 3,
         lines: [
-          { label: "Compliance lead", value: form.complianceContact || "Not provided" },
-          { label: "Compliance email", value: form.complianceEmail || "Not provided" },
+          ...(form.institutionType === "SINGLE_SCHOOL" ? [
+            { label: "Compliance lead", value: form.complianceContact || "Not provided" },
+            { label: "Compliance email", value: form.complianceEmail || "Not provided" },
+          ] : []),
           { label: "Safeguarding", value: form.safeguardingConfirmed ? "Authorised staff confirmed" : "Not confirmed" },
           ...(form.institutionType === "MAT_SCHOOL"
             ? [
@@ -594,6 +610,8 @@ export function useOnboardingForm({
     setDocumentRequirementsSnapshot(snapshot.documentRequirements);
     setRequirementDocuments(snapshot.requirementDocuments ?? {});
     setSignatoryApproval(snapshot.signatoryApproval ?? null);
+    setComplianceApproval(snapshot.complianceApproval ?? null);
+    setComplianceApprovalRequired(snapshot.institution?.complianceApprovalRequired ?? true);
   }
 
   function validateStep(targetStep: SignupStep) {
@@ -758,8 +776,8 @@ export function useOnboardingForm({
         }));
         setSubmitError(result.message || "Upload all required documents before sending the profile for review.");
       } else if (result.data?.applicationStatus === "none") {
-        const waitingForTrust = activeRole === "institution" && snapshot?.institution?.institutionType === "MAT_SCHOOL" && snapshot.signatoryApproval?.status !== "APPROVED";
-        if (waitingForTrust) {
+        const waitingForApproval = activeRole === "institution" && waitingForInstitutionApproval(snapshot?.institution, snapshot?.signatoryApproval, snapshot?.complianceApproval);
+        if (waitingForApproval) {
           setStatusStage(true);
           setSubmitError(undefined);
         } else {
@@ -774,7 +792,7 @@ export function useOnboardingForm({
     }
   }
 
-  async function refreshSignatoryApproval() {
+  async function refreshInstitutionApproval() {
     if (mutationPendingRef.current || pendingRequirementIdsRef.current.size > 0) return;
     mutationPendingRef.current = true;
     setPending("status");
@@ -784,16 +802,17 @@ export function useOnboardingForm({
       const result = await onboardingStatusQuery.refetch();
       if (result.error) throw result.error;
       setSignatoryApproval(result.data?.signatoryApproval ?? null);
+      setComplianceApproval(result.data?.complianceApproval ?? null);
     } catch (error) {
-      setSubmitError(error instanceof Error && error.message ? error.message : "Trust approval status could not be checked.");
+      setSubmitError(error instanceof Error && error.message ? error.message : "School approval status could not be checked.");
     } finally {
       mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);
     }
   }
 
-  async function requestSignatoryApproval() {
-    if (!lockedDocumentStage || activeRole !== "institution" || form.institutionType !== "MAT_SCHOOL" || mutationPendingRef.current || pendingRequirementIdsRef.current.size > 0) return;
+  async function requestInstitutionApproval() {
+    if (!lockedDocumentStage || !approvalRequired || mutationPendingRef.current || pendingRequirementIdsRef.current.size > 0) return;
     if (!validateStep(3)) return;
 
     mutationPendingRef.current = true;
@@ -802,16 +821,16 @@ export function useOnboardingForm({
 
     try {
       const payload = buildPayload();
-      payload.set("intent", "signatory");
+      payload.set("intent", isMatSchool ? "signatory" : "compliance");
       const result = await onFinish(payload);
       applySnapshot(result.data?.snapshot);
       if (!result.ok) {
         if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: ["dropdown"] });
         applyServerFieldErrors(result, Object.keys(result.fieldErrors ?? {}).some((key) => !key.startsWith("signatory")));
-        setSubmitError(result.message || "The trust approval request could not be sent.");
+        setSubmitError(result.message || "The approval request could not be sent.");
       }
     } catch (error) {
-      setSubmitError(error instanceof Error && error.message ? error.message : "The trust approval request could not be sent.");
+      setSubmitError(error instanceof Error && error.message ? error.message : "The approval request could not be sent.");
     } finally {
       mutationPendingRef.current = false;
       if (mountedRef.current) setPending(null);
@@ -844,10 +863,14 @@ export function useOnboardingForm({
     requirementUploadPending,
     pendingRequirementIds,
     requirementViewPending,
-    refreshSignatoryApproval,
-    requestSignatoryApproval,
+    refreshInstitutionApproval,
+    requestInstitutionApproval,
     reviewGroups,
     signatoryApproval,
+    complianceApproval,
+    institutionApproval,
+    approvalRequired,
+    approvalContactName,
     statusStage,
     returnToDocuments: () => setStatusStage(false),
     retryDocumentRequirements,

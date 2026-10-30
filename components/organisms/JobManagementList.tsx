@@ -23,6 +23,7 @@ type JobManagementListProps = {
   onCreate: () => void;
   onDelete: (job: Job) => void;
   onEdit: (job: Job) => void;
+  onInvitations: (job: Job) => void;
   onFilterChange: (filter: JobStatusFilter) => void;
   onPageChange?: (page: number) => void;
   pagination?: JobsPagination;
@@ -44,6 +45,7 @@ export function JobManagementList({
   onCreate,
   onDelete,
   onEdit,
+  onInvitations,
   onFilterChange,
   onPageChange,
   pagination,
@@ -104,6 +106,7 @@ export function JobManagementList({
             onClose={onClose}
             onDelete={onDelete}
             onEdit={onEdit}
+            onInvitations={onInvitations}
           />
         ))}
       </div>
@@ -162,6 +165,7 @@ function JobManagementRow({
   onClose,
   onDelete,
   onEdit,
+  onInvitations,
 }: {
   actionPending?: boolean;
   job: Job;
@@ -169,8 +173,11 @@ function JobManagementRow({
   onClose: (job: Job) => void;
   onDelete: (job: Job) => void;
   onEdit: (job: Job) => void;
+  onInvitations: (job: Job) => void;
 }) {
   const canClose = job.status !== "CLOSED";
+  const reserved = job.status === "RESERVED";
+  const openPrimary = reserved ? onInvitations : onApplications;
   const visibility = getJobVisibilityLabel(job);
   const applicationsQuery = useJobApplications(job.id, { limit: 1 });
   const applicantCount = applicationsQuery.data?.pagination.total;
@@ -179,9 +186,9 @@ function JobManagementRow({
   return (
     <div className="border-b border-border p-4 last:border-0 sm:p-5">
       <JobListingPreview
-        action={<Btn iconRight="arrowRight" size="sm" onClick={() => onApplications(job)}>Review applications</Btn>}
+        action={<Btn iconRight="arrowRight" size="sm" onClick={() => openPrimary(job)}>{reserved ? "View invitation" : "Review applications"}</Btn>}
         data={jobListingPreviewData(job, status)}
-        onOpen={() => onApplications(job)}
+        onOpen={() => openPrimary(job)}
       />
       <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-chalk px-3 py-2">
         <span className="mr-auto text-xs text-muted" aria-live="polite">

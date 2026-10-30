@@ -19,16 +19,17 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
   const jobsQuery = useMyJobs({ limit: 20, page, status: statusFilter === "ALL" ? undefined : statusFilter });
+  const countsQuery = useMyJobs({ limit: 1, page: 1 });
   const applicantsQuery = useActiveJobApplicantCount();
   const invitationsQuery = useInvitations({ limit: 3, page: 1, status: "PENDING" });
   const bookingsQuery = useBookings({ limit: 3, page: 1, status: "CONFIRMED" });
   const jobs = jobsQuery.data?.jobs ?? [];
-  const counts = jobsQuery.data?.statusCounts;
+  const counts = countsQuery.data?.statusCounts ?? jobsQuery.data?.statusCounts;
   const activeCount = counts?.ACTIVE ?? 0;
   const draftCount = counts?.DRAFT ?? 0;
   const visibleOnPage = jobs.filter((job) => getJobVisibilityLabel(job) === "live").length;
   const scheduledOnPage = jobs.filter((job) => getJobVisibilityLabel(job) === "scheduled").length;
-  const refreshing = jobsQuery.isFetching || applicantsQuery.isFetching || invitationsQuery.isFetching || bookingsQuery.isFetching;
+  const refreshing = jobsQuery.isFetching || countsQuery.isFetching || applicantsQuery.isFetching || invitationsQuery.isFetching || bookingsQuery.isFetching;
   const updateJob = useUpdateJob({
     onSuccess: (result) => toast({ title: result.ok ? "Job updated" : "Could not update job", msg: result.message ?? "The job status was updated.", tone: result.ok ? "success" : "danger" }),
     onError: () => toast({ title: "Could not update job", msg: "Please try again.", tone: "danger" }),
@@ -42,7 +43,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
   });
 
   function refresh() {
-    void Promise.allSettled([jobsQuery.refetch(), applicantsQuery.refetch(), invitationsQuery.refetch(), bookingsQuery.refetch()]);
+    void Promise.allSettled([jobsQuery.refetch(), countsQuery.refetch(), applicantsQuery.refetch(), invitationsQuery.refetch(), bookingsQuery.refetch()]);
   }
 
   return (
@@ -64,7 +65,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
 
         <div className="two-col">
           <div>
-            <JobManagementList actionPending={updateJob.isPending || deleteJob.isPending} counts={counts} emptyMessage="Create a role to start matching with approved teachers." filter={statusFilter} jobs={jobs} loading={jobsQuery.isLoading} onApplications={(job) => go("applications", { jobId: job.id })} onClose={(job) => updateJob.mutate({ id: job.id, status: "CLOSED" })} onCreate={() => go("post-job")} onDelete={setDeleteTarget} onEdit={(job) => go("post-job", { jobId: job.id })} onFilterChange={(filter) => { setStatusFilter(filter); setPage(1); }} onPageChange={setPage} pagination={jobsQuery.data?.pagination} refreshing={jobsQuery.isFetching} title="Job posts" />
+            <JobManagementList actionPending={updateJob.isPending || deleteJob.isPending} counts={counts} emptyMessage="Create a role to start matching with approved teachers." filter={statusFilter} jobs={jobs} loading={jobsQuery.isLoading} onApplications={(job) => go("applications", { jobId: job.id })} onClose={(job) => updateJob.mutate({ id: job.id, status: "CLOSED" })} onCreate={() => go("post-job")} onDelete={setDeleteTarget} onEdit={(job) => go("post-job", { jobId: job.id })} onInvitations={() => go("job-invitations")} onFilterChange={(filter) => { setStatusFilter(filter); setPage(1); }} onPageChange={setPage} pagination={jobsQuery.data?.pagination} refreshing={jobsQuery.isFetching} title="Job posts" />
 
             <div className="section-title mt-7">Confirmed placements</div>
             {bookingsQuery.isLoading ? <SectionLoader rows={3} /> : bookingsQuery.error ? <DashboardError message="Confirmed bookings could not be loaded." onRetry={() => void bookingsQuery.refetch()} /> : bookingsQuery.data?.bookings.length ? <div className="card overflow-hidden">{bookingsQuery.data.bookings.map((booking) => <button className="flex w-full items-center gap-3 border-b border-border p-4 text-left last:border-0 hover:bg-chalk" key={booking.id} onClick={() => go("bookings", { bookingId: booking.id })} type="button"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-tint text-brand"><Icon name="calendar" size={18} /></span><span className="min-w-0 flex-1"><strong className="block truncate">{booking.job.title}</strong><span className="block text-xs text-muted">{booking.instructor.fullName || "Teacher"} · {dateRange(booking.startDate, booking.endDate)}</span></span><Tag tone="green">Confirmed</Tag><Icon name="chevronRight" size={16} /></button>)}</div> : <WorkspaceEmptyState icon="calendar" title="No confirmed placements" message="A booking appears here after you hire an applicant or a teacher accepts an invitation." />}

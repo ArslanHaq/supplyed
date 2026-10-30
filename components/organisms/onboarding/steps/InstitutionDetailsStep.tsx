@@ -101,13 +101,14 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
         </Field>
         <PostcodeLookup
           error={errors.postcode}
-          hint="Check the UK postcode, then select your city or town."
           id="institution-postcode"
           label="School postal code"
           onChange={(value) => updateField("postcode", value)}
           onSelect={(selection) => {
             updateField("postcode", selection.postcode);
-            if (selection.city) updateField("institutionCity", selection.city);
+            updateField("institutionCountryCode", selection.countryCode);
+            updateField("institutionCity", selection.city);
+            updateField("localAuthority", selection.county);
           }}
           placeholder="M1 1AE"
           required

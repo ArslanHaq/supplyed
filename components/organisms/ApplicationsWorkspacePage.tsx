@@ -111,6 +111,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
         <ApplicationsJobList
           filter={jobsFilter}
           onFilterChange={(filter) => { setJobsFilter(filter); setJobsPage(1); }}
+          onOpenInvitationStatus={() => go("job-invitations")}
           onOpenJob={(jobId) => go("applications", { jobId })}
           onPageChange={setJobsPage}
           page={jobsPage}

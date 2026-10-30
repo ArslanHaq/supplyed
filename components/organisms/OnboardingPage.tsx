@@ -114,7 +114,7 @@ export function OnboardingPage({
     documentRequirementsLoading || documentRequirementsError ||
     missingRequiredDocuments(controller.documentRequirements, controller.requirementDocuments).length,
   );
-  const waitingForSignatory = activeRole === "institution" && controller.form.institutionType === "MAT_SCHOOL" && controller.signatoryApproval?.status !== "APPROVED";
+  const waitingForApproval = controller.approvalRequired && controller.institutionApproval?.status !== "APPROVED";
   const displayProgress = lockedDocumentStage ? 100 : progress;
   const pageTitle = lockedDocumentStage ? "Upload required documents" : roleSelected ? signupStepTitle(activeRole, currentStep) : "Choose account type";
   const pageDescription = lockedDocumentStage
@@ -148,7 +148,7 @@ export function OnboardingPage({
 
   if (controller.statusStage) {
     return (
-      <MatApplicationWaitingPage
+      <InstitutionApplicationWaitingPage
         controller={controller}
         onLanding={onLanding}
         onLogout={onLogin}
@@ -270,9 +270,9 @@ export function OnboardingPage({
             {lockedDocumentStage ? (
               <div className="space-y-6">
                 <PhoneVerificationCard controller={controller} />
-                <div className={controller.form.institutionType === "MAT_SCHOOL" ? "grid items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "space-y-6"}>
-                  {controller.form.institutionType === "MAT_SCHOOL" ? (
-                    <SignatoryApprovalCard controller={controller} onRefresh={onRefresh} />
+                <div className={controller.approvalRequired ? "grid items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "space-y-6"}>
+                  {controller.approvalRequired ? (
+                    <InstitutionApprovalCard controller={controller} onRefresh={onRefresh} />
                   ) : null}
                   <DocumentUploadStep controller={controller} />
                 </div>
@@ -301,7 +301,7 @@ export function OnboardingPage({
             )}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <span className="self-center text-xs font-semibold uppercase tracking-[1px] text-muted">
-                {lockedDocumentStage ? (waitingForSignatory ? "Documents and trust approval are checked separately" : "Documents required before review") : "Saved on continue"}
+                {lockedDocumentStage ? (waitingForApproval ? "Documents and school approval are checked separately" : "Documents required before review") : "Saved on continue"}
               </span>
               <Btn
                 loading={pending === "step" || pending === "submit"}
@@ -364,7 +364,7 @@ function PhoneVerificationCard({ controller }: { controller: OnboardingFormContr
   );
 }
 
-function MatApplicationWaitingPage({
+function InstitutionApplicationWaitingPage({
   controller,
   onLanding,
   onLogout,
@@ -373,8 +373,10 @@ function MatApplicationWaitingPage({
   onLanding: () => void;
   onLogout: () => void;
 }) {
-  const approval = controller.signatoryApproval;
-  const trustApproved = approval?.status === "APPROVED";
+  const isMat = controller.form.institutionType === "MAT_SCHOOL";
+  const contactLabel = isMat ? "trust signatory" : "compliance contact";
+  const approval = controller.institutionApproval;
+  const contactApproved = approval?.status === "APPROVED";
   const signatoryLabel = approval?.status ? approval.status.toLowerCase().replace("_", " ") : "not requested";
 
   return (
@@ -389,18 +391,18 @@ function MatApplicationWaitingPage({
 
       <main className="mx-auto flex min-h-[calc(100vh-76px)] max-w-[1040px] items-center px-4 py-10 sm:px-6 lg:px-8">
         <section className="account-status-card w-full border border-border bg-white">
-          <Tag tone={trustApproved ? "green" : "amber"}>Profile status pending</Tag>
+          <Tag tone={contactApproved ? "green" : "amber"}>Profile status pending</Tag>
           <h1 className="mt-4 font-heading">Your school is not ready for workspace access yet.</h1>
           <p className="mt-4 max-w-[760px] text-base leading-7 text-muted">
-            Your documents are ready. SupplyED will submit the school for application review as soon as the trust signatory approval is confirmed. The workspace stays locked until both checks are complete and the school profile is active.
+            Your documents are ready. Once your {contactLabel} approves, check the application below to submit it for SupplyED review. Workspace access requires the school profile to be approved by SupplyED.
           </p>
 
           <div className="mt-7 grid gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-border bg-chalk p-5">
               <div className="label-xs">Application review</div>
-              <div className="mt-2 font-heading text-xl">{trustApproved ? "Ready to submit" : "Waiting for trust approval"}</div>
+              <div className="mt-2 font-heading text-xl">{contactApproved ? "Ready to submit" : `Waiting for ${contactLabel} approval`}</div>
               <p className="mt-2 text-sm leading-6 text-muted">
-                {trustApproved ? "Check the application now to submit it to SupplyED for review." : "The backend cannot accept the review submission until the trust has approved the school."}
+                {contactApproved ? "Check the application now to submit it to SupplyED for review." : `Your ${contactLabel} must approve the school before you can submit for review.`}
               </p>
               <Btn className="mt-4" icon="clock" loading={controller.pending === "submit"} loadingLabel="Checking application" onClick={() => void controller.submitDocumentsForReview()}>
                 Check application
@@ -408,19 +410,19 @@ function MatApplicationWaitingPage({
             </div>
 
             <div className="rounded-xl border border-border bg-chalk p-5">
-              <div className="label-xs">Trust signatory approval</div>
+              <div className="label-xs">{isMat ? "Trust signatory approval" : "Compliance approval"}</div>
               <div className="mt-2 font-heading text-xl capitalize">{signatoryLabel}</div>
               <p className="mt-2 text-sm leading-6 text-muted">
-                {trustApproved
-                  ? "The trust has approved this school. Check the application to continue."
+                {contactApproved
+                  ? `Your ${contactLabel} has approved this school. Check the application to continue.`
                   : approval?.status === "DECLINED"
-                    ? approval.declineReason || "The signatory declined this request. Return to update and resend it."
+                    ? approval.declineReason || `Your ${contactLabel} declined this request. Return to update and resend it.`
                     : approval?.status === "EXPIRED" || approval?.status === "REVOKED"
                       ? "This request is no longer valid. Return to the document screen to send a new request."
-                      : `Waiting for ${approval?.signatoryName || "the trust signatory"} to respond.`}
+                      : `Waiting for ${controller.approvalContactName || `your ${contactLabel}`} to respond.`}
               </p>
-              <Btn className="mt-4" variant="secondary" loading={controller.pending === "status"} loadingLabel="Checking approval" onClick={() => void controller.refreshSignatoryApproval()}>
-                Check signatory approval
+              <Btn className="mt-4" variant="secondary" loading={controller.pending === "status"} loadingLabel="Checking approval" onClick={() => void controller.refreshInstitutionApproval()}>
+                Check approval
               </Btn>
             </div>
           </div>
@@ -432,7 +434,7 @@ function MatApplicationWaitingPage({
           ) : null}
 
           <div className="mt-7 flex flex-wrap gap-3">
-            <Btn variant="secondary" onClick={controller.returnToDocuments}>Review documents and signatory</Btn>
+            <Btn variant="secondary" onClick={controller.returnToDocuments}>Review documents and approval</Btn>
             <Btn variant="ghost" onClick={onLogout}>Logout</Btn>
           </div>
         </section>
@@ -441,36 +443,38 @@ function MatApplicationWaitingPage({
   );
 }
 
-function SignatoryApprovalCard({
+function InstitutionApprovalCard({
   controller,
   onRefresh,
 }: {
   controller: OnboardingFormController;
   onRefresh?: () => void;
 }) {
-  const approval = controller.signatoryApproval;
+  const isMat = controller.form.institutionType === "MAT_SCHOOL";
+  const contactLabel = isMat ? "trust signatory" : "compliance contact";
+  const approval = controller.institutionApproval;
   const status = approval?.status;
   const canResend = status !== "APPROVED";
   const title = status === "APPROVED"
-    ? "Approved by your trust"
+    ? `Approved by your ${contactLabel}`
     : status === "DECLINED"
-      ? "Trust approval was declined"
+      ? "School approval was declined"
       : status === "EXPIRED"
-        ? "Trust approval link expired"
+        ? "Approval link expired"
         : status === "REVOKED"
-          ? "Trust approval is no longer valid"
-          : "Waiting for trust signatory approval";
+          ? "Approval is no longer valid"
+          : `Waiting for ${contactLabel} approval`;
   const message = status === "APPROVED"
-    ? approval?.approvedByAdmin
+    ? isMat && controller.signatoryApproval?.approvedByAdmin
       ? "SupplyED recorded this approval after verifying it with the trust."
-      : "The trust signatory approved this school. Complete any required documents, then submit for review."
+      : `Your ${contactLabel} approved this school. Complete any required documents, then submit for review.`
     : status === "DECLINED"
-      ? approval?.declineReason || "Update the signatory details and send a new request."
+      ? approval?.declineReason || "Update the contact details and send a new request."
       : status === "EXPIRED"
-        ? "The signatory did not respond before the link expired. Update the details and send a new request."
+        ? "The contact did not respond before the link expired. Update the details and send a new request."
         : status === "REVOKED"
-          ? "The trust details or approval request changed. Send a new request."
-          : `An approval email was sent${approval?.signatoryName ? ` to ${approval.signatoryName}` : " to your trust signatory"}.`;
+          ? "The school details or approval request changed. Send a new request."
+          : (approval ? `An approval email was sent to ${controller.approvalContactName || `your ${contactLabel}`}.` : "Send an approval request to continue.");
 
   return (
     <div className={`rounded-xl border p-5 ${status === "APPROVED" ? "border-success bg-success-tint" : status === "DECLINED" ? "border-danger bg-danger-tint" : "border-brand-tint-2 bg-brand-tint"}`}>
@@ -483,12 +487,13 @@ function SignatoryApprovalCard({
           ) : null}
         </div>
         <div className="flex gap-2">
-          {canResend ? <Btn size="sm" loading={controller.pending === "submit"} onClick={() => void controller.requestSignatoryApproval()}>{status === "PENDING" ? "Resend approval request" : "Send approval request"}</Btn> : null}
+          {canResend ? <Btn size="sm" loading={controller.pending === "submit"} onClick={() => void controller.requestInstitutionApproval()}>{status === "PENDING" ? "Resend approval request" : "Send approval request"}</Btn> : null}
           {onRefresh ? <Btn size="sm" variant="secondary" onClick={onRefresh}>Refresh status</Btn> : null}
         </div>
       </div>
       {canResend ? (
         <div className="mt-5 grid gap-x-4 sm:grid-cols-2">
+          {isMat ? <>
           <Field label="Signatory name" error={controller.errors.signatoryName} required>
             <input className="input" maxLength={200} value={controller.form.signatoryName} onChange={(event) => controller.updateField("signatoryName", event.target.value)} />
           </Field>
@@ -498,6 +503,14 @@ function SignatoryApprovalCard({
           <Field label="Signatory job title" error={controller.errors.signatoryJobTitle} required>
             <input className="input" maxLength={150} value={controller.form.signatoryJobTitle} onChange={(event) => controller.updateField("signatoryJobTitle", event.target.value)} />
           </Field>
+          </> : <>
+            <Field label="Compliance lead" error={controller.errors.complianceContact} required>
+              <input className="input" maxLength={200} value={controller.form.complianceContact} onChange={(event) => controller.updateField("complianceContact", event.target.value)} />
+            </Field>
+            <Field label="Compliance email" error={controller.errors.complianceEmail} required>
+              <input className="input" maxLength={254} type="email" value={controller.form.complianceEmail} onChange={(event) => controller.updateField("complianceEmail", event.target.value)} />
+            </Field>
+          </>}
         </div>
       ) : null}
     </div>

@@ -4,6 +4,7 @@ const fallbackMessage = "We couldn't complete this request. Please try again.";
 export function userFacingError(message: string, options: { status?: number; code?: string } = {}): string {
   const clean = message.replace(/\s*\(?Support reference:[\s\S]*$/i, "").trim();
   const marketplaceMessages: Record<string, string> = {
+    INSTRUCTOR_DOCUMENTS_NOT_VERIFIED: "Required teacher documents must be uploaded, current and approved before applications or messaging are available. Complete missing uploads, replace rejected or expired documents, and wait for pending reviews to be approved.",
     SCHOOL_INACTIVE: "Your school must be active and approved before publishing, inviting or hiring. Check your account status.",
     JOB_RESERVED: "This role is reserved for an invited teacher. Review its latest invitation status.",
     JOB_UNAVAILABLE: "This role is no longer available for applications or hiring.",
@@ -13,7 +14,11 @@ export function userFacingError(message: string, options: { status?: number; cod
     JOB_HISTORY_PROTECTED: "This job has history and cannot be deleted. Close it to preserve its records.",
   };
   if (options.code && marketplaceMessages[options.code]) return marketplaceMessages[options.code];
-  if (options.status === 401 || options.code === "SESSION_EXPIRED") return "Your session expired. Sign in again to continue.";
+  if (options.code === "SESSION_EXPIRED") return "Your session expired. Sign in again to continue.";
+  // Login failures also use HTTP 401, before a session has been created.
+  // Preserve this distinction through both ApiError and actionError sanitizing.
+  if (options.code === "INVALID_CREDENTIALS" || /^invalid (?:email or password|credentials)[.!]?$/i.test(clean)) return "Invalid email or password.";
+  if (options.status === 401) return "Your session expired. Sign in again to continue.";
   if (options.status === 408 || options.status === 504 || /timeout|timed out|aborted/i.test(clean)) return "This is taking longer than expected. Please try again.";
   if (options.status && options.status >= 500) return "Something went wrong on our side. Please try again shortly.";
   if (/already booked.*overlapping|bookings? overlap|overlapping booking/i.test(clean)) return "This teacher is already booked during these dates. Choose different dates or another teacher.";

@@ -174,6 +174,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     maxTravelDistance: instructor?.maxTravelDistance ?? "",
     phone: user?.phone ?? "",
     profileCity: instructor?.city || "",
+    profileAddress: instructor?.address || "",
     profileCountryCode: instructor?.countryCode || "GB",
     postcode: instructor?.postalCode || institution?.postalCode || user?.postcode || "",
     safeguardingConfirmed: institution?.safeguardingConfirmed ?? false,
@@ -200,6 +201,7 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("email", form.email || accountEmail || "");
   data.set("phone", validateUkPhone(form.phone).value);
   data.set("profileCity", validateUkCity(form.profileCity).value);
+  data.set("profileAddress", form.profileAddress.trim());
   data.set("profileCountryCode", validateUkCountry(form.profileCountryCode).value);
   data.set("postcode", validateUkPostcode(form.postcode).value);
   data.set("teacherProfileId", form.teacherProfileId);
@@ -216,13 +218,13 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("staffingNeeds", JSON.stringify(toSubjectEditor(catalogue, form.staffingNeeds, form.otherSubjects).subjects));
   data.set("trustName", form.trustName.trim());
   data.set("trustCompanyNumber", form.trustCompanyNumber.trim());
-  data.set("signatoryName", form.signatoryName.trim());
-  data.set("signatoryEmail", form.signatoryEmail.trim());
-  data.set("signatoryJobTitle", form.signatoryJobTitle.trim());
+  if (form.institutionType === "MAT_SCHOOL") data.set("signatoryName", form.signatoryName.trim());
+  if (form.institutionType === "MAT_SCHOOL") data.set("signatoryEmail", form.signatoryEmail.trim());
+  if (form.institutionType === "MAT_SCHOOL") data.set("signatoryJobTitle", form.signatoryJobTitle.trim());
   data.set("coverTypes", JSON.stringify(form.coverTypes));
   data.set("typicalPupilCount", form.typicalPupilCount.trim());
-  data.set("complianceContact", form.complianceContact.trim());
-  data.set("complianceEmail", form.complianceEmail.trim());
+  if (form.institutionType === "SINGLE_SCHOOL") data.set("complianceContact", form.complianceContact.trim());
+  if (form.institutionType === "SINGLE_SCHOOL") data.set("complianceEmail", form.complianceEmail.trim());
   data.set("safeguardingConfirmed", String(form.safeguardingConfirmed));
   data.set("subjects", JSON.stringify(toSubjectEditor(catalogue, form.subjects, form.otherSubjects).subjects));
   data.set("keyStages", JSON.stringify(form.keyStages));

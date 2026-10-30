@@ -1,5 +1,4 @@
 import { useRateLimit } from "@/lib/rate-limit";
-import { AgreedTerms } from "../molecules/AgreedTerms";
 import { formatPlannedUnits } from "@/features/jobs/work-units";
 import { useState } from "react";
 
@@ -22,7 +21,9 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   const [coverLetterTextLength, setCoverLetterTextLength] = useState(0);
   const [coverLetterError, setCoverLetterError] = useState<string>();
   const bookingQuery = useBooking(ctx.bookingId);
-  const jobQuery = useJob(ctx.bookingId ? "" : ctx.jobId ?? "", role === "institution" ? true : "accessible");
+  const bookingJobId = bookingQuery.data?.job.id;
+  const selectedJobId = ctx.jobId ?? bookingJobId ?? "";
+  const jobQuery = useJob(selectedJobId, role === "institution" ? true : "accessible");
   const job = jobQuery.data;
   const positionFilled = job?.status === "FILLED";
   const available = Boolean(job && isJobOpenForApplications(job));
@@ -83,23 +84,11 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
     setCoverLetterError(undefined);
   }
 
-  if (ctx.bookingId) {
-    const booking = bookingQuery.data;
-    const date = (value?: string | null) => value ? new Date(value).toLocaleString("en-GB", { timeZone: "Europe/London" }) : "Not recorded";
-    return <div className="app-page job-detail-page">
-      <Btn variant="secondary" onClick={() => go("bookings", { bookingId: ctx.bookingId })}>Back to booking</Btn>
-      {bookingQuery.isLoading ? <SectionLoader rows={3} /> : booking ? <>
-        <h1 className="mt-5 font-heading text-2xl">{booking.job.title}</h1>
-        <AgreedTerms terms={booking.agreedTerms} legacy />
-        {!booking.agreedTerms ? <dl className="grid gap-4 text-sm sm:grid-cols-2">
-          <div><dt>Original dates (UK time)</dt><dd>{date(booking.startDate)} – {date(booking.endDate)}</dd></div>
-          <div><dt>Original pay and work units</dt><dd>{booking.payAmount == null ? "Not recorded" : `£${booking.payAmount} ${booking.payType ?? ""}`} · {formatPlannedUnits(booking)}</dd></div>
-        </dl> : null}
-      </> : <p role="alert">{bookingQuery.error?.message ?? "Booking unavailable."}</p>}
-    </div>;
+  if (ctx.bookingId && bookingQuery.isLoading) {
+    return <div className="app-page job-detail-page"><SectionLoader rows={5} /></div>;
   }
 
-  if (!ctx.jobId) {
+  if (!selectedJobId) {
     return (
       <div className="app-page job-detail-page">
         <div className="card card-pad-lg text-center">
@@ -157,7 +146,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-brand">About the hiring school</div>
                 <h2 className="mt-1 font-heading text-xl font-semibold text-ink">{job.institution?.name || job.school}</h2>
-                <p className="mt-1 text-sm leading-6 text-muted">View the school’s verified profile, details and reviews before you apply.</p>
+                <p className="mt-1 text-sm leading-6 text-muted">View the school’s verified profile, details and reviews for this placement.</p>
               </div>
               <Btn
                 className="w-full sm:w-auto"

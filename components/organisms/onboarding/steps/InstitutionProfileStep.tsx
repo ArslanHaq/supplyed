@@ -47,7 +47,12 @@ export function InstitutionProfileStep(props: AccountStepProps) {
             />
           </Field>
           <PostcodeLookup id="institution-postcode" error={errors.postcode} required value={form.postcode}
-            onChange={(value) => updateField("postcode", value)} onSelect={(selection) => updateField("postcode", selection.postcode)} />
+            onChange={(value) => updateField("postcode", value)} onSelect={(selection) => {
+              updateField("postcode", selection.postcode);
+              updateField("institutionCountryCode", selection.countryCode);
+              updateField("institutionCity", selection.city);
+              updateField("localAuthority", selection.county);
+            }} />
           <CountryCityFields
             city={form.institutionCity}
             cityError={errors.institutionCity}

@@ -401,14 +401,13 @@ function PostJobEditor({
             {addressMode === "different" ? <div className="mt-4 grid gap-4 md:grid-cols-2">
               <PostcodeLookup
                 error={errors.postalCode}
-                hint="Check the postcode area, then select the city or town."
                 id="post-job-postcode"
                 onChange={(value) => updateForm("postalCode", value)}
                 onSelect={(selection) => {
                   updateForm("postalCode", selection.postcode);
-                  updateForm("countryCode", "GB");
-                  if (selection.city) updateForm("city", selection.city);
-                  if (selection.county) updateForm("county", selection.county);
+                  updateForm("countryCode", selection.countryCode);
+                  updateForm("city", selection.city);
+                  updateForm("county", selection.county);
                 }}
                 value={form.postalCode}
               />
@@ -437,6 +436,7 @@ function PostJobEditor({
             <Field error={errors.payAmount} label="Pay amount (£)">
               <input
                 className="input"
+                max={5000}
                 min={0}
                 placeholder="180"
                 type="number"
@@ -463,6 +463,7 @@ function PostJobEditor({
           <Field error={errors.minExperienceYears} label="Minimum experience (years)">
             <input
               className="input"
+              max={80}
               min={0}
               placeholder="e.g. 2"
               step={1}
@@ -724,10 +725,12 @@ function validateOptionalJobFields(form: JobFormState): JobFormErrors {
   if (form.payAmount.trim()) {
     const payAmount = Number(form.payAmount);
     if (!Number.isFinite(payAmount) || payAmount < 0) errors.payAmount = "Enter a valid pay amount.";
+    else if (payAmount > 5000) errors.payAmount = "Pay amount cannot exceed £5,000.";
   }
   if (form.minExperienceYears.trim()) {
     const years = Number(form.minExperienceYears);
     if (!Number.isInteger(years) || years < 0) errors.minExperienceYears = "Enter a whole number of 0 or more.";
+    else if (years > 80) errors.minExperienceYears = "Experience cannot exceed 80 years.";
   }
   return errors;
 }

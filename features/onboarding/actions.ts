@@ -23,6 +23,7 @@ import {
   getProfileDocumentRequirements as loadProfileDocumentRequirements,
   uploadProfileDocument,
 } from "./documents";
+import { waitingForInstitutionApproval } from "./institution-approval";
 import { hasCreatedRoleProfile } from "./profile-progress";
 import { normalizeOnboardingForm, validateOnboardingForm } from "./validation";
 import { normalizeStoredUkPhone, validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
@@ -37,6 +38,7 @@ import type {
   OnboardingProfileSnapshot,
   OnboardingProgressResult,
   SignatoryApprovalSnapshot,
+  ComplianceApprovalSnapshot,
   OnboardingSubmitResult,
   OnboardingUserSnapshot,
 } from "./types";
@@ -56,6 +58,7 @@ function readNumber(value: unknown): number | undefined {
 }
 
 type InstructorProfilePayload = {
+  address?: string;
   otherSubjects?: string[]; otherSkills?: string[];
   bio?: string;
   city?: string;
@@ -116,6 +119,7 @@ type BackendUserProfile = {
 };
 
 type BackendInstructorProfile = {
+  address?: string | null;
   bio?: string | null;
   city?: string | null;
   countryCode?: string;
@@ -134,6 +138,7 @@ type BackendInstructorProfile = {
 };
 
 type BackendInstitutionProfile = {
+  complianceApprovalRequired?: boolean;
   address?: string;
   city?: string;
   complianceContact?: string | null;
@@ -189,6 +194,7 @@ function normalizeInstructorSnapshot(profile: BackendInstructorProfile): Onboard
   if (!profile.id) return undefined;
 
   return {
+    address: profile.address || "",
     bio: profile.bio || "",
     city: profile.city || "",
     countryCode: profile.countryCode || "GB",
@@ -215,6 +221,7 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
     city: profile.city || "",
     complianceContact: profile.complianceContact || "",
     complianceEmail: profile.complianceEmail || "",
+    complianceApprovalRequired: profile.complianceApprovalRequired ?? true,
     countryCode: profile.countryCode || "GB",
     coverTypes: readStringArray(profile.coverTypes),
     county: profile.county || "",
@@ -323,6 +330,7 @@ function readFormFile(formData: FormData, key: string) {
 function buildInstructorProfilePayload(formData: FormData): InstructorProfilePayload {
   const postalCode = readFormString(formData, "postcode");
   const profile: InstructorProfilePayload = {
+    address: formData.has("profileAddress") ? readFormString(formData, "profileAddress") : undefined,
     bio: readFormString(formData, "bio") || undefined,
     city: readFormString(formData, "profileCity") || undefined,
     countryCode: readFormString(formData, "profileCountryCode") || "GB",
@@ -356,8 +364,8 @@ function buildInstitutionProfilePayload(formData: FormData): InstitutionProfileP
     address: readFormString(formData, "institutionAddress"),
     city: readFormString(formData, "institutionCity"),
     countryCode: readFormString(formData, "institutionCountryCode") || "GB",
-    complianceContact: readFormString(formData, "complianceContact") || undefined,
-    complianceEmail: readFormString(formData, "complianceEmail") || undefined,
+    complianceContact: institutionType === "SINGLE_SCHOOL" ? readFormString(formData, "complianceContact") || undefined : undefined,
+    complianceEmail: institutionType === "SINGLE_SCHOOL" ? readFormString(formData, "complianceEmail").toLowerCase() || undefined : undefined,
     coverTypes: readFormStringArray(formData, "coverTypes"),
     county: readFormString(formData, "localAuthority") || undefined,
     domain: normalizeDomain(readFormString(formData, "institutionDomain")),
@@ -430,6 +438,21 @@ async function getInstitutionSnapshot(accessToken?: string) {
   }
 }
 
+
+async function getComplianceApproval(accessToken?: string): Promise<ComplianceApprovalSnapshot | null> {
+  return api.get<ComplianceApprovalSnapshot | null>("/institutions/me/compliance-approval", {
+    cache: "no-store",
+    ...(accessToken ? { auth: false, headers: buildBearerHeaders(accessToken) } : {}),
+  });
+}
+
+async function ensureComplianceApproval(accessToken: string, forceResend = false) {
+  const current = await getComplianceApproval(accessToken);
+  if (current?.status === "APPROVED" || (!forceResend && current?.status === "PENDING")) return current;
+  return api.post<ComplianceApprovalSnapshot>("/institutions/me/compliance-approval", {}, {
+    auth: false, headers: buildBearerHeaders(accessToken),
+  });
+}
 
 async function getSignatoryApproval(accessToken?: string): Promise<SignatoryApprovalSnapshot | null> {
   return api.get<SignatoryApprovalSnapshot | null>("/institutions/me/signatory-approval", {
@@ -533,6 +556,9 @@ export async function getOnboardingProfileSnapshot(): Promise<OnboardingProfileS
       snapshot.applicationStatus = snapshot.institution?.status ?? "none";
       snapshot.signatoryApproval = snapshot.institution?.institutionType === "MAT_SCHOOL"
         ? await getSignatoryApproval()
+        : null;
+      snapshot.complianceApproval = snapshot.institution?.institutionType === "SINGLE_SCHOOL" && snapshot.institution.complianceApprovalRequired !== false
+        ? await getComplianceApproval()
         : null;
     }
 
@@ -1042,18 +1068,19 @@ async function submitInstitutionOnboarding(formData: FormData) {
   try {
     if (readFormString(formData, "intent") === "review") {
       const sessionAuth = await getOnboardingAuth();
-      const [institution, documentState, signatoryApproval] = await Promise.all([
+      const [institution, documentState] = await Promise.all([
         getInstitutionSnapshot(sessionAuth.accessToken),
         getDocumentState("institution", sessionAuth.accessToken),
-        getSignatoryApproval(sessionAuth.accessToken),
       ]);
       if (!institution) throw new Error("Create your school profile before sending it for review.");
+      const signatoryApproval = institution.institutionType === "MAT_SCHOOL" ? await getSignatoryApproval(sessionAuth.accessToken) : null;
+      const complianceApproval = institution.institutionType === "SINGLE_SCHOOL" && institution.complianceApprovalRequired !== false ? await getComplianceApproval(sessionAuth.accessToken) : null;
 
       const user = normalizeUserSnapshot(sessionAuth.user, sessionAuth.user.email, readFormString(formData, "postcode"));
       const savedPhone = validateUkPhone(sessionAuth.user.phone, { required: true });
       if (!savedPhone.valid) return actionError("Update your saved UK phone number before review.", { fieldErrors: { phone: savedPhone.error! } });
       const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
-      if (missingDocuments.length > 0 || (institution.institutionType === "MAT_SCHOOL" && signatoryApproval?.status !== "APPROVED")) {
+      if (missingDocuments.length > 0 || waitingForInstitutionApproval(institution, signatoryApproval, complianceApproval)) {
         return actionOk<OnboardingProgressResult>(
           {
             applicationStatus: "none",
@@ -1064,12 +1091,13 @@ async function submitInstitutionOnboarding(formData: FormData) {
               institution,
               role: "institution",
               signatoryApproval,
+              complianceApproval,
               user,
             },
           },
           missingDocuments.length > 0
             ? `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`
-            : "Waiting for the trust signatory to approve this school before it can be submitted for review.",
+            : (institution.institutionType === "MAT_SCHOOL" ? "Waiting for the trust signatory to approve this school before it can be submitted for review." : "Waiting for the compliance contact to approve this school before it can be submitted for review."),
         );
       }
 
@@ -1089,6 +1117,7 @@ async function submitInstitutionOnboarding(formData: FormData) {
             institution: submittedInstitution,
             role: "institution",
             signatoryApproval,
+            complianceApproval,
             user,
           },
           ticket: createVerifiedEmailSessionTicket(
@@ -1116,6 +1145,9 @@ async function submitInstitutionOnboarding(formData: FormData) {
     const signatoryApproval = institution.institutionType === "MAT_SCHOOL"
       ? await ensureSignatoryApproval(formData, sessionAuth.accessToken, readFormString(formData, "intent") === "signatory")
       : null;
+    const complianceApproval = institution.institutionType === "SINGLE_SCHOOL" && institution.complianceApprovalRequired !== false
+      ? await ensureComplianceApproval(sessionAuth.accessToken, readFormString(formData, "intent") === "compliance")
+      : null;
 
     const documentState = await getDocumentState("institution", sessionAuth.accessToken);
     const ticket = createVerifiedEmailSessionTicket(
@@ -1128,7 +1160,7 @@ async function submitInstitutionOnboarding(formData: FormData) {
       }),
     );
     const missingDocuments = missingRequiredDocumentNames(documentState.documentRequirements, documentState);
-    if (missingDocuments.length > 0 || (institution.institutionType === "MAT_SCHOOL" && signatoryApproval?.status !== "APPROVED")) {
+    if (missingDocuments.length > 0 || waitingForInstitutionApproval(institution, signatoryApproval, complianceApproval)) {
       revalidateTag("onboarding", "max");
       return actionOk<OnboardingProgressResult>(
         {
@@ -1142,35 +1174,14 @@ async function submitInstitutionOnboarding(formData: FormData) {
             requirementDocuments: documentState.requirementDocuments,
             role: "institution",
             signatoryApproval,
+            complianceApproval,
             user,
           },
           ticket,
         },
         missingDocuments.length > 0
           ? `Upload required document${missingDocuments.length === 1 ? "" : "s"}: ${missingDocuments.join(", ")}.`
-          : "Waiting for the trust signatory to approve this school before it can be submitted for review.",
-      );
-    }
-
-    if (institution.institutionType === "MAT_SCHOOL" && signatoryApproval?.status !== "APPROVED") {
-      revalidateTag("onboarding", "max");
-      return actionOk<OnboardingProgressResult>(
-        {
-          applicationStatus: "none",
-          savedStep: Number(readFormString(formData, "step")) || 4,
-          snapshot: {
-            ...documentState,
-            applicationStatus: "none",
-            institution,
-            role: "institution",
-            signatoryApproval,
-            user,
-          },
-          ticket,
-        },
-        signatoryApproval?.status === "DECLINED"
-          ? signatoryApproval.declineReason || "The trust signatory declined this request. Update the details and send a new request."
-          : "Waiting for the trust signatory to approve this school before it can be submitted for review.",
+          : (institution.institutionType === "MAT_SCHOOL" ? "Waiting for the trust signatory to approve this school before it can be submitted for review." : "Waiting for the compliance contact to approve this school before it can be submitted for review."),
       );
     }
 
@@ -1192,6 +1203,7 @@ async function submitInstitutionOnboarding(formData: FormData) {
           requirementDocuments: documentState.requirementDocuments,
           role: "institution",
           signatoryApproval,
+          complianceApproval,
           user,
         },
         ticket: createVerifiedEmailSessionTicket(

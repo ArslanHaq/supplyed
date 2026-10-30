@@ -26,6 +26,7 @@ export const initialForm: SignupForm = {
   password: "",
   phone: "",
   profileCity: "",
+  profileAddress: "",
   profileCountryCode: "GB",
   postcode: "",
   safeguardingConfirmed: false,

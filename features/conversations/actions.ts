@@ -17,7 +17,7 @@ export async function startConversationAction(input: StartConversationInput) {
   try {
     return actionOk(normalizeConversation(await api.post<Conversation>("/conversations", payload)));
   } catch (error) {
-    return actionError(readError(error, "The conversation could not be opened."), { code: errorCode(error) });
+    return actionError(readError(error, "The conversation could not be opened."), errorOptions(error));
   }
 }
 
@@ -57,7 +57,7 @@ export async function sendMessageAction(input: SendMessageInput) {
     });
     return actionOk(normalizeMessage(message));
   } catch (error) {
-    return actionError(readError(error, "The message could not be sent."), { code: errorCode(error) });
+    return actionError(readError(error, "The message could not be sent."), errorOptions(error));
   }
 }
 
@@ -83,6 +83,15 @@ export async function attachmentDownloadUrlAction(conversationId: string, attach
 
 function errorCode(error: unknown) {
   return error instanceof ApiError ? error.code : undefined;
+}
+
+function errorOptions(error: unknown) {
+  return error instanceof ApiError ? {
+    code: error.code,
+    requestId: error.requestId,
+    retryAfter: error.retryAfter,
+    status: error.status,
+  } : {};
 }
 
 function readError(error: unknown, fallback: string) {

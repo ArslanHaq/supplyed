@@ -46,7 +46,7 @@ function OptionDropdown({
   const normalizedOptions = options.map(normalizeOption);
   const filteredOptions = normalizedOptions.filter((option) => `${option.label} ${option.keywords ?? ""}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   const labels = value.map((item) => normalizedOptions.find((option) => option.value === item)?.label ?? item);
-  const summary = labels.length > 2 ? `${labels.slice(0, 2).join(", ")} +${labels.length - 2} more` : labels.join(", ");
+  const summary = labels.join(", ");
   const activeOptionId = filteredOptions[activeIndex] ? `${listId}-${activeIndex}` : undefined;
   const isOpen = open && !disabled;
 

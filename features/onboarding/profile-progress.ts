@@ -1,3 +1,4 @@
+import { waitingForInstitutionApproval } from "./institution-approval";
 import { missingRequiredDocuments } from "./document-utils";
 import type { OnboardingProfileSnapshot } from "./types";
 
@@ -7,14 +8,14 @@ export function hasCreatedRoleProfile(snapshot: OnboardingProfileSnapshot) {
   return false;
 }
 
-function hasRequiredTrustApproval(snapshot: OnboardingProfileSnapshot) {
-  if (snapshot.role !== "institution" || snapshot.institution?.institutionType !== "MAT_SCHOOL") return true;
-  return snapshot.signatoryApproval?.status === "APPROVED";
+function hasRequiredInstitutionApproval(snapshot: OnboardingProfileSnapshot) {
+  if (snapshot.role !== "institution") return true;
+  return !waitingForInstitutionApproval(snapshot.institution, snapshot.signatoryApproval, snapshot.complianceApproval);
 }
 
 export function isProfileVerified(snapshot: OnboardingProfileSnapshot) {
   if (!snapshot.user?.emailVerified || !snapshot.user.phoneVerified ||
-      snapshot.applicationStatus !== "approved" || !hasCreatedRoleProfile(snapshot) || !hasRequiredTrustApproval(snapshot)) return false;
+      snapshot.applicationStatus !== "approved" || !hasCreatedRoleProfile(snapshot) || !hasRequiredInstitutionApproval(snapshot)) return false;
 
   return snapshot.documentRequirements.every((requirement) => {
     const document = snapshot.requirementDocuments[requirement.id];
@@ -28,6 +29,6 @@ export function profileEntryStatus(snapshot: OnboardingProfileSnapshot) {
   if (snapshot.applicationStatus === "suspended") return "suspended";
   if (!hasCreatedRoleProfile(snapshot) || snapshot.applicationStatus === "rejected") return "none";
   if (missingRequiredDocuments(snapshot.documentRequirements, snapshot.requirementDocuments).length > 0) return "none";
-  if (!hasRequiredTrustApproval(snapshot)) return "none";
+  if (!hasRequiredInstitutionApproval(snapshot)) return "none";
   return snapshot.applicationStatus;
 }
