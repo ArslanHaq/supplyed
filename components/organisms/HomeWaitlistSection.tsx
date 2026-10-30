@@ -73,7 +73,7 @@ const questions = [
 */
 
 export function HomeWaitlistSection() {
-  const [audience, setAudience] = useState<"SCHOOL" | "TEACHER">("SCHOOL");
+  const [audience, setAudience] = useState<"SCHOOL" | "TEACHER">("TEACHER");
   const [formVersion, setFormVersion] = useState(0);
   function join(type: "SCHOOL" | "TEACHER") {
     setAudience(type);
