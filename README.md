@@ -4,6 +4,8 @@ A staffing marketplace that connects UK schools with teachers. Schools post jobs
 
 **Status:** prototype · **Preview:** [supplyed.vercel.app](https://supplyed.vercel.app)
 
+![SupplyED landing page](docs/images/supplyed-landing.jpg)
+
 ## Features
 
 - **Role-based workspaces** for schools and teachers, with guided onboarding
