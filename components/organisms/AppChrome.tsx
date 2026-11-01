@@ -17,6 +17,7 @@ type NavItem = {
 
 const institutionNav: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "home" },
+  { id: "my-jobs", label: "My Jobs", icon: "file" },
   { id: "find-teachers", label: "Teachers", icon: "search" },
   { id: "applications", label: "Applications", icon: "users" },
   { id: "job-invitations", label: "Invitations", icon: "mail" },
@@ -54,7 +55,7 @@ export function AppChrome({
   const fallbackUserName = state.role === "admin" ? "Administrator" : state.role === "institution" ? "School workspace" : "Instructor";
   const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
   const userSub = state.role === "admin" ? "Administrator" : state.role === "institution" ? "School account" : "Instructor";
-  const searchPlaceholder = state.role === "admin" ? "Search admin panel..." : state.role === "teacher" ? "Search jobs..." : "Search teachers...";
+  const searchPlaceholder = state.role === "admin" ? "Search admin panel..." : state.role === "teacher" || state.page === "my-jobs" ? "Search jobs..." : "Search teachers...";
   const [navSearch, setNavSearch] = useState("");
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -79,7 +80,7 @@ export function AppChrome({
     event.preventDefault();
     if (state.role !== "institution") return;
     const search = navSearch.trim().slice(0, 100);
-    go("find-teachers", search ? { search } : undefined);
+    go(state.page === "my-jobs" ? "my-jobs" : "find-teachers", search ? { search } : undefined);
   }
 
   function navigate(page: AppPage) {

@@ -13,6 +13,7 @@ export function validateJobInput(input: JobCreateInput | JobUpdateInput, options
   if (customError) errors.otherSubjects = customError;
   const skillError = input.otherSkills !== undefined || !options.partial ? otherSkillsError(input.requiredSkills, input.otherSkills) : undefined;
   if (skillError) errors.otherSkills = skillError;
+  if ((!options.partial || input.jobType !== undefined) && !["INSTANT", "BRIEF"].includes(input.jobType ?? "")) errors.jobType = "Choose instant matching or an open brief.";
   for (const [key, max] of [["title", 200], ["description", 10000]] as const) {
     const value = input[key];
     const editable = key === "description" && typeof value === "string" ? value.split(/\r?\n/).filter(line => !/^(Posting route:\s*(Instant matching|Open brief)\.|Marked urgent by the hiring account\.|QTS requested\.)$/i.test(line.trim())).join("\n").trim() : value;

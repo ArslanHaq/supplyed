@@ -29,6 +29,7 @@ import { InstitutionProfilePage } from "./InstitutionProfilePage";
 import { JobDetailPage } from "./JobDetailPage";
 import { MessagingPage } from "./MessagingPage";
 import { MyProfilePage } from "./MyProfilePage";
+import { MyJobsPage } from "./MyJobsPage";
 import { PostJobPage } from "./PostJobPage";
 import { SecurityPage } from "./SecurityPage";
 import { SettingsPage } from "./SettingsPage";
@@ -149,6 +150,7 @@ function RouteShell({ page, sessionState, initialContext }: { page: AppPage; ses
     content = <MyProfilePage {...routeProps} />;
   } else if (state.role === "institution") {
     if (activePage === "dashboard") content = <InstitutionDashboard {...routeProps} />;
+    else if (activePage === "my-jobs") content = <MyJobsPage key={routeCtx.search ?? "all-jobs"} {...routeProps} />;
     else if (activePage === "post-job") content = <PostJobPage {...routeProps} />;
     else if (activePage === "applications") content = <ApplicationsPage {...routeProps} />;
     else if (activePage === "bookings") content = <BookingsPage key={routeCtx.bookingId ?? routeCtx.jobId ?? "all-bookings"} {...routeProps} />;

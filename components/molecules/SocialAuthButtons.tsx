@@ -2,69 +2,40 @@ import type { SocialAuthAvailability } from "@/types/supplyed";
 import { buttonClassName } from "../atoms";
 
 type SocialAuthButtonsProps = {
-  available?: SocialAuthAvailability;
+  available?: Pick<SocialAuthAvailability, "google">;
   disabled?: boolean;
   intent?: "login" | "signup";
   onGoogle?: () => void;
-  onMicrosoft?: () => void;
 };
 
-const socialProviders = [
-  {
-    id: "google",
-    name: "Google",
-    mark: <span className="font-sans text-[18px] font-bold leading-none text-[#4285F4]">G</span>,
-  },
-  {
-    id: "microsoft",
-    name: "Microsoft",
-    mark: (
-      <span className="grid h-4 w-4 grid-cols-2 gap-0.5">
-        <span className="bg-[#F25022]" />
-        <span className="bg-[#7FBA00]" />
-        <span className="bg-[#00A4EF]" />
-        <span className="bg-[#FFB900]" />
-      </span>
-    ),
-  },
-];
-
 export function SocialAuthButtons({
-  available = { google: true, microsoft: true },
+  available = { google: true },
   disabled = false,
   intent = "login",
   onGoogle,
-  onMicrosoft,
 }: SocialAuthButtonsProps) {
   const action = intent === "signup" ? "Sign up" : "Continue";
+  const unavailableLabel = "Google sign-in is currently unavailable";
 
   return (
     <div className="social-auth">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {socialProviders.map((provider) => {
-          const providerAvailable = provider.id === "google" ? available.google : available.microsoft;
-          const unavailableLabel = `${provider.name} sign-in is currently unavailable`;
-
-          return (
-            <button
-              key={provider.id}
-              aria-disabled={!providerAvailable}
-              aria-label={providerAvailable ? `${action} with ${provider.name}` : unavailableLabel}
-              className={buttonClassName({ variant: "secondary", size: "lg", className: !providerAvailable ? "opacity-60" : undefined })}
-              disabled={disabled}
-              onClick={provider.id === "google" ? onGoogle : onMicrosoft}
-              title={providerAvailable ? `${action} with ${provider.name}` : unavailableLabel}
-              type="button"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-chalk">{provider.mark}</span>
-              <span>{provider.name}</span>
-            </button>
-          );
-        })}
-      </div>
-      {!available.google || !available.microsoft ? (
+      <button
+        aria-disabled={!available.google}
+        aria-label={available.google ? `${action} with Google` : unavailableLabel}
+        className={buttonClassName({ variant: "secondary", size: "lg", className: `w-full ${!available.google ? "opacity-60" : ""}` })}
+        disabled={disabled}
+        onClick={onGoogle}
+        title={available.google ? `${action} with Google` : unavailableLabel}
+        type="button"
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-chalk">
+          <span className="font-sans text-[18px] font-bold leading-none text-[#4285F4]">G</span>
+        </span>
+        <span>Google</span>
+      </button>
+      {!available.google ? (
         <p className="mt-3 text-xs leading-5 text-muted">
-          Some sign-in options are currently unavailable. You can still continue with email.
+          Google sign-in is currently unavailable. You can still continue with email.
         </p>
       ) : null}
 

@@ -2183,6 +2183,58 @@ button.card:hover {
   border-color: var(--se-dark);
 }
 
+/* Shared rich-text reading surface for every full job-detail view. */
+.job-description-content {
+  display: flow-root;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  padding: 1.1rem 1.2rem;
+  color: var(--slate);
+  font-size: 0.925rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.job-description-content :where(p, li, a, span, strong, em, b, i, u) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere !important;
+  word-break: break-word;
+}
+
+.job-description-content > :first-child {
+  margin-top: 0;
+}
+
+.job-description-content > :last-child {
+  margin-bottom: 0;
+}
+
+.job-description-content strong,
+.job-description-content b {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.proposal-content {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.proposal-content :where(p, li, a, span, strong, em, b, i, u) {
+  max-width: 100%;
+  overflow-wrap: anywhere !important;
+  word-break: break-word;
+}
+
 .proposal-content > * + * {
   margin-top: 0.65rem;
 }

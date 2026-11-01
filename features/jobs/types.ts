@@ -1,7 +1,8 @@
-import type { Job, JobPayType, JobStatus } from "@/types/supplyed";
+import type { Job, JobPayType, JobStatus, JobType } from "@/types/supplyed";
 
 /** Paging and filters, applied by the backend so every page is filtered the same way. */
 export type JobListFilters = {
+  jobType?: JobType;
   keyStage?: string;
   limit?: number;
   page?: number;
@@ -41,7 +42,7 @@ export type BackendJobResponse = {
   postedByUserId: string;
   title: string;
   description: string;
-  jobType?: string | null;
+  jobType?: JobType | string | null;
   mode?: string | null;
   postingMode?: string | null;
   subject?: string | null;
@@ -81,6 +82,7 @@ export type JobCreateInput = {
   expiresAt?: string;
   liveFrom?: string;
   keyStages: string[];
+  jobType: JobType;
   latitude?: number;
   longitude?: number;
   minExperienceYears?: number;
@@ -103,4 +105,4 @@ export type JobUpdateInput = Partial<Omit<JobCreateInput, "status" | "liveFrom">
   status?: JobStatus;
 };
 
-export type { Job, JobStatus };
+export type { Job, JobStatus, JobType };

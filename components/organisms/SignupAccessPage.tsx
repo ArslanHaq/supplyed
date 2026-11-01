@@ -36,7 +36,6 @@ export function SignupAccessPage({
   onLogin,
   onAccountCreated,
   onGoogleAuth,
-  onMicrosoftAuth,
   socialAuth,
 }: {
   foundingType?: FoundingSignupType;
@@ -45,7 +44,6 @@ export function SignupAccessPage({
   onLogin: () => void;
   onAccountCreated: (email: string, password: string, role: AppRole, termsAccepted: boolean) => Promise<AccessResult>;
   onGoogleAuth: () => void;
-  onMicrosoftAuth: () => void;
   socialAuth: SocialAuthAvailability;
 }) {
   const retryAfter = useRateLimit();
@@ -232,7 +230,6 @@ export function SignupAccessPage({
               disabled={pending}
               intent="signup"
               onGoogle={() => startSocialSignup(onGoogleAuth)}
-              onMicrosoft={() => startSocialSignup(onMicrosoftAuth)}
             />
 
             <div className="signup-credentials grid gap-x-4 sm:grid-cols-2">

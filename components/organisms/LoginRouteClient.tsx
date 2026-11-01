@@ -55,15 +55,7 @@ function isTwoFactorChallenge(value: unknown): value is {
   return isRecord(value) && value.twoFactorRequired === true && Boolean(readString(value.twoFactorToken));
 }
 
-function socialUnavailableMessage(provider: "google" | "microsoft-entra-id") {
-  return provider === "google"
-    ? "Google sign-in is not configured. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET, then restart the app."
-    : "Microsoft sign-in is not configured. Add AUTH_MICROSOFT_ENTRA_ID_ID and AUTH_MICROSOFT_ENTRA_ID_SECRET, then restart the app.";
-}
-
-function isSocialProviderAvailable(provider: "google" | "microsoft-entra-id", socialAuth: SocialAuthAvailability) {
-  return provider === "google" ? socialAuth.google : socialAuth.microsoft;
-}
+const googleUnavailableMessage = "Google sign-in is not configured. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET, then restart the app.";
 
 function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: string; socialAuth: SocialAuthAvailability }) {
   const router = useRouter();
@@ -368,14 +360,14 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     return { ok: true as const };
   }
 
-  function startSocialAuth(provider: "google" | "microsoft-entra-id") {
-    if (!isSocialProviderAvailable(provider, socialAuth)) {
-      showAuthError(socialUnavailableMessage(provider));
+  function startGoogleAuth() {
+    if (!socialAuth.google) {
+      showAuthError(googleUnavailableMessage);
       return;
     }
 
     startRouteLoading();
-    void signIn(provider, { redirectTo: `/post-auth?authSource=login${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}` }).catch((error) => {
+    void signIn("google", { redirectTo: `/post-auth?authSource=login${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}` }).catch((error) => {
       showAuthError(readUnknownAuthErrorMessage(error, "Social sign-in could not start."));
     });
   }
@@ -420,10 +412,9 @@ function LoginRouteClientInner({ initialError, socialAuth }: { initialError?: st
     <>
       <LoginPage
         onForgotPassword={goForgotPassword}
-        onGoogleAuth={() => startSocialAuth("google")}
+        onGoogleAuth={startGoogleAuth}
         onLanding={goLanding}
         onLogin={finishLogin}
-        onMicrosoftAuth={() => startSocialAuth("microsoft-entra-id")}
         onSwitchSignup={goSignup}
         socialAuth={socialAuth}
       />

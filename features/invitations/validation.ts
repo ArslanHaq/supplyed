@@ -6,7 +6,8 @@ import { validateJobDateOrder, validJobDate } from "@/features/jobs/date-validat
 import { validateWorkUnits } from "@/features/jobs/work-units";
 
 export function jobInvitationProblem(job: Job, now = Date.now()): string | null {
-  if (job.status !== "DRAFT" && job.status !== "ACTIVE") return "This job is no longer available for hiring.";
+  if (job.jobType !== "INSTANT") return "Brief jobs use applications and cannot send individual invitations.";
+  if (job.status !== "ACTIVE") return "This job is not live and open for invitations.";
   if (job.expiresAt && Date.parse(job.expiresAt) <= now) return "This job has expired. Update its expiry before hiring.";
   if (!job.startDate || !job.endDate || !Number.isFinite(Date.parse(job.startDate)) || !Number.isFinite(Date.parse(job.endDate))) return "Add start and end dates before hiring.";
   if (Date.parse(job.startDate) > Date.parse(job.endDate)) return "Correct the job's start and end dates.";
@@ -29,6 +30,7 @@ export function validateInvitation(input: InvitationInput, options: { fresh?: bo
   if (input.message !== undefined && (typeof input.message !== "string" || input.message.length > 1000)) errors.message = "Use 1,000 characters or fewer.";
   if (input.expiresAt !== undefined && (typeof input.expiresAt !== "string" || !/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(input.expiresAt) || !Number.isFinite(Date.parse(input.expiresAt)))) errors.expiresAt = "Enter a valid invitation deadline with a timezone.";
   if (input.newJob) {
+    if (input.newJob.jobType !== "INSTANT") errors.jobType = "New invitation jobs must use instant matching.";
     const jobErrors = { ...validateJobInput(input.newJob), ...validatePublishableTerms(input.newJob, options.fresh ? options.now ?? Date.now() : -Infinity) };
     if (jobErrors.expiresAt) {
       errors.listingExpiresAt = jobErrors.expiresAt;
@@ -45,7 +47,7 @@ export function validateInvitation(input: InvitationInput, options: { fresh?: bo
     if (!(typeof input.newJob.payAmount === "number" && Number.isFinite(input.newJob.payAmount) && input.newJob.payAmount > 0)) errors.payAmount = "Enter a pay amount greater than zero.";
     if (!input.newJob.payType || !["hourly", "daily", "fixed"].includes(input.newJob.payType)) errors.payType = "Choose a pay type.";
     if ((input.newJob.latitude === undefined) !== (input.newJob.longitude === undefined)) errors.latitude = "Provide both map coordinates.";
-    if (input.newJob.status !== undefined) errors.status = "New invitation jobs are created as private drafts.";
+    if (input.newJob.status !== undefined) errors.status = "The instant-job invitation shortcut controls publication automatically.";
   }
   if (options.fresh) {
     const now = options.now ?? Date.now();

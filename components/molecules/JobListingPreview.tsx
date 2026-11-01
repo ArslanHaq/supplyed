@@ -66,7 +66,7 @@ export function JobListingPreview({
           ) : (
             <h3 className="font-heading text-[22px] leading-tight text-ink">{data.title}</h3>
           )}
-          <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted">{data.description || "Role details will appear here as you complete the form."}</p>
+          <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted [overflow-wrap:anywhere]">{data.description || "Role details will appear here as you complete the form."}</p>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">

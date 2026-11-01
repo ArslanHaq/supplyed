@@ -1,7 +1,7 @@
 import { normalizeWorkUnits } from "@/features/jobs/work-units";
 import { cleanOtherSubjects, jobSubjects } from "@/features/teaching-catalogue/selection";
 import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
-import type { JobStatus } from "@/types/supplyed";
+import type { JobStatus, JobType } from "@/types/supplyed";
 
 import type {
   BackendJobResponse,
@@ -18,9 +18,11 @@ import type {
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const JOB_STATUSES: JobStatus[] = ["DRAFT", "ACTIVE", "RESERVED", "EXPIRED", "FILLED", "CLOSED", "SUSPENDED"];
+const JOB_TYPES: JobType[] = ["INSTANT", "BRIEF"];
 
 export function normalizeJobFilters(filters: JobListFilters = {}): JobListFilters {
   return {
+    jobType: filters.jobType && JOB_TYPES.includes(filters.jobType) ? filters.jobType : undefined,
     keyStage: filters.keyStage?.trim() || undefined,
     limit: wholeNumberBetween(filters.limit, 1, 100),
     page: wholeNumberBetween(filters.page, 1, Number.MAX_SAFE_INTEGER),
@@ -36,6 +38,7 @@ export function readJobFilters(searchParams: URLSearchParams): JobListFilters {
   const urgent = searchParams.get("urgent");
 
   return normalizeJobFilters({
+    jobType: (searchParams.get("jobType") as JobType | null) ?? undefined,
     keyStage: searchParams.get("keyStage") ?? undefined,
     limit: Number(searchParams.get("limit")) || undefined,
     page: Number(searchParams.get("page")) || undefined,
@@ -97,6 +100,7 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
     expiresAt: input.expiresAt?.trim() || undefined,
     liveFrom: input.liveFrom?.trim() || undefined,
     keyStages: normalizeStringList(input.keyStages ?? []),
+    jobType: normalizeJobType(input.jobType) ?? "BRIEF",
     minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
     payAmount: normalizePositiveNumber(input.payAmount),
@@ -123,6 +127,7 @@ export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
     id: input.id.trim(),
     liveFrom: input.liveFrom === null ? null : input.liveFrom?.trim() || undefined,
     keyStages: input.keyStages ? normalizeStringList(input.keyStages) : undefined,
+    jobType: input.jobType === undefined ? undefined : normalizeJobType(input.jobType) ?? undefined,
     minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
     payAmount: normalizePositiveNumber(input.payAmount),
@@ -149,9 +154,11 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
   const subjects = jobSubjects(job);
   const subject = subjects.join(", ") || "General cover";
   const city = job.city?.trim() || "Location TBC";
+  const jobType = normalizeJobType(job.jobType) ?? (readPostingMode(job.mode) === "instant" || readPostingMode(job.postingMode) === "instant" ? "INSTANT" : readPostingModeFromDescription(job.description) === "instant" ? "INSTANT" : derivePostingMode(startDate, endDate) === "instant" ? "INSTANT" : "BRIEF");
 
   return {
     id: job.id,
+    jobType,
     canDelete: job.canDelete === true,
     termsLocked: job.termsLocked !== false,
     hasBeenPublished: job.hasBeenPublished === true,
@@ -177,12 +184,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     latitude: readNumber(job.latitude) ?? null,
     longitude: readNumber(job.longitude) ?? null,
     minExperienceYears: normalizeNonNegativeInteger(job.minExperienceYears) ?? null,
-    mode:
-      readPostingMode(job.mode) ??
-      readPostingMode(job.postingMode) ??
-      readPostingMode(job.jobType) ??
-      readPostingModeFromDescription(job.description) ??
-      derivePostingMode(startDate, endDate),
+    mode: jobType === "INSTANT" ? "instant" : "brief",
     parkingInfo: job.parkingInfo ?? null,
     ...normalizeWorkUnits(job),
     payAmount,
@@ -287,6 +289,12 @@ function readPostingMode(value: unknown): Job["mode"] | null {
   if (normalized.includes("instant")) return "instant";
 
   return null;
+}
+
+function normalizeJobType(value: unknown): JobType | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return normalized === "INSTANT" || normalized === "BRIEF" ? normalized : null;
 }
 
 function readPostingModeFromDescription(description: string): Job["mode"] | null {

@@ -23,6 +23,7 @@ import { MatchScorePanel, Modal, PageHead, ProposalContent, SectionLoader } from
 import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 import { ProposalPreview } from "../molecules/ProposalPreviewModal";
 import { ApplicationsJobList } from "./ApplicationsJobList";
+import { InstantJobTeachersSection } from "./InstantJobTeachersPage";
 import { RatingStars } from "./ProfileReviewsPanel";
 import { WorkspaceEmptyState, WorkspaceSummary } from "./WorkspacePanels";
 
@@ -208,6 +209,8 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
                 <EmptyState title="Application not found" message="This application is no longer available for the selected job." />
               </div>
             ) : null}
+
+            {!loading && !error && job?.jobType === "INSTANT" ? <InstantJobTeachersSection go={go} job={job} toast={toast} /> : null}
           </>
         )}
       </div>

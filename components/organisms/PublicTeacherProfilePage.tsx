@@ -14,16 +14,18 @@ export function PublicTeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ct
   const profileQuery = useInstructorPublicProfile(ctx.teacherId);
   const reviewsQuery = useInstructorReviews(ctx.teacherId);
   const profile = profileQuery.data;
+  const backToJob = role === "institution" && Boolean(ctx.jobId) && !ctx.applicationId;
+  const goBack = () => backToJob ? go("applications", { jobId: ctx.jobId }) : go(role === "institution" && !ctx.applicationId ? "find-teachers" : "applications");
 
   if (!ctx.teacherId) return <ProfileState title="Choose a teacher" message="Open a teacher from an application or booking to view their profile." onBack={() => go("applications")} />;
   if (profileQuery.isLoading) return <div className="app-page profile-page teacher-public-profile"><SectionLoader rows={5} /></div>;
-  if (!profile) return <ProfileState title="Teacher profile unavailable" message={profileQuery.error?.message || "This profile may be inactive or you may not have permission to view it."} onBack={() => go("applications")} onRetry={() => void profileQuery.refetch()} />;
+  if (!profile) return <ProfileState title="Teacher profile unavailable" message={profileQuery.error?.message || "This profile may be inactive or you may not have permission to view it."} onBack={goBack} onRetry={() => void profileQuery.refetch()} />;
 
   const location = [profile.city, profile.county].filter(Boolean).join(", ") || "Location not shared";
 
   return (
     <div className="app-page profile-page teacher-public-profile">
-      <PageHead title="Teacher profile" subtitle="Experience, credentials and verified booking feedback" actions={<Btn icon="arrowLeft" variant="secondary" onClick={() => go(role === "institution" && !ctx.applicationId ? "find-teachers" : "applications")}>{role === "institution" && !ctx.applicationId ? "Back to teachers" : "Back to applications"}</Btn>} />
+      <PageHead title="Teacher profile" subtitle="Experience, credentials and verified booking feedback" actions={<Btn icon="arrowLeft" variant="secondary" onClick={goBack}>{backToJob ? "Back to job" : role === "institution" && !ctx.applicationId ? "Back to teachers" : "Back to applications"}</Btn>} />
 
       <section className="profile-hero relative mb-6 overflow-hidden border">
         <div aria-hidden="true" className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-brand/10 blur-3xl" />

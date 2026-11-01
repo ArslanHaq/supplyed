@@ -26,15 +26,7 @@ import { SignupVerifyPage } from "./SignupVerifyPage";
 
 type SignupStage = "account" | "verify";
 
-function socialUnavailableMessage(provider: "google" | "microsoft-entra-id") {
-  return provider === "google"
-    ? "Google sign-in is not configured. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET, then restart the app."
-    : "Microsoft sign-in is not configured. Add AUTH_MICROSOFT_ENTRA_ID_ID and AUTH_MICROSOFT_ENTRA_ID_SECRET, then restart the app.";
-}
-
-function isSocialProviderAvailable(provider: "google" | "microsoft-entra-id", socialAuth: SocialAuthAvailability) {
-  return provider === "google" ? socialAuth.google : socialAuth.microsoft;
-}
+const googleUnavailableMessage = "Google sign-in is not configured. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET, then restart the app.";
 
 function SignupRouteClientInner({
   foundingSignupEmail,
@@ -219,14 +211,14 @@ function SignupRouteClientInner({
     router.push("/login");
   }
 
-  function startSocialAuth(provider: "google" | "microsoft-entra-id") {
-    if (!isSocialProviderAvailable(provider, socialAuth)) {
-      showAuthError(socialUnavailableMessage(provider));
+  function startGoogleAuth() {
+    if (!socialAuth.google) {
+      showAuthError(googleUnavailableMessage);
       return;
     }
 
     startRouteLoading();
-    void signIn(provider, { redirectTo: "/post-auth?authSource=signup" }).catch((error) => {
+    void signIn("google", { redirectTo: "/post-auth?authSource=signup" }).catch((error) => {
       showAuthError(readUnknownAuthErrorMessage(error, "Social sign-up could not start."));
     });
   }
@@ -238,10 +230,9 @@ function SignupRouteClientInner({
           foundingType={foundingIntent?.type ?? foundingSignupType}
           initialEmail={foundingEmail}
           onAccountCreated={startVerification}
-          onGoogleAuth={() => startSocialAuth("google")}
+          onGoogleAuth={startGoogleAuth}
           onLanding={goLanding}
           onLogin={goLogin}
-          onMicrosoftAuth={() => startSocialAuth("microsoft-entra-id")}
           socialAuth={socialAuth}
         />
         <PublicThemeControls />

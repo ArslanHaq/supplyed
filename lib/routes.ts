@@ -2,6 +2,7 @@ import type { AppPage, AppRole, ApplicationStatus, RouteContext } from "@/types/
 
 export const appPathByPage: Record<AppPage, string> = {
   dashboard: "/dashboard",
+  "my-jobs": "/my-jobs",
   "post-job": "/post-job",
   applications: "/applications",
   bookings: "/bookings",

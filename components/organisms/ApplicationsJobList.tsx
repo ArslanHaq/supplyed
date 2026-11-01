@@ -161,6 +161,7 @@ function invitationJobSnapshot(invitation: Invitation): Job {
   const rate = Number.isFinite(payAmount) ? payAmount : 0;
   return {
     id: job.id,
+    jobType: invitation.jobType,
     address: job.address ?? null,
     city: job.city || "Location TBC",
     countryCode: job.countryCode || "GB",
@@ -177,7 +178,7 @@ function invitationJobSnapshot(invitation: Invitation): Job {
     latitude: job.latitude ?? null,
     longitude: job.longitude ?? null,
     minExperienceYears: job.minExperienceYears ?? null,
-    mode: "instant",
+    mode: invitation.jobType === "INSTANT" ? "instant" : "brief",
     parkingInfo: job.parkingInfo ?? null,
     payAmount: rate,
     payType: job.payType ?? null,

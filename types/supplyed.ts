@@ -8,9 +8,11 @@ export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
 export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
 export type JobStatus = "DRAFT" | "ACTIVE" | "RESERVED" | "EXPIRED" | "FILLED" | "CLOSED" | "SUSPENDED";
 export type JobPayType = "daily" | "fixed" | "hourly";
+export type JobType = "INSTANT" | "BRIEF";
 
 export type AppPage =
   | "dashboard"
+  | "my-jobs"
   | "post-job"
   | "applications"
   | "bookings"
@@ -51,6 +53,7 @@ export type Job = {
   termsLocked?: boolean;
   hasBeenPublished?: boolean;
   id: string;
+  jobType: JobType;
   institution?: { id: string; imageUrl: string | null; name: string } | null;
   title: string;
   postedByUserId?: string;

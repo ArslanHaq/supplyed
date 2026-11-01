@@ -24,6 +24,7 @@ type JobManagementListProps = {
   onDelete: (job: Job) => void;
   onEdit: (job: Job) => void;
   onInvitations: (job: Job) => void;
+  onViewPublic?: (job: Job) => void;
   onFilterChange: (filter: JobStatusFilter) => void;
   onPageChange?: (page: number) => void;
   pagination?: JobsPagination;
@@ -46,6 +47,7 @@ export function JobManagementList({
   onDelete,
   onEdit,
   onInvitations,
+  onViewPublic,
   onFilterChange,
   onPageChange,
   pagination,
@@ -107,6 +109,7 @@ export function JobManagementList({
             onDelete={onDelete}
             onEdit={onEdit}
             onInvitations={onInvitations}
+            onViewPublic={onViewPublic}
           />
         ))}
       </div>
@@ -166,6 +169,7 @@ function JobManagementRow({
   onDelete,
   onEdit,
   onInvitations,
+  onViewPublic,
 }: {
   actionPending?: boolean;
   job: Job;
@@ -174,6 +178,7 @@ function JobManagementRow({
   onDelete: (job: Job) => void;
   onEdit: (job: Job) => void;
   onInvitations: (job: Job) => void;
+  onViewPublic?: (job: Job) => void;
 }) {
   const canClose = job.status !== "CLOSED";
   const reserved = job.status === "RESERVED";
@@ -194,6 +199,7 @@ function JobManagementRow({
         <span className="mr-auto text-xs text-muted" aria-live="polite">
           <strong className="text-ink">{applicantCount ?? (applicationsQuery.isError ? "—" : "…")}</strong> {applicantCount === 1 ? "applicant" : "applicants"}
         </span>
+        {visibility === "live" && onViewPublic ? <Btn icon="eye" size="sm" variant="secondary" onClick={() => onViewPublic(job)}>View public job</Btn> : null}
         <Btn icon="edit" size="sm" variant="ghost" onClick={() => onEdit(job)}>{job.termsLocked ? "View terms" : "Edit"}</Btn>
         {canClose ? <Btn disabled={actionPending} size="sm" variant="ghost" onClick={() => onClose(job)}>Close</Btn> : null}
         {job.canDelete === true ? <Btn disabled={actionPending} size="sm" variant="danger" onClick={() => onDelete(job)}>Delete</Btn> : null}

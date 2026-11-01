@@ -16,7 +16,7 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
   const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ACTIVE");
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
-  const jobsQuery = useMyJobs({ limit: 6, page, status: statusFilter === "ALL" ? undefined : statusFilter });
+  const jobsQuery = useMyJobs({ limit: 3, page, status: statusFilter === "ALL" ? undefined : statusFilter });
   const countsQuery = useMyJobs({ limit: 1, page: 1 });
   const jobs = jobsQuery.data?.jobs ?? [];
   const counts = countsQuery.data?.statusCounts ?? jobsQuery.data?.statusCounts;
@@ -24,7 +24,7 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
   const draftCount = counts?.DRAFT ?? 0;
   const applicantCountQuery = useActiveJobApplicantCount();
   const applicantCount = applicantCountQuery.data?.total;
-  const topMatchJobsQuery = useMyJobs({ limit: 6, page: 1, status: "ACTIVE" });
+  const topMatchJobsQuery = useMyJobs({ jobType: "INSTANT", limit: 6, page: 1, status: "ACTIVE" });
   const topMatchJob = topMatchJobsQuery.data?.jobs[0];
   const topMatchesQuery = useRecommendedInstructors(topMatchJob?.id, { limit: 4, minScore: 70, page: 1 });
   const topMatches = topMatchesQuery.data?.instructors ?? [];
@@ -113,7 +113,7 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
               <div className="hiring-match-empty" role="alert"><Icon name="search" size={24} /><h3>Matches could not be loaded</h3><Btn size="sm" variant="ghost" onClick={() => void topMatchesQuery.refetch()}>Try again</Btn></div>
             ) : null}
             {!topMatchJobsQuery.isLoading && !topMatchJobsQuery.isError && !topMatchJob ? (
-              <div className="hiring-match-empty"><Icon name="users" size={26} /><h3>Your next great teacher is out there.</h3><p>Post an active job to see teacher matches.</p></div>
+              <div className="hiring-match-empty"><Icon name="users" size={26} /><h3>No active instant jobs</h3><p>Post an instant job to see related teachers here.</p></div>
             ) : null}
             {!topMatchesQuery.isLoading && !topMatchesQuery.isError && topMatchJob && topMatches.length === 0 ? (
               <div className="hiring-match-empty"><Icon name="users" size={26} /><h3>No matches just yet</h3><p>No teachers currently meet the 70% match threshold.</p></div>
@@ -125,7 +125,7 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
                 <MatchScore score={match.score} size={38} />
               </button>
             ))}
-            <div className="hiring-panel-footer"><Btn iconRight="arrowRight" size="sm" variant="ghost" onClick={() => go("find-teachers")}>Browse all teachers</Btn></div>
+            <div className="hiring-panel-footer"><Btn iconRight="arrowRight" size="sm" variant="ghost" onClick={() => topMatchJob ? go("applications", { jobId: topMatchJob.id }) : go("find-teachers")}>{topMatchJob ? "View all related teachers" : "Browse all teachers"}</Btn></div>
           </section>
           <section className="hiring-actions-panel card">
             <header className="hiring-panel-heading"><div><h2>Quick actions</h2><p>Keep your school moving.</p></div></header>

@@ -92,12 +92,12 @@ export function ProposalContent({
   if (!plainText) return null;
 
   if (preview || !rich || safeHtml === null) {
-    return <p className={cn("whitespace-pre-wrap text-sm leading-6 text-muted", className)}>{plainText}</p>;
+    return <p className={cn("min-w-0 whitespace-pre-wrap text-sm leading-6 text-muted [overflow-wrap:anywhere]", className)}>{plainText}</p>;
   }
 
   return (
     <div
-      className={cn("proposal-content text-sm leading-7 text-muted", className)}
+      className={cn("proposal-content min-w-0 text-sm leading-7 text-muted", className)}
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   );
