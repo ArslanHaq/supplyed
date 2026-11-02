@@ -114,7 +114,22 @@ export function JobScheduleCalendar({ job, conflicts = [] }: { job: Job; conflic
         </div>
       )}
 
-      {shifts.length ? <div className="mt-6 border-t border-border pt-5"><h3 className="text-sm font-semibold">Complete work agenda</h3><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{scheduledDates.map((date) => { const dayConflicts = conflictsByDate.get(date) ?? []; return <button className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-left text-sm ${dayConflicts.length ? "border-danger/40 bg-danger-tint hover:border-danger" : "border-border bg-surface hover:border-brand"}`} key={date} onClick={() => { setSelectedDate(date); setMonth(date.slice(0, 7)); }} type="button"><span><strong className="block">{longDate(date)}</strong><span className="mt-1 block text-xs text-muted">{(shiftsByDate.get(date) ?? []).map(shiftLabel).join(" · ")}</span>{dayConflicts.length ? <span className="mt-1 block text-xs font-semibold text-danger">{dayConflicts.length} schedule {dayConflicts.length === 1 ? "conflict" : "conflicts"}</span> : null}</span><span className={`shrink-0 text-xs font-semibold ${dayConflicts.length ? "text-danger" : "text-brand"}`}>{hoursLabel((shiftsByDate.get(date) ?? []).reduce((sum, shift) => sum + shift.minutes, 0))}</span></button>; })}</div></div> : null}
+      {shifts.length ? (
+        <div className="mt-6 border-t border-border pt-5">
+          <h3 className="text-sm font-semibold" id="complete-work-agenda-title">Complete work agenda</h3>
+          <div
+            aria-labelledby="complete-work-agenda-title"
+            className="mt-3 grid max-h-[32rem] gap-2 overflow-y-auto overscroll-contain rounded-lg pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 sm:grid-cols-2 lg:grid-cols-3"
+            role="region"
+            tabIndex={0}
+          >
+            {scheduledDates.map((date) => {
+              const dayConflicts = conflictsByDate.get(date) ?? [];
+              return <button className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-left text-sm ${dayConflicts.length ? "border-danger/40 bg-danger-tint hover:border-danger" : "border-border bg-surface hover:border-brand"}`} key={date} onClick={() => { setSelectedDate(date); setMonth(date.slice(0, 7)); }} type="button"><span><strong className="block">{longDate(date)}</strong><span className="mt-1 block text-xs text-muted">{(shiftsByDate.get(date) ?? []).map(shiftLabel).join(" · ")}</span>{dayConflicts.length ? <span className="mt-1 block text-xs font-semibold text-danger">{dayConflicts.length} schedule {dayConflicts.length === 1 ? "conflict" : "conflicts"}</span> : null}</span><span className={`shrink-0 text-xs font-semibold ${dayConflicts.length ? "text-danger" : "text-brand"}`}>{hoursLabel((shiftsByDate.get(date) ?? []).reduce((sum, shift) => sum + shift.minutes, 0))}</span></button>;
+            })}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

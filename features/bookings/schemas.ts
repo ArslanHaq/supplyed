@@ -77,6 +77,7 @@ function normalizeInvoiceSummary(invoice: BookingInvoiceSummary | null | undefin
     paidAt,
     status,
     totalAmountPence: readNumber(invoice.totalAmountPence) ?? 0,
+    teacherAmountPence: readNumber(invoice.teacherAmountPence) ?? 0,
   };
 }
 
@@ -127,6 +128,20 @@ export function normalizeBooking(booking: Booking): Booking {
     timeZone: booking.timeZone ?? "Europe/London",
     schedule: booking.schedule ?? null,
     scheduledMinutes: typeof booking.scheduledMinutes === "number" ? booking.scheduledMinutes : null,
+    attendancePolicyEffectiveAt: readDateIso(booking.attendancePolicyEffectiveAt),
+    attendanceShifts: Array.isArray(booking.attendanceShifts) ? booking.attendanceShifts.map((shift) => ({
+      ...shift,
+      workDate: readDateIso(shift.workDate) ?? shift.workDate,
+      scheduledStart: readDateIso(shift.scheduledStart) ?? shift.scheduledStart,
+      scheduledEnd: readDateIso(shift.scheduledEnd) ?? shift.scheduledEnd,
+      notifiedAt: readDateIso(shift.notifiedAt),
+      responseDeadline: readDateIso(shift.responseDeadline),
+      decidedAt: readDateIso(shift.decidedAt),
+      audits: Array.isArray(shift.audits) ? shift.audits : [],
+      correctionRequests: Array.isArray(shift.correctionRequests) ? shift.correctionRequests : [],
+    })) : [],
+    attendancePayroll: booking.attendancePayroll ?? null,
+    attendanceAdjustments: Array.isArray(booking.attendanceAdjustments) ? booking.attendanceAdjustments : [],
     reviews: Array.isArray(booking.reviews) ? booking.reviews.map(normalizeReview) : [],
     startDate: readDateIso(booking.startDate),
     status: bookingStatuses.has(booking.status) ? booking.status : "CONFIRMED",

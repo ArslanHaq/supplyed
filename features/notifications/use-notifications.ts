@@ -26,6 +26,7 @@ const PAGE_SIZE = 15;
 const NOTIFICATION_QUERY_KEYS: Record<NotificationType, readonly (readonly string[])[]> = {
   APPLICATION_RECEIVED: [queryKeys.applications.all],
   APPLICATION_STATUS: [queryKeys.applications.all, queryKeys.bookings.all, queryKeys.matching.all, queryKeys.jobs.all, queryKeys.conversations.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
+  ATTENDANCE_CONFIRMATION: [queryKeys.bookings.all, queryKeys.payments.all],
   BOOKING_CANCELLED: [queryKeys.bookings.all, queryKeys.matching.all, queryKeys.payments.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
   BOOKING_COMPLETED: [queryKeys.bookings.all, queryKeys.matching.all, queryKeys.payments.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
   BOOKING_CONFIRMED: [queryKeys.bookings.all, queryKeys.applications.all, queryKeys.matching.all, queryKeys.jobs.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],

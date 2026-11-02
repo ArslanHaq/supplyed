@@ -23,6 +23,7 @@ export const appPathByPage: Record<AppPage, string> = {
 export function buildAppHref(page: AppPage, ctx: RouteContext = {}) {
   const params = new URLSearchParams();
 
+  if (ctx.attendanceDate) params.set("attendanceDate", ctx.attendanceDate);
   if (ctx.applicationId) params.set("applicationId", ctx.applicationId);
   if (ctx.bookingId) params.set("bookingId", ctx.bookingId);
   if (ctx.conversationId) params.set("conversationId", ctx.conversationId);

@@ -25,6 +25,7 @@ import { Avatar, Btn, buttonClassName, Field, Icon, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { PayInvoiceModal } from "./PayInvoiceModal";
+import { BookingAttendancePanel } from "./BookingAttendancePanel";
 
 type Tab = "active" | "all" | "cancelled" | "completed" | "no-show";
 
@@ -202,12 +203,14 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
               <BookingCard
                 key={booking.id}
                 booking={booking}
+                attendanceDate={ctx?.attendanceDate}
                 cancelling={updateBooking.isPending && cancelTarget?.id === booking.id}
                 onCancel={setCancelTarget}
                 onComplete={(id) => updateBooking.mutate({ action: "complete", id })}
                 onInvoice={(booking) => { setInvoiceError(null); setInvoiceTarget(booking); }}
                 onInvoiceDetails={setInvoiceDetailsId}
                 onMessage={(selectedBooking) => go("messaging", { bookingId: selectedBooking.id })}
+                onOpenAttendance={(selectedBooking) => go("bookings", { bookingId: selectedBooking.id })}
                 onOpenJob={(selectedBooking) => go("job-detail", { bookingId: selectedBooking.id, jobId: selectedBooking.job.id })}
                 onOpenProfile={(selectedBooking) => role === "teacher"
                   ? go("institution-profile", { institutionId: selectedBooking.institution.id })
@@ -217,6 +220,8 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
                 onReview={setReviewTarget}
                 pending={updateBooking.isPending}
                 role={role}
+                showAttendance={Boolean(ctx?.bookingId)}
+                toast={toast}
               />
             ))}
           </div>
@@ -282,6 +287,7 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
 
 function BookingCard({
   booking,
+  attendanceDate,
   cancelling,
   onCancel,
   onComplete,
@@ -289,14 +295,18 @@ function BookingCard({
   onInvoiceDetails,
   onMessage,
   onNoShow,
+  onOpenAttendance,
   onOpenProfile,
   onOpenJob,
   onPay,
   onReview,
   pending,
   role,
+  showAttendance,
+  toast,
 }: {
   booking: Booking;
+  attendanceDate?: string;
   cancelling: boolean;
   onCancel: (booking: Booking) => void;
   onComplete: (id: string) => void;
@@ -304,12 +314,15 @@ function BookingCard({
   onInvoiceDetails: (id: string) => void;
   onMessage: (booking: Booking) => void;
   onNoShow: (id: string) => void;
+  onOpenAttendance: (booking: Booking) => void;
   onOpenProfile: (booking: Booking) => void;
   onOpenJob: (booking: Booking) => void;
   onPay: (invoice: PayableInvoice) => void;
   onReview: (booking: Booking) => void;
   pending: boolean;
   role: AppRole;
+  showAttendance: boolean;
+  toast: RouteProps["toast"];
 }) {
   const otherParty = role === "teacher"
     ? { id: booking.institution.id, imageUrl: booking.institution.imageUrl, name: booking.institution.name ?? "School" }
@@ -339,6 +352,7 @@ function BookingCard({
         {booking.hours != null || booking.days != null ? <Detail icon="clock" label="Planned work" value={formatPlannedUnits(booking)} /> : null}
       </div>
       <BookingWorkSchedule booking={booking} />
+      {showAttendance ? <BookingAttendancePanel booking={booking} initialDate={attendanceDate} role={role} toast={toast} /> : null}
       <div className="booking-placement-location"><Icon name="pin" size={17} /><div><span className="booking-placement-label">Location</span><p>{address}</p></div></div>
       {booking.job.parkingInfo ? <details className="booking-placement-arrival"><summary>Parking &amp; arrival instructions</summary><p>{booking.job.parkingInfo}</p></details> : null}
 
@@ -360,6 +374,7 @@ function BookingCard({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {!showAttendance ? <Btn icon="calendar" size="sm" onClick={() => onOpenAttendance(booking)}>View schedule &amp; attendance</Btn> : null}
           <Btn icon="file" size="sm" variant="secondary" onClick={() => onOpenJob(booking)}>View job details</Btn>
           <Btn icon="message" size="sm" variant={canReview ? "secondary" : "primary"} onClick={() => onMessage(booking)}>
             Message {role === "teacher" ? "school" : "teacher"}
@@ -401,6 +416,7 @@ function BookingWorkSchedule({ booking }: { booking: Booking }) {
   const agenda = groupBookingShifts(intervals);
   const exceptions = booking.schedule.exceptions ?? [];
   const totalMinutes = booking.scheduledMinutes ?? intervals.reduce((sum, shift) => sum + shift.minutes, 0);
+  const progress = bookingScheduleProgress(agenda, booking.startDate, booking.endDate, booking.timeZone || "Europe/London");
 
   return (
     <section className="mt-4 rounded-xl border border-brand/20 bg-brand-tint/40 p-4" aria-label="Booked work schedule">
@@ -442,11 +458,13 @@ function BookingWorkSchedule({ booking }: { booking: Booking }) {
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 border-t border-brand/15 pt-3 text-xs text-muted">
-        <span><strong className="text-ink">{agenda.size}</strong> working days</span>
-        <span><strong className="text-ink">{bookingHoursLabel(totalMinutes)}</strong> booked time</span>
-        <span><strong className="text-ink">{weekdays.reduce((sum, weekday) => sum + weekday.slots.length, 0)}</strong> recurring {weekdays.reduce((sum, weekday) => sum + weekday.slots.length, 0) === 1 ? "shift" : "shifts"} per week</span>
+      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-brand/15 pt-3 lg:grid-cols-4">
+        <BookingScheduleMetric label="Total placement span" value={`${progress.totalCalendarDays} calendar days`} />
+        <BookingScheduleMetric label="Scheduled work" value={`${agenda.size} working days`} />
+        <BookingScheduleMetric label="Remaining from today" value={`${progress.remainingWorkingDays} working days`} />
+        <BookingScheduleMetric label="Time remaining" value={progress.timeRemainingLabel} />
       </div>
+      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted"><span><strong className="text-ink">{bookingHoursLabel(totalMinutes)}</strong> total booked time</span><span><strong className="text-ink">{weekdays.reduce((sum, weekday) => sum + weekday.slots.length, 0)}</strong> recurring {weekdays.reduce((sum, weekday) => sum + weekday.slots.length, 0) === 1 ? "shift" : "shifts"} per week</span><span>Calculated for today in {booking.timeZone || "Europe/London"}</span></div>
 
       {agenda.size ? (
         <details className="mt-3 rounded-lg border border-border bg-surface">
@@ -469,6 +487,40 @@ function groupBookingShifts(shifts: Array<{ date: string; start: string; end: st
   const grouped = new Map<string, typeof shifts>();
   for (const shift of shifts) grouped.set(shift.date, [...(grouped.get(shift.date) ?? []), shift]);
   return grouped;
+}
+
+function BookingScheduleMetric({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg border border-border bg-surface p-3"><div className="text-[11px] leading-4 text-muted">{label}</div><strong className="mt-1 block text-sm text-ink">{value}</strong></div>;
+}
+
+function bookingScheduleProgress(
+  agenda: Map<string, Array<{ date: string; start: string; end: string; minutes: number }>>,
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+  timeZone: string,
+) {
+  const start = startDate ? bookingLocalDate(startDate, timeZone) : null;
+  const end = endDate ? bookingLocalDate(endDate, timeZone) : null;
+  const today = bookingLocalDate(new Date().toISOString(), timeZone);
+  const totalCalendarDays = start && end ? calendarDayDifference(start, end) + 1 : 0;
+  const remainingWorkingDays = [...agenda.keys()].filter((date) => date >= today).length;
+  const timeRemainingLabel = !start || !end
+    ? "Dates unavailable"
+    : today < start
+      ? `Starts in ${calendarDayDifference(today, start)} days`
+      : today > end
+        ? "Placement ended"
+        : `${calendarDayDifference(today, end)} days until end`;
+  return { remainingWorkingDays, timeRemainingLabel, totalCalendarDays };
+}
+
+function bookingLocalDate(value: string, timeZone: string) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", timeZone, year: "numeric" }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function calendarDayDifference(start: string, end: string) {
+  return Math.max(0, Math.round((Date.parse(`${end}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / 86_400_000));
 }
 
 function bookingShiftLabel(start: string, end: string) {

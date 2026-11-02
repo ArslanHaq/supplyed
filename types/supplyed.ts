@@ -132,6 +132,7 @@ export type Message = {
 
 export type RouteContext = {
   invitationId?: string;
+  attendanceDate?: string;
   bookingId?: string;
   conversationId?: string;
   applicationId?: string;

@@ -40,6 +40,7 @@ import { TweaksPanel } from "./TweaksPanel";
 
 function readContext(searchParams: URLSearchParams) {
   return {
+    attendanceDate: searchParams.get("attendanceDate") || undefined,
     applicationId: searchParams.get("applicationId") || undefined,
     bookingId: searchParams.get("bookingId") || undefined,
     conversationId: searchParams.get("conversationId") || undefined,
