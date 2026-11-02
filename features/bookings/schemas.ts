@@ -82,7 +82,7 @@ function normalizeInvoiceSummary(invoice: BookingInvoiceSummary | null | undefin
 
 export function normalizeBooking(booking: Booking): Booking {
   const terms = booking.termsStatus === "RECORDED" ? booking.agreedTerms : null;
-  booking = terms ? { ...booking, startDate: terms.startDate, endDate: terms.endDate, payAmount: terms.payAmount, payType: terms.payType, hours: terms.hours, days: terms.days, job: terms } : booking;
+  booking = terms ? { ...booking, startDate: terms.startDate, endDate: terms.endDate, payAmount: terms.payAmount, payType: terms.payType, hours: terms.hours, days: terms.days, currency: terms.currency, paymentFrequency: terms.paymentFrequency, periodAnchor: terms.periodAnchor, timeZone: terms.timeZone, schedule: terms.schedule, scheduledMinutes: terms.scheduledMinutes, job: terms } : booking;
   return {
     ...booking,
     agreedTerms: terms,
@@ -121,6 +121,12 @@ export function normalizeBooking(booking: Booking): Booking {
     invoice: normalizeInvoiceSummary(booking.invoice),
     payAmount: readNumber(booking.payAmount),
     payType: booking.payType ?? null,
+    currency: booking.currency ?? "GBP",
+    paymentFrequency: booking.paymentFrequency ?? null,
+    periodAnchor: booking.periodAnchor ?? "ASSIGNMENT_START",
+    timeZone: booking.timeZone ?? "Europe/London",
+    schedule: booking.schedule ?? null,
+    scheduledMinutes: typeof booking.scheduledMinutes === "number" ? booking.scheduledMinutes : null,
     reviews: Array.isArray(booking.reviews) ? booking.reviews.map(normalizeReview) : [],
     startDate: readDateIso(booking.startDate),
     status: bookingStatuses.has(booking.status) ? booking.status : "CONFIRMED",
@@ -176,7 +182,9 @@ export function bookingDays(booking: Pick<Booking, "startDate" | "endDate">): nu
   return Math.floor((Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()) - Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())) / day) + 1;
 }
 
-export function invoiceUnitsLimit(booking: Pick<Booking, "startDate" | "endDate" | "payType">): number {
+export function invoiceUnitsLimit(booking: Pick<Booking, "startDate" | "endDate" | "payType" | "scheduledMinutes" | "days">): number {
+  if (booking.payType === "hourly" && booking.scheduledMinutes != null) return Math.min(9999.99, booking.scheduledMinutes / 60);
+  if (booking.payType === "daily" && booking.days != null) return Math.min(9999.99, booking.days);
   const days = bookingDays(booking);
   return Math.min(9999.99, days === null ? 9999.99 : booking.payType === "hourly" ? days * 24 : days);
 }

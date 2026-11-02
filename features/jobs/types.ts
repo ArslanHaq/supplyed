@@ -1,4 +1,4 @@
-import type { Job, JobPayType, JobStatus, JobType } from "@/types/supplyed";
+import type { Job, JobPayType, JobSchedule, JobStatus, JobType, PaymentFrequency } from "@/types/supplyed";
 
 /** Paging and filters, applied by the backend so every page is filtered the same way. */
 export type JobListFilters = {
@@ -64,6 +64,15 @@ export type BackendJobResponse = {
   days?: number | null;
   payAmount?: number | string | null;
   payType?: JobPayType | string | null;
+  currency?: string | null;
+  paymentFrequency?: PaymentFrequency | string | null;
+  periodAnchor?: "ASSIGNMENT_START" | "CALENDAR" | string | null;
+  timeZone?: string | null;
+  schedule?: JobSchedule | null;
+  workersRequired?: number | null;
+  scheduledMinutes?: number | null;
+  assignmentDuration?: "SHORT_TERM" | "EXTENDED" | null;
+  scheduleSummary?: Job["scheduleSummary"];
   status: JobStatus;
   liveFrom?: string | null;
   expiresAt?: string | null;
@@ -91,6 +100,12 @@ export type JobCreateInput = {
   days?: number | null;
   payAmount?: number;
   payType?: JobPayType;
+  currency?: string;
+  paymentFrequency?: PaymentFrequency;
+  periodAnchor?: "ASSIGNMENT_START" | "CALENDAR";
+  timeZone?: string;
+  schedule?: JobSchedule;
+  workersRequired?: number;
   postalCode?: string;
   requiredSkills?: string[];
   startDate?: string;

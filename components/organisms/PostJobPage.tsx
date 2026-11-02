@@ -1,13 +1,12 @@
 import { useRateLimit } from "@/lib/rate-limit";
 import { useSchoolHiringAllowed } from "@/features/auth/use-school-hiring";
-import { PlannedWorkUnitsField } from "@/components/molecules/PlannedWorkUnitsField";
-import { plannedUnitsInput, formatPlannedUnits } from "@/features/jobs/work-units";
 import { syncWorkSchedule, validateScheduleUnits } from "@/features/jobs/schedule-editor";
+import { allowedPaymentFrequencies, schedulePreview, validateStructuredSchedule } from "@/features/jobs/job-schedule";
 import { validateJobDateOrder } from "@/features/jobs/date-validation";
 import { DynamicSelect, DynamicMultiSelect } from "@/components/molecules/DynamicDropdown";
 
 import { RoleDescriptionEditor } from "@/components/molecules/RoleDescriptionEditor";
-import { HourlyWorkSchedule } from "@/components/molecules/HourlyWorkSchedule";
+import { WorkScheduleEditor } from "@/components/molecules/WorkScheduleEditor";
 import { TeachingSelectionFields } from "@/components/molecules/TeachingSelectionFields";
 import { useTeachingCatalogue } from "@/features/teaching-catalogue/use-teaching-catalogue";
 import { toSkillEditor, otherSkillsError, toSubjectEditor, actualSubjects, otherSubjectsError, jobSubjects } from "@/features/teaching-catalogue/selection";
@@ -23,7 +22,7 @@ import { formatUkListingInstant, getJobVisibilityLabel, ukCalendarDate, ukDateTi
 import { isEmptyRichText, richTextToPlainText } from "@/features/applications/rich-text";
 import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 import { zonedDateTimeToIso } from "@/lib/zoned-date-time";
-import type { RouteProps } from "@/types/supplyed";
+import type { JobSchedule, PaymentFrequency, RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field } from "../atoms";
 import { JobListingPreview, type JobListingPreviewData, PageHead, PostcodeLookup, previewDateRange } from "../molecules";
@@ -50,6 +49,12 @@ type JobFormState = {
   days: string;
   payAmount: string;
   payType: "daily" | "fixed" | "hourly";
+  currency: string;
+  paymentFrequency: PaymentFrequency;
+  periodAnchor: "ASSIGNMENT_START" | "CALENDAR";
+  timeZone: string;
+  schedule: JobSchedule;
+  workersRequired: string;
   postalCode: string;
   qtsRequired: boolean;
   startDate: string;
@@ -81,6 +86,15 @@ const initialForm: JobFormState = {
   days: "",
   payAmount: "",
   payType: "daily",
+  currency: "GBP",
+  paymentFrequency: "daily",
+  periodAnchor: "ASSIGNMENT_START",
+  timeZone: "Europe/London",
+  schedule: {
+    weekdays: [1, 2, 3, 4, 5].map((day) => ({ day, slots: [{ start: "09:00", end: "15:30" }] })),
+    exceptions: [],
+  },
+  workersRequired: "1",
   postalCode: "",
   qtsRequired: false,
   startDate: "",
@@ -188,7 +202,7 @@ function PostJobEditor({
   const todayDate = getTodayDateInput();
   const savedExpiryUnchanged = Boolean(form.originalExpiresAt && form.expiresAt === ukCalendarDate(form.originalExpiresAt, true));
   const earliestWorkStart = [todayDate + "T00:00", form.liveFrom ? form.liveFrom + "T00:01" : "", savedExpiryUnchanged ? ukDateTimeInput(form.originalExpiresAt) : form.expiresAt ? shiftCalendarDay(form.expiresAt, 1) + "T00:00" : ""].sort().at(-1)!;
-  const latestListingDay = form.startDate ? savedExpiryUnchanged && Date.parse(form.originalExpiresAt!) <= Date.parse(toWorkIso(form.startDate) ?? "") ? form.expiresAt : shiftCalendarDay(form.startDate, -1) : undefined;
+  const latestListingDay = form.startDate ? savedExpiryUnchanged && Date.parse(form.originalExpiresAt!) <= Date.parse(toWorkIso(form.startDate, form.timeZone) ?? "") ? form.expiresAt : shiftCalendarDay(form.startDate, -1) : undefined;
 
   const createJob = useCreateJob({
     onSuccess: async (result) => {
@@ -265,12 +279,20 @@ function PostJobEditor({
     if (addressMode === "different" && isAddressKey(key)) {
       setDifferentAddress((current) => ({ ...current, [key]: value as string }));
     }
-    setForm((current) => syncWorkSchedule(current, key, value));
+    setForm((current) => {
+      const next = syncWorkSchedule(current, key, value, key === "timeZone" ? String(value) : current.timeZone);
+      if (key === "payType") {
+        const allowed = allowedPaymentFrequencies(value as JobFormState["payType"]);
+        if (!allowed.includes(next.paymentFrequency)) next.paymentFrequency = allowed[0];
+      }
+      return next;
+    });
     setErrors((current) => {
-      const nextForm = syncWorkSchedule(form, key, value);
-      if (["startDate", "endDate", "liveFrom", "expiresAt", "payType", "hours", "days"].includes(key)) {
-        const dates = { ...validateJobDates(nextForm), ...validateScheduleUnits(nextForm) };
-        return { ...current, hours: dates.hours, days: dates.days, startDate: dates.startDate, endDate: dates.endDate, liveFrom: dates.liveFrom, expiresAt: dates.expiresAt };
+      const nextForm = syncWorkSchedule(form, key, value, key === "timeZone" ? String(value) : form.timeZone);
+      if (["startDate", "endDate", "liveFrom", "expiresAt", "payType", "hours", "days", "timeZone", "schedule", "paymentFrequency"].includes(key)) {
+        const dates = { ...validateJobDates(nextForm), ...validateScheduleUnits(nextForm, nextForm.timeZone) };
+        const schedule = validateStructuredSchedule(nextForm.schedule, nextForm.startDate, nextForm.endDate);
+        return { ...current, schedule, hours: dates.hours, days: dates.days, startDate: dates.startDate, endDate: dates.endDate, liveFrom: dates.liveFrom, expiresAt: dates.expiresAt };
       }
       return current[key] ? { ...current, [key]: validateAll(nextForm)[key] } : current;
     });
@@ -441,15 +463,15 @@ function PostJobEditor({
               </Field>
             </div> : null}
           </div>
-          <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[220px_minmax(0,1fr)]">
-            <Field label="Pay basis">
+          <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2 lg:grid-cols-4">
+            <Field label="Rate basis">
               <DynamicSelect
                 collection="payType"
                 value={form.payType}
                 onChange={(value) => updateForm("payType", value as JobFormState["payType"])}
               />
             </Field>
-            <Field error={errors.payAmount} label="Pay amount (£)">
+            <Field error={errors.payAmount} label={form.payType === "fixed" ? "Agreed contract total (£)" : form.payType === "hourly" ? "Hourly rate (£)" : "Daily rate (£)"}>
               <input
                 className="input"
                 max={5000}
@@ -460,16 +482,26 @@ function PostJobEditor({
                 onChange={(event) => updateForm("payAmount", event.target.value)}
               />
             </Field>
+            <Field error={errors.paymentFrequency} label="Payment-release frequency" hint={form.payType === "fixed" ? "Fixed contracts use completion or the existing milestone arrangement. Release still requires the existing approved invoice flow." : "This plans payment periods, not the rate basis. The current provider does not auto-release; each amount still requires the existing approved invoice flow."}>
+              <select className="input" value={form.paymentFrequency} onChange={(event) => updateForm("paymentFrequency", event.target.value as PaymentFrequency)}>
+                {allowedPaymentFrequencies(form.payType).map((frequency) => <option key={frequency} value={frequency}>{frequency === "completion" ? "On completion" : frequency[0].toUpperCase() + frequency.slice(1)}</option>)}
+              </select>
+            </Field>
+            <Field label="Currency"><select className="input" value={form.currency} onChange={(event) => updateForm("currency", event.target.value)}><option value="GBP">GBP — British pound</option></select></Field>
+            {form.paymentFrequency === "weekly" || form.paymentFrequency === "monthly" ? <Field label="Payment period boundary" hint="Assignment start handles final partial periods; calendar aligns to Monday or month start."><select className="input" value={form.periodAnchor} onChange={(event) => updateForm("periodAnchor", event.target.value as JobFormState["periodAnchor"])}><option value="ASSIGNMENT_START">From assignment start</option><option value="CALENDAR">Calendar periods</option></select></Field> : null}
           </div>
-          {form.payType === "hourly" ? <HourlyWorkSchedule startDate={form.startDate} endDate={form.endDate} errors={errors} minDate={earliestWorkStart.slice(0, 10)} onChange={updateForm} /> : <>
-          <Field error={errors.startDate} hint="When the teacher starts work, in UK local time. Must be after Live from, with the listing closed by this time." label="Work start">
+          <Field error={errors.startDate} hint="First calendar date of the assignment. Must be after the listing closes." label="Assignment start">
             <input className="input" min={earliestWorkStart} type="datetime-local" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
           </Field>
-          <Field error={errors.endDate} hint="UK local time. Must be on or after the work start." label="Work end">
+          <Field error={errors.endDate} hint="Last calendar date of the assignment. The schedule below determines paid time." label="Assignment end">
             <input className="input" min={form.startDate > earliestWorkStart ? form.startDate : earliestWorkStart} type="datetime-local" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
           </Field>
-          </>}
-          {form.payType === "hourly" || form.payType === "daily" ? <div className="md:col-span-2"><PlannedWorkUnitsField payType={form.payType} hours={form.hours} days={form.days} errors={errors} onChange={updateForm} /></div> : null}
+          <Field error={errors.timeZone} label="Job time zone" hint="All recurring hours and date exceptions use this zone.">
+            <select className="input" value={form.timeZone} onChange={(event) => updateForm("timeZone", event.target.value)}><option value="Europe/London">Europe/London (GMT/BST)</option></select>
+          </Field>
+          <Field error={errors.workersRequired} label="Number of workers"><input className="input" min={1} max={100} step={1} type="number" value={form.workersRequired} onChange={(event) => updateForm("workersRequired", event.target.value)} /></Field>
+          <WorkScheduleEditor value={form.schedule} error={errors.schedule} onChange={(schedule) => updateForm("schedule", schedule)} />
+          <div className="md:col-span-2"><ScheduleEstimate form={form} /></div>
           <Field error={errors.liveFrom} hint="Teachers can see and apply for the published job from midnight on this UK date. Leave blank to open when published. Must be before Work start." label="Live from">
             <input className="input" min={todayDate} max={form.startDate ? (form.startDate.endsWith("T00:00") ? shiftCalendarDay(form.startDate, -1) : form.startDate.slice(0, 10)) : undefined} type="date" value={form.liveFrom} onChange={(event) => updateForm("liveFrom", event.target.value)} />
           </Field>
@@ -540,19 +572,21 @@ function PostJobEditor({
 
   function renderReviewSummary(eyebrow = "Step 4 - Review") {
     const previewDescription = readEditableDescription(form.description);
+    const estimate = previewFor(form);
     const preview: JobListingPreviewData = {
-      date: previewDateRange(toWorkIso(form.startDate), toWorkIso(form.endDate)),
+      date: previewDateRange(toWorkIso(form.startDate, form.timeZone), toWorkIso(form.endDate, form.timeZone)),
       description: richTextToPlainText(previewDescription),
       experience: form.minExperienceYears ? `${form.minExperienceYears}+ years experience` : undefined,
       keyStages: form.keyStages,
       listingDetails: [
+        ...(estimate ? [estimate.assignmentDuration === "EXTENDED" ? "Extended Assignment" : "Short-Term Assignment"] : []),
         form.liveFrom ? `Opens ${formatPreviewCalendarDate(form.liveFrom)}` : "Opens when published",
         ...(form.expiresAt ? [`Applications close ${formatPreviewCalendarDate(form.expiresAt)}`] : []),
       ],
       location: formatAddress(pickAddress(form)) || "Location TBC",
       mode,
       pay: formatPay(form),
-      plannedWork: form.payType !== "fixed" ? formatPlannedUnits(plannedUnitsInput(form.payType, form.hours, form.days)) : undefined,
+      plannedWork: estimate ? `${estimate.workingDays} working days · ${(estimate.totalMinutes / 60).toLocaleString("en-GB")} scheduled hours` : undefined,
       schoolImageUrl,
       schoolName: schoolName || "Your school",
       skills: [...actualSubjects(form.requiredSkills, form.otherSkills), ...(form.qtsRequired ? ["QTS required"] : [])],
@@ -698,9 +732,46 @@ function PostJobEditor({
   );
 }
 
+function previewFor(form: JobFormState) {
+  const amount = Number(form.payAmount);
+  if (!form.startDate || !form.endDate || !Number.isFinite(amount) || amount <= 0) return null;
+  return schedulePreview({
+    schedule: form.schedule,
+    startDate: form.startDate,
+    endDate: form.endDate,
+    payType: form.payType,
+    payAmount: amount,
+    paymentFrequency: form.paymentFrequency,
+    periodAnchor: form.periodAnchor,
+  });
+}
+
+function ScheduleEstimate({ form }: { form: JobFormState }) {
+  const preview = previewFor(form);
+  if (!preview) return <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted">Choose valid dates, shifts and a rate to see the live schedule and budget preview.</div>;
+  const workers = Math.max(1, Number(form.workersRequired) || 1);
+  const money = (pence: number) => new Intl.NumberFormat("en-GB", { style: "currency", currency: form.currency || "GBP" }).format(pence / 100);
+  return <div className="rounded-xl border border-brand/30 bg-brand-tint p-4" aria-live="polite">
+    <div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-xs font-semibold uppercase tracking-[0.1em] text-brand">Live assignment estimate</div><div className="mt-1 font-heading text-xl">{preview.assignmentDuration === "EXTENDED" ? "Extended Assignment" : "Short-Term Assignment"}</div></div><div className="text-sm font-semibold">{formatPay(form)}</div></div>
+    <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <Estimate label="Working days" value={String(preview.workingDays)} />
+      <Estimate label="Scheduled hours" value={(preview.totalMinutes / 60).toLocaleString("en-GB", { maximumFractionDigits: 2 })} />
+      <Estimate label="Total per worker" value={money(preview.totalAmountPence)} />
+      <Estimate label={`Budget for ${workers} ${workers === 1 ? "worker" : "workers"}`} value={money(preview.totalAmountPence * workers)} />
+    </div>
+    <div className="mt-4 text-xs font-semibold text-muted">Estimated payment periods</div>
+    <div className="mt-2 flex flex-wrap gap-2">{preview.periods.slice(0, 8).map((period, index) => <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs" key={`${period.label}-${index}`}>{period.label}: {period.amountPence == null ? "set by milestones" : money(period.amountPence)}</span>)}{preview.periods.length > 8 ? <span className="px-2 py-1 text-xs text-muted">+{preview.periods.length - 8} more</span> : null}</div>
+    <p className="mt-3 text-xs leading-5 text-muted">Planned estimates use scheduled paid minutes. Final payable earnings remain separate and follow approved invoice units.</p>
+  </div>;
+}
+
+function Estimate({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg border border-border bg-surface p-3"><div className="text-xs text-muted">{label}</div><div className="mt-1 font-semibold text-ink">{value}</div></div>;
+}
+
 function validateStep(step: number, form: JobFormState): JobFormErrors {
   if (step === 2) {
-    return pickErrors(validateAll(form), ["address", "city", "countryCode", "county", "description", "endDate", "liveFrom", "expiresAt", "minExperienceYears", "payAmount", "hours", "days", "postalCode", "requiredSkills", "startDate", "subjects", "otherSubjects", "otherSkills", "title"]);
+    return pickErrors(validateAll(form), ["address", "city", "countryCode", "county", "description", "endDate", "liveFrom", "expiresAt", "minExperienceYears", "payAmount", "hours", "days", "postalCode", "requiredSkills", "startDate", "subjects", "otherSubjects", "otherSkills", "title", "currency", "paymentFrequency", "timeZone", "schedule", "workersRequired"]);
   }
   if (step === 3) return pickErrors(validateAll(form), ["parkingInfo", "keyStages"]);
   return {};
@@ -730,7 +801,13 @@ function validateDraft(form: JobFormState): JobFormErrors {
 
 function validateOptionalJobFields(form: JobFormState): JobFormErrors {
   const errors: JobFormErrors = {};
-  Object.assign(errors, validateScheduleUnits(form));
+  Object.assign(errors, validateScheduleUnits(form, form.timeZone));
+  const scheduleError = validateStructuredSchedule(form.schedule, form.startDate, form.endDate);
+  if (scheduleError) errors.schedule = scheduleError;
+  if (!allowedPaymentFrequencies(form.payType).includes(form.paymentFrequency)) errors.paymentFrequency = "Choose a payment frequency supported for this rate basis.";
+  if (form.currency !== "GBP") errors.currency = "Only GBP is supported by the current payment flow.";
+  const workers = Number(form.workersRequired);
+  if (!Number.isInteger(workers) || workers < 1 || workers > 100) errors.workersRequired = "Choose between 1 and 100 workers.";
   const skillCustomError = otherSkillsError(form.requiredSkills, form.otherSkills);
   if (skillCustomError) errors.otherSkills = skillCustomError;
   const otherError = otherSubjectsError(form.subjects, form.otherSubjects);
@@ -771,14 +848,14 @@ function validateJobDates(form: JobFormState): JobFormErrors {
     if (form[key] && (!/^\d{4}-\d{2}-\d{2}$/.test(form[key]) || !Number.isFinite(Date.parse(form[key])) || new Date(form[key]).toISOString().slice(0, 10) !== form[key])) errors[key] = "Enter a valid date.";
   }
 
-  for (const key of ["startDate", "endDate"] as const) if (form[key] && !zonedDateTimeToIso(form[key], "Europe/London")) errors[key] = "Enter an unambiguous UK date and time.";
+  for (const key of ["startDate", "endDate"] as const) if (form[key] && !zonedDateTimeToIso(form[key], form.timeZone)) errors[key] = `Enter an unambiguous date and time in ${form.timeZone}.`;
 
   if (form.startDate && form.startDate.slice(0, 10) < todayDate) {
     errors.startDate = "Start date cannot be before today.";
   }
   const liveFrom = form.originalLiveFrom && form.liveFrom === ukCalendarDate(form.originalLiveFrom) ? form.originalLiveFrom : form.liveFrom;
   const expiresAt = form.originalExpiresAt && form.expiresAt === ukCalendarDate(form.originalExpiresAt, true) ? form.originalExpiresAt : form.expiresAt;
-  const orderErrors = validateJobDateOrder({ startDate: toWorkIso(form.startDate), endDate: toWorkIso(form.endDate), liveFrom, expiresAt });
+  const orderErrors = validateJobDateOrder({ startDate: toWorkIso(form.startDate, form.timeZone), endDate: toWorkIso(form.endDate, form.timeZone), liveFrom, expiresAt });
   Object.assign(errors, orderErrors);
   if (form.expiresAt && form.expiresAt < todayDate) errors.expiresAt = "Listing expiry cannot be before today.";
 
@@ -794,7 +871,7 @@ function pickErrors(errors: JobFormErrors, keys: Array<keyof JobFormState>) {
 
 function firstInvalidStep(errors: JobFormErrors) {
   if (errors.jobType) return 1;
-  if (errors.title || errors.address || errors.city || errors.countryCode || errors.county || errors.subjects || errors.otherSubjects || errors.otherSkills || errors.startDate || errors.endDate || errors.liveFrom || errors.expiresAt || errors.payAmount || errors.hours || errors.days || errors.minExperienceYears || errors.postalCode || errors.description || errors.requiredSkills) return 2;
+  if (errors.title || errors.address || errors.city || errors.countryCode || errors.county || errors.subjects || errors.otherSubjects || errors.otherSkills || errors.startDate || errors.endDate || errors.liveFrom || errors.expiresAt || errors.payAmount || errors.hours || errors.days || errors.minExperienceYears || errors.postalCode || errors.description || errors.requiredSkills || errors.currency || errors.paymentFrequency || errors.timeZone || errors.schedule || errors.workersRequired) return 2;
   if (errors.parkingInfo || errors.keyStages) return 3;
   return 4;
 }
@@ -812,7 +889,7 @@ function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract
     countryCode: validateUkCountry(form.countryCode).value,
     county: validateUkRegion(form.county).value || undefined,
     description: buildDescription(form, mode),
-    endDate: toWorkIso(form.endDate),
+    endDate: toWorkIso(form.endDate, form.timeZone),
     expiresAt: form.expiresAt || undefined,
     liveFrom: form.liveFrom || undefined,
     keyStages: form.keyStages,
@@ -821,11 +898,18 @@ function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract
     parkingInfo: form.parkingInfo,
     payAmount: form.payAmount ? Number(form.payAmount) : undefined,
     payType: form.payType,
-    ...plannedUnitsInput(form.payType, form.hours, form.days),
+    currency: form.currency,
+    paymentFrequency: form.paymentFrequency,
+    periodAnchor: form.periodAnchor,
+    timeZone: form.timeZone,
+    schedule: form.schedule,
+    workersRequired: Number(form.workersRequired),
+    hours: null,
+    days: null,
     postalCode: validateUkPostcode(form.postalCode).value || undefined,
     requiredSkills: toSkillEditor(catalogue, form.requiredSkills, form.otherSkills).skills,
     otherSkills: toSkillEditor(catalogue, form.requiredSkills, form.otherSkills).otherSkills,
-    startDate: toWorkIso(form.startDate),
+    startDate: toWorkIso(form.startDate, form.timeZone),
     status,
     ...toSubjectEditor(catalogue, form.subjects, form.otherSubjects),
     title: form.title,
@@ -859,9 +943,9 @@ function buildDescription(form: JobFormState, mode: PostingMode) {
   return notes.join("\n\n");
 }
 
-function toWorkIso(value: string) {
+function toWorkIso(value: string, timeZone = "Europe/London") {
   if (!value) return undefined;
-  return zonedDateTimeToIso(value, "Europe/London") || undefined;
+  return zonedDateTimeToIso(value, timeZone) || undefined;
 }
 
 function getTodayDateInput() {
@@ -887,6 +971,12 @@ function toFormState(job: Job): JobFormState {
     hours: job.hours == null ? "" : String(job.hours),
     days: job.days == null ? "" : String(job.days),
     payType: isPayType(job.payType) ? job.payType : "daily",
+    currency: job.currency ?? "GBP",
+    paymentFrequency: (job.paymentFrequency as PaymentFrequency) ?? (job.payType === "fixed" ? "completion" : job.payType === "hourly" ? "hourly" : "daily"),
+    periodAnchor: job.periodAnchor === "CALENDAR" ? "CALENDAR" : "ASSIGNMENT_START",
+    timeZone: job.timeZone ?? "Europe/London",
+    schedule: job.schedule ?? initialForm.schedule,
+    workersRequired: String(job.workersRequired ?? 1),
     postalCode: job.postalCode ?? "",
     qtsRequired: job.description?.includes("QTS requested.") ?? false,
     startDate: ukDateTimeInput(job.startDate),
@@ -929,9 +1019,10 @@ function readPayTypeLabel(value: string): JobFormState["payType"] {
 function formatPay(form: JobFormState) {
   const amount = Number(form.payAmount);
   if (!Number.isFinite(amount) || amount <= 0) return "Rate TBC";
-  if (form.payType === "hourly") return `£${amount}/hr`;
-  if (form.payType === "fixed") return `£${amount} fixed`;
-  return `£${amount}/day`;
+  const paid = form.paymentFrequency === "completion" ? "on completion" : form.paymentFrequency === "milestone" ? "by milestones" : `${form.paymentFrequency}`;
+  if (form.payType === "hourly") return `£${amount} per hour · ${paid} release plan`;
+  if (form.payType === "fixed") return `£${amount} fixed · ${paid} release plan`;
+  return `£${amount} per day · ${paid} release plan`;
 }
 
 function formatPreviewCalendarDate(value: string) {

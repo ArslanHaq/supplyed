@@ -8,10 +8,12 @@ import { useBooking } from "@/features/bookings/use-bookings";
 import { useJob } from "@/features/jobs/use-jobs";
 import { isJobOpenForApplications } from "@/features/jobs/listing-window";
 import { useJobMatchScore } from "@/features/matching/use-matching";
-import type { RouteProps } from "@/types/supplyed";
+import { useJobAvailability } from "@/features/availability/use-availability";
+import type { Job, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Field, Icon, Tag } from "../atoms";
 import { FormattedJobDescription, MatchScorePanel, Modal, ProposalEditor, SectionLoader } from "../molecules";
+import { JobScheduleCalendar } from "./JobScheduleCalendar";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
   const retryAfter = useRateLimit();
@@ -34,6 +36,8 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   const existingApplication = existingApplicationQuery.data?.applications[0];
   const hasApplied = applicationSubmitted || Boolean(existingApplication);
   const matchQuery = useJobMatchScore(ctx.jobId ?? "", role === "teacher" && job?.status === "ACTIVE");
+  const availabilityQuery = useJobAvailability(ctx.jobId ?? "", role === "teacher" && job?.status === "ACTIVE");
+  const scheduleBlocked = availabilityQuery.data?.available === false;
   const createApplication = useCreateApplication({
     onSuccess: (result) => {
       if (!result.ok) {
@@ -66,7 +70,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   });
 
   function submitApplication() {
-    if (!job || !isJobOpenForApplications(job) || role !== "teacher" || createApplication.isPending || retryAfter || hasApplied) return;
+    if (!job || !isJobOpenForApplications(job) || role !== "teacher" || createApplication.isPending || retryAfter || hasApplied || scheduleBlocked) return;
 
     const normalizedCoverLetter = coverLetter.trim();
     if (normalizedCoverLetter.length > MAX_PROPOSAL_LENGTH) {
@@ -159,10 +163,11 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
             </div>
           </section>
           <div className="grid-3 mb-7">
-            <div className="card card-pad text-center"><div className="text-xs text-muted">{job.payType === "hourly" ? "Hourly rate" : job.payType === "fixed" ? "Fixed pay" : "Day rate"}</div><div className="font-heading text-[26px] text-brand">£{job.rate}</div></div>
-            <div className="card card-pad text-center"><div className="text-xs text-muted">Duration</div><div className="font-heading text-xl">{formatPlannedUnits(job)}</div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">Rate and release</div><div className="font-heading text-xl text-brand">{formatJobPayDetail(job)}</div></div>
+            <div className="card card-pad text-center"><div className="text-xs text-muted">{job.assignmentDuration === "EXTENDED" ? "Extended Assignment" : "Short-Term Assignment"}</div><div className="font-heading text-xl">{job.scheduleSummary ? `${job.scheduleSummary.workingDays} days · ${job.scheduleSummary.totalHours.toLocaleString("en-GB")} hours` : formatPlannedUnits(job)}</div></div>
             <div className="card card-pad text-center"><div className="text-xs text-muted">Experience</div><div className="font-heading text-xl">{job.minExperienceYears != null ? `${job.minExperienceYears}+ years` : "Not specified"}</div></div>
           </div>
+          {role === "teacher" ? <JobScheduleCalendar job={job} conflicts={availabilityQuery.data?.conflicts} /> : null}
           <div className="card card-pad-lg mb-5">
             <div className="section-title">About this role</div>
             <FormattedJobDescription description={job.description || ""} emptyText="School-provided role details will appear here once published." />
@@ -174,6 +179,8 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
           <div className="mb-3.5 flex flex-wrap gap-2"><span className="pill">{job.keyStage}</span><span className="pill">{job.subject}</span><span className="pill">{job.date}</span>{job.hours != null || job.days != null ? <span className="pill">{formatPlannedUnits(job)}</span> : null}</div>
           {role === "teacher" && matchQuery.isLoading ? <div className="mb-4"><SectionLoader rows={1} /></div> : null}
           {role === "teacher" && matchQuery.data ? <div className="mb-4"><MatchScorePanel match={matchQuery.data} /></div> : null}
+          {role === "teacher" && availabilityQuery.isLoading ? <p className="mb-3 text-xs text-muted">Checking every required shift against your calendar...</p> : null}
+          {role === "teacher" && scheduleBlocked ? <div className="mb-4 rounded-xl border border-danger/30 bg-danger-tint p-3 text-sm text-danger" role="alert"><strong>Schedule conflict</strong><p className="mt-1">You cannot apply because required work conflicts with saved availability or a confirmed booking.</p><ul className="mt-2 list-disc pl-5 text-xs">{availabilityQuery.data?.conflicts.slice(0, 5).map((conflict) => <li key={`${conflict.type}-${conflict.start}`}>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: job.timeZone ?? "Europe/London" }).format(new Date(conflict.start))} – {new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: job.timeZone ?? "Europe/London" }).format(new Date(conflict.end))}</li>)}</ul></div> : null}
           {job.institution?.id ? (
             <Btn
               className="mb-2 w-full"
@@ -184,7 +191,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
               View school profile
             </Btn>
           ) : null}
-          {available ? <Btn className="w-full" disabled={role === "teacher" && (hasApplied || existingApplicationQuery.isLoading)} size="lg" onClick={() => role === "institution" ? go("find-teachers", { jobId: job.id }) : setOpen(true)}>{role === "teacher" ? (hasApplied ? "Applied" : existingApplicationQuery.isLoading ? "Checking application..." : "Apply for job") : "Invite candidates"}</Btn> : null}
+          {available ? <Btn className="w-full" disabled={role === "teacher" && (hasApplied || existingApplicationQuery.isLoading || availabilityQuery.isLoading || scheduleBlocked)} size="lg" onClick={() => role === "institution" ? go("find-teachers", { jobId: job.id }) : setOpen(true)}>{role === "teacher" ? (hasApplied ? "Applied" : availabilityQuery.isLoading ? "Checking availability..." : scheduleBlocked ? "Unavailable for required shifts" : existingApplicationQuery.isLoading ? "Checking application..." : "Apply for job") : "Invite candidates"}</Btn> : null}
           {positionFilled ? <Btn className="w-full" icon="calendar" onClick={() => go("bookings", ctx.bookingId ? { bookingId: ctx.bookingId } : { jobId: job.id })}>{ctx.bookingId ? "View booking" : "View job bookings"}</Btn> : null}
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging", ctx.bookingId ? { bookingId: ctx.bookingId } : undefined)}>Message {role === "teacher" ? "school" : "teacher"}</Btn>
         </aside>
@@ -240,4 +247,10 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
       </Modal>
     </div>
   );
+}
+
+function formatJobPayDetail(job: Job) {
+  const basis = job.payType === "fixed" ? "fixed contract" : job.payType === "hourly" ? "per hour" : "per day";
+  const frequency = job.paymentFrequency === "completion" ? "on completion" : job.paymentFrequency === "milestone" ? "by milestones" : job.paymentFrequency ?? job.payType;
+  return `£${job.rate} ${basis} · ${frequency} release plan`;
 }

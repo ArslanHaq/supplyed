@@ -1,4 +1,5 @@
 import type { OfferedJobTerms } from "@/features/jobs/offered-terms";
+import type { JobSchedule, PaymentFrequency } from "@/types/supplyed";
 export type BookingStatus = "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 export type BookingInvoiceFilter = "none" | "paid" | "unpaid";
 export type ReviewerType = "INSTITUTION" | "INSTRUCTOR";
@@ -66,6 +67,12 @@ export type Booking = {
   days?: number | null;
   payAmount?: number | null;
   payType?: string | null;
+  currency?: string;
+  paymentFrequency?: PaymentFrequency | string | null;
+  periodAnchor?: "ASSIGNMENT_START" | "CALENDAR" | string;
+  timeZone?: string;
+  schedule?: JobSchedule | null;
+  scheduledMinutes?: number | null;
   reviews: BookingReview[];
   startDate?: string | null;
   status: BookingStatus;

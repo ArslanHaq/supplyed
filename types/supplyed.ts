@@ -8,6 +8,12 @@ export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
 export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
 export type JobStatus = "DRAFT" | "ACTIVE" | "RESERVED" | "EXPIRED" | "FILLED" | "CLOSED" | "SUSPENDED";
 export type JobPayType = "daily" | "fixed" | "hourly";
+export type PaymentFrequency = "hourly" | "daily" | "weekly" | "monthly" | "completion" | "milestone";
+export type JobTimeSlot = { start: string; end: string };
+export type JobSchedule = {
+  weekdays: Array<{ day: number; slots: JobTimeSlot[] }>;
+  exceptions?: Array<{ date: string; kind: "add" | "exclude" | "replace"; slots?: JobTimeSlot[] }>;
+};
 export type JobType = "INSTANT" | "BRIEF";
 
 export type AppPage =
@@ -74,6 +80,18 @@ export type Job = {
   days?: number | null;
   payAmount?: number | null;
   payType?: JobPayType | string | null;
+  currency?: string;
+  paymentFrequency?: PaymentFrequency | string | null;
+  periodAnchor?: "ASSIGNMENT_START" | "CALENDAR" | string;
+  timeZone?: string;
+  schedule?: JobSchedule | null;
+  workersRequired?: number;
+  scheduledMinutes?: number | null;
+  assignmentDuration?: "SHORT_TERM" | "EXTENDED" | null;
+  scheduleSummary?: {
+    workingDays: number; totalMinutes: number; totalHours: number; totalAmountPence: number;
+    periods: Array<{ start: string; end: string; minutes: number; workingDays: number; estimatedAmountPence: number | null }>;
+  } | null;
   status?: JobStatus;
   liveFrom?: string | null;
   expiresAt?: string | null;

@@ -1,4 +1,4 @@
-import type { JobPayType } from "@/types/supplyed";
+import type { JobPayType, JobSchedule, PaymentFrequency } from "@/types/supplyed";
 
 /** The server's immutable offer. Never populate missing fields from a live job. */
 export type OfferedJobTerms = {
@@ -22,6 +22,13 @@ export type OfferedJobTerms = {
   endDate: string | null;
   payAmount: number | null;
   payType: JobPayType | null;
+  currency: string;
+  paymentFrequency: PaymentFrequency | null;
+  periodAnchor: "ASSIGNMENT_START" | "CALENDAR";
+  timeZone: string;
+  schedule: JobSchedule | null;
+  workersRequired: number;
+  scheduledMinutes: number | null;
   hours: number | null;
   days: number | null;
 };

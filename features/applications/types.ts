@@ -21,6 +21,10 @@ export type JobApplication = {
   termsStatus: "RECORDED" | "LEGACY_UNVERIFIED";
   /** Other active applications rejected atomically when this application was hired. */
   automaticallyRejectedCount?: number;
+  scheduleConflict?: {
+    available: false;
+    conflicts: Array<{ date: string; start: string; end: string; type: "OUTSIDE_AVAILABILITY" | "BOOKING_CONFLICT" }>;
+  } | null;
   coverLetter?: string | null;
   createdAt?: string | null;
   id: string;
