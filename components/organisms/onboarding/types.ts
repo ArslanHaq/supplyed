@@ -5,7 +5,7 @@ import type {
   OnboardingDocumentUploadResult,
   OnboardingProfileSnapshot,
 } from "@/features/onboarding/types";
-import type { AppRole } from "@/types/supplyed";
+import type { AppRole, SchoolType } from "@/types/supplyed";
 
 export type SignupRole = Extract<AppRole, "institution" | "teacher">;
 export type SignupStep = 1 | 2 | 3 | 4;
@@ -49,6 +49,7 @@ export type SignupField =
   | "fullName"
   | "email"
   | "institutionType"
+  | "schoolType"
   | "trustName"
   | "trustCompanyNumber"
   | "signatoryName"
@@ -124,6 +125,7 @@ export type SignupForm = {
   institutionProfileId: string;
   institutionRegistrationId: string;
   institutionType: "MAT_SCHOOL" | "SINGLE_SCHOOL";
+  schoolType: SchoolType | "";
   keyStages: string[];
   localAuthority: string;
   maxTravelDistance: string;
@@ -177,6 +179,7 @@ export type OnboardingPrefill = Partial<
     | "profileCountryCode"
     | "postcode"
     | "schoolName"
+    | "schoolType"
     | "skills"
     | "staffingNeeds"
     | "subjects"

@@ -133,6 +133,7 @@ function institutionPayload(input: SettingsInstitutionUpdateInput) {
     postalCode: validateUkPostcode(input.postalCode).value,
     registrationId: optionalText(input.registrationId),
     safeguardingConfirmed: input.safeguardingConfirmed,
+    schoolType: input.schoolType || undefined,
     staffingNeeds: normalizeStringArray(input.staffingNeeds),
     otherSubjects: input.otherSubjects,
     typicalPupilCount,
@@ -147,7 +148,7 @@ function mergeLocalSnapshot(current: SettingsProfileSnapshot, input: SettingsUpd
     ...current,
     institution:
       input.role === "institution" && input.institution && current.institution
-        ? { ...current.institution, ...school, staffingNeeds: actualSubjects(input.institution.staffingNeeds, schoolOther === undefined ? undefined : cleanOtherSubjects(schoolOther)) }
+        ? { ...current.institution, ...school, schoolType: input.institution.schoolType || current.institution.schoolType, staffingNeeds: actualSubjects(input.institution.staffingNeeds, schoolOther === undefined ? undefined : cleanOtherSubjects(schoolOther)) }
         : current.institution,
     instructor:
       input.role === "teacher" && input.instructor && current.instructor
@@ -303,7 +304,11 @@ export async function updateSettingsAction(input: SettingsUpdateInput) {
       : input.role === "institution" && input.institution ? institutionPayload(input.institution) : undefined;
     const selectionErrors = validateSettingsInput(input, input.role === "teacher" ? current.instructor : current.institution);
     if (Object.keys(selectionErrors).length) return actionError("Check the highlighted settings and try again.", { fieldErrors: selectionErrors });
-    if (profilePayload) { omitUnchangedTeachingFields(profilePayload, input.role === "teacher" ? current.instructor : current.institution); omitUnchangedDropdownFields(profilePayload, input.role === "teacher" ? current.instructor : current.institution); }
+    if (profilePayload) {
+      const schoolTypeChanged = input.role === "institution" && input.institution?.schoolType !== current.institution?.schoolType;
+      if (!schoolTypeChanged) omitUnchangedTeachingFields(profilePayload, input.role === "teacher" ? current.instructor : current.institution);
+      omitUnchangedDropdownFields(profilePayload, input.role === "teacher" ? current.instructor : current.institution);
+    }
     const accountPayload = userPayload(input.user, current);
 
     if (!backendEnabled()) {

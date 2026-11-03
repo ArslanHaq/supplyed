@@ -21,7 +21,7 @@ const schoolSteps = [
 const teacherSteps = [
   ["Create a profile", "Teachers add subjects, stages, experience, availability, and verification details."],
   ["Receive matching jobs", "Relevant roles appear by urgency, distance, rate, and subject fit."],
-  ["Accept or propose", "Teachers can accept instant cover or apply to longer-term briefs."],
+  ["Accept or apply", "Teachers can accept targeted invitations or apply to open roles."],
 ];
 
 const matSteps = [

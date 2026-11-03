@@ -2,6 +2,7 @@ import type { JobPayType, JobSchedule, PaymentFrequency } from "@/types/supplyed
 
 const DAY_MS = 86_400_000;
 const TIME = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const WHOLE_HOUR_TIME = /^(?:[01]\d|2[0-3]):00$/;
 
 export type SchedulePreview = {
   assignmentDuration: "SHORT_TERM" | "EXTENDED";
@@ -32,6 +33,20 @@ export function validateStructuredSchedule(schedule: JobSchedule | undefined, st
   }
   if (startDate && endDate && !scheduleIntervals(schedule, startDate, endDate).length) return "The selected dates and weekdays do not produce any work shifts.";
   return undefined;
+}
+
+/** Convert older draft schedules to the whole-hour contract used by the posting form. */
+export function normalizeScheduleToWholeHours(schedule: JobSchedule): JobSchedule {
+  const normalizeSlots = (slots: Array<{ start: string; end: string }>) => slots.map((slot) => ({
+    start: wholeHour(slot.start, "start"),
+    end: wholeHour(slot.end, "end"),
+  }));
+  return {
+    weekdays: schedule.weekdays.map((weekday) => ({ ...weekday, slots: normalizeSlots(weekday.slots) })),
+    exceptions: (schedule.exceptions ?? []).map((exception) => exception.kind === "exclude"
+      ? { ...exception }
+      : { ...exception, slots: normalizeSlots(exception.slots ?? []) }),
+  };
 }
 
 export function schedulePreview(input: {
@@ -104,9 +119,18 @@ function slotsError(slots: Array<{ start: string; end: string }>) {
   if (!slots.length) return "Add at least one time slot for every selected day.";
   const ranges = slots.map((slot) => ({ ...slot, startMinute: minutes(slot.start), endMinute: minutes(slot.end) + (slot.end <= slot.start ? 1440 : 0) }));
   if (ranges.some((slot) => !TIME.test(slot.start) || !TIME.test(slot.end) || slot.start === slot.end)) return "Use valid, non-zero start and end times.";
+  if (ranges.some((slot) => !WHOLE_HOUR_TIME.test(slot.start) || !WHOLE_HOUR_TIME.test(slot.end))) return "Shift minutes must be 00; choose whole-hour start and end times.";
   ranges.sort((a, b) => a.startMinute - b.startMinute);
   if (ranges.some((slot, index) => index > 0 && slot.startMinute < ranges[index - 1].endMinute)) return "Time slots cannot overlap.";
   return undefined;
+}
+
+function wholeHour(value: string, boundary: "start" | "end") {
+  if (!TIME.test(value)) return value;
+  const [hour, minute] = value.split(":").map(Number);
+  if (minute === 0) return value;
+  const normalizedHour = boundary === "end" ? (hour + 1) % 24 : hour;
+  return `${String(normalizedHour).padStart(2, "0")}:00`;
 }
 
 function minutes(value: string) { const [hour, minute] = value.split(":").map(Number); return hour * 60 + minute; }

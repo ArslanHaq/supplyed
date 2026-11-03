@@ -38,7 +38,7 @@ export type BackendJobResponse = {
   termsLocked: boolean;
   hasBeenPublished: boolean;
   id: string;
-  institution?: { id: string; imageUrl: string | null; name: string } | null;
+  institution?: { id: string; imageUrl: string | null; name: string; schoolType: import("@/types/supplyed").SchoolType | null } | null;
   postedByUserId: string;
   title: string;
   description: string;

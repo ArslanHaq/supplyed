@@ -1,6 +1,6 @@
 import { richTextToPlainText } from "@/features/applications/rich-text";
 
-const GENERATED_DESCRIPTION_TEXT = "(?:Posting route:\\s*(?:Instant matching|Open brief)\\.|Marked urgent by the hiring account\\.|QTS requested\\.)";
+const GENERATED_DESCRIPTION_TEXT = "(?:Posting route:\\s*(?:Instant matching|Open brief|Targeted matching|Open applications)\\.|Marked urgent by the hiring account\\.|QTS requested\\.)";
 const GENERATED_DESCRIPTION_BLOCK = new RegExp(`<p(?:\\s[^>]*)?>\\s*${GENERATED_DESCRIPTION_TEXT}\\s*</p>`, "gi");
 const GENERATED_DESCRIPTION_LINE = new RegExp(`^${GENERATED_DESCRIPTION_TEXT}$`, "i");
 

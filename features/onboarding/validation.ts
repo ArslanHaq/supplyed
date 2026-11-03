@@ -54,6 +54,7 @@ export function validateOnboardingForm(form: FormData, options: { complete?: boo
       const domain = read(form, "institutionDomain").replace(/^https?:\/\//i, "").replace(/\/$/, "");
       if (domain.length > 253 || !/^(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,63}$/i.test(domain)) errors.institutionDomain = "Enter a valid institution domain, for example school.org.uk.";
       if (!["SINGLE_SCHOOL", "MAT_SCHOOL"].includes(read(form, "institutionType"))) errors.institutionType = "Choose a valid institution type.";
+      if (!["PRIMARY", "SECONDARY"].includes(read(form, "schoolType"))) errors.schoolType = "Choose whether this is a primary or secondary school.";
       list("coverTypes", true);
       list("staffingNeeds");
       if (read(form, "institutionType") === "MAT_SCHOOL") {

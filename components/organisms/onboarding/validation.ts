@@ -68,6 +68,7 @@ export function validateOnboardingStep(form: SignupForm, activeRole: SignupRole,
       if (!region.valid) nextErrors.localAuthority = region.error;
       if (form.typicalPupilCount.trim() && (!/^\d+$/.test(form.typicalPupilCount.trim()) || !Number.isFinite(Number(form.typicalPupilCount)))) nextErrors.typicalPupilCount = "Enter a whole number of pupils, zero or more.";
       if (!["SINGLE_SCHOOL", "MAT_SCHOOL"].includes(form.institutionType)) nextErrors.institutionType = "Select the school type.";
+      if (!["PRIMARY", "SECONDARY"].includes(form.schoolType)) nextErrors.schoolType = "Choose whether this is a primary or secondary school.";
       if (form.coverTypes.length === 0) nextErrors.coverTypes = "Choose at least one staffing need.";
       else if (form.coverTypes.length > 20 || form.coverTypes.some((item) => !item.trim() || item.length > 100)) nextErrors.coverTypes = "Choose valid staffing needs (up to 20).";
       maxLength("schoolName", 200);

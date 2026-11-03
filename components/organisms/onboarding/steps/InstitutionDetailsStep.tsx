@@ -13,7 +13,7 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
 
   return (
     <div className="space-y-6">
-      <Field label="School type" htmlFor="institution-type" error={errors.institutionType} required>
+      <Field label="Organisation structure" htmlFor="institution-type" error={errors.institutionType} required>
         <DynamicSelect
           id="institution-type"
           error={Boolean(errors.institutionType)}
@@ -30,6 +30,17 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
               updateField("signatoryJobTitle", "");
             }
           }}
+        />
+      </Field>
+
+      <Field label="School phase" htmlFor="school-type" error={errors.schoolType} hint="This controls the subjects and related skills available for staffing and job posts." required>
+        <DynamicSelect
+          id="school-type"
+          collection="schoolType"
+          emptyLabel="Select primary or secondary"
+          error={Boolean(errors.schoolType)}
+          value={form.schoolType}
+          onChange={(value) => updateField("schoolType", value === "SECONDARY" ? "SECONDARY" : value === "PRIMARY" ? "PRIMARY" : "")}
         />
       </Field>
 
@@ -153,7 +164,7 @@ export function InstitutionDetailsStep({ controller }: StepComponentProps) {
       </div>
 
       <Field label="Cover types" error={errors.coverTypes} required><DynamicMultiSelect error={Boolean(errors.coverTypes)} collection="coverType" placeholder="Select cover types" value={form.coverTypes} onChange={value => updateField("coverTypes", value)} /></Field>
-      <TeachingSelectionFields otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjectLabel="Staffing needs" subjects={form.staffingNeeds} subjectError={errors.staffingNeeds} onChange={(subjects, _skills, otherSubjects) => { updateField("staffingNeeds", subjects); updateField("otherSubjects", otherSubjects); }} />
+      <TeachingSelectionFields catalogueScope="schoolType" schoolType={form.schoolType || null} otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjectLabel="Staffing needs" subjects={form.staffingNeeds} subjectError={errors.staffingNeeds} onChange={(subjects, _skills, otherSubjects) => { updateField("staffingNeeds", subjects); updateField("otherSubjects", otherSubjects); }} />
     </div>
   );
 }

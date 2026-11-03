@@ -15,7 +15,7 @@ import { api, ApiError } from "@/lib/server/api-client";
 import { getServerAuthContext } from "@/lib/server/auth-context";
 import { getValidAccessToken } from "@/lib/server/token-refresh";
 import { readUnverifiedJwtExpiresAt } from "@/lib/server/jwt";
-import type { AppRole, ApplicationStatus } from "@/types/supplyed";
+import type { AppRole, ApplicationStatus, SchoolType } from "@/types/supplyed";
 
 import { missingRequiredDocuments } from "./document-utils";
 import {
@@ -86,6 +86,7 @@ type InstitutionProfilePayload = {
   county?: string;
   domain: string;
   institutionType: "MAT_SCHOOL" | "SINGLE_SCHOOL";
+  schoolType: SchoolType;
   name: string;
   postalCode?: string;
   registrationId?: string;
@@ -149,6 +150,7 @@ type BackendInstitutionProfile = {
   domain?: string;
   id?: string;
   institutionType?: "MAT_SCHOOL" | "SINGLE_SCHOOL";
+  schoolType?: SchoolType | null;
   name?: string;
   postalCode?: string | null;
   registrationId?: string | null;
@@ -228,6 +230,7 @@ function normalizeInstitutionSnapshot(profile: BackendInstitutionProfile): Onboa
     domain: profile.domain || "",
     id: profile.id,
     institutionType: profile.institutionType === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL",
+    schoolType: profile.schoolType === "PRIMARY" || profile.schoolType === "SECONDARY" ? profile.schoolType : null,
     name: profile.name || "",
     postalCode: profile.postalCode || "",
     registrationId: profile.registrationId || "",
@@ -357,6 +360,9 @@ function normalizeDomain(value: string) {
 
 function buildInstitutionProfilePayload(formData: FormData): InstitutionProfilePayload {
   const institutionType = readFormString(formData, "institutionType") === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL";
+  const schoolTypeValue = readFormString(formData, "schoolType");
+  if (schoolTypeValue !== "PRIMARY" && schoolTypeValue !== "SECONDARY") throw new Error("Choose whether this is a primary or secondary school.");
+  const schoolType: SchoolType = schoolTypeValue;
   const trustName = readFormString(formData, "trustName");
   const trustCompanyNumber = readFormString(formData, "trustCompanyNumber").replace(/\s+/g, "").toUpperCase();
 
@@ -370,6 +376,7 @@ function buildInstitutionProfilePayload(formData: FormData): InstitutionProfileP
     county: readFormString(formData, "localAuthority") || undefined,
     domain: normalizeDomain(readFormString(formData, "institutionDomain")),
     institutionType,
+    schoolType,
     name: readFormString(formData, "schoolName"),
     postalCode: readFormString(formData, "postcode") || undefined,
     registrationId: readFormString(formData, "institutionRegistrationId") || undefined,
@@ -694,7 +701,7 @@ async function saveInstitutionProfile(formData: FormData, accessToken: string) {
   if (existing) {
     if (!["none", "rejected"].includes(existing.status)) return existing;
     const payload = buildInstitutionProfilePayload(formData);
-    omitUnchangedTeachingFields(payload, existing);
+    if (payload.schoolType === existing.schoolType) omitUnchangedTeachingFields(payload, existing);
     omitUnchangedDropdownFields(payload, existing);
     return normalizeInstitutionSnapshot(await api.patch<BackendInstitutionProfile>(`/institutions/${existing.id}`, payload, { auth: false, headers: buildBearerHeaders(accessToken) }));
   }

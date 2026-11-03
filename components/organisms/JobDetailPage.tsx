@@ -22,6 +22,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   const [coverLetter, setCoverLetter] = useState("");
   const [coverLetterTextLength, setCoverLetterTextLength] = useState(0);
   const [coverLetterError, setCoverLetterError] = useState<string>();
+  const [eligibilityNotice, setEligibilityNotice] = useState<string>();
   const bookingQuery = useBooking(ctx.bookingId);
   const bookingJobId = bookingQuery.data?.job.id;
   const selectedJobId = ctx.jobId ?? bookingJobId ?? "";
@@ -53,6 +54,10 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
           toast({ title: "Already applied", msg: "Your application for this job is already on record.", tone: "success" });
           return;
         }
+        if (result.code === "INSTRUCTOR_DOCUMENTS_NOT_VERIFIED") {
+          setEligibilityNotice("You’re not eligible to apply yet. Upload or replace any required documents, then wait for SupplyED to approve them before applying.");
+          return;
+        }
         setCoverLetterError(result.fieldErrors?.coverLetter);
         toast({ title: "Could not apply", msg: result.message, tone: "danger" });
         return;
@@ -79,6 +84,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
     }
 
     setCoverLetterError(undefined);
+    setEligibilityNotice(undefined);
     createApplication.mutate({ coverLetter: normalizedCoverLetter, jobId: job.id });
   }
 
@@ -86,6 +92,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
     if (createApplication.isPending) return;
     setOpen(false);
     setCoverLetterError(undefined);
+    setEligibilityNotice(undefined);
   }
 
   if (ctx.bookingId && bookingQuery.isLoading) {
@@ -125,7 +132,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
       <nav aria-label="Job navigation" className="job-detail-navigation"><Btn icon="arrowLeft" size="sm" variant="ghost" onClick={() => ctx.bookingId ? go("bookings", { bookingId: ctx.bookingId }) : go(role === "teacher" ? "find-jobs" : "dashboard")}>{ctx.bookingId ? "Back to booking" : "Back to jobs"}</Btn><span>Role details</span></nav>
       <div className="two-col">
         <div>
-          <div className="mb-3.5 flex flex-wrap gap-1.5">{positionFilled ? <Tag tone="green">{"Position filled"}</Tag> : job.urgent ? <Tag tone="red">Urgent - act fast</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Instant matching" : "Open brief"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div>
+          <div className="mb-3.5 flex flex-wrap gap-1.5">{positionFilled ? <Tag tone="green">{"Position filled"}</Tag> : job.urgent ? <Tag tone="red">Urgent - act fast</Tag> : null}<Tag tone={job.mode === "instant" ? "" : "purple"}>{job.mode === "instant" ? "Targeted matching" : "Open applications"}</Tag><Tag tone="ghost">{job.keyStage}</Tag><Tag tone="ghost">{job.subject}</Tag></div>
           <h1 className="mb-2.5 font-heading text-[38px] leading-tight">{job.title}</h1>
           <div className="mb-6 flex flex-wrap gap-4">
             <div className="flex items-center gap-1.5">
@@ -191,7 +198,14 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
               View school profile
             </Btn>
           ) : null}
-          {available ? <Btn className="w-full" disabled={role === "teacher" && (hasApplied || existingApplicationQuery.isLoading || availabilityQuery.isLoading || scheduleBlocked)} size="lg" onClick={() => role === "institution" ? go("find-teachers", { jobId: job.id }) : setOpen(true)}>{role === "teacher" ? (hasApplied ? "Applied" : availabilityQuery.isLoading ? "Checking availability..." : scheduleBlocked ? "Unavailable for required shifts" : existingApplicationQuery.isLoading ? "Checking application..." : "Apply for job") : "Invite candidates"}</Btn> : null}
+          {available ? <Btn className="w-full" disabled={role === "teacher" && (hasApplied || existingApplicationQuery.isLoading || availabilityQuery.isLoading || scheduleBlocked)} size="lg" onClick={() => {
+            if (role === "institution") {
+              go("find-teachers", { jobId: job.id });
+              return;
+            }
+            setEligibilityNotice(undefined);
+            setOpen(true);
+          }}>{role === "teacher" ? (hasApplied ? "Applied" : availabilityQuery.isLoading ? "Checking availability..." : scheduleBlocked ? "Unavailable for required shifts" : existingApplicationQuery.isLoading ? "Checking application..." : "Apply for job") : "Invite candidates"}</Btn> : null}
           {positionFilled ? <Btn className="w-full" icon="calendar" onClick={() => go("bookings", ctx.bookingId ? { bookingId: ctx.bookingId } : { jobId: job.id })}>{ctx.bookingId ? "View booking" : "View job bookings"}</Btn> : null}
           <Btn variant="secondary" className="mt-2 w-full" onClick={() => go("messaging", ctx.bookingId ? { bookingId: ctx.bookingId } : undefined)}>Message {role === "teacher" ? "school" : "teacher"}</Btn>
         </aside>
@@ -211,6 +225,15 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
               </div>
               <div className="proposal-dialog-body">
               <p className="proposal-intro">You can add an optional proposal to introduce yourself and connect your experience to the role.</p>
+              {eligibilityNotice ? (
+                <div className="flex items-start gap-2.5 rounded-lg border border-warning/20 bg-warning-tint px-3 py-2.5 text-sm leading-5" role="alert">
+                  <Icon className="mt-0.5 text-warning" name="shield" size={15} />
+                  <div>
+                    <div className="font-semibold text-ink">Document verification required</div>
+                    <p className="mt-0.5 text-xs leading-5 text-muted">{eligibilityNotice}</p>
+                  </div>
+                </div>
+              ) : null}
               <Field error={coverLetterError} htmlFor="job-proposal-editor" label="Proposal (optional)">
                 <ProposalEditor
                   id="job-proposal-editor"

@@ -20,6 +20,7 @@ export const initialForm: SignupForm = {
   institutionProfileId: "",
   institutionRegistrationId: "",
   institutionType: "SINGLE_SCHOOL",
+  schoolType: "",
   keyStages: [],
   localAuthority: "",
   maxTravelDistance: "",

@@ -103,6 +103,7 @@ const emptyInstitution: SettingsInstitutionUpdateInput = {
   postalCode: "",
   registrationId: "",
   safeguardingConfirmed: false,
+  schoolType: "",
   staffingNeeds: [],
   typicalPupilCount: "",
   userRole: "",
@@ -165,6 +166,7 @@ function createForm(snapshot?: SettingsProfileSnapshot): SettingsForm {
             postalCode: snapshot.institution.postalCode,
             registrationId: snapshot.institution.registrationId,
             safeguardingConfirmed: snapshot.institution.safeguardingConfirmed,
+            schoolType: snapshot.institution.schoolType ?? "",
             staffingNeeds: snapshot.institution.staffingNeeds,
             typicalPupilCount: snapshot.institution.typicalPupilCount,
             userRole: snapshot.institution.userRole,
@@ -437,7 +439,14 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
     field: Field,
     value: SettingsInstitutionUpdateInput[Field],
   ) {
-    setForm((current) => ({ ...current, institution: { ...current.institution, [field]: value } }));
+    setForm((current) => ({
+      ...current,
+      institution: {
+        ...current.institution,
+        [field]: value,
+        ...(field === "schoolType" && current.institution.schoolType !== value ? { staffingNeeds: [], otherSubjects: undefined } : {}),
+      },
+    }));
     setSubmitError(undefined);
   }
 
@@ -719,6 +728,15 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.institution.name}
                   />
                 </Field>
+                <Field error={errors.schoolType} label="School phase" hint="This controls the subjects and skills available for staffing and job posts." required>
+                  <DynamicSelect
+                    collection="schoolType"
+                    emptyLabel="Select primary or secondary"
+                    error={Boolean(errors.schoolType)}
+                    value={form.institution.schoolType}
+                    onChange={(value) => updateInstitution("schoolType", value === "SECONDARY" ? "SECONDARY" : value === "PRIMARY" ? "PRIMARY" : "")}
+                  />
+                </Field>
                 <Field error={errors.registrationId} label="Registration ID">
                   <input
                     className="input"
@@ -798,7 +816,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                   />
                 </Field>
                 <div className="sm:col-span-2">
-                  <TeachingSelectionFields otherSubjects={form.institution.otherSubjects} otherError={errors.otherSubjects} subjectLabel="Staffing needs" subjects={form.institution.staffingNeeds} subjectError={errors.staffingNeeds} onChange={(subjects, _skills, otherSubjects) => { updateInstitution("staffingNeeds", subjects); updateInstitution("otherSubjects", otherSubjects); }} />
+                  <TeachingSelectionFields catalogueScope="schoolType" schoolType={form.institution.schoolType || null} otherSubjects={form.institution.otherSubjects} otherError={errors.otherSubjects} subjectLabel="Staffing needs" subjects={form.institution.staffingNeeds} subjectError={errors.staffingNeeds} onChange={(subjects, _skills, otherSubjects) => { updateInstitution("staffingNeeds", subjects); updateInstitution("otherSubjects", otherSubjects); }} />
                 </div>
                 <div className="sm:col-span-2">
                   <Field label="Cover types" error={errors.coverTypes}><DynamicMultiSelect collection="coverType" searchable value={form.institution.coverTypes} onChange={value => updateInstitution("coverTypes", value)} /></Field>

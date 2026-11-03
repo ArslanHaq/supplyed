@@ -34,7 +34,7 @@ export function reconcileSkills(subjects: string[], skills: string[], catalogue:
 }
 
 export function catalogueError(code?: string) {
-  return code === "INVALID_OTHER_SUBJECTS" || code === "INVALID_OTHER_SKILLS" || code === "INVALID_DROPDOWN_SELECTION" || code === "INVALID_TEACHING_SELECTION" || code === "SKILL_SUBJECT_MISMATCH" || code === "CONFLICTING_JOB_SUBJECTS";
+  return code === "INVALID_OTHER_SUBJECTS" || code === "INVALID_OTHER_SKILLS" || code === "INVALID_DROPDOWN_SELECTION" || code === "INVALID_TEACHING_SELECTION" || code === "SKILL_SUBJECT_MISMATCH" || code === "CONFLICTING_JOB_SUBJECTS" || code === "SCHOOL_TYPE_REQUIRED" || code === "STAFFING_NEEDS_REQUIRED_FOR_SCHOOL_TYPE_CHANGE";
 }
 
 export function toSkillEditor(catalogue: TeachingCatalogue | undefined, values: string[], otherSkills?: string[]) {

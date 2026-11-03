@@ -64,6 +64,7 @@ export function normalizeApplication(application: JobApplication): JobApplicatio
   return {
     ...application,
     agreedTerms: application.termsStatus === "RECORDED" ? application.agreedTerms : null,
+    bookingTerms: application.bookingTerms ?? null,
     termsStatus: application.termsStatus === "RECORDED" && application.agreedTerms ? "RECORDED" : "LEGACY_UNVERIFIED",
     jobDetails: application.termsStatus === "RECORDED" ? application.agreedTerms : null,
     status: normalizeApplicationStatus(application.status),

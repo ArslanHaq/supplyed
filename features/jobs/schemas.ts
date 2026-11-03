@@ -191,6 +191,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
           id: job.institution.id,
           imageUrl: job.institution.imageUrl ?? null,
           name: job.institution.name || "Hiring school",
+          schoolType: job.institution.schoolType === "PRIMARY" || job.institution.schoolType === "SECONDARY" ? job.institution.schoolType : null,
         }
       : null,
     latitude: readNumber(job.latitude) ?? null,
@@ -306,8 +307,8 @@ function readPostingMode(value: unknown): Job["mode"] | null {
 
   const normalized = value.trim().toLowerCase().replace(/[\s_-]+/g, " ");
   if (!normalized) return null;
-  if (normalized.includes("brief")) return "brief";
-  if (normalized.includes("instant")) return "instant";
+  if (normalized.includes("brief") || normalized.includes("open application")) return "brief";
+  if (normalized.includes("instant") || normalized.includes("targeted match")) return "instant";
 
   return null;
 }
@@ -319,7 +320,7 @@ function normalizeJobType(value: unknown): JobType | null {
 }
 
 function readPostingModeFromDescription(description: string): Job["mode"] | null {
-  const matches = Array.from(description.matchAll(/(?:^|\n)\s*Posting route:\s*(Instant matching|Open brief)\.\s*(?=\n|$)/gi));
+  const matches = Array.from(description.matchAll(/(?:^|\n)\s*Posting route:\s*(Instant matching|Open brief|Targeted matching|Open applications)\.\s*(?=\n|$)/gi));
   const match = matches.at(-1);
   return readPostingMode(match?.[1]);
 }

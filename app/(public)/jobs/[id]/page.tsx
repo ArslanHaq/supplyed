@@ -58,7 +58,7 @@ export default async function PublicJobPage({ params }: PublicJobPageProps) {
                 <div className="min-w-0">
                   <div className="mb-3 flex flex-wrap gap-2">
                     <Tag tone="green">Open role</Tag>
-                    <Tag tone={job.jobType === "INSTANT" ? "amber" : "purple"}>{job.jobType === "INSTANT" ? "Instant job" : "Brief job"}</Tag>
+                    <Tag tone={job.jobType === "INSTANT" ? "amber" : "purple"}>{job.jobType === "INSTANT" ? "Targeted matching" : "Open applications"}</Tag>
                   </div>
                   <p className="text-sm font-semibold text-brand">{job.school}</p>
                   <h1 className="mt-2 font-heading text-3xl leading-tight text-ink sm:text-4xl">{job.title}</h1>

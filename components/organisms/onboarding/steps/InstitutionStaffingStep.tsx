@@ -56,7 +56,7 @@ export function InstitutionStaffingStep({ controller }: StepComponentProps) {
         </Field>
       </div>
 
-      <TeachingSelectionFields otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjectLabel="Staffing needs" subjects={form.staffingNeeds} subjectError={errors.staffingNeeds} onChange={(subjects, _skills, otherSubjects) => { updateField("staffingNeeds", subjects); updateField("otherSubjects", otherSubjects); }} />
+      <TeachingSelectionFields catalogueScope="schoolType" schoolType={form.schoolType || null} otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjectLabel="Staffing needs" subjects={form.staffingNeeds} subjectError={errors.staffingNeeds} onChange={(subjects, _skills, otherSubjects) => { updateField("staffingNeeds", subjects); updateField("otherSubjects", otherSubjects); }} />
     </div>
   );
 }

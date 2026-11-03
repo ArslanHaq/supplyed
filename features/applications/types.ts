@@ -1,4 +1,5 @@
 import type { OfferedJobTerms } from "@/features/jobs/offered-terms";
+import type { JobPayType, PaymentFrequency } from "@/types/supplyed";
 export type JobApplicationStatus = "APPLIED" | "HIRED" | "REJECTED" | "SHORTLISTED" | "VIEWED";
 
 export type ApplicantSummary = {
@@ -18,6 +19,8 @@ export type ApplicantSummary = {
 
 export type JobApplication = {
   agreedTerms: OfferedJobTerms | null;
+  /** Final immutable booking terms. Present after a successful hire. */
+  bookingTerms?: OfferedJobTerms | null;
   termsStatus: "RECORDED" | "LEGACY_UNVERIFIED";
   /** Other active applications rejected atomically when this application was hired. */
   automaticallyRejectedCount?: number;
@@ -57,6 +60,17 @@ export type ApplicationCreateInput = {
 };
 
 export type ApplicationStatusUpdateInput = { id: string; status: JobApplicationStatus };
+
+export type BookingPaymentOverrides = {
+  days?: number;
+  hours?: number;
+  payAmount?: number;
+  paymentFrequency?: PaymentFrequency;
+  payType?: JobPayType;
+  periodAnchor?: "ASSIGNMENT_START" | "CALENDAR";
+};
+
+export type HireApplicationInput = BookingPaymentOverrides & { id: string };
 
 export type ApplicationsPagination = {
   hasNextPage: boolean;

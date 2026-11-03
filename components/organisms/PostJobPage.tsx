@@ -1,7 +1,6 @@
 import { useRateLimit } from "@/lib/rate-limit";
 import { useSchoolHiringAllowed } from "@/features/auth/use-school-hiring";
-import { syncWorkSchedule, validateScheduleUnits } from "@/features/jobs/schedule-editor";
-import { allowedPaymentFrequencies, schedulePreview, validateStructuredSchedule } from "@/features/jobs/job-schedule";
+import { allowedPaymentFrequencies, normalizeScheduleToWholeHours, schedulePreview, validateStructuredSchedule } from "@/features/jobs/job-schedule";
 import { validateJobDateOrder } from "@/features/jobs/date-validation";
 import { DynamicSelect, DynamicMultiSelect } from "@/components/molecules/DynamicDropdown";
 
@@ -18,10 +17,9 @@ import { useCreateJob, useJob, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { Job, JobCreateInput, JobUpdateInput } from "@/features/jobs/types";
 import { validateJobInput } from "@/features/jobs/validation";
 import { shouldShowInstantMatches } from "@/features/jobs/post-publish";
-import { formatUkListingInstant, getJobVisibilityLabel, ukCalendarDate, ukDateTimeInput, shiftCalendarDay } from "@/features/jobs/listing-window";
+import { formatUkListingInstant, getJobVisibilityLabel, ukCalendarDate, shiftCalendarDay } from "@/features/jobs/listing-window";
 import { isEmptyRichText, richTextToPlainText } from "@/features/applications/rich-text";
 import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
-import { zonedDateTimeToIso } from "@/lib/zoned-date-time";
 import type { JobSchedule, PaymentFrequency, RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field } from "../atoms";
@@ -91,7 +89,7 @@ const initialForm: JobFormState = {
   periodAnchor: "ASSIGNMENT_START",
   timeZone: "Europe/London",
   schedule: {
-    weekdays: [1, 2, 3, 4, 5].map((day) => ({ day, slots: [{ start: "09:00", end: "15:30" }] })),
+    weekdays: [1, 2, 3, 4, 5].map((day) => ({ day, slots: [{ start: "09:00", end: "15:00" }] })),
     exceptions: [],
   },
   workersRequired: "1",
@@ -129,6 +127,21 @@ export function PostJobPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "
           <Btn className="mt-5" icon="arrowLeft" onClick={() => go("dashboard")} variant="secondary">
             Back to dashboard
           </Btn>
+        </div>
+      </div>
+    );
+  }
+
+  if (role === "institution" && schoolProfile && !schoolProfile.schoolType) {
+    return (
+      <div className="app-page post-job-page">
+        <PageHead title={isEditing ? "Update your school profile first" : "Complete your school profile"} subtitle="Choose the teaching phase before working with job subjects." />
+        <div className="job-editor-card card card-pad-lg max-w-[1040px]">
+          <p className="text-sm leading-6 text-muted">Select Primary or Secondary in your school profile. SupplyED will then show the correct subjects and related skills for every job you create or edit.</p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Btn icon="edit" onClick={() => go("settings")}>Update school profile</Btn>
+            <Btn variant="secondary" onClick={() => go("dashboard")}>Back to dashboard</Btn>
+          </div>
         </div>
       </div>
     );
@@ -183,7 +196,7 @@ function PostJobEditor({
   schoolImageUrl?: string;
   schoolName?: string;
 }) {
-  const catalogue = useTeachingCatalogue();
+  const catalogue = useTeachingCatalogue({ scope: role === "institution" ? "school" : "all" });
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<PostingMode>(initialMode);
   const [form, setForm] = useState<JobFormState>(initialValues);
@@ -201,8 +214,12 @@ function PostJobEditor({
   const isEditing = Boolean(editingJob);
   const todayDate = getTodayDateInput();
   const savedExpiryUnchanged = Boolean(form.originalExpiresAt && form.expiresAt === ukCalendarDate(form.originalExpiresAt, true));
-  const earliestWorkStart = [todayDate + "T00:00", form.liveFrom ? form.liveFrom + "T00:01" : "", savedExpiryUnchanged ? ukDateTimeInput(form.originalExpiresAt) : form.expiresAt ? shiftCalendarDay(form.expiresAt, 1) + "T00:00" : ""].sort().at(-1)!;
-  const latestListingDay = form.startDate ? savedExpiryUnchanged && Date.parse(form.originalExpiresAt!) <= Date.parse(toWorkIso(form.startDate, form.timeZone) ?? "") ? form.expiresAt : shiftCalendarDay(form.startDate, -1) : undefined;
+  const earliestWorkStart = [
+    shiftCalendarDay(todayDate, 1),
+    form.liveFrom ? shiftCalendarDay(form.liveFrom, 1) : "",
+    savedExpiryUnchanged ? shiftCalendarDay(ukCalendarDate(form.originalExpiresAt, true), 1) : form.expiresAt ? shiftCalendarDay(form.expiresAt, 1) : "",
+  ].sort().at(-1)!;
+  const latestListingDay = form.startDate ? savedExpiryUnchanged && Date.parse(form.originalExpiresAt!) <= Date.parse(form.startDate) ? form.expiresAt : shiftCalendarDay(form.startDate, -1) : undefined;
 
   const createJob = useCreateJob({
     onSuccess: async (result) => {
@@ -280,7 +297,7 @@ function PostJobEditor({
       setDifferentAddress((current) => ({ ...current, [key]: value as string }));
     }
     setForm((current) => {
-      const next = syncWorkSchedule(current, key, value, key === "timeZone" ? String(value) : current.timeZone);
+      const next = { ...current, [key]: value } as JobFormState;
       if (key === "payType") {
         const allowed = allowedPaymentFrequencies(value as JobFormState["payType"]);
         if (!allowed.includes(next.paymentFrequency)) next.paymentFrequency = allowed[0];
@@ -288,9 +305,9 @@ function PostJobEditor({
       return next;
     });
     setErrors((current) => {
-      const nextForm = syncWorkSchedule(form, key, value, key === "timeZone" ? String(value) : form.timeZone);
+      const nextForm = { ...form, [key]: value } as JobFormState;
       if (["startDate", "endDate", "liveFrom", "expiresAt", "payType", "hours", "days", "timeZone", "schedule", "paymentFrequency"].includes(key)) {
-        const dates = { ...validateJobDates(nextForm), ...validateScheduleUnits(nextForm, nextForm.timeZone) };
+        const dates = validateJobDates(nextForm);
         const schedule = validateStructuredSchedule(nextForm.schedule, nextForm.startDate, nextForm.endDate);
         return { ...current, schedule, hours: dates.hours, days: dates.days, startDate: dates.startDate, endDate: dates.endDate, liveFrom: dates.liveFrom, expiresAt: dates.expiresAt };
       }
@@ -353,7 +370,15 @@ function PostJobEditor({
     setSavingIntent(status === "ACTIVE" ? "publish" : "draft");
 
     if (savedJobIdRef.current) {
-      updateJob.mutate(toChangedJobUpdateInput(payload, toJobCreateInput(initialValues, initialMode, status, catalogue.data), savedJobIdRef.current));
+      const initialPayload = toJobCreateInput(initialValues, initialMode, status, catalogue.data);
+      // Compare against the persisted representation so an editable legacy draft
+      // is migrated from date-times/fractional hours when it is next saved.
+      if (editingJob) {
+        initialPayload.startDate = editingJob.startDate ?? undefined;
+        initialPayload.endDate = editingJob.endDate ?? undefined;
+        initialPayload.schedule = editingJob.schedule ?? undefined;
+      }
+      updateJob.mutate(toChangedJobUpdateInput(payload, initialPayload, savedJobIdRef.current));
       return;
     }
 
@@ -367,8 +392,8 @@ function PostJobEditor({
         <h2 className="mb-5 font-heading text-[26px]">How do you want to staff this role?</h2>
         <div className="grid-2">
           {[
-            { value: "instant" as const, title: "Instant matching", desc: "Post publicly and invite multiple related teachers.", color: "var(--se)", bg: "var(--se-tint)" },
-            { value: "brief" as const, title: "Open brief", desc: "Post publicly and notify every eligible matching teacher.", color: "var(--purple)", bg: "var(--purple-tint)" },
+            { value: "instant" as const, title: "Targeted matching", desc: "Review recommended teachers and send invitations for this role.", color: "var(--se)", bg: "var(--se-tint)" },
+            { value: "brief" as const, title: "Open applications", desc: "Let eligible teachers discover the role and submit applications.", color: "var(--purple)", bg: "var(--purple-tint)" },
           ].map((option) => (
             <button
               key={option.value}
@@ -491,10 +516,10 @@ function PostJobEditor({
             {form.paymentFrequency === "weekly" || form.paymentFrequency === "monthly" ? <Field label="Payment period boundary" hint="Assignment start handles final partial periods; calendar aligns to Monday or month start."><select className="input" value={form.periodAnchor} onChange={(event) => updateForm("periodAnchor", event.target.value as JobFormState["periodAnchor"])}><option value="ASSIGNMENT_START">From assignment start</option><option value="CALENDAR">Calendar periods</option></select></Field> : null}
           </div>
           <Field error={errors.startDate} hint="First calendar date of the assignment. Must be after the listing closes." label="Assignment start">
-            <input className="input" min={earliestWorkStart} type="datetime-local" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
+            <input className="input" min={earliestWorkStart} type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
           </Field>
           <Field error={errors.endDate} hint="Last calendar date of the assignment. The schedule below determines paid time." label="Assignment end">
-            <input className="input" min={form.startDate > earliestWorkStart ? form.startDate : earliestWorkStart} type="datetime-local" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
+            <input className="input" min={form.startDate > earliestWorkStart ? form.startDate : earliestWorkStart} type="date" value={form.endDate} onChange={(event) => updateForm("endDate", event.target.value)} />
           </Field>
           <Field error={errors.timeZone} label="Job time zone" hint="All recurring hours and date exceptions use this zone.">
             <select className="input" value={form.timeZone} onChange={(event) => updateForm("timeZone", event.target.value)}><option value="Europe/London">Europe/London (GMT/BST)</option></select>
@@ -503,7 +528,7 @@ function PostJobEditor({
           <WorkScheduleEditor value={form.schedule} error={errors.schedule} onChange={(schedule) => updateForm("schedule", schedule)} />
           <div className="md:col-span-2"><ScheduleEstimate form={form} /></div>
           <Field error={errors.liveFrom} hint="Teachers can see and apply for the published job from midnight on this UK date. Leave blank to open when published. Must be before Work start." label="Live from">
-            <input className="input" min={todayDate} max={form.startDate ? (form.startDate.endsWith("T00:00") ? shiftCalendarDay(form.startDate, -1) : form.startDate.slice(0, 10)) : undefined} type="date" value={form.liveFrom} onChange={(event) => updateForm("liveFrom", event.target.value)} />
+            <input className="input" min={todayDate} max={form.startDate ? shiftCalendarDay(form.startDate, -1) : undefined} type="date" value={form.liveFrom} onChange={(event) => updateForm("liveFrom", event.target.value)} />
           </Field>
           <Field error={errors.expiresAt} hint={editingJob?.expiresAt ? `Applications currently close ${formatUkListingInstant(editingJob.expiresAt)}. Choose a replacement date to keep applications open through that UK day. The final listing day must be before work starts.` : "Optional. Teachers can apply through this entire UK date, then the listing closes. Choose a final listing day before work starts."} label="Listing expiry">
             <input className="input" min={form.liveFrom > todayDate ? form.liveFrom : todayDate} max={latestListingDay} type="date" value={form.expiresAt} onChange={(event) => updateForm("expiresAt", event.target.value)} />
@@ -521,7 +546,7 @@ function PostJobEditor({
             />
           </Field>
           <div className="md:col-span-2">
-            <TeachingSelectionFields otherSkills={form.otherSkills} otherSkillError={errors.otherSkills} otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjects={form.subjects} skills={form.requiredSkills} skillLabel="Required skills" subjectError={errors.subjects} skillError={errors.requiredSkills} onChange={(subjects, requiredSkills, otherSubjects, otherSkills) => setForm(current => ({ ...current, subjects, requiredSkills, otherSubjects, otherSkills }))} />
+            <TeachingSelectionFields catalogueScope={role === "institution" ? "school" : "all"} onSchoolTypeRequired={() => go("settings")} otherSkills={form.otherSkills} otherSkillError={errors.otherSkills} otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjects={form.subjects} skills={form.requiredSkills} skillLabel="Required skills" subjectError={errors.subjects} skillError={errors.requiredSkills} onChange={(subjects, requiredSkills, otherSubjects, otherSkills) => setForm(current => ({ ...current, subjects, requiredSkills, otherSubjects, otherSkills }))} />
           </div>
         </div>
         <Field error={errors.description} label="Role description" required>
@@ -574,7 +599,7 @@ function PostJobEditor({
     const previewDescription = readEditableDescription(form.description);
     const estimate = previewFor(form);
     const preview: JobListingPreviewData = {
-      date: previewDateRange(toWorkIso(form.startDate, form.timeZone), toWorkIso(form.endDate, form.timeZone)),
+      date: previewDateRange(form.startDate, form.endDate),
       description: richTextToPlainText(previewDescription),
       experience: form.minExperienceYears ? `${form.minExperienceYears}+ years experience` : undefined,
       keyStages: form.keyStages,
@@ -801,7 +826,6 @@ function validateDraft(form: JobFormState): JobFormErrors {
 
 function validateOptionalJobFields(form: JobFormState): JobFormErrors {
   const errors: JobFormErrors = {};
-  Object.assign(errors, validateScheduleUnits(form, form.timeZone));
   const scheduleError = validateStructuredSchedule(form.schedule, form.startDate, form.endDate);
   if (scheduleError) errors.schedule = scheduleError;
   if (!allowedPaymentFrequencies(form.payType).includes(form.paymentFrequency)) errors.paymentFrequency = "Choose a payment frequency supported for this rate basis.";
@@ -848,14 +872,16 @@ function validateJobDates(form: JobFormState): JobFormErrors {
     if (form[key] && (!/^\d{4}-\d{2}-\d{2}$/.test(form[key]) || !Number.isFinite(Date.parse(form[key])) || new Date(form[key]).toISOString().slice(0, 10) !== form[key])) errors[key] = "Enter a valid date.";
   }
 
-  for (const key of ["startDate", "endDate"] as const) if (form[key] && !zonedDateTimeToIso(form[key], form.timeZone)) errors[key] = `Enter an unambiguous date and time in ${form.timeZone}.`;
+  for (const key of ["startDate", "endDate"] as const) {
+    if (form[key] && (!/^\d{4}-\d{2}-\d{2}$/.test(form[key]) || !Number.isFinite(Date.parse(form[key])) || new Date(form[key]).toISOString().slice(0, 10) !== form[key])) errors[key] = "Enter a valid date.";
+  }
 
   if (form.startDate && form.startDate.slice(0, 10) < todayDate) {
     errors.startDate = "Start date cannot be before today.";
   }
   const liveFrom = form.originalLiveFrom && form.liveFrom === ukCalendarDate(form.originalLiveFrom) ? form.originalLiveFrom : form.liveFrom;
   const expiresAt = form.originalExpiresAt && form.expiresAt === ukCalendarDate(form.originalExpiresAt, true) ? form.originalExpiresAt : form.expiresAt;
-  const orderErrors = validateJobDateOrder({ startDate: toWorkIso(form.startDate, form.timeZone), endDate: toWorkIso(form.endDate, form.timeZone), liveFrom, expiresAt });
+  const orderErrors = validateJobDateOrder({ startDate: form.startDate, endDate: form.endDate, liveFrom, expiresAt });
   Object.assign(errors, orderErrors);
   if (form.expiresAt && form.expiresAt < todayDate) errors.expiresAt = "Listing expiry cannot be before today.";
 
@@ -889,7 +915,7 @@ function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract
     countryCode: validateUkCountry(form.countryCode).value,
     county: validateUkRegion(form.county).value || undefined,
     description: buildDescription(form, mode),
-    endDate: toWorkIso(form.endDate, form.timeZone),
+    endDate: form.endDate || undefined,
     expiresAt: form.expiresAt || undefined,
     liveFrom: form.liveFrom || undefined,
     keyStages: form.keyStages,
@@ -909,7 +935,7 @@ function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract
     postalCode: validateUkPostcode(form.postalCode).value || undefined,
     requiredSkills: toSkillEditor(catalogue, form.requiredSkills, form.otherSkills).skills,
     otherSkills: toSkillEditor(catalogue, form.requiredSkills, form.otherSkills).otherSkills,
-    startDate: toWorkIso(form.startDate, form.timeZone),
+    startDate: form.startDate || undefined,
     status,
     ...toSubjectEditor(catalogue, form.subjects, form.otherSubjects),
     title: form.title,
@@ -935,17 +961,12 @@ function buildDescription(form: JobFormState, mode: PostingMode) {
   const description = readEditableDescription(form.description);
   const notes = [
     description,
-    `Posting route: ${mode === "instant" ? "Instant matching" : "Open brief"}.`,
+    `Posting route: ${mode === "instant" ? "Targeted matching" : "Open applications"}.`,
     form.urgent ? "Marked urgent by the hiring account." : "",
     form.qtsRequired ? "QTS requested." : "",
   ].filter(Boolean);
 
   return notes.join("\n\n");
-}
-
-function toWorkIso(value: string, timeZone = "Europe/London") {
-  if (!value) return undefined;
-  return zonedDateTimeToIso(value, timeZone) || undefined;
 }
 
 function getTodayDateInput() {
@@ -959,7 +980,7 @@ function toFormState(job: Job): JobFormState {
     countryCode: job.countryCode ?? "GB",
     county: job.county ?? "",
     description: readEditableDescription(job.description ?? ""),
-    endDate: ukDateTimeInput(job.endDate),
+    endDate: ukCalendarDate(job.endDate),
     expiresAt: ukCalendarDate(job.expiresAt, true),
     liveFrom: ukCalendarDate(job.liveFrom),
     originalLiveFrom: job.liveFrom,
@@ -975,11 +996,11 @@ function toFormState(job: Job): JobFormState {
     paymentFrequency: (job.paymentFrequency as PaymentFrequency) ?? (job.payType === "fixed" ? "completion" : job.payType === "hourly" ? "hourly" : "daily"),
     periodAnchor: job.periodAnchor === "CALENDAR" ? "CALENDAR" : "ASSIGNMENT_START",
     timeZone: job.timeZone ?? "Europe/London",
-    schedule: job.schedule ?? initialForm.schedule,
+    schedule: normalizeScheduleToWholeHours(job.schedule ?? initialForm.schedule),
     workersRequired: String(job.workersRequired ?? 1),
     postalCode: job.postalCode ?? "",
     qtsRequired: job.description?.includes("QTS requested.") ?? false,
-    startDate: ukDateTimeInput(job.startDate),
+    startDate: ukCalendarDate(job.startDate),
     subjects: jobSubjects(job),
     requiredSkills: job.requiredSkills,
     title: job.title,
@@ -997,7 +1018,7 @@ function readEditableDescription(description: string) {
 }
 
 function isGeneratedDescriptionLine(line: string) {
-  return /^(Posting route:\s*(Instant matching|Open brief)\.|Marked urgent by the hiring account\.|QTS requested\.)$/i.test(line.trim());
+  return /^(Posting route:\s*(Instant matching|Open brief|Targeted matching|Open applications)\.|Marked urgent by the hiring account\.|QTS requested\.)$/i.test(line.trim());
 }
 
 function isPayType(value: Job["payType"]): value is JobFormState["payType"] {

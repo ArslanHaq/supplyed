@@ -63,7 +63,7 @@ export function MyJobsPage({ ctx, go, toast }: Pick<RouteProps, "ctx" | "go" | "
       <div aria-label="Filter jobs by type" className="mb-4 flex flex-wrap gap-2">
         {(["ALL", "INSTANT", "BRIEF"] as const).map((value) => (
           <Btn key={value} aria-pressed={typeFilter === value} size="sm" variant={typeFilter === value ? "secondary" : "ghost"} onClick={() => { setTypeFilter(value); setPage(1); }}>
-            {value === "ALL" ? "All job types" : value === "INSTANT" ? "Instant jobs" : "Brief jobs"}
+            {value === "ALL" ? "All job types" : value === "INSTANT" ? "Targeted matching" : "Open applications"}
           </Btn>
         ))}
       </div>

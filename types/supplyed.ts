@@ -4,6 +4,7 @@ export type Tone = "" | "purple" | "amber" | "green";
 export type ApplicationStage = "applied" | "shortlisted" | "hired";
 export type MessageAuthor = "me" | "them";
 export type AppRole = "admin" | "institution" | "teacher";
+export type SchoolType = "PRIMARY" | "SECONDARY";
 export type AuthState = "landing" | "login" | "onboarding" | "signed-in";
 export type ApplicationStatus = "none" | "pending_review" | "approved" | "rejected" | "suspended";
 export type JobStatus = "DRAFT" | "ACTIVE" | "RESERVED" | "EXPIRED" | "FILLED" | "CLOSED" | "SUSPENDED";
@@ -60,7 +61,7 @@ export type Job = {
   hasBeenPublished?: boolean;
   id: string;
   jobType: JobType;
-  institution?: { id: string; imageUrl: string | null; name: string } | null;
+  institution?: { id: string; imageUrl: string | null; name: string; schoolType: SchoolType | null } | null;
   title: string;
   postedByUserId?: string;
   description?: string;

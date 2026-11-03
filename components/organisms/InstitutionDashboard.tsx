@@ -113,7 +113,7 @@ export function InstitutionDashboard({ go, toast }: Pick<RouteProps, "go" | "toa
               <div className="hiring-match-empty" role="alert"><Icon name="search" size={24} /><h3>Matches could not be loaded</h3><Btn size="sm" variant="ghost" onClick={() => void topMatchesQuery.refetch()}>Try again</Btn></div>
             ) : null}
             {!topMatchJobsQuery.isLoading && !topMatchJobsQuery.isError && !topMatchJob ? (
-              <div className="hiring-match-empty"><Icon name="users" size={26} /><h3>No active instant jobs</h3><p>Post an instant job to see related teachers here.</p></div>
+              <div className="hiring-match-empty"><Icon name="users" size={26} /><h3>No active targeted-matching roles</h3><p>Post a targeted-matching role to see recommended teachers here.</p></div>
             ) : null}
             {!topMatchesQuery.isLoading && !topMatchesQuery.isError && topMatchJob && topMatches.length === 0 ? (
               <div className="hiring-match-empty"><Icon name="users" size={26} /><h3>No matches just yet</h3><p>No teachers currently meet the 70% match threshold.</p></div>

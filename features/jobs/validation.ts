@@ -14,10 +14,10 @@ export function validateJobInput(input: JobCreateInput | JobUpdateInput, options
   if (customError) errors.otherSubjects = customError;
   const skillError = input.otherSkills !== undefined || !options.partial ? otherSkillsError(input.requiredSkills, input.otherSkills) : undefined;
   if (skillError) errors.otherSkills = skillError;
-  if ((!options.partial || input.jobType !== undefined) && !["INSTANT", "BRIEF"].includes(input.jobType ?? "")) errors.jobType = "Choose instant matching or an open brief.";
+  if ((!options.partial || input.jobType !== undefined) && !["INSTANT", "BRIEF"].includes(input.jobType ?? "")) errors.jobType = "Choose targeted matching or open applications.";
   for (const [key, max] of [["title", 200], ["description", 10000]] as const) {
     const value = input[key];
-    const editable = key === "description" && typeof value === "string" ? value.split(/\r?\n/).filter(line => !/^(Posting route:\s*(Instant matching|Open brief)\.|Marked urgent by the hiring account\.|QTS requested\.)$/i.test(line.trim())).join("\n").trim() : value;
+    const editable = key === "description" && typeof value === "string" ? value.split(/\r?\n/).filter(line => !/^(Posting route:\s*(Instant matching|Open brief|Targeted matching|Open applications)\.|Marked urgent by the hiring account\.|QTS requested\.)$/i.test(line.trim())).join("\n").trim() : value;
     if ((!options.partial || value !== undefined) && (typeof editable !== "string" || !editable.trim() || editable.length > max || (key === "description" && isEmptyRichText(editable)))) errors[key] = `Enter ${key === "title" ? "a title" : "a description"} (up to ${max.toLocaleString()} characters).`;
     if (key === "description" && input.status === "ACTIVE" && typeof editable === "string" && richTextToPlainText(editable).length < 20) errors.description = "Add role details of at least 20 characters.";
   }
@@ -65,7 +65,7 @@ export function validatePublishableTerms(input: Partial<Omit<JobCreateInput, "st
   for (const field of ["address", "city", "postalCode", "countryCode"] as const) if (!input[field]?.trim()) errors[field] = `Enter the work ${field === "postalCode" ? "postcode" : field === "countryCode" ? "country code" : field}.`;
   const start = Date.parse(input.startDate ?? "");
   const end = Date.parse(input.endDate ?? "");
-  if (!Number.isFinite(start) || start <= now) errors.startDate = "Choose a future start date and time.";
+  if (!Number.isFinite(start) || start <= now) errors.startDate = "Choose a future assignment start date.";
   if (!Number.isFinite(end) || end < start) errors.endDate = "Choose an end date on or after work starts.";
   if (!(Number(input.payAmount) > 0)) errors.payAmount = "Enter positive pay.";
   else if (Number(input.payAmount) > 5000) errors.payAmount = "Pay amount cannot exceed £5,000.";

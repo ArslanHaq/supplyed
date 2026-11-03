@@ -3,7 +3,8 @@ import type { JobSchedule, JobTimeSlot } from "@/types/supplyed";
 import { Btn, Checkbox } from "../atoms";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const DEFAULT_SLOT: JobTimeSlot = { start: "09:00", end: "15:30" };
+const DEFAULT_SLOT: JobTimeSlot = { start: "09:00", end: "15:00" };
+const WHOLE_HOURS = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
 
 export function WorkScheduleEditor({ value, onChange, error }: {
   value: JobSchedule; onChange: (value: JobSchedule) => void; error?: string;
@@ -24,7 +25,7 @@ export function WorkScheduleEditor({ value, onChange, error }: {
   return (
     <section className="rounded-xl border border-border bg-chalk/30 p-4 md:col-span-2" aria-label="Working schedule">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h3 className="font-semibold text-ink">Working weekdays and shifts</h3><p className="mt-1 text-xs leading-5 text-muted">Add split shifts separately. An end time earlier than the start is treated as an overnight shift.</p></div>
+        <div><h3 className="font-semibold text-ink">Working weekdays and shifts</h3><p className="mt-1 text-xs leading-5 text-muted">Choose whole-hour times; minutes are always 00. Add split shifts separately. An end time earlier than the start is treated as an overnight shift.</p></div>
         <Checkbox checked={sameHours} label="Use the same hours for selected days" onChange={setSameHours} />
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -54,8 +55,12 @@ function SlotEditor({ label, slots, onChange, compact = false }: { label: string
   return <div className={compact ? "mt-3" : "mt-4 rounded-lg border border-border bg-surface p-3"}>
     <div className="mb-2 text-xs font-semibold text-muted">{label}</div>
     <div className="space-y-2">{slots.map((slot, index) => <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2" key={index}>
-      <input aria-label={`${label} shift ${index + 1} start`} className="input" type="time" value={slot.start} onChange={(event) => onChange(slots.map((item, itemIndex) => itemIndex === index ? { ...item, start: event.target.value } : item))} />
-      <input aria-label={`${label} shift ${index + 1} end`} className="input" type="time" value={slot.end} onChange={(event) => onChange(slots.map((item, itemIndex) => itemIndex === index ? { ...item, end: event.target.value } : item))} />
+      <select aria-label={`${label} shift ${index + 1} start`} className="input" value={slot.start} onChange={(event) => onChange(slots.map((item, itemIndex) => itemIndex === index ? { ...item, start: event.target.value } : item))}>
+        {WHOLE_HOURS.map((time) => <option key={time} value={time}>{time}</option>)}
+      </select>
+      <select aria-label={`${label} shift ${index + 1} end`} className="input" value={slot.end} onChange={(event) => onChange(slots.map((item, itemIndex) => itemIndex === index ? { ...item, end: event.target.value } : item))}>
+        {WHOLE_HOURS.map((time) => <option key={time} value={time}>{time}</option>)}
+      </select>
       <button aria-label={`Remove shift ${index + 1}`} className="rounded-md px-2 py-1 text-sm text-danger disabled:opacity-40" disabled={slots.length === 1} onClick={() => onChange(slots.filter((_, itemIndex) => itemIndex !== index))} type="button">Remove</button>
     </div>)}</div>
     <button className="mt-2 text-xs font-semibold text-brand" onClick={() => onChange([...slots, { start: "16:00", end: "18:00" }])} type="button">+ Add another time slot</button>
