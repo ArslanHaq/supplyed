@@ -7,6 +7,7 @@ import type { RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, Icon, Tag } from "../atoms";
 import { PageHead, SectionLoader } from "../molecules";
 import { ProfileReviewsPanel, RatingStars } from "./ProfileReviewsPanel";
+import { ProfileDocumentsSection } from "./ProfileDocumentsSection";
 
 export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go">) {
   const profileQuery = useInstitutionPublicProfile(ctx.institutionId);
@@ -76,6 +77,8 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
               </div>
             </div>
           </section>
+
+          <ProfileDocumentsSection documents={profile.achievements} title="Achievements and accreditations" />
 
           <ProfileReviewsPanel data={reviewsQuery.data} error={reviewsQuery.error} loading={reviewsQuery.isLoading} />
         </main>

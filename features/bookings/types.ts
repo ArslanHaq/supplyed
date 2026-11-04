@@ -37,15 +37,40 @@ export type BookingPartySummary = {
   name?: string;
 };
 
-/** The booking's current invoice: none until the school invoices it, and never one still being created or voided. */
+/** The latest booking invoice, including a reservation still being prepared. */
 export type BookingInvoiceSummary = {
+  billingPeriodKey?: string | null;
+  billingPeriodLabel?: string | null;
+  collectionMethod?: "send_invoice" | "charge_automatically";
   dueAt?: string | null;
   hostedInvoiceUrl?: string | null;
   id: string;
+  lastPaymentFailureMessage?: string | null;
+  lastPaymentFailureCode?: string | null;
+  nextPaymentAttemptAt?: string | null;
+  paymentAttemptCount?: number;
   paidAt?: string | null;
-  status: "OPEN" | "PAID" | "UNCOLLECTIBLE";
+  status: "PENDING" | "OPEN" | "PAID" | "UNCOLLECTIBLE";
   totalAmountPence: number;
   teacherAmountPence: number;
+};
+
+export type BookingAutomaticPayment = {
+  state: "DISABLED" | "BLOCKED" | "REVIEW_REQUIRED" | "WAITING_ATTENDANCE" | "NOT_DUE" | "NO_PAYMENT_DUE" | "PREPARING" | "SCHEDULED" | "PROCESSING" | "FAILED" | "PAID";
+  message: string;
+  nextCollectionAt: string | null;
+};
+
+export type BookingTipSummary = {
+  amountRefundedPence: number;
+  disputeStatus: string | null;
+  feeAmountPence: number;
+  id: string;
+  paidAt: string | null;
+  paymentFailureMessage: string | null;
+  status: "PENDING" | "PROCESSING" | "PAID" | "FAILED" | "CANCELLED" | "REFUNDED";
+  tipAmountPence: number;
+  totalAmountPence: number;
 };
 
 export type AttendanceStatus = "AWAITING_CONFIRMATION" | "PRESENT" | "ABSENT";
@@ -130,6 +155,8 @@ export type Booking = {
   institution: BookingPartySummary;
   instructor: BookingPartySummary;
   invoice: BookingInvoiceSummary | null;
+  automaticPayment?: BookingAutomaticPayment | null;
+  tip: BookingTipSummary | null;
   job: BookingJobSummary;
   hours?: number | null;
   days?: number | null;

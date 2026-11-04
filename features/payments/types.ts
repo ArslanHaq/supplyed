@@ -1,4 +1,59 @@
 export type InvoiceStatus = "PENDING" | "OPEN" | "PAID" | "VOID" | "UNCOLLECTIBLE";
+export type InvoiceCollectionMethod = "charge_automatically" | "send_invoice";
+export type SchoolBillingSetupStatus = "NOT_STARTED" | "PENDING" | "READY" | "FAILED";
+
+export type SchoolPaymentMethod = {
+  label: string;
+  last4: string;
+  mandateStatus: string | null;
+  type: "bacs_debit" | "card" | string;
+};
+
+export type SchoolBillingSettings = {
+  automaticPaymentsEnabled: boolean;
+  canEnableAutomaticPayments: boolean;
+  consentedAt: string | null;
+  consentTermsVersion: string | null;
+  currentPayment: {
+    bookingId: string;
+    jobTitle: string;
+    failureCode: string | null;
+    failureMessage: string | null;
+    id: string;
+    nextAttemptAt: string | null;
+    paymentAttemptCount: number;
+    status: string;
+    totalAmountPence: number;
+  } | null;
+  lastSetupError: string | null;
+  nextScheduledCollectionAt: string | null;
+  paymentMethod: SchoolPaymentMethod | null;
+  setupStatus: SchoolBillingSetupStatus;
+  stripeSyncError: string | null;
+  stripeSyncStatus: "SYNCED" | "PENDING" | "FAILED";
+};
+
+export type SchoolBillingSetupSession = {
+  expiresAt: number;
+  sessionId: string;
+  url: string;
+};
+
+export type BookingTipCheckoutSession = {
+  feeAmountPence: number;
+  sessionId: string;
+  tipAmountPence: number;
+  tipId: string;
+  totalAmountPence: number;
+  url: string;
+};
+
+export type BookingTipStatusResult = {
+  id: string;
+  status: "PENDING" | "PROCESSING" | "PAID" | "FAILED" | "CANCELLED" | "REFUNDED";
+  tipAmountPence: number;
+  totalAmountPence: number;
+};
 
 /** The teacher's Stripe payout account, as the backend mirrors it. */
 export type PayoutAccount = {
@@ -72,6 +127,9 @@ export type Invoice = {
     jobTitle: string;
     startDate: string | null;
   };
+  billingPeriodKey: string | null;
+  billingPeriodLabel: string | null;
+  collectionMethod: InvoiceCollectionMethod;
   createdAt: string | null;
   currency: string;
   disputeStatus: string | null;
@@ -81,8 +139,12 @@ export type Invoice = {
   id: string;
   invoiceNumber: string | null;
   invoicePdfUrl: string | null;
+  lastPaymentFailureCode: string | null;
+  lastPaymentFailureMessage: string | null;
+  nextPaymentAttemptAt: string | null;
   paidAt: string | null;
   payType: string;
+  paymentAttemptCount: number;
   poNumber: string | null;
   rateAmount: number;
   status: InvoiceStatus;

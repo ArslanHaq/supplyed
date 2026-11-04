@@ -12,6 +12,7 @@ import { useState } from "react";
 
 import { formatPence } from "@/features/payments/schemas";
 import { stripeInvoiceUrl } from "@/features/payments/invoice-links";
+import { automaticPaymentPhase, requiresCardAuthentication } from "@/features/payments/payment-status";
 import type { AdminInvoiceListQuery, Invoice, InvoiceStatus, PaginatedInvoices, PayableInvoice, RefundReason } from "@/features/payments/types";
 import {
   useAllInvoices,
@@ -21,6 +22,7 @@ import {
   usePayoutBalance,
   useRefundInvoice,
   useResendInvoice,
+  useSyncInvoice,
   useVoidInvoice,
 } from "@/features/payments/use-payments";
 import type { AppRole, RouteProps, ToastFn } from "@/types/supplyed";
@@ -31,6 +33,7 @@ import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { PayInvoiceModal, usePaymentReturn } from "./PayInvoiceModal";
 import { PayoutSettings } from "./PayoutSettings";
 import { AdminPayoutLookup } from "./AdminPayoutLookup";
+import { SchoolBillingSettingsCard } from "./SchoolBillingSettingsCard";
 
 type Filter = "all" | "paid" | "unpaid" | "void" | "written-off" | "pending";
 
@@ -63,7 +66,6 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
   const invoicesQuery = useMyInvoices(invoiceQuery(filter, page));
   const invoices = invoicesQuery.data?.invoices ?? [];
   usePaymentReturn(toast);
-  const resend = useResendInvoice({ onSuccess: (result) => notify(toast, result, "Invoice sent", "Could not resend invoice"), onError: () => mutationFailure(toast) });
   const outstanding = invoices.filter((invoice) => invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE");
   const paid = invoices.filter((invoice) => invoice.status === "PAID");
 
@@ -71,9 +73,11 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
     <div className="app-page billing-page">
       <PageHead
         title="Billing"
-        subtitle="Invoices for completed bookings. Each one covers the teacher's pay plus the SupplyEd processing fee."
-        actions={<RefreshInvoices query={invoicesQuery} />}
+        subtitle="Manage your saved card, automatic booking payments and any payments needing attention."
+        actions={<RefreshInvoices invoices={invoices} query={invoicesQuery} />}
       />
+
+      <SchoolBillingSettingsCard toast={toast} />
 
       <div className="billing-metrics mb-6 grid gap-4 sm:grid-cols-3">
         <Stat value={formatPence(sum(outstanding, "totalAmountPence"))} label="Outstanding on this page" />
@@ -82,7 +86,7 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
       </div>
 
       <InvoiceList
-        emptyMessage="Invoices appear here once you invoice a completed booking from Bookings."
+        emptyMessage="Automatic booking payment records appear here."
         filter={filter}
         onFilter={(value) => { setFilter(value); setPage(1); }}
         onPage={setPage}
@@ -90,25 +94,13 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
         renderActions={(invoice) => (
           <>
             <Btn size="sm" variant="ghost" onClick={() => setDetailId(invoice.id)}>Details</Btn>
-            {isUnpaid(invoice) ? <Btn size="sm" onClick={() => setPayTarget(payable(invoice))}>Pay now</Btn> : null}
+            {isFailedAutomaticPayment(invoice) ? <Btn size="sm" onClick={() => setPayTarget(payable(invoice))}>{requiresCardAuthentication(invoice.lastPaymentFailureCode) ? "Approve card payment" : "Complete card payment"}</Btn> : null}
             <PdfLink invoice={invoice} />
-            {isUnpaid(invoice) ? (
-              <Btn
-                disabled={resend.isPending}
-                loading={resend.isPending && resend.variables === invoice.id}
-                loadingLabel="Sending"
-                size="sm"
-                variant="ghost"
-                onClick={() => resend.mutate(invoice.id)}
-              >
-                Email again
-              </Btn>
-            ) : null}
           </>
         )}
         role="institution"
       />
-      <InvoiceDetailsModal id={detailId} onClose={() => setDetailId(null)} onPay={(invoice) => { setDetailId(null); setPayTarget(payable(invoice)); }} role="institution" />
+      <InvoiceDetailsModal id={detailId} onClose={() => setDetailId(null)} role="institution" />
       <PayInvoiceModal invoice={payTarget} onClose={() => setPayTarget(null)} toast={toast} />
     </div>
   );
@@ -127,19 +119,19 @@ function TeacherEarnings({ toast }: { toast: ToastFn }) {
 
   return (
     <div className="app-page billing-page">
-      <PageHead title="Earnings" subtitle="Schools pay your booking invoices in SupplyEd. Your pay goes straight to your bank account." actions={<RefreshInvoices query={invoicesQuery} />} />
+      <PageHead title="Earnings" subtitle="SupplyEd automatically collects completed booking payments. Stripe then pays your available balance to your bank." actions={<RefreshInvoices invoices={invoices} query={invoicesQuery} />} />
 
       <PayoutSettings />
       <CashOutCard toast={toast} />
 
       <div className="billing-metrics my-6 grid gap-4 sm:grid-cols-3">
         <Stat value={formatPence(sum(paid, "teacherAmountPence"))} label="Pay on paid invoices on this page" />
-        <Stat value={formatPence(sum(awaiting, "teacherAmountPence"))} label="Awaiting payment on this page" />
+        <Stat value={formatPence(sum(awaiting, "teacherAmountPence"))} label="Automatic payments processing" />
         <Stat value={paid.length} label="Paid bookings on this page" />
       </div>
 
       <InvoiceList
-        emptyMessage="Once a school invoices a completed booking, it appears here with your pay."
+        emptyMessage="Automatic payment records appear here as booking obligations become payable."
         filter={filter}
         onFilter={(value) => { setFilter(value); setPage(1); }}
         onPage={setPage}
@@ -152,10 +144,7 @@ function TeacherEarnings({ toast }: { toast: ToastFn }) {
   );
 }
 
-/**
- * Uber-style cash out: as soon as a school pays by card, the teacher can send
- * their earnings to their bank in minutes instead of waiting for the automatic payout.
- */
+/** Keep cash out discoverable while explaining settlement and payout eligibility. */
 function CashOutCard({ toast }: { toast: ToastFn }) {
   const payoutQuery = usePayoutAccount();
   const ready = payoutQuery.data?.ready === true;
@@ -168,33 +157,47 @@ function CashOutCard({ toast }: { toast: ToastFn }) {
     },
   });
   const balance = balanceQuery.data;
-
-  if (!ready) return null;
-  if (balanceQuery.isLoading) return <div className="mt-4"><SectionLoader rows={1} /></div>;
-  if (!balance) return null;
-
-  const canCashOut = Boolean(balance.instantDestination) && balance.instantAvailablePence >= 40;
+  const canCashOut = ready && Boolean(balance?.instantDestination) && (balance?.instantAvailablePence ?? 0) >= 40;
+  const checking = payoutQuery.isLoading || ready && balanceQuery.isLoading;
+  const refreshing = payoutQuery.isFetching || balanceQuery.isFetching;
+  const unavailableReason = checking
+    ? "Your payout account and available balance are being checked."
+    : payoutQuery.isError || ready && !balance
+      ? "Your payout balance could not be checked. Refresh the balance to try again."
+      : !ready
+        ? "Complete Bank account and payouts setup before withdrawing your earnings."
+        : !balance?.instantDestination
+          ? "Your linked bank account does not currently support instant cash-outs. Manage Bank account and payouts to add an eligible bank account or debit card."
+          : balance.pendingPence > 0
+            ? `${formatPence(balance.pendingPence)} has been collected and is awaiting Stripe settlement. Cash out becomes available when Stripe releases eligible funds.`
+            : balance.availablePence > 0
+              ? `${formatPence(balance.availablePence)} is settled, but Stripe has not made it available for instant cash-out. Standard bank payouts follow your Stripe payout schedule.`
+              : "There are no funds available for instant cash-out yet. Cash-outs start at £0.40.";
+  const refreshBalance = () => { void Promise.all([payoutQuery.refetch(), balanceQuery.refetch()]); };
 
   return (
     <>
       <section className="cashout-card card card-pad-lg mt-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-semibold uppercase tracking-[1px] text-muted">Available to cash out now</div>
-            <div className="mt-1 font-heading text-4xl">{formatPence(balance.instantAvailablePence)}</div>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[1px] text-muted">Available to cash out now <Tag tone={canCashOut ? "green" : "amber"}>{checking ? "Checking balance" : canCashOut ? "Ready" : (balance?.pendingPence ?? 0) > 0 ? "Funds settling" : "Not available yet"}</Tag></div>
+            <div className="mt-1 font-heading text-4xl">{balance ? formatPence(balance.instantAvailablePence) : "—"}</div>
             <p className="mt-2 text-sm text-muted">
-              {balance.instantDestination
+              {canCashOut && balance?.instantDestination
                 ? `Cash out to ${balance.instantDestination.label}. It usually arrives within 30 minutes, any day.`
-                : "Your bank doesn't support instant cash-outs. Add a debit card under Bank account and payouts to cash out instantly."}
-              {balance.pendingPence > 0 ? ` Otherwise ${formatPence(balance.pendingPence)} is paid to your bank automatically in a few days.` : ""}
+                : unavailableReason}
             </p>
+            {(balance?.pendingPence ?? 0) > 0 ? <p className="mt-2 text-sm font-semibold">Awaiting settlement: {formatPence(balance!.pendingPence)}</p> : null}
           </div>
-          <Btn disabled={!canCashOut} icon="zap" onClick={() => setConfirming(true)}>
-            Cash out
-          </Btn>
+          <div className="flex flex-wrap gap-2">
+            <Btn loading={refreshing} loadingLabel="Checking" size="sm" variant="ghost" onClick={refreshBalance}>Refresh balance</Btn>
+            <Btn disabled={!canCashOut || cashOut.isPending} icon="zap" loading={cashOut.isPending} loadingLabel="Sending" onClick={() => setConfirming(true)}>
+              {canCashOut ? "Cash out" : "Nothing to cash out"}
+            </Btn>
+          </div>
         </div>
 
-        {balance.recentPayouts.length ? (
+        {balance?.recentPayouts.length ? (
           <div className="mt-5 border-t border-border pt-4">
             <div className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-muted">Recent payouts</div>
             {balance.recentPayouts.map((payout) => (
@@ -217,19 +220,18 @@ function CashOutCard({ toast }: { toast: ToastFn }) {
 
       <Modal open={confirming} onClose={() => !cashOut.isPending && setConfirming(false)}>
         <div className="p-6 sm:p-7">
-          <Tag tone="green">Cash out</Tag>
-          <h2 className="mt-4 font-heading text-2xl">Send {formatPence(balance.instantAvailablePence)} now?</h2>
+          <Tag tone={canCashOut ? "green" : "amber"}>{canCashOut ? "Cash out" : (balance?.pendingPence ?? 0) > 0 ? "Funds settling" : "Cash out availability"}</Tag>
+          <h2 className="mt-4 font-heading text-2xl">{canCashOut ? `Send ${formatPence(balance!.instantAvailablePence)} now?` : "Cash out is not available yet"}</h2>
           <p className="mt-3 text-sm leading-6 text-muted">
-            It goes to {balance.instantDestination?.label ?? "your bank"} and usually arrives within 30 minutes. The amount shown is what
-            you receive.
+            {canCashOut ? `It goes to ${balance?.instantDestination?.label ?? "your bank"} and usually arrives within 30 minutes. The amount shown is what you receive.` : unavailableReason}
           </p>
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Btn disabled={cashOut.isPending} variant="ghost" onClick={() => setConfirming(false)}>
-              Not now
+              {canCashOut ? "Not now" : "Close"}
             </Btn>
-            <Btn loading={cashOut.isPending} loadingLabel="Sending" onClick={() => cashOut.mutate(undefined)}>
-              Cash out {formatPence(balance.instantAvailablePence)}
-            </Btn>
+            {canCashOut ? <Btn loading={cashOut.isPending} loadingLabel="Sending" onClick={() => { if (canCashOut) cashOut.mutate(undefined); }}>
+              Cash out {formatPence(balance!.instantAvailablePence)}
+            </Btn> : <Btn loading={refreshing} loadingLabel="Checking" onClick={refreshBalance}>Refresh balance</Btn>}
           </div>
         </div>
       </Modal>
@@ -264,7 +266,7 @@ function AdminPayments({ toast }: { toast: ToastFn }) {
   return (
     <>
       <div className="app-page billing-page">
-        <PageHead title="Payments" subtitle="Every invoice on the platform. Void unpaid invoices to reissue them; refund paid ones." actions={<RefreshInvoices query={invoicesQuery} />} />
+        <PageHead title="Payments" subtitle="Every invoice on the platform. Void unpaid invoices to reissue them; refund paid ones." actions={<RefreshInvoices invoices={invoices} query={invoicesQuery} />} />
 
         <AdminInvoiceFilters onApply={(value) => { setProfileFilters(value); setPage(1); }} />
         <AdminPayoutLookup />
@@ -276,7 +278,7 @@ function AdminPayments({ toast }: { toast: ToastFn }) {
         </div>
 
         <InvoiceList
-          emptyMessage="Invoices appear here when schools invoice completed bookings."
+          emptyMessage="Automatic period invoices and manually created booking invoices appear here."
           filter={filter}
           onFilter={(value) => { setFilter(value); setPage(1); }}
           onPage={setPage}
@@ -511,6 +513,7 @@ function InvoiceRow({ actions, invoice, role }: { actions?: ReactNode; invoice: 
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-heading text-xl leading-tight">{invoice.booking.jobTitle}</h3>
             <InvoiceStatusTag invoice={invoice} />
+            {isAutomatic(invoice) ? <Tag tone="purple">Automatic</Tag> : <Tag tone="ghost">Manual</Tag>}
             {invoice.amountRefundedPence > 0 ? <Tag tone="ghost">Invoice refunded {formatPence(invoice.amountRefundedPence)}</Tag> : null}
             {invoice.disputeStatus ? <Tag tone="red">Dispute: {invoice.disputeStatus.replaceAll("_", " ")}</Tag> : null}
           </div>
@@ -527,6 +530,7 @@ function InvoiceRow({ actions, invoice, role }: { actions?: ReactNode; invoice: 
               .filter(Boolean)
               .join(" · ")}
           </div>
+          {invoice.lastPaymentFailureMessage && invoice.status === "OPEN" ? <p className="mt-3 rounded-lg border border-warning/20 bg-warning-tint px-3 py-2 text-sm text-warning" role="alert">{invoice.lastPaymentFailureMessage}{invoice.nextPaymentAttemptAt ? ` Next retry: ${formatDateTime(invoice.nextPaymentAttemptAt)}.` : ""}</p> : null}
         </div>
         <div className="text-left sm:text-right">
           <div className="font-heading text-2xl">{formatPence(amount)}</div>
@@ -545,7 +549,24 @@ function InvoiceStatusTag({ invoice }: { invoice: Invoice }) {
   if (invoice.status === "VOID") return <Tag tone="ghost">Void</Tag>;
   if (invoice.status === "UNCOLLECTIBLE") return <Tag tone="red">Written off</Tag>;
   if (invoice.status === "PENDING") return <Tag tone="ghost">Processing</Tag>;
+  if (requiresCardAuthentication(invoice.lastPaymentFailureCode)) return <Tag tone="amber">Card approval required</Tag>;
+  if (invoice.lastPaymentFailureMessage) return <Tag tone="red">Payment needs attention</Tag>;
+  if (isAutomatic(invoice)) {
+    const phase = automaticPaymentPhase({
+      failureMessage: invoice.lastPaymentFailureMessage,
+      nextAttemptAt: invoice.nextPaymentAttemptAt,
+      paymentAttemptCount: invoice.paymentAttemptCount,
+      status: invoice.status,
+    });
+    return <Tag tone="amber">{phase === "scheduled" ? "Payment scheduled" : "Automatic payment processing"}</Tag>;
+  }
   return isOverdue(invoice) ? <Tag tone="red">Overdue</Tag> : <Tag tone="amber">Awaiting payment</Tag>;
+}
+
+function HostedInvoiceLink({ invoice, label = "Open invoice" }: { invoice: Invoice; label?: string }) {
+  const url = stripeInvoiceUrl(invoice.hostedInvoiceUrl);
+  if (!url) return null;
+  return <a className={buttonClassName({ size: "sm", variant: "secondary" })} href={url} rel="noopener noreferrer" target="_blank">{label}</a>;
 }
 
 function PdfLink({ invoice }: { invoice: Invoice }) {
@@ -563,8 +584,14 @@ function payable(invoice: Invoice): PayableInvoice {
   return { id: invoice.id, jobTitle: invoice.booking.jobTitle, totalAmountPence: invoice.totalAmountPence - invoice.amountRefundedPence };
 }
 
-function RefreshInvoices({ query }: { query: { isFetching: boolean; refetch: () => unknown } }) {
-  return <Btn loading={query.isFetching} loadingLabel="Refreshing" size="sm" variant="ghost" onClick={() => { void query.refetch(); }}>Refresh status</Btn>;
+function RefreshInvoices({ invoices, query }: { invoices: Invoice[]; query: { isFetching: boolean; refetch: () => unknown } }) {
+  const sync = useSyncInvoice();
+  const refresh = async () => {
+    const automatic = invoices.filter((invoice) => isAutomatic(invoice) && isUnpaid(invoice));
+    for (const invoice of automatic) await sync.mutateAsync(invoice.id);
+    await query.refetch();
+  };
+  return <Btn loading={sync.isPending || query.isFetching} loadingLabel="Checking Stripe" size="sm" variant="ghost" onClick={() => { void refresh(); }}>Refresh status</Btn>;
 }
 
 function invoiceQuery(filter: Filter, page: number) {
@@ -573,6 +600,14 @@ function invoiceQuery(filter: Filter, page: number) {
 
 function isUnpaid(invoice: Invoice) {
   return invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE";
+}
+
+function isAutomatic(invoice: Invoice) {
+  return invoice.collectionMethod === "charge_automatically";
+}
+
+function isFailedAutomaticPayment(invoice: Invoice) {
+  return isUnpaid(invoice) && isAutomatic(invoice) && Boolean(invoice.lastPaymentFailureMessage || requiresCardAuthentication(invoice.lastPaymentFailureCode));
 }
 
 
@@ -609,12 +644,14 @@ function describeWork(invoice: Invoice) {
   const rate = formatPence(Math.round(invoice.rateAmount * 100));
   if (invoice.payType === "fixed" || invoice.unitsWorked === null) return `Fixed fee ${rate}`;
   const unit = invoice.payType === "hourly" ? "hour" : "day";
-  return `${invoice.unitsWorked} ${unit}${invoice.unitsWorked === 1 ? "" : "s"} at ${rate}/${unit}`;
+  const work = `${invoice.unitsWorked} ${unit}${invoice.unitsWorked === 1 ? "" : "s"} at ${rate}/${unit}`;
+  return invoice.billingPeriodLabel ? `${invoice.billingPeriodLabel}: ${work}` : work;
 }
 
 function timing(invoice: Invoice) {
   if (invoice.status === "PAID" && invoice.paidAt) return `Paid ${formatDate(invoice.paidAt)}`;
   if (invoice.status === "VOID" && invoice.voidedAt) return `Voided ${formatDate(invoice.voidedAt)}`;
+  if (invoice.nextPaymentAttemptAt && invoice.status === "OPEN") return `Retry ${formatDateTime(invoice.nextPaymentAttemptAt)}`;
   if (invoice.dueAt && (invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE")) return `Due ${formatDate(invoice.dueAt)}`;
   return null;
 }
@@ -628,4 +665,8 @@ function formatDateRange(start?: string | null, end?: string | null) {
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

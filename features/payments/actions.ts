@@ -6,8 +6,8 @@ import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 
 import { requirePayoutInstructor } from "./payout-auth";
-import { normalizeInvoice, normalizePayoutSummary } from "./schemas";
-import type { CreateInvoiceInput, Invoice, InvoicePaymentSession, PayoutSession, PayoutSummary, RefundInvoiceInput } from "./types";
+import { normalizeInvoice, normalizePayoutSummary, normalizeSchoolBillingSettings } from "./schemas";
+import type { BookingTipCheckoutSession, BookingTipStatusResult, CreateInvoiceInput, Invoice, InvoicePaymentSession, PayoutSession, PayoutSummary, RefundInvoiceInput, SchoolBillingSettings, SchoolBillingSetupSession } from "./types";
 
 /**
  * A fresh session for Stripe's embedded payout components. The client secret
@@ -51,6 +51,104 @@ export async function createInvoicePaymentSessionAction(id: string) {
   }
 }
 
+/** Stripe hosts card entry and saves the card for authorised automatic booking payments. */
+export async function createSchoolBillingSetupSessionAction(input: { consentToTerms: boolean }) {
+  if (input?.consentToTerms !== true) return actionError("Authorise automatic booking payments before adding a card.");
+  try {
+    const session = await api.post<Partial<SchoolBillingSetupSession>>("/payments/school-billing/setup-session", { consentToTerms: true });
+    const url = stripeCheckoutUrl(session?.url);
+    if (!url || !session?.sessionId || !/^cs_(?:test_|live_)?[A-Za-z0-9]+$/.test(session.sessionId)) {
+      return actionError("Payment method setup could not be started. Please try again.");
+    }
+    revalidateTag("school-billing", "max");
+    return actionOk<SchoolBillingSetupSession>({
+      expiresAt: typeof session.expiresAt === "number" && Number.isFinite(session.expiresAt) ? session.expiresAt : 0,
+      sessionId: session.sessionId,
+      url,
+    });
+  } catch (error) {
+    return actionError(readPaymentError(error, "Payment method setup could not be started."), { code: errorCode(error), requestId: error instanceof ApiError ? error.requestId : undefined });
+  }
+}
+
+/** Verifies the latest Checkout session after Stripe sends the school back. */
+export async function syncSchoolBillingSetupAction(sessionId: string) {
+  const normalized = typeof sessionId === "string" ? sessionId.trim() : "";
+  if (!/^cs_(?:test_|live_)?[A-Za-z0-9]+$/.test(normalized)) return actionError("The payment setup reference is invalid.");
+  try {
+    const settings = await api.post<SchoolBillingSettings>("/payments/school-billing/sync", { sessionId: normalized });
+    revalidateTag("school-billing", "max");
+    const normalizedSettings = normalizeSchoolBillingSettings(settings);
+    return actionOk(normalizedSettings, normalizedSettings.automaticPaymentsEnabled ? "Card saved securely. Automatic booking payments are on." : "Card setup is being checked. Refresh Billing to see the latest status.");
+  } catch (error) {
+    return actionError(readPaymentError(error, "The payment method status could not be refreshed."), { code: errorCode(error), requestId: error instanceof ApiError ? error.requestId : undefined });
+  }
+}
+
+export async function updateSchoolAutomaticPaymentsAction(input: { automaticPaymentsEnabled: boolean; consentToTerms?: boolean }) {
+  if (!input || typeof input.automaticPaymentsEnabled !== "boolean") return actionError("Choose a valid automatic-payment setting.");
+  try {
+    const settings = await api.patch<SchoolBillingSettings>("/payments/school-billing", input);
+    revalidateTag("school-billing", "max");
+    return actionOk(normalizeSchoolBillingSettings(settings), input.automaticPaymentsEnabled ? "Automatic payments enabled." : "Automatic payments disabled.");
+  } catch (error) {
+    return actionError(readPaymentError(error, "Automatic payment settings could not be updated."), { code: errorCode(error), requestId: error instanceof ApiError ? error.requestId : undefined });
+  }
+}
+
+export async function createBookingTipCheckoutAction(input: { bookingId: string; amountPence: number }) {
+  const bookingId = typeof input?.bookingId === "string" ? input.bookingId.trim() : "";
+  if (!isUuid(bookingId)) return actionError("Choose a valid completed booking.");
+  if (!Number.isSafeInteger(input.amountPence) || input.amountPence < 1 || input.amountPence > 99_999_999) {
+    return actionError("Enter a valid tip amount in pounds and pence.");
+  }
+  try {
+    const session = await api.post<Partial<BookingTipCheckoutSession>>("/payments/booking-tips/checkout", {
+      bookingId,
+      amountPence: input.amountPence,
+    });
+    const url = stripeCheckoutUrl(session.url);
+    if (!url || !session.tipId || !isUuid(session.tipId) || !session.sessionId) {
+      return actionError("The tip checkout could not be started. Please try again.");
+    }
+    return actionOk<BookingTipCheckoutSession>({
+      feeAmountPence: Number(session.feeAmountPence) || 0,
+      sessionId: session.sessionId,
+      tipAmountPence: Number(session.tipAmountPence) || input.amountPence,
+      tipId: session.tipId,
+      totalAmountPence: Number(session.totalAmountPence) || input.amountPence,
+      url,
+    });
+  } catch (error) {
+    return actionError(readPaymentError(error, "The tip checkout could not be started."), { code: errorCode(error), requestId: error instanceof ApiError ? error.requestId : undefined });
+  }
+}
+
+export async function syncBookingTipAction(input: { tipId: string; sessionId: string }) {
+  const tipId = typeof input?.tipId === "string" ? input.tipId.trim() : "";
+  const sessionId = typeof input?.sessionId === "string" ? input.sessionId.trim() : "";
+  if (!isUuid(tipId) || !/^cs_(?:test_|live_)?[A-Za-z0-9]+$/.test(sessionId)) {
+    return actionError("The tip payment reference is invalid.");
+  }
+  try {
+    const tip = await api.post<BookingTipStatusResult>(`/payments/booking-tips/${tipId}/sync`, { sessionId });
+    revalidateTag("bookings", "max");
+    return actionOk(tip, tip.status === "PAID" ? "Tip paid successfully." : "Tip submitted and processing.");
+  } catch (error) {
+    return actionError(readPaymentError(error, "The tip payment status could not be checked."), { code: errorCode(error), requestId: error instanceof ApiError ? error.requestId : undefined });
+  }
+}
+
+export async function removeSchoolPaymentMethodAction() {
+  try {
+    const settings = await api.delete<SchoolBillingSettings>("/payments/school-billing/payment-method");
+    revalidateTag("school-billing", "max");
+    return actionOk(normalizeSchoolBillingSettings(settings), "Payment method removed and automatic payments disabled.");
+  } catch (error) {
+    return actionError(readPaymentError(error, "The payment method could not be removed."), { code: errorCode(error), requestId: error instanceof ApiError ? error.requestId : undefined });
+  }
+}
+
 /** Reads the invoice's latest status from Stripe, so a payment shows without waiting for the webhook. */
 export async function syncInvoiceAction(id: string) {
   const invoiceId = typeof id === "string" ? id.trim() : "";
@@ -74,7 +172,10 @@ export async function instantPayoutAction(amountPence?: number) {
 
   try {
     const payout = await api.post<PayoutSummary>("/payments/payout-account/instant-payout", { amountPence });
-    return actionOk(normalizePayoutSummary(payout), "On its way. It usually arrives within 30 minutes.");
+    return actionOk(
+      normalizePayoutSummary(payout),
+      "Stripe confirmed the cash-out. Your available balance has been reduced and the transfer is on its way.",
+    );
   } catch (error) {
     return actionError(readPaymentError(error, "The cash-out could not be sent."), { code: errorCode(error) });
   }
@@ -161,6 +262,16 @@ function errorCode(error: unknown) {
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+function stripeCheckoutUrl(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && url.hostname === "checkout.stripe.com" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function readPaymentError(error: unknown, fallback: string) {

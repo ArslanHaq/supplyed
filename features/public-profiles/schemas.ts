@@ -2,6 +2,7 @@
 import { selectionValues } from "@/features/teaching-catalogue/selection";
 import { normalizeInstructorBookingDates } from "./booking-dates";
 import type { InstitutionPublicProfile, InstructorPublicProfile } from "./types";
+import { normalizeProfileDocuments } from "@/features/profile-documents/schemas";
 
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())) : [];
@@ -20,6 +21,7 @@ function dateOrNull(value: unknown): string | null {
 
 export function normalizeInstructorPublicProfile(profile: InstructorPublicProfile): InstructorPublicProfile {
   return {
+    certificates: normalizeProfileDocuments(profile.certificates),
     bookings: normalizeInstructorBookingDates(profile.bookings),
     bio: profile.bio ?? null,
     city: profile.city ?? null,
@@ -43,6 +45,7 @@ export function normalizeInstructorPublicProfile(profile: InstructorPublicProfil
 
 export function normalizeInstitutionPublicProfile(profile: InstitutionPublicProfile): InstitutionPublicProfile {
   return {
+    achievements: normalizeProfileDocuments(profile.achievements),
     address: profile.address ?? "",
     city: profile.city ?? "",
     county: profile.county ?? null,

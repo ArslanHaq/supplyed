@@ -80,7 +80,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       toast({
         title: hired ? "Teacher hired" : result.ok ? "Application updated" : "Could not update application",
         msg: hired
-          ? `Your booking is ready.${result.data.automaticallyRejectedCount ? ` ${result.data.automaticallyRejectedCount} other ${result.data.automaticallyRejectedCount === 1 ? "application was" : "applications were"} automatically rejected.` : ""} Once completed, create its Stripe invoice from Bookings.`
+          ? `Your booking is ready.${result.data.automaticallyRejectedCount ? ` ${result.data.automaticallyRejectedCount} other ${result.data.automaticallyRejectedCount === 1 ? "application was" : "applications were"} automatically rejected.` : ""} Attendance and billing now follow the booking's agreed payment schedule.`
           : result.message ?? "The application status was updated.",
         tone: result.ok ? "success" : "danger",
       });

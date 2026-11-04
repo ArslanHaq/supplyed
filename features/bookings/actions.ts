@@ -23,6 +23,21 @@ const bookingActionPath = {
   "no-show": "no-show",
 } satisfies Record<BookingStatusUpdateInput["action"], string>;
 
+/** Re-evaluates this booking's payment eligibility and reads its current Stripe status. */
+export async function syncBookingPaymentAction(bookingId: string) {
+  const id = typeof bookingId === "string" ? bookingId.trim() : "";
+  if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)) return actionError("Choose a valid booking.");
+  try {
+    const booking = await api.post<Booking>(`/bookings/${id}/payment-sync`);
+    revalidateTag("bookings", "max");
+    revalidateTag("invoices", "max");
+    revalidateTag("school-billing", "max");
+    return actionOk(normalizeBooking(booking), "Payment status checked.");
+  } catch (error) {
+    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, requestId: error instanceof ApiError ? error.requestId : undefined });
+  }
+}
+
 export async function updateBookingStatusAction(input: BookingStatusUpdateInput) {
   if (!input || typeof input.id !== "string" || !Object.hasOwn(bookingActionPath, input.action) || (input.reason !== undefined && typeof input.reason !== "string")) return actionError("Choose a valid booking action.");
   const id = input.id.trim();
