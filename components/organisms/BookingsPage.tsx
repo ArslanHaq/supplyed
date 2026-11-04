@@ -11,20 +11,20 @@ import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
 import { WorkspaceEmptyState } from "./WorkspacePanels";
 
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { Booking, BookingInvoiceFilter, BookingListQuery, BookingStatus } from "@/features/bookings/types";
 import { bookingDays, invoiceUnitsLimit } from "@/features/bookings/schemas";
-import { useBooking, useBookings, useCreateBookingReview, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
+import { useBooking, useBookings, useCreateBookingReview, useSyncBookingPayment, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
+import { automaticPaymentPhase, requiresCardAuthentication } from "@/features/payments/payment-status";
 import { formatPence } from "@/features/payments/schemas";
-import { useCreateInvoice, useInvoice } from "@/features/payments/use-payments";
-import type { Invoice, PayableInvoice } from "@/features/payments/types";
+import { useCreateBookingTipCheckout, useInvoice, useSyncBookingTip } from "@/features/payments/use-payments";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, buttonClassName, Field, Icon, Tag } from "../atoms";
+import { Avatar, Btn, Field, Icon, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
-import { PayInvoiceModal } from "./PayInvoiceModal";
 import { BookingAttendancePanel } from "./BookingAttendancePanel";
 
 type Tab = "active" | "all" | "cancelled" | "completed" | "no-show";
@@ -52,10 +52,9 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
   const [filterError, setFilterError] = useState<string | null>(null);
   const [reviewTarget, setReviewTarget] = useState<Booking | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
-  const [invoiceTarget, setInvoiceTarget] = useState<Booking | null>(null);
   const [invoiceDetailsId, setInvoiceDetailsId] = useState<string | null>(null);
-  const [payTarget, setPayTarget] = useState<PayableInvoice | null>(null);
-  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const [tipTarget, setTipTarget] = useState<Booking | null>(null);
+  const [tipError, setTipError] = useState<string | null>(null);
   const listQuery = useBookings({ jobId: ctx?.jobId, limit: 20, page, status: tabStatus[tab], ...filters }, !ctx?.bookingId);
   const detailQuery = useBooking(ctx?.bookingId);
   const bookingsQuery = ctx?.bookingId ? { ...detailQuery, data: detailQuery.data ? { bookings: [detailQuery.data], pagination: { total: 1, totalPages: 1, page: 1, hasNextPage: false, limit: 1 } } : undefined } : listQuery;
@@ -85,23 +84,17 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
     },
   });
 
-  const createInvoice = useCreateInvoice({
-    onError: () => setInvoiceError("The invoice request could not be submitted. Please try again."),
+  const createTip = useCreateBookingTipCheckout({
+    onError: () => setTipError("The tip checkout could not be opened. Please try again."),
     onSuccess: (result) => {
-      toast({
-        title: result.ok ? "Invoice sent" : "Could not create invoice",
-        msg: result.message ?? "The school has been sent the invoice.",
-        tone: result.ok ? "success" : "danger",
-      });
-      if (result.ok) {
-        setInvoiceTarget(null);
-        setInvoiceError(null);
-        setInvoiceDetailsId(result.data.id);
-      } else {
-        setInvoiceError(result.message);
+      if (!result.ok) {
+        setTipError(result.message);
+        return;
       }
+      window.location.assign(result.data.url);
     },
   });
+  useBookingTipReturn(toast);
 
   const subtitle = role === "teacher"
     ? "Your active and completed placements with schools."
@@ -207,7 +200,6 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
                 cancelling={updateBooking.isPending && cancelTarget?.id === booking.id}
                 onCancel={setCancelTarget}
                 onComplete={(id) => updateBooking.mutate({ action: "complete", id })}
-                onInvoice={(booking) => { setInvoiceError(null); setInvoiceTarget(booking); }}
                 onInvoiceDetails={setInvoiceDetailsId}
                 onMessage={(selectedBooking) => go("messaging", { bookingId: selectedBooking.id })}
                 onOpenAttendance={(selectedBooking) => go("bookings", { bookingId: selectedBooking.id })}
@@ -215,7 +207,7 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
                 onOpenProfile={(selectedBooking) => role === "teacher"
                   ? go("institution-profile", { institutionId: selectedBooking.institution.id })
                   : go("teacher-profile", { teacherId: selectedBooking.instructor.id })}
-                onPay={setPayTarget}
+                onTip={(selectedBooking) => { setTipError(null); setTipTarget(selectedBooking); }}
                 onNoShow={(id) => updateBooking.mutate({ action: "no-show", id })}
                 onReview={setReviewTarget}
                 pending={updateBooking.isPending}
@@ -246,29 +238,20 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
         }}
       />
 
-      <CreateInvoiceModal
-        key={invoiceTarget?.id ?? "none"}
-        booking={invoiceTarget}
-        error={invoiceError}
-        loading={createInvoice.isPending}
-        onClose={() => {
-          if (!createInvoice.isPending) setInvoiceTarget(null);
-        }}
-        onSubmit={(unitsWorked, poNumber) => {
-          if (invoiceTarget) createInvoice.mutate({ bookingId: invoiceTarget.id, poNumber, unitsWorked });
-        }}
-      />
-
       <InvoiceDetailsModal
         id={invoiceDetailsId}
         onClose={() => setInvoiceDetailsId(null)}
-        onPay={(invoice: Invoice) => {
-          setInvoiceDetailsId(null);
-          setPayTarget({ id: invoice.id, jobTitle: invoice.booking.jobTitle, totalAmountPence: invoice.totalAmountPence });
-        }}
         role={role}
       />
-      <PayInvoiceModal invoice={payTarget} onClose={() => setPayTarget(null)} toast={toast} />
+
+      <TipBookingModal
+        key={`tip-${tipTarget?.id ?? "none"}`}
+        booking={tipTarget}
+        error={tipError}
+        loading={createTip.isPending}
+        onClose={() => { if (!createTip.isPending) setTipTarget(null); }}
+        onSubmit={(amountPence) => { if (tipTarget) createTip.mutate({ bookingId: tipTarget.id, amountPence }); }}
+      />
 
       <ReviewBookingModal
         booking={reviewTarget}
@@ -291,14 +274,13 @@ function BookingCard({
   cancelling,
   onCancel,
   onComplete,
-  onInvoice,
   onInvoiceDetails,
   onMessage,
   onNoShow,
   onOpenAttendance,
   onOpenProfile,
   onOpenJob,
-  onPay,
+  onTip,
   onReview,
   pending,
   role,
@@ -310,14 +292,13 @@ function BookingCard({
   cancelling: boolean;
   onCancel: (booking: Booking) => void;
   onComplete: (id: string) => void;
-  onInvoice: (booking: Booking) => void;
   onInvoiceDetails: (id: string) => void;
   onMessage: (booking: Booking) => void;
   onNoShow: (id: string) => void;
   onOpenAttendance: (booking: Booking) => void;
   onOpenProfile: (booking: Booking) => void;
   onOpenJob: (booking: Booking) => void;
-  onPay: (invoice: PayableInvoice) => void;
+  onTip: (booking: Booking) => void;
   onReview: (booking: Booking) => void;
   pending: boolean;
   role: AppRole;
@@ -358,16 +339,17 @@ function BookingCard({
 
       {booking.cancelReason ? <p className="mt-4 rounded-lg bg-danger-tint px-3 py-2 text-sm text-danger">{booking.cancelReason}</p> : null}
 
-      {booking.status === "COMPLETED" ? <InvoiceStrip booking={booking} onInvoice={onInvoice} onInvoiceDetails={onInvoiceDetails} onPay={onPay} role={role} /> : (
-        booking.status === "CONFIRMED" ? <p className="booking-placement-payment"><Icon name="pound" size={14} />Payment by invoice after completion</p> : null
+      {booking.status === "COMPLETED" || booking.invoice || booking.automaticPayment ? <InvoiceStrip booking={booking} onInvoiceDetails={onInvoiceDetails} role={role} /> : (
+        booking.status === "CONFIRMED" ? <p className="booking-placement-payment"><Icon name="pound" size={14} />Attendance-backed payment periods are invoiced as they close. Automatic collection is used when the school has enabled it.</p> : null
       )}
+      {booking.status === "COMPLETED" ? <BookingTipPanel booking={booking} onTip={onTip} role={role} /> : null}
 
       <footer className="booking-placement-footer">
         <div className="text-xs text-muted">
           {reviewable
             ? ownReview
               ? `Reviewed with ${ownReview.rating}/5`
-              : `${formatClosedStatus(booking.status)} booking ready for review`
+              : `${formatClosedStatus(booking.status)} booking — optional ${role === "teacher" ? "school" : "teacher"} review available`
             : booking.status === "CONFIRMED"
               ? "Confirmed placement"
               : "Booking closed"}
@@ -542,10 +524,15 @@ function bookingHoursLabel(minutes: number) {
   return remainder ? `${hours ? `${hours}h ` : ""}${remainder}m` : `${hours}h`;
 }
 
-/** Payment state of a completed booking: invoice it (school), pay it, or see where it stands. */
-function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, onPay, role }: { booking: Booking; onInvoice: (booking: Booking) => void; onInvoiceDetails: (id: string) => void; onPay: (invoice: PayableInvoice) => void; role: AppRole }) {
+/** Latest payment state for a booking: recurring automatic periods or a manual invoice. */
+function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; onInvoiceDetails: (id: string) => void; role: AppRole }) {
   const bookingInvoice = booking.invoice;
-  const invoiceDetail = useInvoice(bookingInvoice?.id ?? null);
+  const invoiceDetail = useInvoice(bookingInvoice?.status === "PENDING" ? null : bookingInvoice?.id ?? null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const paymentSync = useSyncBookingPayment({
+    onError: () => setPaymentError("Payment status could not be checked. Please try again."),
+    onSuccess: (result) => setPaymentError(result.ok ? null : result.message),
+  });
   const latestInvoice = invoiceDetail.data;
   const invoice = bookingInvoice && latestInvoice?.id === bookingInvoice.id
     ? {
@@ -553,19 +540,50 @@ function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, onPay, role }: { b
         dueAt: latestInvoice.dueAt,
         hostedInvoiceUrl: latestInvoice.hostedInvoiceUrl,
         paidAt: latestInvoice.paidAt,
-        status: latestInvoice.status === "PAID" || latestInvoice.status === "UNCOLLECTIBLE" ? latestInvoice.status : "OPEN",
+        status: latestInvoice.status === "PENDING" || latestInvoice.status === "PAID" || latestInvoice.status === "UNCOLLECTIBLE" ? latestInvoice.status : "OPEN",
         totalAmountPence: latestInvoice.totalAmountPence,
       }
     : bookingInvoice;
-  const canInvoice = ["daily", "hourly", "fixed"].includes(booking.payType ?? "") && typeof booking.payAmount === "number" && booking.payAmount > 0;
+  const automatic = (latestInvoice?.collectionMethod ?? bookingInvoice?.collectionMethod) === "charge_automatically";
+  const failure = invoice?.status === "OPEN" ? (latestInvoice?.lastPaymentFailureMessage ?? bookingInvoice?.lastPaymentFailureMessage) : null;
+  const cardApprovalRequired = invoice?.status === "OPEN" && requiresCardAuthentication(latestInvoice?.lastPaymentFailureCode ?? bookingInvoice?.lastPaymentFailureCode);
+  const period = latestInvoice?.billingPeriodLabel ?? bookingInvoice?.billingPeriodLabel;
+  const nextAttempt = latestInvoice?.nextPaymentAttemptAt ?? bookingInvoice?.nextPaymentAttemptAt;
+  const paymentPhase = automatic && invoice
+    ? automaticPaymentPhase({
+        failureMessage: failure,
+        nextAttemptAt: nextAttempt,
+        paymentAttemptCount: latestInvoice?.paymentAttemptCount ?? bookingInvoice?.paymentAttemptCount ?? 0,
+        status: invoice.status,
+      })
+    : null;
   let label: string;
-  let tag: { text: string; tone: "amber" | "green" | "red" } | null = null;
+  let tag: { text: string; tone: "amber" | "green" | "red" | "ghost" } | null = null;
 
   if (!invoice) {
-    label = role === "teacher" ? "The school can invoice this booking once your Stripe payouts are ready." : canInvoice ? "Send an invoice to pay the teacher. Their Stripe payout setup must be complete." : "This booking needs an agreed rate and pay type before it can be invoiced.";
+    const payment = booking.automaticPayment;
+    label = payment?.state === "REVIEW_REQUIRED"
+      ? "Automatic payment is not scheduled for this booking."
+      : payment?.message ?? "Checking automatic payment status.";
+    tag = payment ? bookingAutomaticPaymentTag(payment.state) : { text: "Checking payment", tone: "amber" };
+  } else if (invoice.status === "PENDING") {
+    label = booking.automaticPayment?.message ?? `${formatPence(invoice.totalAmountPence)} automatic invoice is being prepared. This page will update when it is submitted to Stripe.`;
+    tag = booking.automaticPayment ? bookingAutomaticPaymentTag(booking.automaticPayment.state) : { text: "Preparing payment", tone: "amber" };
   } else if (invoice.status === "PAID") {
-    label = `${formatPence(invoice.totalAmountPence)} paid${invoice.paidAt ? ` on ${formatDate(invoice.paidAt)}` : ""}.`;
+    label = `${period ? `${period}: ` : ""}${formatPence(invoice.totalAmountPence)} paid${invoice.paidAt ? ` on ${formatDate(invoice.paidAt)}` : ""}.`;
     tag = { text: "Paid", tone: "green" };
+  } else if (automatic && cardApprovalRequired) {
+    label = "The card's bank needs a security check. The school can approve this payment in Billing.";
+    tag = { text: "Card approval required", tone: "amber" };
+  } else if (automatic && failure) {
+    label = `${failure}${nextAttempt ? ` Stripe will retry on ${formatDateTime(nextAttempt)}.` : ""}`;
+    tag = { text: "Payment needs attention", tone: "red" };
+  } else if (automatic && paymentPhase === "scheduled") {
+    label = `${period ? `${period}: ` : ""}${formatPence(invoice.totalAmountPence)} will be collected automatically${nextAttempt ? ` on ${formatDateTime(nextAttempt)}` : ""}. No action is required.`;
+    tag = { text: "Payment scheduled", tone: "amber" };
+  } else if (automatic && invoice.status === "OPEN") {
+    label = `${period ? `${period}: ` : ""}${formatPence(invoice.totalAmountPence)} payment is processing. Stripe will confirm the result automatically.`;
+    tag = { text: "Automatic payment processing", tone: "amber" };
   } else {
     const overdue = isPastDue(invoice.dueAt);
     label = `${formatPence(invoice.totalAmountPence)} invoiced${invoice.dueAt ? `, due ${formatDate(invoice.dueAt)}` : ""}.`;
@@ -577,25 +595,124 @@ function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, onPay, role }: { b
       <div className="flex flex-wrap items-center gap-2">
         <Icon name="pound" size={14} />
         {tag ? <Tag tone={tag.tone}>{tag.text}</Tag> : null}
+        {automatic || booking.automaticPayment && booking.automaticPayment.state !== "DISABLED" ? <Tag tone="purple">Automatic</Tag> : null}
         <span>{label}</span>
       </div>
       <div className="flex flex-wrap gap-2">
-      {role === "institution" && !invoice && canInvoice ? (
-        <Btn size="sm" onClick={() => onInvoice(booking)}>Create invoice</Btn>
-      ) : null}
-      {invoice ? <Btn size="sm" variant="ghost" onClick={() => onInvoiceDetails(invoice.id)}>Invoice details</Btn> : null}
-      {invoice && invoice.status !== "PAID" ? (
-        <Btn loading={invoiceDetail.isFetching} loadingLabel="Checking" size="sm" variant="ghost" onClick={() => { void invoiceDetail.refetch(); }}>
-          Refresh payment
-        </Btn>
-      ) : null}
-      {role === "institution" && invoice && (invoice.status === "OPEN" || invoice.status === "UNCOLLECTIBLE") ? (
-        <Btn size="sm" onClick={() => onPay({ id: invoice.id, jobTitle: booking.job.title, totalAmountPence: invoice.totalAmountPence })}>
-          Pay invoice
-        </Btn>
-      ) : null}
+      {invoice && invoice.status !== "PENDING" ? <Btn size="sm" variant="ghost" onClick={() => onInvoiceDetails(invoice.id)}>Invoice details</Btn> : null}
+      <Btn loading={paymentSync.isPending} loadingLabel="Checking payment" size="sm" variant="ghost" onClick={() => { setPaymentError(null); paymentSync.mutate(booking.id); }}>
+        Refresh payment
+      </Btn>
       </div>
+      {invoice?.status === "PAID" && booking.automaticPayment && booking.automaticPayment.state !== "PAID" ? <p className="w-full text-sm leading-5"><Tag tone={bookingAutomaticPaymentTag(booking.automaticPayment.state).tone}>{bookingAutomaticPaymentTag(booking.automaticPayment.state).text}</Tag><span className="ml-2">{booking.automaticPayment.message}</span></p> : null}
+      {booking.attendancePayroll?.covered && (booking.attendancePayroll.excludedAmountPence > 0 || booking.attendancePayroll.pendingAmountPence > 0 || booking.attendancePayroll.reviewAmountPence > 0) ? <p className="w-full text-xs leading-5 text-muted">Attendance totals: {formatPence(booking.attendancePayroll.payableAmountPence)} payable{booking.attendancePayroll.excludedAmountPence > 0 ? ` · ${formatPence(booking.attendancePayroll.excludedAmountPence)} excluded for absence` : ""}{booking.attendancePayroll.pendingAmountPence > 0 ? ` · ${formatPence(booking.attendancePayroll.pendingAmountPence)} awaiting attendance` : ""}{booking.attendancePayroll.reviewAmountPence > 0 ? ` · ${formatPence(booking.attendancePayroll.reviewAmountPence)} under review` : ""}.</p> : null}
+      {paymentError ? <p className="w-full text-sm text-danger" role="alert">{paymentError}</p> : null}
     </div>
+  );
+}
+
+function bookingAutomaticPaymentTag(state: NonNullable<Booking["automaticPayment"]>["state"]): { text: string; tone: "amber" | "green" | "red" | "ghost" } {
+  if (state === "PAID") return { text: "Paid", tone: "green" };
+  if (state === "FAILED") return { text: "Payment needs attention", tone: "red" };
+  if (state === "BLOCKED") return { text: "Payment setup needed", tone: "amber" };
+  if (state === "REVIEW_REQUIRED") return { text: "Payment not scheduled", tone: "amber" };
+  if (state === "WAITING_ATTENDANCE") return { text: "Waiting for attendance", tone: "amber" };
+  if (state === "NOT_DUE") return { text: "Payment not due yet", tone: "ghost" };
+  if (state === "NO_PAYMENT_DUE") return { text: "No payment due", tone: "ghost" };
+  if (state === "DISABLED") return { text: "Automatic payments off", tone: "ghost" };
+  if (state === "SCHEDULED") return { text: "Payment scheduled", tone: "amber" };
+  if (state === "PROCESSING") return { text: "Automatic payment processing", tone: "amber" };
+  return { text: "Preparing payment", tone: "amber" };
+}
+
+function BookingTipPanel({ booking, onTip, role }: { booking: Booking; onTip: (booking: Booking) => void; role: AppRole }) {
+  const tip = booking.tip;
+  if (!tip && role !== "institution") return null;
+
+  let copy = role === "institution"
+    ? "A tip is optional and separate from the booking invoice. The teacher receives the amount you choose; Stripe shows the SupplyED processing fee before you confirm."
+    : "No tip has been added to this booking.";
+  if (tip?.status === "PAID") copy = `${formatPence(tip.tipAmountPence)} tip ${role === "teacher" ? "received in your Stripe balance" : "paid to the teacher's Stripe account"}. Bank payout timing is shown in Payouts.`;
+  if (tip?.status === "PROCESSING") copy = `${formatPence(tip.tipAmountPence)} tip is processing. Stripe will confirm the payment result automatically.`;
+  if (tip?.status === "PENDING") copy = `${formatPence(tip.tipAmountPence)} tip checkout has not been completed.`;
+  if (tip?.status === "FAILED") copy = tip.paymentFailureMessage ?? "The tip payment failed. The school can try again.";
+  if (tip?.status === "CANCELLED") copy = "The previous tip checkout expired or was cancelled. No tip was collected.";
+  if (tip?.status === "REFUNDED") copy = `${formatPence(tip.amountRefundedPence)} of the tip payment was refunded.`;
+
+  const retryable = !tip || tip.status === "PENDING" || tip.status === "FAILED" || tip.status === "CANCELLED";
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand/20 bg-brand-tint/30 px-4 py-3 text-sm">
+      <div className="flex min-w-0 flex-1 items-start gap-2">
+        <Icon name="star" size={15} />
+        <div>
+          <div className="flex flex-wrap items-center gap-2"><strong>Optional teacher tip</strong>{tip ? <Tag tone={tip.status === "PAID" ? "green" : tip.status === "FAILED" ? "red" : "amber"}>{tip.status.toLowerCase().replaceAll("_", " ")}</Tag> : null}</div>
+          <p className="mt-1 leading-5 text-muted">{copy}</p>
+        </div>
+      </div>
+      {role === "institution" && retryable ? <Btn icon="star" size="sm" onClick={() => onTip(booking)}>{tip?.status === "PENDING" ? "Continue tip" : tip ? "Try tip again" : "Leave a tip"}</Btn> : null}
+    </div>
+  );
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function TipBookingModal({
+  booking,
+  error,
+  loading,
+  onClose,
+  onSubmit,
+}: {
+  booking: Booking | null;
+  error: string | null;
+  loading: boolean;
+  onClose: () => void;
+  onSubmit: (amountPence: number) => void;
+}) {
+  const [amount, setAmount] = useState(() => booking?.tip?.tipAmountPence ? (booking.tip.tipAmountPence / 100).toFixed(2) : "10.00");
+  const [inputError, setInputError] = useState<string>();
+
+  return (
+    <Modal label="Optional teacher tip" open={Boolean(booking)} onClose={onClose}>
+      <form
+        className="p-6 sm:p-7"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!booking || loading) return;
+          const normalized = amount.trim();
+          if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+            setInputError("Enter a valid amount with up to two decimal places.");
+            return;
+          }
+          const amountPence = Math.round(Number(normalized) * 100);
+          if (!Number.isSafeInteger(amountPence) || amountPence < 30 || amountPence > 99_999_999) {
+            setInputError("Enter a tip of at least £0.30.");
+            return;
+          }
+          setInputError(undefined);
+          onSubmit(amountPence);
+        }}
+      >
+        <Tag tone="purple">Optional tip</Tag>
+        <h2 className="mt-4 font-heading text-2xl">Thank {booking?.instructor.fullName ?? "this teacher"}</h2>
+        <p className="mt-3 text-sm leading-6 text-muted">The amount you enter goes to the teacher. SupplyED&apos;s existing configured processing fee is added on top and shown clearly in Stripe Checkout. This is a separate one-time payment and does not change the booking invoice.</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {[5, 10, 20, 50].map((value) => <Btn key={value} size="sm" type="button" variant={amount === value.toFixed(2) ? "secondary" : "ghost"} onClick={() => { setAmount(value.toFixed(2)); setInputError(undefined); }}>£{value}</Btn>)}
+        </div>
+        <div className="mt-4"><Field error={inputError} label="Tip for the teacher" required>
+          <div className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">£</span><input className="input w-full pl-7" inputMode="decimal" min="0.30" onChange={(event) => { setAmount(event.target.value); if (inputError) setInputError(undefined); }} step="0.01" value={amount} /></div>
+        </Field></div>
+        {error ? <p className="mt-4 rounded-lg border border-danger bg-danger-tint px-3 py-2 text-sm text-danger" role="alert">{error}</p> : null}
+        <p className="mt-4 text-xs leading-5 text-muted">Stripe securely collects your card payment. The teacher receives the tip in their Stripe balance after payment succeeds; bank payout timing depends on Stripe availability and the teacher&apos;s payout schedule.</p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Btn disabled={loading} type="button" variant="ghost" onClick={onClose}>Not now</Btn>
+          <Btn icon="star" loading={loading} loadingLabel="Opening Stripe" type="submit">Continue to Stripe</Btn>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -829,6 +946,37 @@ function validateCancellationReason(reason: string) {
 function validateBookingReview(rating: number, comment: string) {
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) return "Choose a rating between 1 and 5.";
   if (comment.trim().length > 2000) return "Use 2,000 characters or fewer for your review.";
+}
+
+function useBookingTipReturn(toast: RouteProps["toast"]) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const handled = useRef(false);
+  const sync = useSyncBookingTip({
+    onError: () => toast({ title: "Tip status unavailable", msg: "Refresh Bookings to check the payment.", tone: "danger" }),
+    onSuccess: (result) => toast({
+      title: result.ok ? (result.data.status === "PAID" ? "Tip paid" : "Tip processing") : "Tip status unavailable",
+      msg: result.message ?? (result.ok ? "The booking tip status was refreshed." : "Refresh Bookings to check the payment."),
+      tone: result.ok ? "success" : "danger",
+    }),
+  });
+  const mutate = sync.mutate;
+  const returnStatus = searchParams.get("tip");
+  const tipId = searchParams.get("tip_id");
+  const sessionId = searchParams.get("session_id");
+
+  useEffect(() => {
+    if (handled.current || !returnStatus) return;
+    handled.current = true;
+    router.replace(pathname, { scroll: false });
+    if (returnStatus === "cancelled") {
+      toast({ title: "Tip not submitted", msg: "No tip was collected. You can continue the checkout later." });
+      return;
+    }
+    if (returnStatus === "success" && tipId && sessionId) mutate({ tipId, sessionId });
+    else toast({ title: "Tip status unavailable", msg: "The Stripe return reference is incomplete. Refresh Bookings to check it.", tone: "danger" });
+  }, [mutate, pathname, returnStatus, router, sessionId, tipId, toast]);
 }
 
 function BookingStatusTag({ status }: { status: BookingStatus }) {

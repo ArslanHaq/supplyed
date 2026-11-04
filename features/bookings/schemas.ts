@@ -4,6 +4,7 @@ import type {
   Booking,
   BookingInvoiceFilter,
   BookingInvoiceSummary,
+  BookingTipSummary,
   BookingListQuery,
   BookingReview,
   BookingReviewInput,
@@ -52,7 +53,7 @@ function normalizeReview(review: BookingReview): BookingReview {
   };
 }
 
-const invoiceStatuses = new Set<BookingInvoiceSummary["status"]>(["OPEN", "PAID", "UNCOLLECTIBLE"]);
+const invoiceStatuses = new Set<BookingInvoiceSummary["status"]>(["PENDING", "OPEN", "PAID", "UNCOLLECTIBLE"]);
 
 function normalizeInvoiceStatus(invoice: BookingInvoiceSummary): BookingInvoiceSummary["status"] | null {
   if (readDateIso(invoice.paidAt)) return "PAID";
@@ -71,13 +72,38 @@ function normalizeInvoiceSummary(invoice: BookingInvoiceSummary | null | undefin
   if (!status) return null;
 
   return {
+    billingPeriodKey: invoice.billingPeriodKey ?? null,
+    billingPeriodLabel: invoice.billingPeriodLabel ?? null,
+    collectionMethod: invoice.collectionMethod === "charge_automatically" ? "charge_automatically" : "send_invoice",
     dueAt: readDateIso(invoice.dueAt),
     hostedInvoiceUrl: invoice.hostedInvoiceUrl ?? null,
     id: invoice.id,
+    lastPaymentFailureMessage: invoice.lastPaymentFailureMessage ?? null,
+    lastPaymentFailureCode: invoice.lastPaymentFailureCode ?? null,
+    nextPaymentAttemptAt: readDateIso(invoice.nextPaymentAttemptAt),
+    paymentAttemptCount: readNumber(invoice.paymentAttemptCount) ?? 0,
     paidAt,
     status,
     totalAmountPence: readNumber(invoice.totalAmountPence) ?? 0,
     teacherAmountPence: readNumber(invoice.teacherAmountPence) ?? 0,
+  };
+}
+
+const bookingTipStatuses = new Set<BookingTipSummary["status"]>(["PENDING", "PROCESSING", "PAID", "FAILED", "CANCELLED", "REFUNDED"]);
+
+function normalizeTipSummary(tip: BookingTipSummary | null | undefined): BookingTipSummary | null {
+  if (!tip?.id) return null;
+  const rawStatus = typeof tip.status === "string" ? tip.status.toUpperCase() : "";
+  return {
+    amountRefundedPence: readNumber(tip.amountRefundedPence) ?? 0,
+    disputeStatus: tip.disputeStatus ?? null,
+    feeAmountPence: readNumber(tip.feeAmountPence) ?? 0,
+    id: tip.id,
+    paidAt: readDateIso(tip.paidAt),
+    paymentFailureMessage: tip.paymentFailureMessage ?? null,
+    status: bookingTipStatuses.has(rawStatus as BookingTipSummary["status"]) ? rawStatus as BookingTipSummary["status"] : "PENDING",
+    tipAmountPence: readNumber(tip.tipAmountPence) ?? 0,
+    totalAmountPence: readNumber(tip.totalAmountPence) ?? 0,
   };
 }
 
@@ -120,6 +146,10 @@ export function normalizeBooking(booking: Booking): Booking {
       imageUrl: booking.instructor?.imageUrl ?? null,
     },
     invoice: normalizeInvoiceSummary(booking.invoice),
+    automaticPayment: booking.automaticPayment?.state && typeof booking.automaticPayment.message === "string"
+      ? { ...booking.automaticPayment, nextCollectionAt: readDateIso(booking.automaticPayment.nextCollectionAt) }
+      : null,
+    tip: normalizeTipSummary(booking.tip),
     payAmount: readNumber(booking.payAmount),
     payType: booking.payType ?? null,
     currency: booking.currency ?? "GBP",

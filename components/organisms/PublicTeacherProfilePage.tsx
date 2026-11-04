@@ -9,6 +9,7 @@ import { PageHead, SectionLoader } from "../molecules";
 import { ProfileReviewsPanel, RatingStars } from "./ProfileReviewsPanel";
 import { TeacherHireActions } from "./TeacherHireActions";
 import { TeacherBookingDates } from "../molecules/TeacherBookingDates";
+import { ProfileDocumentsSection } from "./ProfileDocumentsSection";
 
 export function PublicTeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ctx" | "go" | "role">) {
   const profileQuery = useInstructorPublicProfile(ctx.teacherId);
@@ -76,6 +77,8 @@ export function PublicTeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ct
               <ExpertiseGroup icon="zap" label="Skills" values={profile.skills} />
             </div>
           </section>
+
+          <ProfileDocumentsSection documents={profile.certificates} title="Certificates" />
 
           <ProfileReviewsPanel data={reviewsQuery.data} error={reviewsQuery.error} loading={reviewsQuery.isLoading} />
         </main>

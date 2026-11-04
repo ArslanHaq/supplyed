@@ -507,7 +507,7 @@ function PostJobEditor({
                 onChange={(event) => updateForm("payAmount", event.target.value)}
               />
             </Field>
-            <Field error={errors.paymentFrequency} label="Payment-release frequency" hint={form.payType === "fixed" ? "Fixed contracts use completion or the existing milestone arrangement. Release still requires the existing approved invoice flow." : "This plans payment periods, not the rate basis. The current provider does not auto-release; each amount still requires the existing approved invoice flow."}>
+            <Field error={errors.paymentFrequency} label="Payment frequency" hint={form.payType === "fixed" ? "Fixed work is collected after completion: all-absent attendance has no payment due, and mixed attendance needs review. Completion without attendance decisions uses the agreed total. Milestones require approval." : "Each period includes present attendance and excludes absent shifts. A completed booking with no attendance decisions uses the accepted scheduled units."}>
               <select className="input" value={form.paymentFrequency} onChange={(event) => updateForm("paymentFrequency", event.target.value as PaymentFrequency)}>
                 {allowedPaymentFrequencies(form.payType).map((frequency) => <option key={frequency} value={frequency}>{frequency === "completion" ? "On completion" : frequency[0].toUpperCase() + frequency.slice(1)}</option>)}
               </select>
