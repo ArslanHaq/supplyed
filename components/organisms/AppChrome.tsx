@@ -1,6 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { useConversationStream, useUnreadMessages } from "@/features/conversations/use-conversations";
+import { useSettingsProfile } from "@/features/settings/use-settings";
 import { getDisplayName } from "@/lib/user-display";
 import { useMounted } from "@/lib/use-mounted";
 import type { AppPage, RouteProps } from "@/types/supplyed";
@@ -55,6 +56,12 @@ export function AppChrome({
   const fallbackUserName = state.role === "admin" ? "Administrator" : state.role === "institution" ? "School workspace" : "Instructor";
   const userName = getDisplayName(state.accountName, state.signupEmail, fallbackUserName);
   const userSub = state.role === "admin" ? "Administrator" : state.role === "institution" ? "School account" : "Instructor";
+  const profileQuery = useSettingsProfile({ enabled: state.role !== "admin" });
+  const profileImageUrl = state.role === "institution"
+    ? profileQuery.data?.institution?.imageUrl
+    : state.role === "teacher"
+      ? profileQuery.data?.instructor?.imageUrl
+      : undefined;
   const searchPlaceholder = state.role === "admin" ? "Search admin panel..." : state.role === "teacher" || state.page === "my-jobs" ? "Search jobs..." : "Search teachers...";
   const [navSearch, setNavSearch] = useState("");
   const [navigationOpen, setNavigationOpen] = useState(false);
@@ -154,6 +161,7 @@ export function AppChrome({
           <AppAccountMenu
             verified={verified}
             displayName={userName}
+            imageUrl={profileImageUrl}
             onDashboard={() => go("dashboard")}
             onLanding={onLanding}
             onLogout={onLogout}

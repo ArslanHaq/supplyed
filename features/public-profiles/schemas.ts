@@ -50,6 +50,7 @@ export function normalizeInstitutionPublicProfile(profile: InstitutionPublicProf
     id: profile.id ?? "",
     imageUrl: profile.imageUrl ?? null,
     institutionType: profile.institutionType === "MAT_SCHOOL" ? "MAT_SCHOOL" : "SINGLE_SCHOOL",
+    schoolType: profile.schoolType === "PRIMARY" || profile.schoolType === "SECONDARY" ? profile.schoolType : null,
     memberSince: dateOrNull(profile.memberSince),
     name: profile.name || "School",
     postalCode: profile.postalCode ?? null,

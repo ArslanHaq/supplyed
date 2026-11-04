@@ -1,4 +1,4 @@
-import type { AppRole, ApplicationStatus } from "@/types/supplyed";
+import type { AppRole, ApplicationStatus, SchoolType } from "@/types/supplyed";
 
 export type SettingsUserSnapshot = {
   createdAt: string | null;
@@ -57,6 +57,7 @@ export type SettingsInstitutionProfile = {
   postalCode: string;
   registrationId: string;
   safeguardingConfirmed: boolean;
+  schoolType: SchoolType | null;
   staffingNeeds: string[];
   status: ApplicationStatus;
   typicalPupilCount: string;
@@ -117,6 +118,7 @@ export type SettingsInstitutionUpdateInput = {
   postalCode: string;
   registrationId: string;
   safeguardingConfirmed: boolean;
+  schoolType: SchoolType | "";
   staffingNeeds: string[];
   typicalPupilCount: string;
   userRole: string;

@@ -103,6 +103,12 @@ export function normalizeJobCreateInput(input: JobCreateInput): JobCreateInput {
     jobType: normalizeJobType(input.jobType) ?? "BRIEF",
     minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
+    currency: input.currency?.trim().toUpperCase() || "GBP",
+    paymentFrequency: input.paymentFrequency,
+    periodAnchor: input.periodAnchor ?? "ASSIGNMENT_START",
+    timeZone: input.timeZone?.trim() || "Europe/London",
+    schedule: input.schedule,
+    workersRequired: wholeNumberBetween(input.workersRequired, 1, 100) ?? 1,
     payAmount: normalizePositiveNumber(input.payAmount),
     postalCode: validateUkPostcode(input.postalCode).value || undefined,
     requiredSkills: normalizeStringList(input.requiredSkills ?? []),
@@ -130,6 +136,12 @@ export function normalizeJobUpdateInput(input: JobUpdateInput): JobUpdateInput {
     jobType: input.jobType === undefined ? undefined : normalizeJobType(input.jobType) ?? undefined,
     minExperienceYears: normalizeNonNegativeInteger(input.minExperienceYears),
     parkingInfo: input.parkingInfo?.trim() || undefined,
+    currency: input.currency?.trim().toUpperCase() || undefined,
+    paymentFrequency: input.paymentFrequency,
+    periodAnchor: input.periodAnchor,
+    timeZone: input.timeZone?.trim() || undefined,
+    schedule: input.schedule,
+    workersRequired: input.workersRequired === undefined ? undefined : wholeNumberBetween(input.workersRequired, 1, 100),
     payAmount: normalizePositiveNumber(input.payAmount),
     postalCode: validateUkPostcode(input.postalCode).value || undefined,
     requiredSkills: input.requiredSkills ? normalizeStringList(input.requiredSkills) : undefined,
@@ -179,6 +191,7 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
           id: job.institution.id,
           imageUrl: job.institution.imageUrl ?? null,
           name: job.institution.name || "Hiring school",
+          schoolType: job.institution.schoolType === "PRIMARY" || job.institution.schoolType === "SECONDARY" ? job.institution.schoolType : null,
         }
       : null,
     latitude: readNumber(job.latitude) ?? null,
@@ -189,6 +202,15 @@ export function normalizeBackendJob(job: BackendJobResponse): Job {
     ...normalizeWorkUnits(job),
     payAmount,
     payType: job.payType ?? null,
+    currency: job.currency?.trim().toUpperCase() || "GBP",
+    paymentFrequency: job.paymentFrequency ?? (job.payType === "fixed" ? "completion" : job.payType === "hourly" ? "hourly" : "daily"),
+    periodAnchor: job.periodAnchor ?? "ASSIGNMENT_START",
+    timeZone: job.timeZone?.trim() || "Europe/London",
+    schedule: job.schedule ?? null,
+    workersRequired: wholeNumberBetween(Number(job.workersRequired), 1, 100) ?? 1,
+    scheduledMinutes: typeof job.scheduledMinutes === "number" ? job.scheduledMinutes : null,
+    assignmentDuration: job.assignmentDuration ?? null,
+    scheduleSummary: job.scheduleSummary ?? null,
     postedAt: formatRelativeTime(createdAt),
     postedByUserId: job.postedByUserId,
     postalCode: job.postalCode?.trim() || null,
@@ -285,8 +307,8 @@ function readPostingMode(value: unknown): Job["mode"] | null {
 
   const normalized = value.trim().toLowerCase().replace(/[\s_-]+/g, " ");
   if (!normalized) return null;
-  if (normalized.includes("brief")) return "brief";
-  if (normalized.includes("instant")) return "instant";
+  if (normalized.includes("brief") || normalized.includes("open application")) return "brief";
+  if (normalized.includes("instant") || normalized.includes("targeted match")) return "instant";
 
   return null;
 }
@@ -298,7 +320,7 @@ function normalizeJobType(value: unknown): JobType | null {
 }
 
 function readPostingModeFromDescription(description: string): Job["mode"] | null {
-  const matches = Array.from(description.matchAll(/(?:^|\n)\s*Posting route:\s*(Instant matching|Open brief)\.\s*(?=\n|$)/gi));
+  const matches = Array.from(description.matchAll(/(?:^|\n)\s*Posting route:\s*(Instant matching|Open brief|Targeted matching|Open applications)\.\s*(?=\n|$)/gi));
   const match = matches.at(-1);
   return readPostingMode(match?.[1]);
 }

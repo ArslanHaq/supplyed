@@ -5,8 +5,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
 
-import { createBookingReviewAction, updateBookingStatusAction } from "./actions";
-import type { Booking, BookingListQuery, BookingReviewInput, BookingStatusUpdateInput, PaginatedBookings } from "./types";
+import {
+  activateAttendanceAction,
+  correctAttendanceAction,
+  createBookingReviewAction,
+  respondAttendanceAction,
+  reviewAttendanceCorrectionAction,
+  updateBookingStatusAction,
+} from "./actions";
+import type {
+  AttendanceActivationInput,
+  AttendanceCorrectionInput,
+  AttendanceCorrectionReviewInput,
+  AttendanceResponseInput,
+  Booking,
+  BookingListQuery,
+  BookingReviewInput,
+  BookingStatusUpdateInput,
+  PaginatedBookings,
+} from "./types";
 
 export function useBooking(id?: string) {
   return useQuery({ enabled: Boolean(id), queryKey: queryKeys.bookings.detail(id ?? ""), queryFn: () => fetchJson<Booking>(`/api/bookings/${id}`), refetchOnMount: "always" });
@@ -58,4 +75,35 @@ export function useCreateBookingReview(options: MutationOptions<ReviewActionResu
       await options.onSuccess?.(result);
     },
   });
+}
+
+function useAttendanceMutation<Input>(
+  mutationFn: (input: Input) => Promise<Awaited<ReturnType<typeof respondAttendanceAction>>>,
+  options: MutationOptions<Awaited<ReturnType<typeof respondAttendanceAction>>> = {},
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onError: options.onError,
+    onSuccess: async (result) => {
+      if (result.ok) await queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all });
+      await options.onSuccess?.(result);
+    },
+  });
+}
+
+export function useRespondAttendance(options: MutationOptions<Awaited<ReturnType<typeof respondAttendanceAction>>> = {}) {
+  return useAttendanceMutation<AttendanceResponseInput>(respondAttendanceAction, options);
+}
+
+export function useActivateAttendance(options: MutationOptions<Awaited<ReturnType<typeof activateAttendanceAction>>> = {}) {
+  return useAttendanceMutation<AttendanceActivationInput>(activateAttendanceAction, options);
+}
+
+export function useCorrectAttendance(options: MutationOptions<Awaited<ReturnType<typeof correctAttendanceAction>>> = {}) {
+  return useAttendanceMutation<AttendanceCorrectionInput>(correctAttendanceAction, options);
+}
+
+export function useReviewAttendanceCorrection(options: MutationOptions<Awaited<ReturnType<typeof reviewAttendanceCorrectionAction>>> = {}) {
+  return useAttendanceMutation<AttendanceCorrectionReviewInput>(reviewAttendanceCorrectionAction, options);
 }

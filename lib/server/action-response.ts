@@ -29,6 +29,8 @@ export function actionError<Field extends string = string>(
   message = userFacingError(message, options);
   const catalogueFields = options.code === "INVALID_OTHER_SKILLS" ? { otherSkills: message } : options.code === "INVALID_OTHER_SUBJECTS" ? { otherSubjects: message } : options.code === "SKILL_SUBJECT_MISMATCH"
     ? { skills: message, requiredSkills: message }
+    : options.code === "SCHOOL_TYPE_REQUIRED" ? { schoolType: message }
+    : options.code === "STAFFING_NEEDS_REQUIRED_FOR_SCHOOL_TYPE_CHANGE" ? { schoolType: message, staffingNeeds: message }
     : options.code === "INVALID_TEACHING_SELECTION" || options.code === "CONFLICTING_JOB_SUBJECTS"
       ? { subjects: message, staffingNeeds: message, skills: message, requiredSkills: message } : undefined;
   const fieldErrors = Object.fromEntries(Object.entries({ ...catalogueFields, ...options.fieldErrors }).map(([field, value]) => [field, typeof value === "string" ? userFacingError(value) : value]));

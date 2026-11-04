@@ -45,8 +45,9 @@ function signOutExpiredSession() {
   });
 }
 
-export function useSettingsProfile() {
+export function useSettingsProfile(options: { enabled?: boolean } = {}) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryFn: () => fetchJson<SettingsProfileSnapshot>("/api/settings/profile"),
     queryKey: queryKeys.settings.profile(),
   });
@@ -76,6 +77,7 @@ export function useUpdateSettings(options: UseUpdateSettingsOptions = {}) {
           queryClient.invalidateQueries({ queryKey: queryKeys.settings.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.matching.all }),
           queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all }),
+          queryClient.invalidateQueries({ queryKey: teachingCatalogueKey }),
         ]);
       }
 

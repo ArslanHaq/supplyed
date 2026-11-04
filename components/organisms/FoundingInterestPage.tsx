@@ -98,7 +98,7 @@ const schoolContent: PageContent = {
   rightCardRows: [
     { copy: "Founding fee lock, early onboarding, and roadmap input.", icon: "building", title: "Schools & MATs" },
     { copy: "Verified teacher profiles and document-backed compliance signals.", icon: "shield", title: "Compliance-ready cover" },
-    { copy: "Urgent cover, planned briefs, and learner support from one workspace.", icon: "calendar", title: "Real staffing workflows" },
+    { copy: "Urgent cover, planned roles, and learner support from one workspace.", icon: "calendar", title: "Real staffing workflows" },
   ],
   secondaryCta: "See what founding schools get",
   steps: [

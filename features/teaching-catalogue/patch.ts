@@ -5,7 +5,7 @@ import { actualSubjects } from "./selection";
 export function omitUnchangedDropdownFields(payload: object, saved: object | null | undefined) {
   if (!saved) return;
   const current = payload as Record<string, unknown>, previous = saved as Record<string, unknown>;
-  for (const field of ["city", "county", "countryCode", "currency", "keyStages", "coverTypes", "institutionType"]) {
+  for (const field of ["city", "county", "countryCode", "currency", "keyStages", "coverTypes", "institutionType", "schoolType"]) {
     if (field in current && JSON.stringify(current[field]) === JSON.stringify(previous[field])) delete current[field];
   }
 }

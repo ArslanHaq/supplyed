@@ -20,8 +20,8 @@ const trustCards = [
 const heroStats = [["8,400+", "Verified teachers"], ["2,100+", "Partner schools"], ["94%", "Filled within 2h"], ["4.9★", "Average rating"]] as const;
 
 const pathways = [
-  { tag: "Instant matching", title: "Same-day cover, solved in minutes", icon: "zap", steps: ["Post urgent role", "AI matches in real time", "Teacher accepts"] },
-  { tag: "Freelance briefs", title: "Long-term roles, properly staffed", icon: "calendar", steps: ["Post brief", "Receive proposals", "Hire best match"] },
+  { tag: "Targeted matching", title: "Same-day cover, solved in minutes", icon: "zap", steps: ["Post urgent role", "Review recommended teachers", "Send invitations"] },
+  { tag: "Open applications", title: "Long-term roles, properly staffed", icon: "calendar", steps: ["Post the role", "Receive applications", "Hire best match"] },
   { tag: "Learner support", title: "Verified teachers for learners", icon: "users", steps: ["Create a learner request", "Review verified matches", "Message from your account"] },
 ];
 
@@ -79,7 +79,7 @@ export function LandingPage() {
                 <span className="eyebrow">01 / How it works</span>
                 <h2>Two ways to find or fill<br className="hidden sm:block" /> a supply role.</h2>
               </div>
-              <p>Post urgent cover for instant matching, or compare proposals for planned cover.</p>
+              <p>Use targeted matching for urgent cover, or collect applications for planned roles.</p>
             </div>
             <div className="marketing-pathways">
               {pathways.map((card, index) => (

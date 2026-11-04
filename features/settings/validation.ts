@@ -35,6 +35,7 @@ export function validateSettingsInput(input: SettingsUpdateInput, saved?: { subj
     if (text(input.instructor.currency) && text(input.instructor.currency).toUpperCase() !== "GBP") errors.currency = "Use GBP for UK rates.";
   }
   if (input.role === "institution" && input.institution) {
+    if (!["PRIMARY", "SECONDARY"].includes(input.institution.schoolType)) errors.schoolType = "Choose whether this is a primary or secondary school.";
     for (const [field, max] of [["registrationId", 100], ["userRole", 100], ["complianceContact", 200]] as const) if (typeof input.institution[field] !== "string" || text(input.institution[field]).length > max) errors[field] = `Use ${max} characters or fewer.`;
     if (!text(input.institution.name) || text(input.institution.name).length > 200) errors.schoolName = "Enter the school or organisation name (up to 200 characters).";
     const domain = text(input.institution.domain).replace(/^https?:\/\//i, "").replace(/\/$/, "");

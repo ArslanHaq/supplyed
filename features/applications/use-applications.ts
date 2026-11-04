@@ -8,14 +8,26 @@ import { refreshMarketplace } from "@/lib/query/marketplace";
 import { queryKeys } from "@/lib/query/keys";
 import { startRouteLoading } from "@/lib/navigation-loading";
 
-import { createApplicationAction, updateApplicationStatusAction } from "./actions";
-import type { ApplicationCreateInput, ApplicationStatusUpdateInput, JobApplication, JobApplicationsQuery, PaginatedApplicationHistory, PaginatedApplications } from "./types";
+import { createApplicationAction, hireApplicationAction, updateApplicationStatusAction } from "./actions";
+import type { ApplicationCreateInput, ApplicationStatusUpdateInput, HireApplicationInput, JobApplication, JobApplicationsQuery, PaginatedApplicationHistory, PaginatedApplications } from "./types";
 
 type CreateApplicationResult = Awaited<ReturnType<typeof createApplicationAction>>;
+type HireApplicationResult = Awaited<ReturnType<typeof hireApplicationAction>>;
+type UpdateApplicationStatusResult = Awaited<ReturnType<typeof updateApplicationStatusAction>>;
 
 type UseCreateApplicationOptions = {
   onError?: () => void;
   onSuccess?: (result: CreateApplicationResult) => void | Promise<void>;
+};
+
+type UseHireApplicationOptions = {
+  onError?: () => void;
+  onSuccess?: (result: HireApplicationResult) => void | Promise<void>;
+};
+
+type UseUpdateApplicationStatusOptions = {
+  onError?: () => void;
+  onSuccess?: (result: UpdateApplicationStatusResult) => void | Promise<void>;
 };
 
 export function useJobApplications(jobId: string | undefined, query: JobApplicationsQuery = {}) {
@@ -57,7 +69,7 @@ export function useActiveJobApplicantCount() {
   });
 }
 
-export function useUpdateApplicationStatus(options: UseCreateApplicationOptions = {}) {
+export function useUpdateApplicationStatus(options: UseUpdateApplicationStatusOptions = {}) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ApplicationStatusUpdateInput) => updateApplicationStatusAction(input),
@@ -66,6 +78,21 @@ export function useUpdateApplicationStatus(options: UseCreateApplicationOptions 
       if (result.ok || result.status === 409 || result.status === 400 || result.code === "SCHOOL_INACTIVE") {
         await refreshMarketplace(queryClient);
         if (result.ok && result.data.status === "HIRED") await queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+      }
+      await options.onSuccess?.(result);
+    },
+  });
+}
+
+export function useHireApplication(options: UseHireApplicationOptions = {}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: HireApplicationInput) => hireApplicationAction(input),
+    onError: options.onError,
+    onSuccess: async (result) => {
+      if (result.ok || result.status === 400 || result.status === 409 || result.status === 422) {
+        await refreshMarketplace(queryClient);
+        if (result.ok) await queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
       }
       await options.onSuccess?.(result);
     },

@@ -14,6 +14,7 @@ import localFont from "next/font/local";
 import Script from "next/script";
 import type { ReactNode } from "react";
 import { RouteLoader } from "@/components/molecules/RouteLoader";
+import { QueryProvider } from "@/lib/query/query-client";
 import { themeBootScript } from "@/lib/theme-bootstrap";
 import { seoKeywords, siteConfig } from "@/lib/seo";
 
@@ -84,8 +85,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           id="supplyed-theme-boot"
           strategy="beforeInteractive"
         />
-        <RouteLoader />
-        {children}
+        <QueryProvider>
+          <RouteLoader />
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

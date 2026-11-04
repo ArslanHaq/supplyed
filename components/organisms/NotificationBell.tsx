@@ -24,6 +24,7 @@ import { SectionLoader } from "../molecules";
 const ICON_BY_TYPE: Record<NotificationType, string> = {
   APPLICATION_RECEIVED: "users",
   APPLICATION_STATUS: "file",
+  ATTENDANCE_CONFIRMATION: "calendar",
   BOOKING_CANCELLED: "x",
   BOOKING_COMPLETED: "check",
   BOOKING_CONFIRMED: "checkCircle",

@@ -59,7 +59,7 @@ export async function updateJobAction(input: JobUpdateInput) {
     let fieldErrors = validateJobInput(input, { partial: true });
     if (Object.keys(fieldErrors).length) return actionError(Object.values(fieldErrors)[0] ?? "Check the highlighted job details.", { fieldErrors });
     const normalizedInput = normalizeJobUpdateInput(input);
-    const materialKeys = ["jobType", "title", "description", "subjects", "otherSubjects", "requiredSkills", "otherSkills", "minExperienceYears", "keyStages", "address", "city", "county", "postalCode", "countryCode", "latitude", "longitude", "parkingInfo", "startDate", "endDate", "payAmount", "payType", "hours", "days"];
+    const materialKeys = ["jobType", "title", "description", "subjects", "otherSubjects", "requiredSkills", "otherSkills", "minExperienceYears", "keyStages", "address", "city", "county", "postalCode", "countryCode", "latitude", "longitude", "parkingInfo", "startDate", "endDate", "payAmount", "payType", "hours", "days", "currency", "paymentFrequency", "periodAnchor", "timeZone", "schedule", "workersRequired"];
     if (materialKeys.some(key => key in input)) {
       const current = await api.get<BackendJobResponse>(`/jobs/mine/${encodeURIComponent(input.id)}`, { cache: "no-store" });
       if (current.termsLocked !== false) return actionError("Create a new job to offer different terms.", { code: "JOB_TERMS_LOCKED", status: 409 });

@@ -156,6 +156,7 @@ function normalizeInstitution(payload: unknown): SettingsInstitutionProfile | un
     postalCode: readString(record.postalCode),
     registrationId: readString(record.registrationId),
     safeguardingConfirmed: readBoolean(record.safeguardingConfirmed),
+    schoolType: record.schoolType === "PRIMARY" || record.schoolType === "SECONDARY" ? record.schoolType : null,
     staffingNeeds: selectionValues(record.staffingNeeds),
     status: normalizeStatus(record.status),
     typicalPupilCount: numberString(record.typicalPupilCount),

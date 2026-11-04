@@ -6,7 +6,7 @@ import { validateJobDateOrder, validJobDate } from "@/features/jobs/date-validat
 import { validateWorkUnits } from "@/features/jobs/work-units";
 
 export function jobInvitationProblem(job: Job, now = Date.now()): string | null {
-  if (job.jobType !== "INSTANT") return "Brief jobs use applications and cannot send individual invitations.";
+  if (job.jobType !== "INSTANT") return "Open-application roles use applications and cannot send individual invitations.";
   if (job.status !== "ACTIVE") return "This job is not live and open for invitations.";
   if (job.expiresAt && Date.parse(job.expiresAt) <= now) return "This job has expired. Update its expiry before hiring.";
   if (!job.startDate || !job.endDate || !Number.isFinite(Date.parse(job.startDate)) || !Number.isFinite(Date.parse(job.endDate))) return "Add start and end dates before hiring.";
@@ -30,7 +30,7 @@ export function validateInvitation(input: InvitationInput, options: { fresh?: bo
   if (input.message !== undefined && (typeof input.message !== "string" || input.message.length > 1000)) errors.message = "Use 1,000 characters or fewer.";
   if (input.expiresAt !== undefined && (typeof input.expiresAt !== "string" || !/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(input.expiresAt) || !Number.isFinite(Date.parse(input.expiresAt)))) errors.expiresAt = "Enter a valid invitation deadline with a timezone.";
   if (input.newJob) {
-    if (input.newJob.jobType !== "INSTANT") errors.jobType = "New invitation jobs must use instant matching.";
+    if (input.newJob.jobType !== "INSTANT") errors.jobType = "New invitation jobs must use targeted matching.";
     const jobErrors = { ...validateJobInput(input.newJob), ...validatePublishableTerms(input.newJob, options.fresh ? options.now ?? Date.now() : -Infinity) };
     if (jobErrors.expiresAt) {
       errors.listingExpiresAt = jobErrors.expiresAt;

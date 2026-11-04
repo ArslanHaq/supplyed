@@ -6,10 +6,19 @@ import { useState } from "react";
 import { useStartConversation } from "@/features/conversations/use-conversations";
 
 import type { ApplicantSummary, JobApplication, JobApplicationStatus } from "@/features/applications/types";
-import { useApplicationHistory, useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
+import { useApplicationHistory, useHireApplication, useJobApplications, useUpdateApplicationStatus } from "@/features/applications/use-applications";
 import { hasRecordedApplicationTerms } from "@/features/applications/terms";
+import {
+  buildBookingPaymentOverrides,
+  changeNegotiatedPayType,
+  createNegotiatedTermsDraft,
+  paymentFrequencyLabel,
+  type NegotiatedTermsDraft,
+  type NegotiatedTermsErrors,
+} from "@/features/applications/negotiated-terms";
 import { AgreedTerms } from "../molecules/AgreedTerms";
 import { applicationPipeline, canTransitionApplication } from "@/features/applications/workflow";
+import { allowedPaymentFrequencies } from "@/features/jobs/job-schedule";
 import type { Job } from "@/features/jobs/types";
 import { useJob, useUpdateJob } from "@/features/jobs/use-jobs";
 import type { MatchedInstructor, MatchResult } from "@/features/matching/types";
@@ -18,7 +27,7 @@ import type { ProfileReview } from "@/features/reviews/types";
 import { useInstructorReviews } from "@/features/reviews/use-reviews";
 import type { RouteProps } from "@/types/supplyed";
 
-import { Avatar, Btn, Icon, Tag } from "../atoms";
+import { Avatar, Btn, Checkbox, Field, Icon, Tag } from "../atoms";
 import { MatchScorePanel, Modal, PageHead, ProposalContent, SectionLoader } from "../molecules";
 import { BookingPaymentNotice } from "../molecules/BookingPaymentNotice";
 import { ProposalPreview } from "../molecules/ProposalPreviewModal";
@@ -40,6 +49,10 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
   const [jobsPage, setJobsPage] = useState(1);
   const [jobsFilter, setJobsFilter] = useState<"ACTIVE" | "INVITED">("ACTIVE");
   const [hireTarget, setHireTarget] = useState<JobApplication | null>(null);
+  const [useNegotiatedTerms, setUseNegotiatedTerms] = useState(false);
+  const [negotiatedTerms, setNegotiatedTerms] = useState<NegotiatedTermsDraft>(() => createNegotiatedTermsDraft(null));
+  const [negotiatedTermsErrors, setNegotiatedTermsErrors] = useState<NegotiatedTermsErrors>({});
+  const [hireError, setHireError] = useState<string>();
   const selectedJobId = ctx.jobId;
   const jobQuery = useJob(selectedJobId ?? "", true);
   const job = jobQuery.data ?? null;
@@ -74,6 +87,27 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       if (result.ok) setHireTarget(null);
     },
   });
+  const hireApplication = useHireApplication({
+    onError: () => setHireError("The hire could not be completed. Check your connection and try again."),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setNegotiatedTermsErrors(result.fieldErrors ?? {});
+        setHireError(result.message);
+        return;
+      }
+
+      toast({
+        title: "Teacher hired",
+        msg: `Your booking is ready.${result.data.automaticallyRejectedCount ? ` ${result.data.automaticallyRejectedCount} other ${result.data.automaticallyRejectedCount === 1 ? "application was" : "applications were"} automatically rejected.` : ""} The published job and other application-time terms were not changed.`,
+        tone: "success",
+      });
+      setHireTarget(null);
+      setUseNegotiatedTerms(false);
+      setNegotiatedTermsErrors({});
+      setHireError(undefined);
+    },
+  });
+  const applicationMutationPending = updateStatus.isPending || hireApplication.isPending;
 
   function openApplication(application: JobApplication) {
     if (!selectedJobId) return;
@@ -87,18 +121,46 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
 
   function changeStatus(application: JobApplication, status: JobApplicationStatus) {
     const current = applications.find((item) => item.id === application.id);
-    if (updateStatus.isPending || !current || !canTransitionApplication(current.status, status)) return;
+    if (applicationMutationPending || !current || !canTransitionApplication(current.status, status)) return;
     if (status === "HIRED") {
       if (!hiringAllowed || retryAfter || !hasRecordedApplicationTerms(current) || job?.status !== "ACTIVE") return;
-      setHireTarget(current);
+      openHire(current);
       return;
     }
     updateStatus.mutate({ id: current.id, status });
   }
 
   function confirmHire() {
-    if (updateStatus.isPending || !canConfirmHire || !currentHireTarget || !canTransitionApplication(currentHireTarget.status, "HIRED")) return;
-    updateStatus.mutate({ id: currentHireTarget.id, status: "HIRED" });
+    if (applicationMutationPending || !canConfirmHire || !currentHireTarget || !canTransitionApplication(currentHireTarget.status, "HIRED")) return;
+    const negotiated = useNegotiatedTerms
+      ? buildBookingPaymentOverrides(negotiatedTerms, currentHireTarget.agreedTerms)
+      : { errors: {}, overrides: {} };
+    setNegotiatedTermsErrors(negotiated.errors);
+    setHireError(undefined);
+    if (!negotiated.overrides) return;
+    hireApplication.mutate({ id: currentHireTarget.id, ...negotiated.overrides });
+  }
+
+  function openHire(application: JobApplication) {
+    setHireTarget(application);
+    setUseNegotiatedTerms(false);
+    setNegotiatedTerms(createNegotiatedTermsDraft(application.agreedTerms));
+    setNegotiatedTermsErrors({});
+    setHireError(undefined);
+  }
+
+  function closeHire() {
+    if (applicationMutationPending) return;
+    setHireTarget(null);
+    setUseNegotiatedTerms(false);
+    setNegotiatedTermsErrors({});
+    setHireError(undefined);
+  }
+
+  function updateNegotiatedTerm<Key extends keyof NegotiatedTermsDraft>(key: Key, value: NegotiatedTermsDraft[Key]) {
+    setNegotiatedTerms((current) => ({ ...current, [key]: value }));
+    setNegotiatedTermsErrors((current) => ({ ...current, [key]: undefined }));
+    setHireError(undefined);
   }
 
   if (!selectedJobId) {
@@ -142,7 +204,7 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
             }}
             onOpenTeacher={(teacherId) => go("teacher-profile", { teacherId })}
             onStatusChange={changeStatus}
-            pending={updateStatus.isPending || Boolean(retryAfter)}
+            pending={applicationMutationPending || Boolean(retryAfter)}
           />
         ) : (
           <>
@@ -216,21 +278,86 @@ export function ApplicationsPage({ go, ctx, toast }: Pick<RouteProps, "go" | "ct
       </div>
 
       <Modal open={Boolean(hireTarget)} onClose={() => {
-        if (!updateStatus.isPending) setHireTarget(null);
+        closeHire();
       }}>
         <div className="p-6 sm:p-7">
           <Tag tone="amber">Hire creates booking</Tag>
           <h2 className="mt-4 font-heading text-2xl">Hire {hireTarget?.instructor?.fullName || "this teacher"}?</h2>
           <p className="mt-3 text-sm leading-6 text-muted">
-            Hiring locks the earlier application stages and creates the booking contract from this job.
+            Hiring locks the earlier application stages and creates an immutable booking from the application-time terms below.
           </p>
           <p className="mt-3 rounded-lg bg-warning-tint px-4 py-3 text-sm leading-6 text-ink">
             All other active applications for this job will be rejected automatically. Each affected teacher will see the updated outcome in My applications.
           </p>
-          <AgreedTerms terms={currentHireTarget?.agreedTerms} /><BookingPaymentNotice job={currentHireTarget?.agreedTerms} />
+          <AgreedTerms terms={currentHireTarget?.agreedTerms} />
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <Checkbox
+              checked={useNegotiatedTerms}
+              disabled={hireApplication.isPending}
+              onChange={(checked) => {
+                setUseNegotiatedTerms(checked);
+                setNegotiatedTermsErrors({});
+                setHireError(undefined);
+              }}
+              label={(
+                <span>
+                  <span className="block font-semibold text-ink">Use negotiated payment terms for this booking</span>
+                  <span className="mt-0.5 block text-xs leading-5 text-muted">Optional. The published job and every applicant’s original terms remain unchanged.</span>
+                </span>
+              )}
+            />
+            {useNegotiatedTerms ? (
+              <div className="mt-4 border-t border-border pt-4">
+                <div className="grid gap-x-4 sm:grid-cols-2">
+                  <Field label="Rate basis" error={negotiatedTermsErrors.payType} required>
+                    <select className="input" value={negotiatedTerms.payType} onChange={(event) => {
+                      setNegotiatedTerms((current) => changeNegotiatedPayType(current, event.target.value as NegotiatedTermsDraft["payType"]));
+                      setNegotiatedTermsErrors({});
+                      setHireError(undefined);
+                    }}>
+                      <option value="hourly">Hourly rate</option>
+                      <option value="daily">Daily rate</option>
+                      <option value="fixed">Fixed amount</option>
+                    </select>
+                  </Field>
+                  <Field label={negotiatedTerms.payType === "fixed" ? "Fixed total (£)" : negotiatedTerms.payType === "hourly" ? "Hourly rate (£)" : "Daily rate (£)"} error={negotiatedTermsErrors.payAmount} required>
+                    <input className="input" inputMode="decimal" min="0.01" max="99999999.99" step="0.01" type="number" value={negotiatedTerms.payAmount} onChange={(event) => updateNegotiatedTerm("payAmount", event.target.value)} />
+                  </Field>
+                  <Field label="Payment frequency" error={negotiatedTermsErrors.paymentFrequency} required>
+                    <select className="input" value={negotiatedTerms.paymentFrequency} onChange={(event) => updateNegotiatedTerm("paymentFrequency", event.target.value as NegotiatedTermsDraft["paymentFrequency"])}>
+                      {allowedPaymentFrequencies(negotiatedTerms.payType).map((frequency) => <option key={frequency} value={frequency}>{paymentFrequencyLabel(frequency)}</option>)}
+                    </select>
+                  </Field>
+                  {negotiatedTerms.paymentFrequency === "weekly" || negotiatedTerms.paymentFrequency === "monthly" ? (
+                    <Field label="Payment period boundary" error={negotiatedTermsErrors.periodAnchor} required>
+                      <select className="input" value={negotiatedTerms.periodAnchor} onChange={(event) => updateNegotiatedTerm("periodAnchor", event.target.value as NegotiatedTermsDraft["periodAnchor"])}>
+                        <option value="ASSIGNMENT_START">From assignment start</option>
+                        <option value="CALENDAR">Calendar periods</option>
+                      </select>
+                    </Field>
+                  ) : null}
+                  {!currentHireTarget?.agreedTerms?.schedule && negotiatedTerms.payType === "hourly" ? (
+                    <Field label="Planned hours" error={negotiatedTermsErrors.hours} hint="Positive whole hours for this booking." required>
+                      <input className="input" inputMode="numeric" min="1" step="1" type="number" value={negotiatedTerms.hours} onChange={(event) => updateNegotiatedTerm("hours", event.target.value)} />
+                    </Field>
+                  ) : null}
+                  {!currentHireTarget?.agreedTerms?.schedule && negotiatedTerms.payType === "daily" ? (
+                    <Field label="Planned days" error={negotiatedTermsErrors.days} hint="Positive whole days for this booking." required>
+                      <input className="input" inputMode="numeric" min="1" step="1" type="number" value={negotiatedTerms.days} onChange={(event) => updateNegotiatedTerm("days", event.target.value)} />
+                    </Field>
+                  ) : null}
+                </div>
+                {currentHireTarget?.agreedTerms?.schedule && negotiatedTerms.payType !== "fixed" ? (
+                  <p className="rounded-lg bg-brand-tint px-3 py-2 text-xs leading-5 text-brand-dark">Planned {negotiatedTerms.payType === "hourly" ? "hours" : "days"} will be calculated from the existing work schedule.</p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+          <BookingPaymentNotice job={useNegotiatedTerms ? { payAmount: Number(negotiatedTerms.payAmount), payType: negotiatedTerms.payType } : currentHireTarget?.agreedTerms} />
+          {hireError ? <div className="mt-4 rounded-lg border border-danger/30 bg-danger-tint px-3 py-2 text-sm text-danger" role="alert">{hireError}</div> : null}
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Btn variant="ghost" disabled={updateStatus.isPending} onClick={() => setHireTarget(null)}>Cancel</Btn>
-            <Btn disabled={!canConfirmHire} loading={updateStatus.isPending} onClick={confirmHire}>Hire & create booking</Btn>
+            <Btn variant="ghost" disabled={applicationMutationPending} onClick={closeHire}>Cancel</Btn>
+            <Btn disabled={!canConfirmHire} loading={hireApplication.isPending} onClick={confirmHire}>Hire & create booking</Btn>
           </div>
         </div>
       </Modal>

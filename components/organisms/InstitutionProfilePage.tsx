@@ -56,7 +56,7 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
           </div>
         </div>
         <div className="relative grid border-t border-brand-tint-2 bg-surface/75 sm:grid-cols-3">
-          <ProfileMetric icon="building" label="School type" value={profile.institutionType === "MAT_SCHOOL" ? "MAT school" : "Single school"} />
+          <ProfileMetric icon="building" label="School phase" value={profile.schoolType === "PRIMARY" ? "Primary" : profile.schoolType === "SECONDARY" ? "Secondary" : "Not shared"} />
           <ProfileMetric icon="users" label="Typical pupil count" value={profile.typicalPupilCount == null ? "Not shared" : profile.typicalPupilCount.toLocaleString("en-GB")} />
           <ProfileMetric icon="shield" label="Marketplace status" value={profile.verified ? "Verified school" : "Verification pending"} />
         </div>
@@ -86,7 +86,8 @@ export function InstitutionProfilePage({ ctx, go }: Pick<RouteProps, "ctx" | "go
             <p className="mt-1 text-xs leading-5 text-white">Details to help teachers book with confidence</p>
           </div>
           <div className="p-6">
-            <ProfileFact icon="building" label="School type" value={profile.institutionType === "MAT_SCHOOL" ? "MAT school" : "Single school"} />
+            <ProfileFact icon="building" label="School phase" value={profile.schoolType === "PRIMARY" ? "Primary" : profile.schoolType === "SECONDARY" ? "Secondary" : "Not shared"} />
+            <ProfileFact icon="building" label="Organisation" value={profile.institutionType === "MAT_SCHOOL" ? "MAT school" : "Single school"} />
             <ProfileFact icon="users" label="Trust or group" value={profile.trust?.name || "Independent school"} />
             <ProfileFact icon="users" label="Typical pupil count" value={profile.typicalPupilCount == null ? "Not shared" : profile.typicalPupilCount.toLocaleString("en-GB")} />
             <ProfileFact icon="pin" label="Address" value={location || "Not shared"} />

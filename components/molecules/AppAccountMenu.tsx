@@ -7,6 +7,7 @@ import { Avatar, Icon, Tag } from "../atoms";
 type AppAccountMenuProps = {
   verified: boolean;
   displayName: string;
+  imageUrl?: string | null;
   onDashboard: () => void;
   onLanding: () => void;
   onLogout: () => void | Promise<void>;
@@ -60,6 +61,7 @@ function AppAccountMenuItem({ icon, label, onSelect, sub, tone }: MenuAction) {
 export function AppAccountMenu({
   verified,
   displayName,
+  imageUrl,
   onDashboard,
   onLanding,
   onLogout,
@@ -162,7 +164,7 @@ export function AppAccountMenu({
         }}
         type="button"
       >
-        <Avatar name={displayName} size="sm" />
+        <Avatar name={displayName} size="sm" src={imageUrl} />
         <span className="hidden min-w-0 sm:block">
           <span className="block max-w-[190px] truncate text-sm font-semibold leading-4 text-ink">{displayName}</span>
           <span className="flex items-center gap-1 text-[11px] leading-4 text-muted"><span>{roleLabel}</span>{verified ? <Tag tone="green">Verified</Tag> : null}</span>
@@ -178,7 +180,7 @@ export function AppAccountMenu({
           <div className="relative border-b border-border bg-chalk p-4">
             {onProfile ? <button aria-label="My Profile" className="absolute inset-0 z-10 rounded-t-xl transition hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand" onClick={() => closeThen(onProfile)} role="menuitem" type="button" /> : null}
             <div className="flex min-w-0 items-center gap-3">
-              <Avatar name={displayName} />
+              <Avatar name={displayName} src={imageUrl} />
               <div className="min-w-0">
                 <div className="truncate font-semibold text-ink">{displayName}</div>
                 <div className="mt-2 inline-flex rounded-full bg-brand-tint px-2.5 py-1 text-[11px] font-semibold text-brand">

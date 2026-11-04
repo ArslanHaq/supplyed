@@ -1,6 +1,6 @@
-import { DynamicMultiSelect, DynamicSelect } from "@/components/molecules/DynamicDropdown";
+import { DynamicSelect } from "@/components/molecules/DynamicDropdown";
 
-import { TeachingSelectionFields } from "@/components/molecules/TeachingSelectionFields";
+import { CatalogueKeyStages, TeachingSelectionFields } from "@/components/molecules/TeachingSelectionFields";
 import { Field } from "../../../atoms";
 import type { AccountStepProps } from "../step-types";
 import { areaClass, fieldClass } from "../utils";
@@ -22,13 +22,7 @@ export function TeacherProfileStep(props: AccountStepProps) {
         <div className="grid gap-6 xl:grid-cols-2">
           <TeachingSelectionFields otherSkills={form.otherSkills} otherSkillError={errors.otherSkills} otherSubjects={form.otherSubjects} otherError={errors.otherSubjects} subjects={form.subjects} skills={form.skills} subjectError={errors.subjects} skillError={errors.skills} onChange={(subjects, skills, otherSubjects, otherSkills) => { updateField("subjects", subjects); updateField("skills", skills); updateField("otherSkills", otherSkills); updateField("otherSubjects", otherSubjects); }} />
           <Field label="Key stages" error={errors.keyStages} required>
-            <DynamicMultiSelect
-              error={Boolean(errors.keyStages)}
-              collection="keyStage"
-              placeholder="Select key stages"
-              value={form.keyStages}
-              onChange={(value) => updateField("keyStages", value)}
-            />
+            <CatalogueKeyStages error={Boolean(errors.keyStages)} value={form.keyStages} onChange={(value) => updateField("keyStages", value)} />
           </Field>
         </div>
 

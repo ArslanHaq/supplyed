@@ -5,6 +5,7 @@ import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion
 import { isEmptyRichText, richTextToPlainText } from "@/features/applications/rich-text";
 import { ukCalendarDate } from "@/features/jobs/listing-window";
 import type { JobCreateInput, JobUpdateInput } from "./types";
+import { allowedPaymentFrequencies, validateStructuredSchedule } from "./job-schedule";
 
 export function validateJobInput(input: JobCreateInput | JobUpdateInput, options: { partial?: boolean } = {}): Record<string, string> {
   const errors: Record<string, string> = {};
@@ -13,10 +14,10 @@ export function validateJobInput(input: JobCreateInput | JobUpdateInput, options
   if (customError) errors.otherSubjects = customError;
   const skillError = input.otherSkills !== undefined || !options.partial ? otherSkillsError(input.requiredSkills, input.otherSkills) : undefined;
   if (skillError) errors.otherSkills = skillError;
-  if ((!options.partial || input.jobType !== undefined) && !["INSTANT", "BRIEF"].includes(input.jobType ?? "")) errors.jobType = "Choose instant matching or an open brief.";
+  if ((!options.partial || input.jobType !== undefined) && !["INSTANT", "BRIEF"].includes(input.jobType ?? "")) errors.jobType = "Choose targeted matching or open applications.";
   for (const [key, max] of [["title", 200], ["description", 10000]] as const) {
     const value = input[key];
-    const editable = key === "description" && typeof value === "string" ? value.split(/\r?\n/).filter(line => !/^(Posting route:\s*(Instant matching|Open brief)\.|Marked urgent by the hiring account\.|QTS requested\.)$/i.test(line.trim())).join("\n").trim() : value;
+    const editable = key === "description" && typeof value === "string" ? value.split(/\r?\n/).filter(line => !/^(Posting route:\s*(Instant matching|Open brief|Targeted matching|Open applications)\.|Marked urgent by the hiring account\.|QTS requested\.)$/i.test(line.trim())).join("\n").trim() : value;
     if ((!options.partial || value !== undefined) && (typeof editable !== "string" || !editable.trim() || editable.length > max || (key === "description" && isEmptyRichText(editable)))) errors[key] = `Enter ${key === "title" ? "a title" : "a description"} (up to ${max.toLocaleString()} characters).`;
     if (key === "description" && input.status === "ACTIVE" && typeof editable === "string" && richTextToPlainText(editable).length < 20) errors.description = "Add role details of at least 20 characters.";
   }
@@ -31,6 +32,14 @@ export function validateJobInput(input: JobCreateInput | JobUpdateInput, options
     else if (key === "minExperienceYears" && value !== undefined && value > 80) errors.minExperienceYears = "Experience cannot exceed 80 years.";
   }
   if (input.payType !== undefined && !["hourly", "daily", "fixed"].includes(input.payType)) errors.payType = "Choose hourly, daily or fixed pay.";
+  if (input.currency !== undefined && input.currency !== "GBP") errors.currency = "Only GBP is supported by the current payment flow.";
+  if (input.payType && input.paymentFrequency && !allowedPaymentFrequencies(input.payType).includes(input.paymentFrequency)) errors.paymentFrequency = "Choose a supported payment frequency for the rate basis.";
+  if (input.workersRequired !== undefined && (!Number.isInteger(input.workersRequired) || input.workersRequired < 1 || input.workersRequired > 100)) errors.workersRequired = "Choose between 1 and 100 workers.";
+  if (input.timeZone !== undefined) try { new Intl.DateTimeFormat("en-GB", { timeZone: input.timeZone }).format(new Date()); } catch { errors.timeZone = "Choose a valid IANA time zone."; }
+  if (input.schedule !== undefined) {
+    const scheduleError = validateStructuredSchedule(input.schedule, input.startDate, input.endDate);
+    if (scheduleError) errors.schedule = scheduleError;
+  }
   if (input.status !== undefined && !(options.partial ? ["DRAFT", "ACTIVE", "CLOSED", "SUSPENDED"] : ["DRAFT", "ACTIVE"]).includes(input.status)) errors.status = "Choose a valid job status.";
   for (const key of ["keyStages", "requiredSkills", "subjects"] as const) {
     const values = input[key];
@@ -56,7 +65,7 @@ export function validatePublishableTerms(input: Partial<Omit<JobCreateInput, "st
   for (const field of ["address", "city", "postalCode", "countryCode"] as const) if (!input[field]?.trim()) errors[field] = `Enter the work ${field === "postalCode" ? "postcode" : field === "countryCode" ? "country code" : field}.`;
   const start = Date.parse(input.startDate ?? "");
   const end = Date.parse(input.endDate ?? "");
-  if (!Number.isFinite(start) || start <= now) errors.startDate = "Choose a future start date and time.";
+  if (!Number.isFinite(start) || start <= now) errors.startDate = "Choose a future assignment start date.";
   if (!Number.isFinite(end) || end < start) errors.endDate = "Choose an end date on or after work starts.";
   if (!(Number(input.payAmount) > 0)) errors.payAmount = "Enter positive pay.";
   else if (Number(input.payAmount) > 5000) errors.payAmount = "Pay amount cannot exceed £5,000.";
@@ -66,7 +75,7 @@ export function validatePublishableTerms(input: Partial<Omit<JobCreateInput, "st
   const days = Math.floor((Date.parse(`${ukCalendarDate(input.endDate)}T00:00:00Z`) - Date.parse(`${ukCalendarDate(input.startDate)}T00:00:00Z`)) / 86400000) + 1;
   for (const [field, type, max] of [["hours", "hourly", hours], ["days", "daily", days]] as const) {
     const value = input[field];
-    if (input.payType === type && (!Number.isInteger(value) || Number(value) <= 0 || Number(value) > max)) errors[field] = `Enter positive whole ${field} within the work period.`;
+    if (!input.schedule && input.payType === type && (!Number.isInteger(value) || Number(value) <= 0 || Number(value) > max)) errors[field] = `Enter positive whole ${field} within the work period.`;
     if (input.payType !== type && value != null) errors[field] = `Remove ${field} for ${input.payType ?? "this"} pay.`;
   }
   if (input.expiresAt && Date.parse(input.expiresAt) <= now) errors.expiresAt = "Choose a future listing expiry.";

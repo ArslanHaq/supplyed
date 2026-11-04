@@ -12,6 +12,8 @@ export function userFacingError(message: string, options: { status?: number; cod
     JOB_TERMS_CHANGED: "The terms have changed. Send a new invitation for the teacher to review and accept.",
     APPLICATION_TERMS_UNVERIFIED: "Original agreed terms are unavailable. Send a new invitation for the teacher to accept.",
     JOB_HISTORY_PROTECTED: "This job has history and cannot be deleted. Close it to preserve its records.",
+    SCHOOL_TYPE_REQUIRED: "Choose Primary or Secondary in your school profile before creating or editing jobs.",
+    STAFFING_NEEDS_REQUIRED_FOR_SCHOOL_TYPE_CHANGE: "Review and save the staffing needs for the new school phase.",
   };
   if (options.code && marketplaceMessages[options.code]) return marketplaceMessages[options.code];
   if (options.code === "SESSION_EXPIRED") return "Your session expired. Sign in again to continue.";

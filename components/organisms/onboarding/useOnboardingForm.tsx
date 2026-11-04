@@ -96,6 +96,10 @@ function requirementErrorEntries(requirements: OnboardingDocumentRequirementSnap
   return Object.fromEntries(requirements.map((requirement) => [requirement.id, `${requirement.documentType.name} is required.`]));
 }
 
+function approvalRequestIsNoLongerAvailable(result: OnboardingFinishResult) {
+  return /approval can only be requested during unfinished onboarding/i.test(result.message ?? "");
+}
+
 function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined, snapshot?: OnboardingProfileSnapshot, preservePhone = false) {
   if (!snapshot) return current;
 
@@ -121,6 +125,7 @@ function mergeSnapshotForm(current: SignupForm, accountEmail: string | undefined
     institutionProfileId: snapshotString(current.institutionProfileId, next.institutionProfileId),
     institutionRegistrationId: snapshotString(current.institutionRegistrationId, next.institutionRegistrationId),
     institutionType: snapshot.institution?.institutionType ?? current.institutionType,
+    schoolType: snapshot.institution?.schoolType ?? current.schoolType,
     keyStages: snapshotStringArray(current.keyStages, next.keyStages),
     localAuthority: snapshotString(current.localAuthority, next.localAuthority),
     maxTravelDistance: snapshotString(current.maxTravelDistance, next.maxTravelDistance),
@@ -183,6 +188,7 @@ function mergePrefillForm(current: SignupForm, prefill?: OnboardingPrefill, snap
     profileCountryCode: snapshot?.instructor?.countryCode ?? prefill.profileCountryCode ?? current.profileCountryCode,
     postcode: fillEmpty(current.postcode, prefill.postcode),
     schoolName: fillEmpty(current.schoolName, prefill.schoolName),
+    schoolType: snapshot?.institution?.schoolType ?? prefill.schoolType ?? current.schoolType,
     skills: fillEmptyArray(current.skills, prefill.skills),
     staffingNeeds: current.staffingNeeds.length ? current.staffingNeeds : prefill.staffingNeeds ?? [],
     subjects: fillEmptyArray(current.subjects, prefill.subjects),
@@ -217,11 +223,13 @@ export function useOnboardingForm({
   step: number;
 }) {
   const queryClient = useQueryClient();
-  const catalogue = useTeachingCatalogue();
   const activeRole: SignupRole = role === "teacher" ? "teacher" : "institution";
   const steps = useMemo(() => (roleSelected ? stepContent(activeRole) : unselectedSteps), [activeRole, roleSelected]);
   const requestedStep = Math.min(steps.length, Math.max(1, Number.isFinite(step) ? Math.trunc(step) : 1)) as SignupStep;
   const [form, setForm] = useState<SignupForm>(() => mergePrefillForm(createInitialForm(accountEmail, initialSnapshot), prefill, initialSnapshot));
+  const catalogue = useTeachingCatalogue(activeRole === "teacher"
+    ? { scope: "all" }
+    : { scope: "schoolType", schoolType: form.schoolType || null });
   const currentUserQuery = useCurrentUser();
   const phoneVerificationPending = usePhoneVerificationPending();
   const phoneTouchedRef = useRef(false);
@@ -415,7 +423,8 @@ export function useOnboardingForm({
         editStep: 2,
         lines: [
           { label: "School / MAT", value: form.schoolName || "Not provided" },
-          { label: "School type", value: form.institutionType === "MAT_SCHOOL" ? "Multi-academy trust school" : "Single school" },
+          { label: "Organisation structure", value: form.institutionType === "MAT_SCHOOL" ? "Multi-academy trust school" : "Single school" },
+          { label: "School phase", value: form.schoolType === "PRIMARY" ? "Primary" : form.schoolType === "SECONDARY" ? "Secondary" : "Not provided" },
           ...(form.institutionType === "MAT_SCHOOL"
             ? [
                 { label: "Trust", value: form.trustName || "Not provided" },
@@ -459,12 +468,17 @@ export function useOnboardingForm({
 
   function updateField<FieldName extends keyof SignupForm>(field: FieldName, value: SignupForm[FieldName]) {
     if (field === "phone") phoneTouchedRef.current = true;
-    setForm((current) => ({ ...current, [field]: value }));
+    const schoolTypeChanged = field === "schoolType" && form.schoolType !== value;
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+      ...(schoolTypeChanged ? { staffingNeeds: [], otherSubjects: undefined } : {}),
+    }));
     setErrors((current) => {
-      const nextForm = { ...form, [field]: value };
+      const nextForm = { ...form, [field]: value, ...(schoolTypeChanged ? { staffingNeeds: [], otherSubjects: undefined } : {}) };
       const remaining = Object.assign({}, ...[1, 2, 3].map((target) => validateOnboardingStep(nextForm, activeRole, target as SignupStep, roleSelected, accountEmail)));
       const key = field as keyof SignupErrors;
-      return { ...current, [key]: current[key] ? remaining[key] : undefined };
+      return { ...current, [key]: current[key] ? remaining[key] : undefined, ...(schoolTypeChanged ? { staffingNeeds: undefined, otherSubjects: undefined } : {}) };
     });
     setSubmitError(undefined);
   }
@@ -670,7 +684,7 @@ export function useOnboardingForm({
     try {
       const result = await onStepSave(buildPayload());
       if (!result.ok) {
-        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: ["dropdown"] });
+        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
         applyServerFieldErrors(result);
         setSubmitError(result.message || "This step could not be saved. Try again.");
         return;
@@ -717,7 +731,7 @@ export function useOnboardingForm({
       }
 
       if (!result.ok) {
-        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: ["dropdown"] });
+        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
         applyServerFieldErrors(result);
         setSubmitError(result.message || "Onboarding could not be submitted. Try again.");
       }
@@ -757,7 +771,7 @@ export function useOnboardingForm({
 
       const result = await onFinish(payload);
       if (!result.ok) {
-        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: ["dropdown"] });
+        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
         applyServerFieldErrors(result, true);
         void requirementsQuery.refetch();
         setSubmitError(result.message || "Profile could not be sent for review. Try again.");
@@ -825,7 +839,19 @@ export function useOnboardingForm({
       const result = await onFinish(payload);
       applySnapshot(result.data?.snapshot);
       if (!result.ok) {
-        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: ["dropdown"] });
+        // A stale or locked onboarding session can reject a resend even though
+        // compliance approval is still the active gate. Keep that backend rule
+        // out of the global red banner and quietly refresh the approval state.
+        if (approvalRequestIsNoLongerAvailable(result)) {
+          const refreshed = await onboardingStatusQuery.refetch();
+          if (!refreshed.error) {
+            setSignatoryApproval(refreshed.data?.signatoryApproval ?? null);
+            setComplianceApproval(refreshed.data?.complianceApproval ?? null);
+          }
+          setSubmitError(undefined);
+          return;
+        }
+        if (catalogueError(result.code)) void queryClient.invalidateQueries({ queryKey: teachingCatalogueKey });
         applyServerFieldErrors(result, Object.keys(result.fieldErrors ?? {}).some((key) => !key.startsWith("signatory")));
         setSubmitError(result.message || "The approval request could not be sent.");
       }

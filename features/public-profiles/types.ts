@@ -29,6 +29,7 @@ export type InstitutionPublicProfile = {
   id: string;
   imageUrl: string | null;
   institutionType: "MAT_SCHOOL" | "SINGLE_SCHOOL";
+  schoolType: import("@/types/supplyed").SchoolType | null;
   memberSince: string | null;
   name: string;
   postalCode: string | null;

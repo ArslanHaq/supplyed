@@ -169,6 +169,7 @@ export function createInitialForm(accountEmail?: string, snapshot?: OnboardingPr
     institutionProfileId: institution?.id ?? "",
     institutionRegistrationId: institution?.registrationId ?? "",
     institutionType: institution?.institutionType ?? "SINGLE_SCHOOL",
+    schoolType: institution?.schoolType ?? "",
     keyStages: instructor?.keyStages ?? [],
     localAuthority: institution?.county ?? "",
     maxTravelDistance: instructor?.maxTravelDistance ?? "",
@@ -207,6 +208,7 @@ export function buildOnboardingPayload(form: SignupForm, role: string, step: num
   data.set("teacherProfileId", form.teacherProfileId);
   data.set("institutionProfileId", form.institutionProfileId);
   data.set("institutionType", form.institutionType);
+  data.set("schoolType", form.schoolType);
   data.set("schoolName", form.schoolName.trim());
   data.set("contactRole", form.contactRole.trim());
   data.set("institutionAddress", form.institutionAddress.trim());

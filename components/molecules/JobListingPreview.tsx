@@ -55,7 +55,7 @@ export function JobListingPreview({
           </div>
           <div className="flex flex-wrap justify-end gap-1.5">
             {data.status ? <Tag tone={data.status.tone}>{data.status.label}</Tag> : null}
-            <Tag tone={data.mode === "brief" ? "purple" : ""}>{data.mode === "brief" ? "Open brief" : "Instant matching"}</Tag>
+            <Tag tone={data.mode === "brief" ? "purple" : ""}>{data.mode === "brief" ? "Open applications" : "Targeted matching"}</Tag>
             {data.urgent ? <Tag tone="red">Urgent</Tag> : null}
           </div>
         </header>

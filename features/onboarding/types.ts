@@ -152,6 +152,7 @@ export type OnboardingInstitutionSnapshot = {
   domain: string;
   id: string;
   institutionType: InstitutionType;
+  schoolType: import("@/types/supplyed").SchoolType | null;
   name: string;
   postalCode: string;
   registrationId: string;

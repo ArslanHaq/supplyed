@@ -43,7 +43,7 @@ export function InstantJobTeachersSection({ job, go, toast }: { job: Job; go: Ro
       <div className="workspace-toolbar card card-pad mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="section-title mb-1" id="related-teachers-heading">Related teachers</div>
-          <p className="text-sm leading-6 text-muted">All eligible teachers for this instant job, with the highest match scores first.</p>
+          <p className="text-sm leading-6 text-muted">All eligible teachers for this targeted-matching role, with the highest match scores first.</p>
         </div>
         <Tag tone="ghost">{pagination?.total ?? teachers.length} total</Tag>
       </div>
@@ -127,7 +127,7 @@ export function InstantJobMatchesModal({
       <div className="border-b border-border bg-surface-2 px-5 py-5 sm:px-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center gap-2"><Tag tone="green">Job published</Tag><Tag tone="amber">Instant job</Tag></div>
+            <div className="mb-2 flex flex-wrap items-center gap-2"><Tag tone="green">Job published</Tag><Tag tone="amber">Targeted matching</Tag></div>
             <h2 className="font-heading text-2xl leading-tight">Invite matched teachers</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Review the best-matched eligible teacher profiles for <strong className="text-ink">{job.title}</strong>. You can send multiple invitations before continuing to applications.</p>
           </div>
@@ -195,7 +195,7 @@ export function InstantJobTeachersPage({ ctx, go, toast }: Pick<RouteProps, "ctx
   const pagination = teachersQuery.data?.pagination;
 
   if (!jobId) {
-    return <div className="app-page"><WorkspaceEmptyState icon="users" title="Choose an instant job" message="Open an instant job from Applications to see its related teachers." action={<Btn onClick={() => go("applications")}>Back to applications</Btn>} /></div>;
+    return <div className="app-page"><WorkspaceEmptyState icon="users" title="Choose a targeted-matching role" message="Open a targeted-matching role from Applications to see its recommended teachers." action={<Btn onClick={() => go("applications")}>Back to applications</Btn>} /></div>;
   }
 
   if (jobQuery.isLoading) return <div className="app-page"><SectionLoader rows={5} /></div>;
@@ -209,7 +209,7 @@ export function InstantJobTeachersPage({ ctx, go, toast }: Pick<RouteProps, "ctx
     return (
       <div className="app-page">
         <PageHead title="Related teachers" subtitle={job.title} actions={<Btn icon="arrowLeft" variant="secondary" onClick={() => go("applications", { jobId })}>Back to applications</Btn>} />
-        <WorkspaceEmptyState icon="users" title="Related teachers are only available for instant jobs" message="Brief jobs collect normal applications and notify eligible teachers automatically. Individual invitations are disabled." />
+        <WorkspaceEmptyState icon="users" title="Recommended teachers are available for targeted matching" message="Open-application roles collect applications from eligible teachers instead. Individual invitations are disabled." />
       </div>
     );
   }
@@ -224,7 +224,7 @@ export function InstantJobTeachersPage({ ctx, go, toast }: Pick<RouteProps, "ctx
 
       <section className="card card-pad mb-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-2"><Tag tone="amber">Instant job</Tag><Tag tone="ghost">{job.status?.toLowerCase()}</Tag></div>
+          <div className="flex flex-wrap items-center gap-2"><Tag tone="amber">Targeted matching</Tag><Tag tone="ghost">{job.status?.toLowerCase()}</Tag></div>
           <h2 className="mt-2 font-heading text-xl">{job.title}</h2>
           <p className="mt-1 text-sm text-muted">{job.subject} · {job.city} · {job.date}</p>
         </div>

@@ -6,7 +6,16 @@ import { actionError, actionOk } from "@/lib/server/action-response";
 import { api, ApiError } from "@/lib/server/api-client";
 
 import { normalizeBooking, normalizeReviewInput } from "./schemas";
-import type { Booking, BookingReview, BookingReviewInput, BookingStatusUpdateInput } from "./types";
+import type {
+  AttendanceActivationInput,
+  AttendanceCorrectionInput,
+  AttendanceCorrectionReviewInput,
+  AttendanceResponseInput,
+  Booking,
+  BookingReview,
+  BookingReviewInput,
+  BookingStatusUpdateInput,
+} from "./types";
 
 const bookingActionPath = {
   cancel: "cancel",
@@ -53,6 +62,59 @@ export async function createBookingReviewAction(input: BookingReviewInput) {
     return actionOk(review, "Review submitted.");
   } catch (error) {
     return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined, fieldErrors: error instanceof ApiError ? error.fieldErrors : undefined, retryAfter: error instanceof ApiError ? error.retryAfter : undefined, requestId: error instanceof ApiError ? error.requestId : undefined });
+  }
+}
+
+export async function respondAttendanceAction(input: AttendanceResponseInput) {
+  if (!input?.bookingId || !input.shiftId || !["PRESENT", "ABSENT"].includes(input.status)) return actionError("Choose a valid attendance response.");
+  try {
+    const booking = await api.patch<Booking>(`/bookings/${input.bookingId}/attendance/${input.shiftId}`, {
+      status: input.status,
+      reason: input.reason?.trim() || undefined,
+    });
+    revalidateTag("bookings", "max");
+    return actionOk(normalizeBooking(booking), "Attendance saved.");
+  } catch (error) {
+    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined });
+  }
+}
+
+export async function activateAttendanceAction(input: AttendanceActivationInput) {
+  if (!input?.bookingId) return actionError("Choose a valid booking.");
+  try {
+    const booking = await api.post<Booking>(`/bookings/${input.bookingId}/attendance/activate`);
+    revalidateTag("bookings", "max");
+    return actionOk(normalizeBooking(booking), "Attendance tracking started.");
+  } catch (error) {
+    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined });
+  }
+}
+
+export async function correctAttendanceAction(input: AttendanceCorrectionInput) {
+  if (!input?.bookingId || !input.shiftId || !["PRESENT", "ABSENT"].includes(input.status) || input.reason.trim().length < 3) return actionError("Add a correction reason and attendance status.");
+  try {
+    const booking = await api.patch<Booking>(`/bookings/${input.bookingId}/attendance/${input.shiftId}/correct`, {
+      status: input.status,
+      reason: input.reason.trim(),
+    });
+    revalidateTag("bookings", "max");
+    return actionOk(normalizeBooking(booking), "Attendance corrected.");
+  } catch (error) {
+    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined });
+  }
+}
+
+export async function reviewAttendanceCorrectionAction(input: AttendanceCorrectionReviewInput) {
+  if (!input?.bookingId || !input.requestId || !["APPROVED", "REJECTED"].includes(input.decision) || input.reason.trim().length < 3) return actionError("Add a review reason and decision.");
+  try {
+    const booking = await api.patch<Booking>(`/bookings/${input.bookingId}/attendance/correction-requests/${input.requestId}`, {
+      decision: input.decision,
+      reason: input.reason.trim(),
+    });
+    revalidateTag("bookings", "max");
+    return actionOk(normalizeBooking(booking), "Correction request reviewed.");
+  } catch (error) {
+    return actionError(readBookingError(error), { code: error instanceof ApiError ? error.code : undefined, status: error instanceof ApiError ? error.status : undefined });
   }
 }
 
