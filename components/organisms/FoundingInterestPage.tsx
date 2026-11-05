@@ -204,7 +204,7 @@ export function FoundingInterestPage({ campaign, source, type }: FoundingInteres
               {content.heroCopy}
             </p>
             <div className="marketing-hero-actions">
-              <Link className={buttonClassName({ size: "xl" })} href={`#${registrationAnchorId}`}>
+              <Link className={buttonClassName({ size: "xl" })} href={`#${registrationFormId}`}>
                 {content.primaryCta}
               </Link>
               <Link

@@ -8,7 +8,7 @@ const footerLinks = [
   // ["For schools", "/founding-schools"],
   // ["For teachers", "/founding-teachers"],
   ["How it works", "/how-it-works"],
-  ["Join the waitlist", "/#register-interest"],
+  ["Join the waitlist", "/#landing-interest-form"],
 ] as const;
 
 export function PublicFooter() {

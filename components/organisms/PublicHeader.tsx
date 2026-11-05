@@ -27,10 +27,10 @@ const navItems = [
 export function PublicHeader({ active = "home" }: PublicHeaderProps) {
   const waitlistHref =
     active === "founding-schools"
-      ? "#school-registration"
+      ? "#school-registration-form"
       : active === "founding-teachers"
-        ? "#teacher-registration"
-        : "/#register-interest";
+        ? "#teacher-registration-form"
+        : "/#landing-interest-form";
 
   function scrollToWaitlist(event: MouseEvent<HTMLAnchorElement>) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -43,11 +43,13 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
 
     event.preventDefault();
     event.currentTarget.closest("details")?.removeAttribute("open");
-    registration.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
-      block: "start",
+    window.requestAnimationFrame(() => {
+      registration.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
     });
   }
 
@@ -70,7 +72,7 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
         </nav>
 
         <div className="marketing-account">
-          <Link
+          <a
             className={buttonClassName({
               size: "sm",
               className: "marketing-nav-waitlist",
@@ -79,7 +81,7 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
             onClick={scrollToWaitlist}
           >
             Join the waitlist
-          </Link>
+          </a>
         </div>
         <details className="marketing-mobile-nav">
           <summary aria-label="Navigation menu">
@@ -96,10 +98,10 @@ export function PublicHeader({ active = "home" }: PublicHeaderProps) {
                 <Icon name="arrow" size={15} />
               </Link>
             ))}
-            <Link href={waitlistHref} onClick={scrollToWaitlist}>
+            <a href={waitlistHref} onClick={scrollToWaitlist}>
               Join the waitlist
               <Icon name="arrow" size={15} />
-            </Link>
+            </a>
           </nav>
         </details>
       </div>

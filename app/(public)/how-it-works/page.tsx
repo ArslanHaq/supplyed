@@ -61,7 +61,7 @@ const metrics = [
 */
 
 export default function HowItWorksPage() {
-  const actionHref = "/#register-interest";
+  const actionHref = "/#landing-interest-form";
 
   return (
     <div className="marketing-page marketing-how-it-works min-h-screen bg-chalk">
