@@ -24,8 +24,8 @@
   font-size: 11px;
   line-height: 1.6;
 }
-.marketing-registration-grid > .waitlist-school-intro > h2,
-.marketing-registration-grid > .waitlist-teacher-intro > h2 {
+.marketing-registration-grid > .waitlist-school-intro > :is(h1, h2),
+.marketing-registration-grid > .waitlist-teacher-intro > :is(h1, h2) {
   font-family: var(--sans);
   font-size: clamp(35px, 3.7vw, 54px);
   font-weight: 600;

@@ -1,10 +1,14 @@
 import { Icon } from "@/components/atoms";
 
-export function WaitlistTeacherIntro() {
+type WaitlistTeacherIntroProps = {
+  headingLevel?: "h1" | "h2";
+};
+
+export function WaitlistTeacherIntro({ headingLevel: Heading = "h2" }: WaitlistTeacherIntroProps) {
   return (
     <div className="waitlist-teacher-intro">
       <span className="eyebrow">Teacher waitlist</span>
-      <h2>Get first refusal on supply work that suits you</h2>
+      <Heading>Get first refusal on supply work that suits you</Heading>
       <p>
         Register your interest now. There are no checks and nothing to commit
         to. We&apos;ll offer you a place in the first cohort ahead of the

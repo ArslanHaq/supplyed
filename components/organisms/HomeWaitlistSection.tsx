@@ -92,10 +92,11 @@ export function HomeWaitlistSection() {
         className={`marketing-section marketing-registration ${audience === "TEACHER" ? "waitlist-teacher-registration" : ""}`}
       >
         <div className="supplyed-content-wrap marketing-registration-grid waitlist-registration-grid">
+          {/* The homepage has no hero, so this intro carries the page's h1. */}
           {audience === "SCHOOL" ? (
-            <WaitlistSchoolIntro />
+            <WaitlistSchoolIntro headingLevel="h1" />
           ) : (
-            <WaitlistTeacherIntro />
+            <WaitlistTeacherIntro headingLevel="h1" />
           )}
           <FoundingInterestForm
             key={`${audience}-${formVersion}`}

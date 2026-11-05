@@ -3,12 +3,25 @@ import Link from "next/link";
 
 import { PublicHeader } from "@/components/organisms/PublicHeader";
 import { buttonClassName, Icon, Tag } from "@/components/atoms";
+import { siteConfig } from "@/lib/seo";
+
+const description =
+  "See how UK schools, multi-academy trusts, and supply teachers use SupplyED to post cover, complete compliance checks once, and confirm bookings in one place.";
 
 export const metadata: Metadata = {
   title: "How It Works",
-  description: "A dummy end-to-end overview of how schools, multi-academy trusts, and supply teachers use SupplyED.",
+  description,
   alternates: {
     canonical: "/how-it-works",
+  },
+  openGraph: {
+    url: "/how-it-works",
+    title: `How It Works | ${siteConfig.name}`,
+    description,
+  },
+  twitter: {
+    title: `How It Works | ${siteConfig.name}`,
+    description,
   },
 };
 
@@ -33,7 +46,7 @@ const matSteps = [
 const workflow = [
   { label: "Account", icon: "user", copy: "Schools and teachers choose their path when creating the account." },
   { label: "Compliance", icon: "shield", copy: "DBS, right-to-work, identity, and safeguarding details are captured." },
-  { label: "Matching", icon: "search", copy: "Dummy matching ranks staff and roles using profile fit and availability." },
+  { label: "Matching", icon: "search", copy: "Matching ranks staff and roles using profile fit and availability." },
   { label: "Booking", icon: "calendar", copy: "Messages, booking notes, and next actions stay in one workspace." },
 ];
 

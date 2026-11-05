@@ -1,12 +1,16 @@
 import { Icon } from "@/components/atoms";
 
-export function WaitlistSchoolIntro() {
+type WaitlistSchoolIntroProps = {
+  headingLevel?: "h1" | "h2";
+};
+
+export function WaitlistSchoolIntro({ headingLevel: Heading = "h2" }: WaitlistSchoolIntroProps) {
   return (
     <div className="waitlist-school-intro">
       <span className="waitlist-pilot-badge">
         Greater Manchester and Lancashire · Pilot from January 2027
       </span>
-      <h2>Supply cover that&apos;s checked before it&apos;s booked.</h2>
+      <Heading>Supply cover that&apos;s checked before it&apos;s booked.</Heading>
       <p>
         SupplyED connects schools directly with vetted supply teachers. We run
         the compliance checks centrally, so you book with confidence and
