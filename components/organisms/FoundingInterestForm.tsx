@@ -6,6 +6,7 @@ import { Button, Checkbox, Field, Icon } from "@/components/atoms";
 import { SelectDropdown } from "@/components/molecules/OptionDropdowns";
 import { trackGoogleEvent } from "@/lib/google-analytics";
 import { trackMetaEvent } from "@/lib/meta-pixel";
+import { trackClarityEvent } from "@/lib/microsoft-clarity";
 import {
   type FoundingInterestActionState,
   type WaitlistField,
@@ -79,6 +80,7 @@ function WaitlistForm({
     if (!joined) return;
     trackMetaEvent("Lead", { content_category: school ? "school" : "teacher" });
     trackGoogleEvent("generate_lead", { lead_type: school ? "school" : "teacher" });
+    trackClarityEvent(school ? "waitlist_joined_school" : "waitlist_joined_teacher");
   }, [joined, school]);
   const fieldId = (field: string) => `${id}-${field}`;
   function input(

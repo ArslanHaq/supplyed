@@ -5,7 +5,7 @@ export const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() ?? "";
 
 export type CookieConsent = "accepted" | "rejected";
 
-// v2 adds Google Analytics. Earlier answers only covered the Meta Pixel, so visitors are asked again.
+// v2 adds Google Analytics and Microsoft Clarity. Earlier answers only covered the Meta Pixel, so visitors are asked again.
 const consentKey = "supplyed_cookie_consent_v2";
 const consentChangeEvent = "supplyed:cookie-consent";
 
