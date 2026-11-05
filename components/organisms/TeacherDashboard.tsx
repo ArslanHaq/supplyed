@@ -14,6 +14,7 @@ import { Avatar, Btn, Icon, Tag, buttonClassName } from "../atoms";
 import { JobListingPreview, jobListingPreviewData, MatchScorePanel, SectionLoader } from "../molecules";
 import { DashboardMessages } from "./DashboardMessages";
 import { RecentNotifications } from "./RecentNotifications";
+import { ProfileCompletionCard } from "./ProfileCompletionCard";
 
 type QueryState = { isLoading: boolean; isError: boolean; refetch: () => unknown };
 const stages: { value: JobApplicationStatus; label: string; description: string }[] = [
@@ -36,8 +37,6 @@ export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">
   const nextBooking = upcoming[0];
   const summary = data.applicationSummary ?? summarizeDashboardApplications([]);
   const selectedStage = stages.find((item) => item.value === stage)!;
-  const profileTasks = data.profileTasks ?? [];
-  const profileDone = profileTasks.filter((task) => task.complete).length;
   const balance = data.balanceQuery.data;
   const payoutAccount = data.payoutAccountQuery.data;
   const readyForBalance = payoutAccount?.ready === true;
@@ -51,6 +50,7 @@ export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">
         <div><p className="teacher-eyebrow"><span /> Your teaching workspace</p><h1>Welcome back, {firstName}.</h1><p>Your next placement, latest opportunities and everything in between.</p></div>
         <div className="teacher-header-actions"><Btn variant="secondary" icon="refresh" loading={refreshing} loadingLabel="Refreshing" onClick={refresh}>Refresh</Btn><Btn icon="search" onClick={() => go("find-jobs")}>Find work</Btn></div>
       </header>
+
 
       <section className="teacher-metrics" aria-label="Your teaching overview">
         <Metric icon="calendar" label="Upcoming bookings" value={metricValue(data.bookingsQuery, upcoming.length)} caption="Confirmed and ongoing" onClick={() => go("bookings")} />
@@ -97,7 +97,7 @@ export function TeacherDashboard({ go, state }: Pick<RouteProps, "go" | "state">
 
         <aside className="teacher-side-column" aria-label="Your account and updates">
           <Panel title="Your teaching profile" action={<button className="teacher-icon-button" type="button" aria-label="Edit teaching profile" onClick={() => go("settings")}><Icon name="edit" size={17} /></button>}>
-            <QueryContent query={data.profileQuery} label="your profile">{profile ? <div className="teacher-profile-content"><div className="teacher-profile-identity"><Avatar name={profile.fullName} src={profile.imageUrl} size="lg" /><div><h3>{profile.fullName}</h3><p>{[profile.city, profile.county].filter(Boolean).join(", ") || "Your teaching profile"}</p></div></div><div className="teacher-profile-tags"><Tag tone={profile.status === "approved" ? "green" : "amber"}>{profile.status === "approved" ? "Profile approved" : profile.status.replaceAll("_", " ")}</Tag>{profile.dbsVerified ? <Tag tone="green">DBS verified</Tag> : null}</div><div className="teacher-profile-subjects">{profile.subjects.slice(0, 4).join(" · ") || "Add your teaching subjects"}</div><div className="teacher-profile-checklist"><div className="teacher-checklist-heading"><strong>Profile essentials</strong><span>{profileDone}/{profileTasks.length} added</span></div>{profileTasks.map((task) => <button key={task.id} type="button" className="teacher-checklist-item" data-complete={task.complete} onClick={() => go("settings")}><Icon name={task.complete ? "checkCircle" : "plus"} size={16} /><span>{task.label}</span>{!task.complete ? <span className="teacher-add-label">Add</span> : <span className="sr-only">Added</span>}</button>)}</div><Btn variant="secondary" className="w-full" onClick={() => go("my-profile")}>View my profile</Btn>{data.profileQuery.data?.user.phoneVerified === false ? <p className="teacher-phone-note"><Icon name="shield" size={14} /> Phone verification is optional.<button type="button" onClick={() => go("settings")}>Verify in settings</button></p> : null}</div> : <Empty icon="user" title="Profile unavailable" message="Open settings to check your teaching profile." action={<Btn variant="secondary" size="sm" onClick={() => go("settings")}>Open settings</Btn>} />}</QueryContent>
+            <QueryContent query={data.profileQuery} label="your profile">{profile ? <div className="teacher-profile-content"><div className="teacher-profile-identity"><Avatar name={profile.fullName} src={profile.imageUrl} size="lg" /><div><h3>{profile.fullName}</h3><p>{[profile.city, profile.county].filter(Boolean).join(", ") || "Your teaching profile"}</p></div></div><div className="teacher-profile-tags"><Tag tone={profile.status === "approved" ? "green" : "amber"}>{profile.status === "approved" ? "Profile approved" : profile.status.replaceAll("_", " ")}</Tag>{profile.dbsVerified ? <Tag tone="green">DBS verified</Tag> : null}</div><div className="teacher-profile-subjects">{profile.subjects.slice(0, 4).join(" · ") || "Add your teaching subjects"}</div><ProfileCompletionCard query={data.completionQuery} embedded /><Btn variant="secondary" className="w-full" onClick={() => go("my-profile")}>View my profile</Btn>{data.profileQuery.data?.user.phoneVerified === false ? <p className="teacher-phone-note"><Icon name="shield" size={14} /> Phone verification is optional.<button type="button" onClick={() => go("settings")}>Verify in settings</button></p> : null}</div> : <Empty icon="user" title="Profile unavailable" message="Open settings to check your teaching profile." action={<Btn variant="secondary" size="sm" onClick={() => go("settings")}>Open settings</Btn>} />}</QueryContent>
           </Panel>
 
           <Panel title="Your payouts" subtitle="Money ready for payout" action={<Icon name="pound" size={20} />}>

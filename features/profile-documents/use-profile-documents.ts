@@ -15,6 +15,7 @@ import type { ProfileDocument, ProfileDocumentInput } from "./types";
 const invalidate = (client: ReturnType<typeof useQueryClient>) =>
   Promise.all([
     client.invalidateQueries({ queryKey: queryKeys.profileDocuments.all }),
+    client.invalidateQueries({ queryKey: queryKeys.profileCompletion.all }),
     client.invalidateQueries({ queryKey: queryKeys.publicProfiles.all }),
   ]);
 
