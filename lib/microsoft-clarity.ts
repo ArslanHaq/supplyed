@@ -1,8 +1,5 @@
-// Microsoft Clarity (heatmaps and session recordings) for the public marketing pages, used only to
-// improve the site. UK law allows that without consent when visitors can turn it off, so it runs
-// unless they reject the cookie banner, and only when a project ID is configured for the deployment.
-import { readCookieConsent } from "./meta-pixel";
-
+// Microsoft Clarity (heatmaps and session recordings) for the public marketing pages. It loads
+// on every visit, with no cookie banner, when a project ID is configured for the deployment.
 export const clarityProjectId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim() ?? "";
 
 type ClarityQueue = {
@@ -15,8 +12,6 @@ declare global {
     clarity?: ClarityQueue;
   }
 }
-
-let sentConsent: boolean | null = null;
 
 /** Microsoft's tag snippet: queues calls until the tag script loads. */
 export function loadClarity() {
@@ -32,20 +27,13 @@ export function loadClarity() {
   script.async = true;
   script.src = `https://www.clarity.ms/tag/${encodeURIComponent(clarityProjectId)}`;
   document.head.appendChild(script);
-}
 
-/**
- * Passes the visitor's choice to Clarity's Consent API v2, which it requires for UK visitors.
- * Microsoft asks for one call per change, not one per page. Ads storage stays denied: the site runs no Microsoft ads.
- */
-export function setClarityConsent(granted: boolean) {
-  if (!window.clarity || sentConsent === granted) return;
-  sentConsent = granted;
-  window.clarity("consentv2", { ad_Storage: "denied", analytics_Storage: granted ? "granted" : "denied" });
+  // Without a consent signal Clarity treats UK visitors as unconsented and records each page view
+  // separately. Ads storage stays denied: the site runs no Microsoft ads.
+  clarity("consentv2", { ad_Storage: "denied", analytics_Storage: "granted" });
 }
 
 /** Tags the current recording so it can be filtered in Clarity (e.g. visitors who joined the waitlist). */
 export function trackClarityEvent(event: string) {
-  if (!clarityProjectId || readCookieConsent() === "rejected") return;
   window.clarity?.("event", event);
 }

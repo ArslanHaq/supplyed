@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { Icon, Logo } from "@/components/atoms";
-import { CookieSettingsButton } from "@/components/molecules";
 
 const footerLinks = [
   // Hidden while only the waitlist is live
@@ -22,7 +21,6 @@ export function PublicFooter() {
         </div>
         <nav aria-label="Footer navigation">
           {footerLinks.map(([label, href]) => <Link href={href} key={href}>{label}</Link>)}
-          <CookieSettingsButton />
         </nav>
       </div>
       <section className="mx-auto max-w-[1180px] px-4 py-5 text-xs leading-6 text-muted" id="waitlist-privacy" aria-labelledby="waitlist-privacy-heading">

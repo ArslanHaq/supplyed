@@ -1,8 +1,5 @@
-// Google Analytics 4 for the public marketing pages, used only to measure and improve the site.
-// UK law allows that without consent when visitors can turn it off, so it runs unless they
-// reject the cookie banner, and only when a measurement ID is configured for the deployment.
-import { readCookieConsent } from "./meta-pixel";
-
+// Google Analytics 4 for the public marketing pages. It loads on every visit, with no
+// cookie banner, when a measurement ID is configured for the deployment.
 export const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() ?? "";
 
 declare global {
@@ -32,14 +29,7 @@ export function loadGoogleAnalytics() {
   window.gtag("config", gaMeasurementId, { allow_google_signals: false, allow_ad_personalization_signals: false });
 }
 
-/** Google's documented opt-out flag: stops GA sending anything after the visitor rejects. */
-export function setGoogleAnalyticsEnabled(enabled: boolean) {
-  if (!gaMeasurementId) return;
-  (window as unknown as Record<string, boolean>)[`ga-disable-${gaMeasurementId}`] = !enabled;
-}
-
-/** Sends an event (e.g. "generate_lead") when GA is configured and the visitor has not turned it off. Never pass personal data. */
+/** Sends an event (e.g. "generate_lead") when GA is configured. Never pass personal data. */
 export function trackGoogleEvent(event: string, params?: Record<string, string>) {
-  if (!gaMeasurementId || readCookieConsent() === "rejected") return;
   window.gtag?.("event", event, params);
 }

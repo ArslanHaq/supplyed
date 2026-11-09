@@ -1,13 +1,6 @@
-// Meta (Facebook) Pixel for the public marketing pages. It is an advertising cookie, so
-// under UK GDPR / PECR it loads only after the visitor accepts, and only when a
-// pixel ID is configured for the deployment.
+// Meta (Facebook) Pixel for the public marketing pages. It loads on every visit, with no
+// cookie banner, when a pixel ID is configured for the deployment.
 export const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() ?? "";
-
-export type CookieConsent = "accepted" | "rejected";
-
-// v2 adds Google Analytics and Microsoft Clarity. Earlier answers only covered the Meta Pixel, so visitors are asked again.
-const consentKey = "supplyed_cookie_consent_v2";
-const consentChangeEvent = "supplyed:cookie-consent";
 
 type MetaFbq = {
   (...args: unknown[]): void;
@@ -23,35 +16,6 @@ declare global {
     fbq?: MetaFbq;
     _fbq?: MetaFbq;
   }
-}
-
-export function readCookieConsent(): CookieConsent | null {
-  try {
-    const value = window.localStorage.getItem(consentKey);
-    return value === "accepted" || value === "rejected" ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Saves the visitor's choice; `null` clears it so the banner asks again. */
-export function saveCookieConsent(value: CookieConsent | null) {
-  try {
-    if (value) window.localStorage.setItem(consentKey, value);
-    else window.localStorage.removeItem(consentKey);
-  } catch {
-    // Storage can be blocked; the choice then lasts for this page view only.
-  }
-  window.dispatchEvent(new Event(consentChangeEvent));
-}
-
-export function subscribeCookieConsent(onChange: () => void) {
-  window.addEventListener(consentChangeEvent, onChange);
-  window.addEventListener("storage", onChange);
-  return () => {
-    window.removeEventListener(consentChangeEvent, onChange);
-    window.removeEventListener("storage", onChange);
-  };
 }
 
 /** Meta's base code: queues calls until fbevents.js loads, then initialises the pixel once. */
@@ -77,8 +41,7 @@ export function loadMetaPixel() {
   fbq("init", metaPixelId);
 }
 
-/** Sends a standard event (e.g. "Lead") when the pixel is configured and the visitor accepted. Never pass personal data. */
+/** Sends a standard event (e.g. "Lead") when the pixel is configured. Never pass personal data. */
 export function trackMetaEvent(event: string, params?: Record<string, string>) {
-  if (!metaPixelId || readCookieConsent() !== "accepted") return;
   window.fbq?.("track", event, params);
 }
