@@ -1,6 +1,6 @@
-// Microsoft Clarity (heatmaps and session recordings) for the public marketing pages. It sets
-// cookies, so like the Meta Pixel it loads only after the visitor accepts the cookie banner,
-// and only when a project ID is configured for the deployment.
+// Microsoft Clarity (heatmaps and session recordings) for the public marketing pages, used only to
+// improve the site. UK law allows that without consent when visitors can turn it off, so it runs
+// unless they reject the cookie banner, and only when a project ID is configured for the deployment.
 import { readCookieConsent } from "./meta-pixel";
 
 export const clarityProjectId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim() ?? "";
@@ -35,7 +35,7 @@ export function loadClarity() {
 }
 
 /**
- * Passes the banner choice to Clarity's Consent API v2, which it requires for UK visitors.
+ * Passes the visitor's choice to Clarity's Consent API v2, which it requires for UK visitors.
  * Microsoft asks for one call per change, not one per page. Ads storage stays denied: the site runs no Microsoft ads.
  */
 export function setClarityConsent(granted: boolean) {
@@ -46,6 +46,6 @@ export function setClarityConsent(granted: boolean) {
 
 /** Tags the current recording so it can be filtered in Clarity (e.g. visitors who joined the waitlist). */
 export function trackClarityEvent(event: string) {
-  if (!clarityProjectId || readCookieConsent() !== "accepted") return;
+  if (!clarityProjectId || readCookieConsent() === "rejected") return;
   window.clarity?.("event", event);
 }

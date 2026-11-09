@@ -1,4 +1,4 @@
-// Meta (Facebook) Pixel for the public marketing pages. It is a marketing cookie, so
+// Meta (Facebook) Pixel for the public marketing pages. It is an advertising cookie, so
 // under UK GDPR / PECR it loads only after the visitor accepts, and only when a
 // pixel ID is configured for the deployment.
 export const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() ?? "";
