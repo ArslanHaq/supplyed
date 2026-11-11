@@ -17,6 +17,8 @@ type PostAuthSessionUser = {
   authErrorProvider?: string;
   email: string;
   emailVerified: boolean;
+  /** A teacher with a profile who has not started their identity check: they go there first. */
+  identityStepRequired?: boolean;
   role: AppRole | null;
 };
 
@@ -50,7 +52,7 @@ export function PostAuthRedirectClient({ sessionUser }: { sessionUser: PostAuthS
       return;
     }
 
-    router.replace(returnTo ?? getAuthenticatedEntryHref(sessionUser));
+    router.replace(sessionUser.identityStepRequired ? "/verify-identity" : returnTo ?? getAuthenticatedEntryHref(sessionUser));
   }, [router, searchParams, sessionUser]);
 
   return (

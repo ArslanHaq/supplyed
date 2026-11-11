@@ -17,6 +17,7 @@ import type {
   SignupRole,
 } from "./onboarding/types";
 import { DocumentPreviewModal } from "./onboarding/DocumentPreviewModal";
+import { IdentityStatusCard } from "./onboarding/IdentityStatusCard";
 import type { OnboardingFormController } from "./onboarding/useOnboardingForm";
 import { useOnboardingForm } from "./onboarding/useOnboardingForm";
 import { AccountBasicsStep } from "./onboarding/steps/AccountBasicsStep";
@@ -276,7 +277,8 @@ export function OnboardingPage({
             {lockedDocumentStage ? (
               schoolApprovalPage ? <div className="space-y-6"><PhoneVerificationCard controller={controller} />{controller.approvalRequired ? <InstitutionApprovalCard controller={controller} onRefresh={onRefresh} /> : null}</div>
                 : activeRole === "institution" ? <DocumentUploadStep controller={controller} />
-                  : <div className="space-y-6"><PhoneVerificationCard controller={controller} /><DocumentUploadStep controller={controller} /></div>
+                  // Teachers verify their phone on the identity step; the card stays for anyone who hasn't.
+                  : <div className="space-y-6">{!controller.phoneVerified ? <PhoneVerificationCard controller={controller} /> : null}{activeRole === "teacher" ? <IdentityStatusCard /> : null}<DocumentUploadStep controller={controller} /></div>
             ) : (
               <OnboardingStepContent
                 accountEmail={accountEmail}
