@@ -30,6 +30,8 @@ const NOTIFICATION_QUERY_KEYS: Record<NotificationType, readonly (readonly strin
   BOOKING_CANCELLED: [queryKeys.bookings.all, queryKeys.matching.all, queryKeys.payments.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
   BOOKING_COMPLETED: [queryKeys.bookings.all, queryKeys.matching.all, queryKeys.payments.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
   BOOKING_CONFIRMED: [queryKeys.bookings.all, queryKeys.applications.all, queryKeys.matching.all, queryKeys.jobs.all, queryKeys.teachers.all, queryKeys.publicProfiles.all],
+  // TrustID's results are in: the identity card reloads, then refreshes the onboarding documents itself.
+  IDENTITY_VERIFICATION: [queryKeys.identityVerification.all],
   INVOICE_PAID: [queryKeys.payments.all, queryKeys.bookings.all],
   JOB_MATCH: [queryKeys.matching.all, queryKeys.jobs.all],
   JOB_INVITATION: [queryKeys.invitations.all, queryKeys.jobs.all, queryKeys.bookings.all, queryKeys.applications.all, queryKeys.matching.all],

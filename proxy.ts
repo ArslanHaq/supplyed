@@ -63,7 +63,8 @@ export async function proxy(request: NextRequest) {
   const role = readAppRole(token.role);
   const applicationStatus = readApplicationStatus(token.applicationStatus);
   const setupComplete = role === "admin" || Boolean(role && hasSubmittedApplicationStatus(applicationStatus));
-  const isOnboardingRoute = pathname.startsWith("/onboarding");
+  // Account setup: the onboarding steps and the identity step teachers reach once their profile exists.
+  const isOnboardingRoute = pathname.startsWith("/onboarding") || pathname.startsWith("/verify-identity");
 
   if (isGuestOnlyRoute) {
     const invitation = invitationReturnPath(request.nextUrl.searchParams.get("returnTo"));
@@ -105,5 +106,6 @@ export const config = {
     "/settings/:path*",
     "/signup",
     "/teacher-profile/:path*",
+    "/verify-identity/:path*",
   ],
 };

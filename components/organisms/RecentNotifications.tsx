@@ -17,6 +17,7 @@ const ICON_BY_TYPE: Record<NotificationType, string> = {
   BOOKING_CANCELLED: "x",
   BOOKING_COMPLETED: "check",
   BOOKING_CONFIRMED: "checkCircle",
+  IDENTITY_VERIFICATION: "shield",
   INVOICE_PAID: "pound",
   JOB_MATCH: "zap",
   JOB_INVITATION: "mail",
