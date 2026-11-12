@@ -50,7 +50,7 @@ function PaymentSession({ invoice, onBusy, onClose, toast }: { invoice: PayableI
 
   return (
     <div className="invoice-payment-modal max-h-[90vh] overflow-y-auto p-6 sm:p-7">
-      <Tag tone="amber">Pay invoice</Tag>
+      <Tag tone="amber">Complete card payment</Tag>
       <h2 className="invoice-payment-amount mt-4 font-serif text-2xl">Pay {amount}</h2>
       {invoice.jobTitle ? <p className="mt-1 text-sm text-muted">{invoice.jobTitle}</p> : null}
 
@@ -128,7 +128,7 @@ function PaymentForm({ amount, invoice, onBusy, onClose, toast }: { amount: stri
       <PaymentElement options={{ layout: "tabs" }} onReady={() => setReady(true)} />
       {error ? <p className="mt-4 rounded-lg bg-danger-tint px-4 py-3 text-sm text-danger" role="alert">{error}</p> : null}
       <p className="mt-4 text-xs leading-5 text-muted">
-        Payments are processed by Stripe, our payments partner. Card details go straight to Stripe; SupplyEd never sees them.
+        Stripe securely collects your card details and handles any bank security check. SupplyED receives the payment result and masked card information only. Your saved automatic-payment card is managed in Billing.
       </p>
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Btn disabled={submitting} variant="ghost" onClick={onClose}>Cancel</Btn>
@@ -196,7 +196,7 @@ async function refreshPayments(queryClient: ReturnType<typeof useQueryClient>) {
 
 function announce(toast: ToastFn, status: InvoiceStatus | null) {
   if (status === "PAID") {
-    toast({ msg: "Thank you. The teacher is paid automatically.", title: "Payment received", tone: "success" });
+    toast({ msg: "Payment confirmed. The teacher's share goes to their Stripe balance; bank payout follows Stripe's availability and payout schedule.", title: "Payment received", tone: "success" });
   } else {
     toast({ msg: "Your payment is being processed. The invoice will show as paid once it clears.", title: "Payment submitted", tone: "success" });
   }

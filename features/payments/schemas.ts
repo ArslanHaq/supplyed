@@ -8,6 +8,7 @@ import type {
   PayoutAccount,
   PayoutBalance,
   PayoutSummary,
+  SchoolBillingSettings,
 } from "./types";
 
 export const invoiceStatuses = new Set<InvoiceStatus>(["PENDING", "OPEN", "PAID", "VOID", "UNCOLLECTIBLE"]);
@@ -65,6 +66,43 @@ export function normalizePayoutBalance(balance: Partial<PayoutBalance> | null | 
   };
 }
 
+export function normalizeSchoolBillingSettings(settings: Partial<SchoolBillingSettings> | null | undefined): SchoolBillingSettings {
+  const status = settings?.setupStatus;
+  const hasCard = settings?.paymentMethod?.type === "card";
+  return {
+    automaticPaymentsEnabled: hasCard && settings?.automaticPaymentsEnabled === true,
+    canEnableAutomaticPayments: hasCard && settings?.canEnableAutomaticPayments === true,
+    consentedAt: readDateIso(settings?.consentedAt),
+    consentTermsVersion: typeof settings?.consentTermsVersion === "string" ? settings.consentTermsVersion : null,
+    currentPayment: settings?.currentPayment?.id
+      ? {
+          bookingId: settings.currentPayment.bookingId ?? "",
+          jobTitle: settings.currentPayment.jobTitle ?? "",
+          failureCode: settings.currentPayment.failureCode ?? null,
+          failureMessage: settings.currentPayment.failureMessage ?? null,
+          id: settings.currentPayment.id,
+          nextAttemptAt: readDateIso(settings.currentPayment.nextAttemptAt),
+          paymentAttemptCount: readNumber(settings.currentPayment.paymentAttemptCount) ?? 0,
+          status: settings.currentPayment.status || "OPEN",
+          totalAmountPence: readNumber(settings.currentPayment.totalAmountPence) ?? 0,
+        }
+      : null,
+    lastSetupError: typeof settings?.lastSetupError === "string" && settings.lastSetupError.trim() ? settings.lastSetupError : null,
+    nextScheduledCollectionAt: readDateIso(settings?.nextScheduledCollectionAt),
+    paymentMethod: settings?.paymentMethod?.last4
+      ? {
+          label: settings.paymentMethod.label || `Payment method ending ${settings.paymentMethod.last4}`,
+          last4: settings.paymentMethod.last4,
+          mandateStatus: settings.paymentMethod.mandateStatus ?? null,
+          type: settings.paymentMethod.type || "unknown",
+        }
+      : null,
+    setupStatus: status === "PENDING" || status === "READY" || status === "FAILED" ? status : "NOT_STARTED",
+    stripeSyncError: typeof settings?.stripeSyncError === "string" && settings.stripeSyncError.trim() ? settings.stripeSyncError : null,
+    stripeSyncStatus: settings?.stripeSyncStatus === "PENDING" || settings?.stripeSyncStatus === "FAILED" ? settings.stripeSyncStatus : "SYNCED",
+  };
+}
+
 export function normalizeInvoice(invoice: Invoice): Invoice {
   const paidAt = readDateIso(invoice.paidAt);
   const rawStatus = typeof invoice.status === "string" ? invoice.status.toUpperCase() : "";
@@ -77,6 +115,8 @@ export function normalizeInvoice(invoice: Invoice): Invoice {
   return {
     ...invoice,
     amountRefundedPence: readNumber(invoice.amountRefundedPence) ?? 0,
+    billingPeriodKey: invoice.billingPeriodKey ?? null,
+    billingPeriodLabel: invoice.billingPeriodLabel ?? null,
     booking: {
       ...normalizeWorkUnits(invoice.booking),
       endDate: readDateIso(invoice.booking?.endDate),
@@ -87,6 +127,7 @@ export function normalizeInvoice(invoice: Invoice): Invoice {
       startDate: readDateIso(invoice.booking?.startDate),
     },
     createdAt: readDateIso(invoice.createdAt),
+    collectionMethod: invoice.collectionMethod === "charge_automatically" ? "charge_automatically" : "send_invoice",
     currency: invoice.currency ?? "gbp",
     disputeStatus: invoice.disputeStatus ?? null,
     dueAt: readDateIso(invoice.dueAt),
@@ -94,8 +135,12 @@ export function normalizeInvoice(invoice: Invoice): Invoice {
     hostedInvoiceUrl: invoice.hostedInvoiceUrl ?? null,
     invoiceNumber: invoice.invoiceNumber ?? null,
     invoicePdfUrl: invoice.invoicePdfUrl ?? null,
+    lastPaymentFailureCode: invoice.lastPaymentFailureCode ?? null,
+    lastPaymentFailureMessage: invoice.lastPaymentFailureMessage ?? null,
+    nextPaymentAttemptAt: readDateIso(invoice.nextPaymentAttemptAt),
     paidAt,
     payType: invoice.payType ?? "daily",
+    paymentAttemptCount: readNumber(invoice.paymentAttemptCount) ?? 0,
     poNumber: invoice.poNumber ?? null,
     rateAmount: readNumber(invoice.rateAmount) ?? 0,
     status,

@@ -24,7 +24,9 @@ import { PageHead, PostcodeLookup, SectionLoader } from "../molecules";
 import { NotificationSettings } from "./NotificationSettings";
 import { IdentitySettings } from "./IdentitySettings";
 import { PayoutSettings } from "./PayoutSettings";
+import { SchoolBillingSettingsCard } from "./SchoolBillingSettingsCard";
 import { PhoneVerification } from "../molecules/PhoneVerification";
+import { ProfileDocumentsManager } from "./ProfileDocumentsManager";
 
 type SettingsForm = {
   institution: SettingsInstitutionUpdateInput;
@@ -561,6 +563,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
           <nav aria-label="Settings sections">
             <a aria-current={activeSection === "settings-profile" ? "location" : undefined} className={activeSection === "settings-profile" ? "active" : undefined} href="#settings-profile" onClick={() => setActiveSection("settings-profile")}><Icon name="user" size={17} /> My profile</a>
             {role === "teacher" || role === "institution" ? <a aria-current={activeSection === "settings-details" ? "location" : undefined} className={activeSection === "settings-details" ? "active" : undefined} href="#settings-details" onClick={() => setActiveSection("settings-details")}><Icon name={role === "teacher" ? "award" : "building"} size={17} /> {role === "teacher" ? "Teaching details" : "School details"}</a> : null}
+            {role === "teacher" || role === "institution" ? <a href="#profile-documents"><Icon name="file" size={17} /> {role === "teacher" ? "Certificates" : "Achievements"}</a> : null}
             {role === "teacher" && profile.instructor?.id ? <a aria-current={activeSection === "identity-settings" ? "location" : undefined} className={activeSection === "identity-settings" ? "active" : undefined} href="#identity-settings" onClick={() => setActiveSection("identity-settings")}><Icon name="shield" size={17} /> Identity verification</a> : null}
             {role === "teacher" && profile.instructor?.id ? <a aria-current={activeSection === "payout-settings" ? "location" : undefined} className={activeSection === "payout-settings" ? "active" : undefined} href="#payout-settings" onClick={() => setActiveSection("payout-settings")}><Icon name="pound" size={17} /> Payouts</a> : null}
             {role === "teacher" || role === "institution" ? <a aria-current={activeSection === "notification-settings" ? "location" : undefined} className={activeSection === "notification-settings" ? "active" : undefined} href="#notification-settings" onClick={() => setActiveSection("notification-settings")}><Icon name="bell" size={17} /> Notifications</a> : null}
@@ -837,6 +840,8 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
           </div>
         </section>
 
+        {role === "teacher" || role === "institution" ? <div className="mt-6"><ProfileDocumentsManager role={role} toast={toast} /></div> : null}
+        {role === "institution" && profile.institution?.id ? <div className="mt-6"><SchoolBillingSettingsCard toast={toast} /></div> : null}
         {role === "teacher" && profile.instructor?.id ? <div className="mt-6"><IdentitySettings /></div> : null}
         {role === "teacher" && profile.instructor?.id ? <div className="mt-6"><PayoutSettings /></div> : null}
         {role === "teacher" || role === "institution" ? <div className="mt-6"><NotificationSettings role={role} toast={toast} /></div> : null}

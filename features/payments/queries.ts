@@ -12,6 +12,7 @@ import {
   normalizePaginatedInvoices,
   normalizePayoutAccount,
   normalizePayoutBalance,
+  normalizeSchoolBillingSettings,
 } from "./schemas";
 import type {
   AdminInvoiceListQuery,
@@ -20,6 +21,7 @@ import type {
   PaginatedInvoices,
   PayoutAccount,
   PayoutBalance,
+  SchoolBillingSettings,
 } from "./types";
 
 
@@ -43,6 +45,12 @@ export async function getMyPayoutBalance(): Promise<PayoutBalance> {
   if (!backendEnabled()) return normalizePayoutBalance(null);
 
   return normalizePayoutBalance(await api.get<PayoutBalance>("/payments/payout-account/balance", { cache: "no-store" }));
+}
+
+/** A school's reusable payment method and automatic-collection preference. */
+export async function getSchoolBillingSettings(): Promise<SchoolBillingSettings> {
+  if (!backendEnabled()) return normalizeSchoolBillingSettings(null);
+  return normalizeSchoolBillingSettings(await api.get<SchoolBillingSettings>("/payments/school-billing", { cache: "no-store" }));
 }
 
 /** A school's bills, or a teacher's earnings. */

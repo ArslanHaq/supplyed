@@ -392,7 +392,7 @@ function estimatedBookingPence(booking: Booking) {
 
 function pricingRule(payType?: string | null) {
   if (payType === "daily") return "A full daily rate is payable when all required shifts for that day are present; mixed days are held for review.";
-  if (payType === "fixed") return "Fixed-price work is not automatically reduced by attendance.";
+  if (payType === "fixed") return "All-absent attendance has no payment due. Mixed attendance needs review before the fixed contract amount is collected. Completed work with no attendance decisions uses the agreed total.";
   return "Hourly pay is calculated from the exact minutes of shifts marked present.";
 }
 

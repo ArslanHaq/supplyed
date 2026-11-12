@@ -1,6 +1,8 @@
 import type { InstructorBookingDates } from "./booking-dates";
+import type { ProfileDocument } from "@/features/profile-documents/types";
 
 export type InstructorPublicProfile = {
+  certificates: ProfileDocument[];
   bookings: InstructorBookingDates[] | null;
   bio: string | null;
   city: string | null;
@@ -22,6 +24,7 @@ export type InstructorPublicProfile = {
 };
 
 export type InstitutionPublicProfile = {
+  achievements: ProfileDocument[];
   address: string;
   city: string;
   county: string | null;
