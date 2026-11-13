@@ -24,6 +24,7 @@ import type { AppRole, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Field, Icon, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
+import { PaymentReleaseSchedule } from "./PaymentReleaseSchedule";
 import { BookingManualPayment } from "./BookingManualPayment";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { BookingAttendancePanel } from "./BookingAttendancePanel";
@@ -343,6 +344,7 @@ function BookingCard({
       {booking.status === "COMPLETED" || booking.invoice || booking.automaticPayment ? <InvoiceStrip booking={booking} onInvoiceDetails={onInvoiceDetails} role={role} /> : (
         booking.status === "CONFIRMED" ? <p className="booking-placement-payment"><Icon name="pound" size={14} />Attendance-backed payment periods are invoiced as they close. Automatic collection is used when the school has enabled it.</p> : null
       )}
+      <PaymentReleaseSchedule booking={booking} />
       {booking.status === "COMPLETED" ? <BookingTipPanel booking={booking} onTip={onTip} role={role} /> : null}
 
       <footer className="booking-placement-footer">
