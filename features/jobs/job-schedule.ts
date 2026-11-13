@@ -12,12 +12,41 @@ export type SchedulePreview = {
   periods: Array<{ label: string; amountPence: number | null; minutes: number; workingDays: number }>;
 };
 
+/** Weekdays occurring in an inclusive calendar-date range; independent of device timezone. */
+export function weekdaysInDateRange(startDate?: string, endDate?: string): number[] | null {
+  if (!startDate || !endDate) return null;
+  const start = startDate.slice(0, 10), end = endDate.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return null;
+  const first = Date.parse(`${start}T00:00:00Z`), last = Date.parse(`${end}T00:00:00Z`);
+  if (!Number.isFinite(first) || !Number.isFinite(last) || last < first ||
+    new Date(first).toISOString().slice(0, 10) !== start || new Date(last).toISOString().slice(0, 10) !== end) return null;
+  const count = Math.min(7, (last - first) / DAY_MS + 1);
+  return Array.from({ length: count }, (_, index) => (new Date(first).getUTCDay() + index) % 7).sort((a, b) => a - b);
+}
+
+/** Only date edits add newly available working weekdays; retain existing hours and choices. */
+export function scheduleForDateChange(schedule: JobSchedule, start: string, end: string, previousStart: string, previousEnd: string): JobSchedule {
+  const allowed = weekdaysInDateRange(start, end);
+  if (!allowed) return schedule;
+  const previous = weekdaysInDateRange(previousStart, previousEnd);
+  const slots = schedule.weekdays[0]?.slots ?? [{ start: "09:00", end: "15:00" }];
+  const weekdays = schedule.weekdays.filter(item => allowed.includes(item.day));
+  for (const day of allowed) {
+    if ((!previous || !previous.includes(day)) && day >= 1 && day <= 5 && !weekdays.some(item => item.day === day)) {
+      weekdays.push({ day, slots: slots.map(slot => ({ ...slot })) });
+    }
+  }
+  return { ...schedule, weekdays: weekdays.sort((a, b) => a.day - b.day) };
+}
+
 export function validateStructuredSchedule(schedule: JobSchedule | undefined, startDate?: string, endDate?: string) {
   if (!schedule) return "Add the working weekdays and hours.";
   if (!schedule.weekdays.length) return "Choose at least one working weekday.";
+  const allowedDays = weekdaysInDateRange(startDate, endDate);
   const days = new Set<number>();
   for (const weekday of schedule.weekdays) {
     if (!Number.isInteger(weekday.day) || weekday.day < 0 || weekday.day > 6 || days.has(weekday.day)) return "Each weekday can appear once.";
+    if (allowedDays && !allowedDays.includes(weekday.day)) return "Select only weekdays that occur within the assignment dates.";
     days.add(weekday.day);
     const error = slotsError(weekday.slots);
     if (error) return error;
@@ -112,7 +141,7 @@ export function scheduleIntervals(schedule: JobSchedule, startDate: string, endD
 }
 
 export function allowedPaymentFrequencies(payType: JobPayType): PaymentFrequency[] {
-  return payType === "fixed" ? ["completion", "milestone"] : payType === "daily" ? ["daily", "weekly", "monthly"] : ["hourly", "daily", "weekly", "monthly"];
+  return payType === "fixed" ? ["completion"] : ["daily", "weekly", "monthly"];
 }
 
 function slotsError(slots: Array<{ start: string; end: string }>) {

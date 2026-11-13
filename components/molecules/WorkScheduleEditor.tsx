@@ -1,3 +1,4 @@
+import { weekdaysInDateRange } from "@/features/jobs/job-schedule";
 import { useState } from "react";
 import type { JobSchedule, JobTimeSlot } from "@/types/supplyed";
 import { Btn, Checkbox } from "../atoms";
@@ -6,12 +7,14 @@ const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 const DEFAULT_SLOT: JobTimeSlot = { start: "09:00", end: "15:00" };
 const WHOLE_HOURS = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
 
-export function WorkScheduleEditor({ value, onChange, error }: {
-  value: JobSchedule; onChange: (value: JobSchedule) => void; error?: string;
+export function WorkScheduleEditor({ value, onChange, error, startDate, endDate }: {
+  value: JobSchedule; onChange: (value: JobSchedule) => void; error?: string; startDate?: string; endDate?: string;
 }) {
   const [sameHours, setSameHours] = useState(true);
+  const allowedDays = weekdaysInDateRange(startDate, endDate);
   const selected = new Map(value.weekdays.map((item) => [item.day, item.slots]));
   const updateDay = (day: number, slots: JobTimeSlot[] | null) => {
+    if (slots && allowedDays && !allowedDays.includes(day)) return;
     const weekdays = value.weekdays.filter((item) => item.day !== day);
     if (slots) weekdays.push({ day, slots });
     onChange({ ...value, weekdays: weekdays.sort((a, b) => a.day - b.day) });
@@ -28,8 +31,9 @@ export function WorkScheduleEditor({ value, onChange, error }: {
         <div><h3 className="font-semibold text-ink">Working weekdays and shifts</h3><p className="mt-1 text-xs leading-5 text-muted">Choose whole-hour times; minutes are always 00. Add split shifts separately. An end time earlier than the start is treated as an overnight shift.</p></div>
         <Checkbox checked={sameHours} label="Use the same hours for selected days" onChange={setSameHours} />
       </div>
+      {allowedDays ? <p className="mt-3 text-xs text-muted">Only days within the assignment dates can be selected. Selected weekdays repeat each week through the end date; weekends are optional.</p> : null}
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {DAYS.map((label, day) => <Checkbox key={label} checked={selected.has(day)} label={label} onChange={(checked) => updateDay(day, checked ? commonSlots.map((slot) => ({ ...slot })) : null)} />)}
+        {DAYS.map((label, day) => <Checkbox key={label} checked={selected.has(day)} disabled={Boolean(allowedDays && !allowedDays.includes(day))} label={label} onChange={(checked) => updateDay(day, checked ? commonSlots.map((slot) => ({ ...slot })) : null)} />)}
       </div>
       {sameHours && value.weekdays.length ? <SlotEditor label="Hours for all selected days" slots={commonSlots} onChange={(slots) => updateSlots(value.weekdays[0].day, slots)} /> : null}
       {!sameHours ? value.weekdays.map((item) => <SlotEditor key={item.day} label={DAYS[item.day]} slots={item.slots} onChange={(slots) => updateSlots(item.day, slots)} />) : null}
@@ -38,7 +42,7 @@ export function WorkScheduleEditor({ value, onChange, error }: {
         <div className="mt-3 space-y-3">
           {(value.exceptions ?? []).map((exception, index) => <div className="rounded-lg border border-border bg-surface p-3" key={`${exception.date}-${index}`}>
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-              <input aria-label="Exception date" className="input" type="date" value={exception.date} onChange={(event) => changeException(value, index, { ...exception, date: event.target.value }, onChange)} />
+              <input aria-label="Exception date" className="input" type="date" min={startDate} max={endDate} value={exception.date} onChange={(event) => changeException(value, index, { ...exception, date: event.target.value }, onChange)} />
               <select aria-label="Exception action" className="input" value={exception.kind} onChange={(event) => changeException(value, index, { date: exception.date, kind: event.target.value as typeof exception.kind, ...(event.target.value === "exclude" ? {} : { slots: exception.slots?.length ? exception.slots : [{ ...DEFAULT_SLOT }] }) }, onChange)}><option value="exclude">No work</option><option value="replace">Changed hours</option><option value="add">Additional hours</option></select>
               <Btn size="sm" variant="ghost" onClick={() => onChange({ ...value, exceptions: value.exceptions?.filter((_, itemIndex) => itemIndex !== index) })}>Remove</Btn>
             </div>

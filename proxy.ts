@@ -29,6 +29,14 @@ function redirectTo(request: NextRequest, pathname: string) {
   url.search = "";
   const invitation = invitationReturnPath(request.nextUrl.pathname) ?? invitationReturnPath(request.nextUrl.searchParams.get("returnTo"));
   if (invitation && ["/login", "/post-auth", "/onboarding"].includes(pathname)) url.searchParams.set("returnTo", invitation);
+  // Server actions expect a Flight response or an action redirect. A normal
+  // HTTP redirect is followed to HTML, which the action client cannot decode.
+  if (request.method === "POST" && request.headers.has("next-action")) {
+    return new NextResponse(null, {
+      status: 303,
+      headers: { "x-action-redirect": `${url.pathname}${url.search};replace` },
+    });
+  }
   return NextResponse.redirect(url);
 }
 
