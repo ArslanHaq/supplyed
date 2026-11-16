@@ -313,6 +313,8 @@ function BookingCard({
   const ownReview = booking.reviews.find((review) => review.reviewerType === reviewerType(role));
   const reviewable = isReviewableBookingStatus(booking.status);
   const canReview = reviewable && !ownReview;
+  const started = hasStarted(booking.startDate);
+  const notStartedHint = started ? undefined : "Available once the booking has started";
   const address = [booking.job.address, booking.job.city, booking.job.county, booking.job.postalCode]
     .map(part => part?.trim()).filter(Boolean).join(", ") || "Address not provided";
 
@@ -366,8 +368,8 @@ function BookingCard({
           </Btn>
           {booking.status === "CONFIRMED" && role === "institution" ? (
             <>
-              <Btn disabled={pending} size="sm" variant="secondary" onClick={() => onComplete(booking.id)}>Complete</Btn>
-              <Btn disabled={pending} size="sm" variant="danger" onClick={() => onNoShow(booking.id)}>No-show</Btn>
+              <Btn disabled={pending || !started} size="sm" title={notStartedHint} variant="secondary" onClick={() => onComplete(booking.id)}>Complete</Btn>
+              <Btn disabled={pending || !started} size="sm" title={notStartedHint} variant="danger" onClick={() => onNoShow(booking.id)}>No-show</Btn>
             </>
           ) : null}
           {booking.status === "CONFIRMED" ? (
@@ -566,9 +568,7 @@ function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; o
 
   if (!invoice) {
     const payment = booking.automaticPayment;
-    label = payment?.state === "REVIEW_REQUIRED"
-      ? "Automatic payment is not scheduled for this booking."
-      : payment?.message ?? "Checking automatic payment status.";
+    label = payment?.message ?? "Checking automatic payment status.";
     tag = payment ? bookingAutomaticPaymentTag(payment.state) : { text: "Checking payment", tone: "amber" };
     if (payment?.state === "DISABLED" && billingSettings.data?.automaticPaymentsEnabled) {
       tag = { text: "Automatic payments unavailable", tone: "amber" };
@@ -612,7 +612,7 @@ function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; o
         schoolAutomaticPaymentsEnabled: billingSettings.data?.automaticPaymentsEnabled,
         invoice: invoice ? { status: invoice.status, automatic, failed: Boolean(failure) || Boolean(cardApprovalRequired) } : null,
         payroll: booking.attendancePayroll,
-      }) ? <BookingManualPayment booking={booking} invoice={invoice ? { id: invoice.id, totalAmountPence: invoice.totalAmountPence, jobTitle: booking.job.title } : null} /> : null}
+      }) ? <BookingManualPayment booking={booking} invoice={invoice && invoice.status !== "PAID" ? { id: invoice.id, totalAmountPence: invoice.totalAmountPence, jobTitle: booking.job.title } : null} /> : null}
       {invoice && invoice.status !== "PENDING" ? <Btn size="sm" variant="ghost" onClick={() => onInvoiceDetails(invoice.id)}>Invoice details</Btn> : null}
       <Btn loading={paymentSync.isPending} loadingLabel="Checking payment" size="sm" variant="ghost" onClick={() => { setPaymentError(null); paymentSync.mutate(booking.id); }}>
         Refresh payment
@@ -672,6 +672,9 @@ function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
+/** Matches the server: a generous thank-you that still blocks a mistyped amount. */
+const MAX_TIP_PENCE = 100_000;
+
 function TipBookingModal({
   booking,
   error,
@@ -702,8 +705,12 @@ function TipBookingModal({
             return;
           }
           const amountPence = Math.round(Number(normalized) * 100);
-          if (!Number.isSafeInteger(amountPence) || amountPence < 30 || amountPence > 99_999_999) {
+          if (!Number.isSafeInteger(amountPence) || amountPence < 30) {
             setInputError("Enter a tip of at least £0.30.");
+            return;
+          }
+          if (amountPence > MAX_TIP_PENCE) {
+            setInputError("A tip can be at most £1,000.");
             return;
           }
           setInputError(undefined);
@@ -717,7 +724,7 @@ function TipBookingModal({
           {[5, 10, 20, 50].map((value) => <Btn key={value} size="sm" type="button" variant={amount === value.toFixed(2) ? "secondary" : "ghost"} onClick={() => { setAmount(value.toFixed(2)); setInputError(undefined); }}>£{value}</Btn>)}
         </div>
         <div className="mt-4"><Field error={inputError} label="Tip for the teacher" required>
-          <div className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">£</span><input className="input w-full pl-7" inputMode="decimal" min="0.30" onChange={(event) => { setAmount(event.target.value); if (inputError) setInputError(undefined); }} step="0.01" value={amount} /></div>
+          <div className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">£</span><input className="input w-full pl-7" inputMode="decimal" max={MAX_TIP_PENCE / 100} min="0.30" onChange={(event) => { setAmount(event.target.value); if (inputError) setInputError(undefined); }} step="0.01" value={amount} /></div>
         </Field></div>
         {error ? <p className="mt-4 rounded-lg border border-danger bg-danger-tint px-3 py-2 text-sm text-danger" role="alert">{error}</p> : null}
         <p className="mt-4 text-xs leading-5 text-muted">Stripe securely collects your card payment. The teacher receives the tip in their Stripe balance after payment succeeds; bank payout timing depends on Stripe availability and the teacher&apos;s payout schedule.</p>
@@ -826,6 +833,11 @@ function CreateInvoiceModal({
       </form>
     </Modal>
   );
+}
+
+/** The server refuses to complete a booking, or record a no-show, before it starts. */
+function hasStarted(startDate?: string | null) {
+  return !startDate || new Date(startDate).getTime() <= Date.now();
 }
 
 function isPastDue(dueAt?: string | null) {

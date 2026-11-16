@@ -95,6 +95,7 @@ function SchoolInvoices({ toast }: { toast: ToastFn }) {
           <>
             <Btn size="sm" variant="ghost" onClick={() => setDetailId(invoice.id)}>Details</Btn>
             {isFailedAutomaticPayment(invoice) ? <Btn size="sm" onClick={() => setPayTarget(payable(invoice))}>{requiresCardAuthentication(invoice.lastPaymentFailureCode) ? "Approve card payment" : "Complete card payment"}</Btn> : null}
+            {isUnpaid(invoice) && !isAutomatic(invoice) ? <Btn size="sm" onClick={() => setPayTarget(payable(invoice))}>Pay invoice</Btn> : null}
             <PdfLink invoice={invoice} />
           </>
         )}
