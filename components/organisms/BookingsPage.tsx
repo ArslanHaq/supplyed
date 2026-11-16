@@ -19,7 +19,7 @@ import { bookingDays, invoiceUnitsLimit } from "@/features/bookings/schemas";
 import { useBooking, useBookings, useCreateBookingReview, useSyncBookingPayment, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
 import { automaticPaymentPhase, requiresCardAuthentication } from "@/features/payments/payment-status";
 import { formatPence } from "@/features/payments/schemas";
-import { useCreateBookingTipCheckout, useInvoice, useSyncBookingTip } from "@/features/payments/use-payments";
+import { useCreateBookingTipCheckout, useCreateInvoice, useInvoice, useSyncBookingTip } from "@/features/payments/use-payments";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Field, Icon, Tag } from "../atoms";
@@ -53,6 +53,8 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
   const [reviewTarget, setReviewTarget] = useState<Booking | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const [invoiceDetailsId, setInvoiceDetailsId] = useState<string | null>(null);
+  const [invoiceTarget, setInvoiceTarget] = useState<Booking | null>(null);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const [tipTarget, setTipTarget] = useState<Booking | null>(null);
   const [tipError, setTipError] = useState<string | null>(null);
   const listQuery = useBookings({ jobId: ctx?.jobId, limit: 20, page, status: tabStatus[tab], ...filters }, !ctx?.bookingId);
@@ -81,6 +83,20 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
         tone: result.ok ? "success" : "danger",
       });
       if (result.ok) setReviewTarget(null);
+    },
+  });
+
+  const createInvoice = useCreateInvoice({
+    onError: () => setInvoiceError("The invoice request could not be submitted. Please try again."),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setInvoiceError(result.message);
+        return;
+      }
+      toast({ title: "Invoice sent", msg: "Stripe has emailed the invoice. You can also pay it from Billing.", tone: "success" });
+      setInvoiceTarget(null);
+      setInvoiceError(null);
+      setInvoiceDetailsId(result.data.id);
     },
   });
 
@@ -200,6 +216,7 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
                 cancelling={updateBooking.isPending && cancelTarget?.id === booking.id}
                 onCancel={setCancelTarget}
                 onComplete={(id) => updateBooking.mutate({ action: "complete", id })}
+                onInvoice={(selectedBooking) => { setInvoiceError(null); setInvoiceTarget(selectedBooking); }}
                 onInvoiceDetails={setInvoiceDetailsId}
                 onMessage={(selectedBooking) => go("messaging", { bookingId: selectedBooking.id })}
                 onOpenAttendance={(selectedBooking) => go("bookings", { bookingId: selectedBooking.id })}
@@ -235,6 +252,17 @@ export function BookingsPage({ go, role, toast, ctx }: Pick<RouteProps, "go" | "
         }}
         onSubmit={(reason) => {
           if (cancelTarget) updateBooking.mutate({ action: "cancel", id: cancelTarget.id, reason });
+        }}
+      />
+
+      <CreateInvoiceModal
+        key={`invoice-${invoiceTarget?.id ?? "none"}`}
+        booking={invoiceTarget}
+        error={invoiceError}
+        loading={createInvoice.isPending}
+        onClose={() => { if (!createInvoice.isPending) setInvoiceTarget(null); }}
+        onSubmit={(unitsWorked, poNumber) => {
+          if (invoiceTarget) createInvoice.mutate({ bookingId: invoiceTarget.id, poNumber, unitsWorked });
         }}
       />
 
@@ -274,6 +302,7 @@ function BookingCard({
   cancelling,
   onCancel,
   onComplete,
+  onInvoice,
   onInvoiceDetails,
   onMessage,
   onNoShow,
@@ -292,6 +321,7 @@ function BookingCard({
   cancelling: boolean;
   onCancel: (booking: Booking) => void;
   onComplete: (id: string) => void;
+  onInvoice: (booking: Booking) => void;
   onInvoiceDetails: (id: string) => void;
   onMessage: (booking: Booking) => void;
   onNoShow: (id: string) => void;
@@ -311,6 +341,8 @@ function BookingCard({
   const ownReview = booking.reviews.find((review) => review.reviewerType === reviewerType(role));
   const reviewable = isReviewableBookingStatus(booking.status);
   const canReview = reviewable && !ownReview;
+  const started = hasStarted(booking.startDate);
+  const notStartedHint = started ? undefined : "Available once the booking has started";
   const address = [booking.job.address, booking.job.city, booking.job.county, booking.job.postalCode]
     .map(part => part?.trim()).filter(Boolean).join(", ") || "Address not provided";
 
@@ -339,7 +371,7 @@ function BookingCard({
 
       {booking.cancelReason ? <p className="mt-4 rounded-lg bg-danger-tint px-3 py-2 text-sm text-danger">{booking.cancelReason}</p> : null}
 
-      {booking.status === "COMPLETED" || booking.invoice || booking.automaticPayment ? <InvoiceStrip booking={booking} onInvoiceDetails={onInvoiceDetails} role={role} /> : (
+      {booking.status === "COMPLETED" || booking.invoice || booking.automaticPayment ? <InvoiceStrip booking={booking} onInvoice={onInvoice} onInvoiceDetails={onInvoiceDetails} role={role} /> : (
         booking.status === "CONFIRMED" ? <p className="booking-placement-payment"><Icon name="pound" size={14} />Attendance-backed payment periods are invoiced as they close. Automatic collection is used when the school has enabled it.</p> : null
       )}
       {booking.status === "COMPLETED" ? <BookingTipPanel booking={booking} onTip={onTip} role={role} /> : null}
@@ -363,8 +395,8 @@ function BookingCard({
           </Btn>
           {booking.status === "CONFIRMED" && role === "institution" ? (
             <>
-              <Btn disabled={pending} size="sm" variant="secondary" onClick={() => onComplete(booking.id)}>Complete</Btn>
-              <Btn disabled={pending} size="sm" variant="danger" onClick={() => onNoShow(booking.id)}>No-show</Btn>
+              <Btn disabled={pending || !started} size="sm" title={notStartedHint} variant="secondary" onClick={() => onComplete(booking.id)}>Complete</Btn>
+              <Btn disabled={pending || !started} size="sm" title={notStartedHint} variant="danger" onClick={() => onNoShow(booking.id)}>No-show</Btn>
             </>
           ) : null}
           {booking.status === "CONFIRMED" ? (
@@ -525,7 +557,7 @@ function bookingHoursLabel(minutes: number) {
 }
 
 /** Latest payment state for a booking: recurring automatic periods or a manual invoice. */
-function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; onInvoiceDetails: (id: string) => void; role: AppRole }) {
+function InvoiceStrip({ booking, onInvoice, onInvoiceDetails, role }: { booking: Booking; onInvoice: (booking: Booking) => void; onInvoiceDetails: (id: string) => void; role: AppRole }) {
   const bookingInvoice = booking.invoice;
   const invoiceDetail = useInvoice(bookingInvoice?.status === "PENDING" ? null : bookingInvoice?.id ?? null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -559,12 +591,15 @@ function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; o
     : null;
   let label: string;
   let tag: { text: string; tone: "amber" | "green" | "red" | "ghost" } | null = null;
+  // A manual invoice covers what automatic collection will not: payments switched off, an older
+  // booking or a cancelled automatic payment. The server bills only work not already invoiced.
+  const automaticState = booking.automaticPayment?.state;
+  const canInvoice = role === "institution" && booking.status === "COMPLETED" && (!invoice || invoice.status === "PAID")
+    && (automaticState === "DISABLED" || automaticState === "REVIEW_REQUIRED");
 
   if (!invoice) {
     const payment = booking.automaticPayment;
-    label = payment?.state === "REVIEW_REQUIRED"
-      ? "Automatic payment is not scheduled for this booking."
-      : payment?.message ?? "Checking automatic payment status.";
+    label = payment?.message ?? "Checking automatic payment status.";
     tag = payment ? bookingAutomaticPaymentTag(payment.state) : { text: "Checking payment", tone: "amber" };
   } else if (invoice.status === "PENDING") {
     label = booking.automaticPayment?.message ?? `${formatPence(invoice.totalAmountPence)} automatic invoice is being prepared. This page will update when it is submitted to Stripe.`;
@@ -599,6 +634,7 @@ function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; o
         <span>{label}</span>
       </div>
       <div className="flex flex-wrap gap-2">
+      {canInvoice ? <Btn size="sm" onClick={() => onInvoice(booking)}>Create invoice</Btn> : null}
       {invoice && invoice.status !== "PENDING" ? <Btn size="sm" variant="ghost" onClick={() => onInvoiceDetails(invoice.id)}>Invoice details</Btn> : null}
       <Btn loading={paymentSync.isPending} loadingLabel="Checking payment" size="sm" variant="ghost" onClick={() => { setPaymentError(null); paymentSync.mutate(booking.id); }}>
         Refresh payment
@@ -658,6 +694,9 @@ function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
+/** Matches the server: a generous thank-you that still blocks a mistyped amount. */
+const MAX_TIP_PENCE = 100_000;
+
 function TipBookingModal({
   booking,
   error,
@@ -688,8 +727,12 @@ function TipBookingModal({
             return;
           }
           const amountPence = Math.round(Number(normalized) * 100);
-          if (!Number.isSafeInteger(amountPence) || amountPence < 30 || amountPence > 99_999_999) {
+          if (!Number.isSafeInteger(amountPence) || amountPence < 30) {
             setInputError("Enter a tip of at least £0.30.");
+            return;
+          }
+          if (amountPence > MAX_TIP_PENCE) {
+            setInputError("A tip can be at most £1,000.");
             return;
           }
           setInputError(undefined);
@@ -703,7 +746,7 @@ function TipBookingModal({
           {[5, 10, 20, 50].map((value) => <Btn key={value} size="sm" type="button" variant={amount === value.toFixed(2) ? "secondary" : "ghost"} onClick={() => { setAmount(value.toFixed(2)); setInputError(undefined); }}>£{value}</Btn>)}
         </div>
         <div className="mt-4"><Field error={inputError} label="Tip for the teacher" required>
-          <div className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">£</span><input className="input w-full pl-7" inputMode="decimal" min="0.30" onChange={(event) => { setAmount(event.target.value); if (inputError) setInputError(undefined); }} step="0.01" value={amount} /></div>
+          <div className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">£</span><input className="input w-full pl-7" inputMode="decimal" max={MAX_TIP_PENCE / 100} min="0.30" onChange={(event) => { setAmount(event.target.value); if (inputError) setInputError(undefined); }} step="0.01" value={amount} /></div>
         </Field></div>
         {error ? <p className="mt-4 rounded-lg border border-danger bg-danger-tint px-3 py-2 text-sm text-danger" role="alert">{error}</p> : null}
         <p className="mt-4 text-xs leading-5 text-muted">Stripe securely collects your card payment. The teacher receives the tip in their Stripe balance after payment succeeds; bank payout timing depends on Stripe availability and the teacher&apos;s payout schedule.</p>
@@ -739,7 +782,9 @@ function CreateInvoiceModal({
   const unitsValue = Number(units);
   const maxUnits = booking ? invoiceUnitsLimit(booking) : 9999.99;
   const validPay = ["daily", "hourly", "fixed"].includes(payType ?? "") && typeof booking?.payAmount === "number" && booking.payAmount > 0;
-  const unitsValid = validPay && (fixed || (units.trim() !== "" && Number.isFinite(unitsValue) && unitsValue >= 0.01 && unitsValue <= maxUnits && /^\d+(\.\d{1,2})?$/.test(units.trim())));
+  // Attendance-tracked bookings are billed from confirmed attendance; the server rejects any other figure.
+  const attendanceBased = !fixed && Boolean(booking?.attendancePayroll?.covered);
+  const unitsValid = validPay && (fixed || attendanceBased || (units.trim() !== "" && Number.isFinite(unitsValue) && unitsValue >= 0.01 && unitsValue <= maxUnits && /^\d+(\.\d{1,2})?$/.test(units.trim())));
   const rate = booking?.payAmount ?? 0;
   const teacherPay = fixed ? rate : unitsValid ? rate * unitsValue : 0;
 
@@ -755,18 +800,23 @@ function CreateInvoiceModal({
           setInputError(undefined);
           if (poNumber.trim().length > 100) { setPoError("Use 100 characters or fewer for the PO number."); return; }
           setPoError(undefined);
-          onSubmit(fixed ? undefined : unitsValue, poNumber.trim() || undefined);
+          onSubmit(fixed || attendanceBased ? undefined : unitsValue, poNumber.trim() || undefined);
         }}
       >
         <Tag tone="green">Invoice</Tag>
         <h2 className="mt-4 font-heading text-2xl">Invoice {booking?.instructor.fullName ?? "this booking"}</h2>
         <p className="mt-3 text-sm leading-6 text-muted">
-          Stripe sends the school an invoice with a secure payment link. The invoice includes the agreed teacher pay and
-          SupplyEd&apos;s processing fee. The teacher must finish setting up Stripe payouts before an invoice can be sent.
+          Stripe emails you an invoice with a secure payment link, and you can also pay it from Billing. The invoice includes
+          the agreed teacher pay and SupplyEd&apos;s processing fee. The teacher must finish setting up Stripe payouts before an
+          invoice can be sent.
         </p>
 
         {fixed ? (
           <p className="mt-4 rounded-lg bg-chalk px-3 py-2 text-sm">Fixed price: {formatPence(Math.round(rate * 100))}</p>
+        ) : attendanceBased ? (
+          <p className="mt-4 rounded-lg bg-chalk px-3 py-2 text-sm">
+            The {unit} are taken from confirmed attendance at {formatPence(Math.round(rate * 100))} per {unit === "hours" ? "hour" : "day"}. Work already invoiced is left out, so nothing is charged twice.
+          </p>
         ) : (
           <label className="mt-4 block text-sm font-semibold">
             {payType === "hourly" ? "Hours worked" : "Days worked"}
@@ -797,7 +847,7 @@ function CreateInvoiceModal({
           {poError ? <span className="mt-1 block text-sm font-normal text-danger" id="invoice-po-error" role="alert">{poError}</span> : null}
         </label>
 
-        {unitsValid ? (
+        {unitsValid && !attendanceBased ? (
           <p className="mt-4 text-sm">
             Estimated teacher pay: <strong>{formatPence(Math.round(teacherPay * 100))}</strong> <span className="text-muted">+ SupplyEd processing fee. The issued invoice confirms the total.</span>
           </p>
@@ -812,6 +862,11 @@ function CreateInvoiceModal({
       </form>
     </Modal>
   );
+}
+
+/** The server refuses to complete a booking, or record a no-show, before it starts. */
+function hasStarted(startDate?: string | null) {
+  return !startDate || new Date(startDate).getTime() <= Date.now();
 }
 
 function isPastDue(dueAt?: string | null) {

@@ -7,8 +7,9 @@ type PaymentState = {
   status: string;
 };
 
+/** ACTION_REQUIRED is the backend's own code; the others are raw Stripe codes it can also store. */
 export function requiresCardAuthentication(code: string | null | undefined) {
-  return code === "authentication_required" || code === "invoice_payment_intent_requires_action" || code === "payment_intent_requires_action";
+  return code === "ACTION_REQUIRED" || code === "authentication_required" || code === "invoice_payment_intent_requires_action" || code === "payment_intent_requires_action";
 }
 
 /** One interpretation shared by booking, invoice and school-billing screens. */
