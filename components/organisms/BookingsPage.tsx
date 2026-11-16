@@ -644,7 +644,7 @@ function BookingTipPanel({ booking, onTip, role }: { booking: Booking; onTip: (b
   if (!tip && role !== "institution") return null;
 
   let copy = role === "institution"
-    ? "A tip is optional and separate from the booking invoice. The teacher receives the amount you choose; Stripe shows the SupplyED processing fee before you confirm."
+    ? "A tip is optional and separate from the booking invoice. The teacher receives the full amount you choose; SupplyED adds no fee."
     : "No tip has been added to this booking.";
   if (tip?.status === "PAID") copy = `${formatPence(tip.tipAmountPence)} tip ${role === "teacher" ? "received in your Stripe balance" : "paid to the teacher's Stripe account"}. Bank payout timing is shown in Payouts.`;
   if (tip?.status === "PROCESSING") copy = `${formatPence(tip.tipAmountPence)} tip is processing. Stripe will confirm the payment result automatically.`;
@@ -719,7 +719,7 @@ function TipBookingModal({
       >
         <Tag tone="purple">Optional tip</Tag>
         <h2 className="mt-4 font-heading text-2xl">Thank {booking?.instructor.fullName ?? "this teacher"}</h2>
-        <p className="mt-3 text-sm leading-6 text-muted">The amount you enter goes to the teacher. SupplyED&apos;s existing configured processing fee is added on top and shown clearly in Stripe Checkout. This is a separate one-time payment and does not change the booking invoice.</p>
+        <p className="mt-3 text-sm leading-6 text-muted">The full amount you enter goes to the teacher; SupplyED adds no fee. This is a separate one-time payment and does not change the booking invoice.</p>
         <div className="mt-5 flex flex-wrap gap-2">
           {[5, 10, 20, 50].map((value) => <Btn key={value} size="sm" type="button" variant={amount === value.toFixed(2) ? "secondary" : "ghost"} onClick={() => { setAmount(value.toFixed(2)); setInputError(undefined); }}>£{value}</Btn>)}
         </div>
