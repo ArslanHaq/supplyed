@@ -13,6 +13,8 @@ import { PageHead, SectionLoader } from "../../molecules";
 import { DeleteJobModal } from "../DeleteJobModal";
 import { JobManagementList, type JobStatusFilter } from "../JobManagementList";
 import { WorkspaceCallout, WorkspaceEmptyState } from "../WorkspacePanels";
+import { ProfileCompletionCard } from "../ProfileCompletionCard";
+import { useProfileCompletion } from "@/features/profile-completion/use-profile-completion";
 
 export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "toast" | "tweaks">) {
   const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("ALL");
@@ -23,13 +25,14 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
   const applicantsQuery = useActiveJobApplicantCount();
   const invitationsQuery = useInvitations({ limit: 3, page: 1, status: "PENDING" });
   const bookingsQuery = useBookings({ limit: 3, page: 1, status: "CONFIRMED" });
+  const completionQuery = useProfileCompletion();
   const jobs = jobsQuery.data?.jobs ?? [];
   const counts = countsQuery.data?.statusCounts ?? jobsQuery.data?.statusCounts;
   const activeCount = counts?.ACTIVE ?? 0;
   const draftCount = counts?.DRAFT ?? 0;
   const visibleOnPage = jobs.filter((job) => getJobVisibilityLabel(job) === "live").length;
   const scheduledOnPage = jobs.filter((job) => getJobVisibilityLabel(job) === "scheduled").length;
-  const refreshing = jobsQuery.isFetching || countsQuery.isFetching || applicantsQuery.isFetching || invitationsQuery.isFetching || bookingsQuery.isFetching;
+  const refreshing = jobsQuery.isFetching || countsQuery.isFetching || applicantsQuery.isFetching || invitationsQuery.isFetching || bookingsQuery.isFetching || completionQuery.isFetching;
   const updateJob = useUpdateJob({
     onSuccess: (result) => toast({ title: result.ok ? "Job updated" : "Could not update job", msg: result.message ?? "The job status was updated.", tone: result.ok ? "success" : "danger" }),
     onError: () => toast({ title: "Could not update job", msg: "Please try again.", tone: "danger" }),
@@ -43,7 +46,7 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
   });
 
   function refresh() {
-    void Promise.allSettled([jobsQuery.refetch(), countsQuery.refetch(), applicantsQuery.refetch(), invitationsQuery.refetch(), bookingsQuery.refetch()]);
+    void Promise.allSettled([jobsQuery.refetch(), countsQuery.refetch(), applicantsQuery.refetch(), invitationsQuery.refetch(), bookingsQuery.refetch(), completionQuery.refetch()]);
   }
 
   return (
@@ -72,7 +75,12 @@ export function SchoolDashboard({ go, toast, tweaks }: Pick<RouteProps, "go" | "
           </div>
 
           <div>
-            <div className="section-title">Pending invitations</div>
+            <div className="section-title">Your school profile</div>
+            <div className="sidebar-panel card-pad">
+              <ProfileCompletionCard query={completionQuery} embedded />
+            </div>
+
+            <div className="section-title mt-7">Pending invitations</div>
             {invitationsQuery.isLoading ? <SectionLoader rows={3} /> : invitationsQuery.error ? <DashboardError message="Invitations could not be loaded." onRetry={() => void invitationsQuery.refetch()} /> : invitationsQuery.data?.invitations.length ? <div className="sidebar-panel overflow-hidden">{invitationsQuery.data.invitations.map((invitation) => <button className="flex w-full items-center gap-3 border-b border-border px-4 py-4 text-left last:border-0 hover:bg-chalk" key={invitation.id} onClick={() => go("job-invitations", { invitationId: invitation.id })} type="button"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700"><Icon name="mail" size={17} /></span><span className="min-w-0 flex-1"><strong className="block truncate">{invitation.instructor.fullName}</strong><span className="block truncate text-xs text-muted">{invitation.job.title}</span><small className="text-xs text-muted">Reply by {formatDate(invitation.expiresAt)}</small></span><Icon name="chevronRight" size={16} /></button>)}</div> : <WorkspaceEmptyState icon="mail" title="No pending invitations" message="Invite a teacher from the directory or a teacher profile." />}
             <Btn className="mt-3 w-full" variant="secondary" iconRight="arrowRight" onClick={() => go("job-invitations")}>View all invitations</Btn>
 

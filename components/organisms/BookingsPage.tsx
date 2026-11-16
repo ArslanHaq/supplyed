@@ -17,13 +17,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Booking, BookingInvoiceFilter, BookingListQuery, BookingStatus } from "@/features/bookings/types";
 import { bookingDays, invoiceUnitsLimit } from "@/features/bookings/schemas";
 import { useBooking, useBookings, useCreateBookingReview, useSyncBookingPayment, useUpdateBookingStatus } from "@/features/bookings/use-bookings";
-import { automaticPaymentPhase, requiresCardAuthentication } from "@/features/payments/payment-status";
+import { automaticPaymentPhase, canPayBookingManually, requiresCardAuthentication } from "@/features/payments/payment-status";
 import { formatPence } from "@/features/payments/schemas";
-import { useCreateBookingTipCheckout, useInvoice, useSyncBookingTip } from "@/features/payments/use-payments";
+import { useCreateBookingTipCheckout, useInvoice, useSchoolBillingSettings, useSyncBookingTip } from "@/features/payments/use-payments";
 import type { AppRole, RouteProps } from "@/types/supplyed";
 
 import { Avatar, Btn, Field, Icon, Tag } from "../atoms";
 import { Modal, PageHead, SectionLoader } from "../molecules";
+import { PaymentReleaseSchedule } from "./PaymentReleaseSchedule";
+import { BookingManualPayment } from "./BookingManualPayment";
 import { InvoiceDetailsModal } from "./InvoiceDetailsModal";
 import { BookingAttendancePanel } from "./BookingAttendancePanel";
 
@@ -342,6 +344,7 @@ function BookingCard({
       {booking.status === "COMPLETED" || booking.invoice || booking.automaticPayment ? <InvoiceStrip booking={booking} onInvoiceDetails={onInvoiceDetails} role={role} /> : (
         booking.status === "CONFIRMED" ? <p className="booking-placement-payment"><Icon name="pound" size={14} />Attendance-backed payment periods are invoiced as they close. Automatic collection is used when the school has enabled it.</p> : null
       )}
+      <PaymentReleaseSchedule booking={booking} />
       {booking.status === "COMPLETED" ? <BookingTipPanel booking={booking} onTip={onTip} role={role} /> : null}
 
       <footer className="booking-placement-footer">
@@ -526,6 +529,7 @@ function bookingHoursLabel(minutes: number) {
 
 /** Latest payment state for a booking: recurring automatic periods or a manual invoice. */
 function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; onInvoiceDetails: (id: string) => void; role: AppRole }) {
+  const billingSettings = useSchoolBillingSettings({ enabled: role === "institution" });
   const bookingInvoice = booking.invoice;
   const invoiceDetail = useInvoice(bookingInvoice?.status === "PENDING" ? null : bookingInvoice?.id ?? null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -540,7 +544,7 @@ function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; o
         dueAt: latestInvoice.dueAt,
         hostedInvoiceUrl: latestInvoice.hostedInvoiceUrl,
         paidAt: latestInvoice.paidAt,
-        status: latestInvoice.status === "PENDING" || latestInvoice.status === "PAID" || latestInvoice.status === "UNCOLLECTIBLE" ? latestInvoice.status : "OPEN",
+        status: latestInvoice.status,
         totalAmountPence: latestInvoice.totalAmountPence,
       }
     : bookingInvoice;
@@ -566,6 +570,10 @@ function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; o
       ? "Automatic payment is not scheduled for this booking."
       : payment?.message ?? "Checking automatic payment status.";
     tag = payment ? bookingAutomaticPaymentTag(payment.state) : { text: "Checking payment", tone: "amber" };
+    if (payment?.state === "DISABLED" && billingSettings.data?.automaticPaymentsEnabled) {
+      tag = { text: "Automatic payments unavailable", tone: "amber" };
+      label = "Your automatic-payment preference is on, but collection is currently unavailable. Refresh payment status to check again.";
+    }
   } else if (invoice.status === "PENDING") {
     label = booking.automaticPayment?.message ?? `${formatPence(invoice.totalAmountPence)} automatic invoice is being prepared. This page will update when it is submitted to Stripe.`;
     tag = booking.automaticPayment ? bookingAutomaticPaymentTag(booking.automaticPayment.state) : { text: "Preparing payment", tone: "amber" };
@@ -599,6 +607,12 @@ function InvoiceStrip({ booking, onInvoiceDetails, role }: { booking: Booking; o
         <span>{label}</span>
       </div>
       <div className="flex flex-wrap gap-2">
+      {canPayBookingManually({
+        role, bookingStatus: booking.status, automaticState: booking.automaticPayment?.state,
+        schoolAutomaticPaymentsEnabled: billingSettings.data?.automaticPaymentsEnabled,
+        invoice: invoice ? { status: invoice.status, automatic, failed: Boolean(failure) || Boolean(cardApprovalRequired) } : null,
+        payroll: booking.attendancePayroll,
+      }) ? <BookingManualPayment booking={booking} invoice={invoice ? { id: invoice.id, totalAmountPence: invoice.totalAmountPence, jobTitle: booking.job.title } : null} /> : null}
       {invoice && invoice.status !== "PENDING" ? <Btn size="sm" variant="ghost" onClick={() => onInvoiceDetails(invoice.id)}>Invoice details</Btn> : null}
       <Btn loading={paymentSync.isPending} loadingLabel="Checking payment" size="sm" variant="ghost" onClick={() => { setPaymentError(null); paymentSync.mutate(booking.id); }}>
         Refresh payment

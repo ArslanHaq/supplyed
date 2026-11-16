@@ -1,6 +1,6 @@
 import { useRateLimit } from "@/lib/rate-limit";
 import { useSchoolHiringAllowed } from "@/features/auth/use-school-hiring";
-import { allowedPaymentFrequencies, normalizeScheduleToWholeHours, schedulePreview, validateStructuredSchedule } from "@/features/jobs/job-schedule";
+import { allowedPaymentFrequencies, scheduleForDateChange, normalizeScheduleToWholeHours, schedulePreview, validateStructuredSchedule } from "@/features/jobs/job-schedule";
 import { validateJobDateOrder } from "@/features/jobs/date-validation";
 import { DynamicSelect, DynamicMultiSelect } from "@/components/molecules/DynamicDropdown";
 
@@ -23,7 +23,7 @@ import { validateUkCity, validateUkCountry, validateUkPostcode, validateUkRegion
 import type { JobSchedule, PaymentFrequency, RouteProps } from "@/types/supplyed";
 
 import { Btn, Checkbox, Field } from "../atoms";
-import { JobListingPreview, type JobListingPreviewData, PageHead, PostcodeLookup, previewDateRange } from "../molecules";
+import { SelectDropdown, JobListingPreview, type JobListingPreviewData, PageHead, PostcodeLookup, previewDateRange } from "../molecules";
 import { InstantJobMatchesModal } from "./InstantJobTeachersPage";
 
 type PostingMode = "instant" | "brief";
@@ -298,6 +298,7 @@ function PostJobEditor({
     }
     setForm((current) => {
       const next = { ...current, [key]: value } as JobFormState;
+      if (key === "startDate" || key === "endDate") next.schedule = scheduleForDateChange(current.schedule, next.startDate, next.endDate, current.startDate, current.endDate);
       if (key === "payType") {
         const allowed = allowedPaymentFrequencies(value as JobFormState["payType"]);
         if (!allowed.includes(next.paymentFrequency)) next.paymentFrequency = allowed[0];
@@ -306,6 +307,7 @@ function PostJobEditor({
     });
     setErrors((current) => {
       const nextForm = { ...form, [key]: value } as JobFormState;
+      if (key === "startDate" || key === "endDate") nextForm.schedule = scheduleForDateChange(form.schedule, nextForm.startDate, nextForm.endDate, form.startDate, form.endDate);
       if (["startDate", "endDate", "liveFrom", "expiresAt", "payType", "hours", "days", "timeZone", "schedule", "paymentFrequency"].includes(key)) {
         const dates = validateJobDates(nextForm);
         const schedule = validateStructuredSchedule(nextForm.schedule, nextForm.startDate, nextForm.endDate);
@@ -377,6 +379,7 @@ function PostJobEditor({
         initialPayload.startDate = editingJob.startDate ?? undefined;
         initialPayload.endDate = editingJob.endDate ?? undefined;
         initialPayload.schedule = editingJob.schedule ?? undefined;
+        initialPayload.paymentFrequency = (editingJob.paymentFrequency as PaymentFrequency | undefined) ?? initialPayload.paymentFrequency;
       }
       updateJob.mutate(toChangedJobUpdateInput(payload, initialPayload, savedJobIdRef.current));
       return;
@@ -507,13 +510,17 @@ function PostJobEditor({
                 onChange={(event) => updateForm("payAmount", event.target.value)}
               />
             </Field>
-            <Field error={errors.paymentFrequency} label="Payment frequency" hint={form.payType === "fixed" ? "Fixed work is collected after completion: all-absent attendance has no payment due, and mixed attendance needs review. Completion without attendance decisions uses the agreed total. Milestones require approval." : "Each period includes present attendance and excludes absent shifts. A completed booking with no attendance decisions uses the accepted scheduled units."}>
-              <select className="input" value={form.paymentFrequency} onChange={(event) => updateForm("paymentFrequency", event.target.value as PaymentFrequency)}>
-                {allowedPaymentFrequencies(form.payType).map((frequency) => <option key={frequency} value={frequency}>{frequency === "completion" ? "On completion" : frequency[0].toUpperCase() + frequency.slice(1)}</option>)}
-              </select>
+            <Field error={errors.paymentFrequency} label="Payment frequency" hint={form.payType === "fixed" ? "Fixed work is collected after completion: all-absent attendance has no payment due, and mixed attendance needs review. Completion without attendance decisions uses the agreed total." : "Each period includes present attendance and excludes absent shifts. A completed booking with no attendance decisions uses the accepted scheduled units."}>
+              <SelectDropdown
+                aria-label="Payment frequency"
+                error={Boolean(errors.paymentFrequency)}
+                value={form.paymentFrequency}
+                options={allowedPaymentFrequencies(form.payType).map((frequency) => ({ value: frequency, label: frequency === "completion" ? "After completion" : frequency[0].toUpperCase() + frequency.slice(1) }))}
+                onChange={(value) => updateForm("paymentFrequency", value as PaymentFrequency)}
+              />
             </Field>
-            <Field label="Currency"><select className="input" value={form.currency} onChange={(event) => updateForm("currency", event.target.value)}><option value="GBP">GBP — British pound</option></select></Field>
-            {form.paymentFrequency === "weekly" || form.paymentFrequency === "monthly" ? <Field label="Payment period boundary" hint="Assignment start handles final partial periods; calendar aligns to Monday or month start."><select className="input" value={form.periodAnchor} onChange={(event) => updateForm("periodAnchor", event.target.value as JobFormState["periodAnchor"])}><option value="ASSIGNMENT_START">From assignment start</option><option value="CALENDAR">Calendar periods</option></select></Field> : null}
+            <Field label="Currency"><SelectDropdown aria-label="Currency" value={form.currency} options={[{ value: "GBP", label: "GBP — British pound" }]} onChange={(value) => updateForm("currency", value)} /></Field>
+            {form.paymentFrequency === "weekly" || form.paymentFrequency === "monthly" ? <Field label="Payment period boundary" hint="Assignment start handles final partial periods; calendar aligns to Monday or month start."><SelectDropdown aria-label="Payment period boundary" value={form.periodAnchor} options={[{ value: "ASSIGNMENT_START", label: "From assignment start" }, { value: "CALENDAR", label: "Calendar periods" }]} onChange={(value) => updateForm("periodAnchor", value as JobFormState["periodAnchor"])} /></Field> : null}
           </div>
           <Field error={errors.startDate} hint="First calendar date of the assignment. Must be after the listing closes." label="Assignment start">
             <input className="input" min={earliestWorkStart} type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} />
@@ -525,7 +532,7 @@ function PostJobEditor({
             <select className="input" value={form.timeZone} onChange={(event) => updateForm("timeZone", event.target.value)}><option value="Europe/London">Europe/London (GMT/BST)</option></select>
           </Field>
           <Field error={errors.workersRequired} label="Number of workers"><input className="input" min={1} max={100} step={1} type="number" value={form.workersRequired} onChange={(event) => updateForm("workersRequired", event.target.value)} /></Field>
-          <WorkScheduleEditor value={form.schedule} error={errors.schedule} onChange={(schedule) => updateForm("schedule", schedule)} />
+          <WorkScheduleEditor startDate={form.startDate} endDate={form.endDate} value={form.schedule} error={errors.schedule} onChange={(schedule) => updateForm("schedule", schedule)} />
           <div className="md:col-span-2"><ScheduleEstimate form={form} /></div>
           <Field error={errors.liveFrom} hint="Teachers can see and apply for the published job from midnight on this UK date. Leave blank to open when published. Must be before Work start." label="Live from">
             <input className="input" min={todayDate} max={form.startDate ? shiftCalendarDay(form.startDate, -1) : undefined} type="date" value={form.liveFrom} onChange={(event) => updateForm("liveFrom", event.target.value)} />
@@ -993,10 +1000,10 @@ function toFormState(job: Job): JobFormState {
     days: job.days == null ? "" : String(job.days),
     payType: isPayType(job.payType) ? job.payType : "daily",
     currency: job.currency ?? "GBP",
-    paymentFrequency: (job.paymentFrequency as PaymentFrequency) ?? (job.payType === "fixed" ? "completion" : job.payType === "hourly" ? "hourly" : "daily"),
+    paymentFrequency: job.payType === "fixed" ? "completion" : job.paymentFrequency === "weekly" || job.paymentFrequency === "monthly" ? job.paymentFrequency : "daily",
     periodAnchor: job.periodAnchor === "CALENDAR" ? "CALENDAR" : "ASSIGNMENT_START",
     timeZone: job.timeZone ?? "Europe/London",
-    schedule: normalizeScheduleToWholeHours(job.schedule ?? initialForm.schedule),
+    schedule: scheduleForDateChange(normalizeScheduleToWholeHours(job.schedule ?? initialForm.schedule), ukCalendarDate(job.startDate), ukCalendarDate(job.endDate), ukCalendarDate(job.startDate), ukCalendarDate(job.endDate)),
     workersRequired: String(job.workersRequired ?? 1),
     postalCode: job.postalCode ?? "",
     qtsRequired: job.description?.includes("QTS requested.") ?? false,

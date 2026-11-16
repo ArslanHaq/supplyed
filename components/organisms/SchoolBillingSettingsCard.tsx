@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
   useCreateSchoolBillingSetup,
@@ -19,6 +19,8 @@ import { Modal, SectionLoader } from "../molecules";
 
 export function SchoolBillingSettingsCard({ toast }: { toast: ToastFn }) {
   const settingsQuery = useSchoolBillingSettings();
+  const switchId = useId();
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const [removeOpen, setRemoveOpen] = useState(false);
   const [consent, setConsent] = useState(false);
   const [setupConsent, setSetupConsent] = useState(false);
@@ -33,9 +35,13 @@ export function SchoolBillingSettingsCard({ toast }: { toast: ToastFn }) {
     },
   });
   const update = useUpdateSchoolAutomaticPayments({
-    onError: () => toast({ title: "Setting not saved", msg: "Automatic payment settings could not be updated.", tone: "danger" }),
+    onError: () => {
+      setUpdateError("Automatic payment settings could not be updated. Please try again.");
+      toast({ title: "Setting not saved", msg: "Automatic payment settings could not be updated.", tone: "danger" });
+    },
     onSuccess: (result) => {
       toast({ title: result.ok ? "Billing preference saved" : "Setting not saved", msg: result.message ?? (result.ok ? "Your billing preference was updated." : "Automatic payment settings could not be updated."), tone: result.ok ? "success" : "danger" });
+      setUpdateError(result.ok ? null : result.message || "Automatic payment settings could not be updated.");
       if (result.ok) setConsent(false);
     },
   });
@@ -122,27 +128,39 @@ export function SchoolBillingSettingsCard({ toast }: { toast: ToastFn }) {
                 onChange={setConsent}
               />
             </div> : null}
-            {hasCard ? <div className="mt-4 flex flex-wrap gap-2">
-              {!settings.automaticPaymentsEnabled ?
-              <Btn
-                disabled={busy || settings.automaticPaymentsEnabled || !settings.canEnableAutomaticPayments || !consent}
-                loading={update.isPending && !settings.automaticPaymentsEnabled}
-                loadingLabel="Enabling"
-                onClick={() => update.mutate({ automaticPaymentsEnabled: true, consentToTerms: true })}
-              >
-                Enable automatic payments
-              </Btn> : null}
-              {settings.automaticPaymentsEnabled ?
-              <Btn
-                disabled={busy || !settings.automaticPaymentsEnabled}
-                loading={update.isPending && settings.automaticPaymentsEnabled}
-                loadingLabel="Disabling"
-                variant="secondary"
-                onClick={() => update.mutate({ automaticPaymentsEnabled: false })}
-              >
-                Turn off automatic payments
-              </Btn> : null}
-            </div> : null}
+            <div className="mt-4 flex items-center justify-between gap-4 rounded-lg bg-chalk p-4">
+              <div>
+                <p id={`${switchId}-label`} className="font-semibold text-ink">Enable automatic payments</p>
+                <p id={`${switchId}-description`} className="mt-1 text-xs leading-5 text-muted">
+                  {settings.automaticPaymentsEnabled
+                    ? "On — eligible booking payments are charged to your saved card."
+                    : "Off — pay eligible unpaid bookings manually from Bookings or Billing."}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <span className="text-sm font-semibold" aria-live="polite">{update.isPending ? "Saving…" : settings.automaticPaymentsEnabled ? "On" : "Off"}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.automaticPaymentsEnabled}
+                  aria-labelledby={`${switchId}-label`}
+                  aria-describedby={`${switchId}-description`}
+                  aria-busy={update.isPending}
+                  disabled={busy || (!settings.automaticPaymentsEnabled && (!hasCard || !settings.canEnableAutomaticPayments || !consent))}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50 ${settings.automaticPaymentsEnabled ? "bg-brand" : "bg-slate-400"}`}
+                  onClick={() => {
+                    setUpdateError(null);
+                    update.mutate(settings.automaticPaymentsEnabled
+                      ? { automaticPaymentsEnabled: false }
+                      : { automaticPaymentsEnabled: true, consentToTerms: true });
+                  }}
+                >
+                  <span aria-hidden="true" className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${settings.automaticPaymentsEnabled ? "translate-x-5" : "translate-x-0"}`} />
+                </button>
+              </div>
+            </div>
+            {!settings.automaticPaymentsEnabled && hasCard && settings.canEnableAutomaticPayments && !consent ? <p className="mt-2 text-xs text-muted">Confirm the authorisation above to turn automatic payments on.</p> : null}
+            {updateError ? <p className="mt-3 text-sm text-danger" role="alert">{updateError}</p> : null}
             {!settings.canEnableAutomaticPayments && !settings.automaticPaymentsEnabled ? <p className="mt-3 text-xs text-muted">Complete card setup above to enable automatic payments.</p> : null}
             {settings.consentedAt && settings.consentTermsVersion ? <p className="mt-3 text-xs text-muted">Latest authorisation: {formatDateTime(settings.consentedAt)} · terms {settings.consentTermsVersion}</p> : null}
           </div>

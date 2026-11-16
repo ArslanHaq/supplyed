@@ -78,6 +78,10 @@ export const queryKeys = {
     all: ["profile-documents"] as const,
     list: () => [...queryKeys.profileDocuments.all, "list"] as const,
   },
+  profileCompletion: {
+    all: ["profile-completion"] as const,
+    mine: () => [...queryKeys.profileCompletion.all, "mine"] as const,
+  },
   reviews: {
     all: ["reviews"] as const,
     institution: (institutionId: string) => [...queryKeys.reviews.all, "institution", institutionId] as const,

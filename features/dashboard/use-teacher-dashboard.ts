@@ -10,6 +10,7 @@ import { usePayoutAccount, usePayoutBalance } from "@/features/payments/use-paym
 import { useSettingsProfile } from "@/features/settings/use-settings";
 import { fetchJson } from "@/lib/query/fetch-json";
 import { queryKeys } from "@/lib/query/keys";
+import { useProfileCompletion } from "@/features/profile-completion/use-profile-completion";
 
 import {
   dashboardDayStart,
@@ -29,6 +30,7 @@ export function useTeacherDashboard() {
   }, []);
   const from = dashboardDayStart(now);
   const profileQuery = useSettingsProfile();
+  const completionQuery = useProfileCompletion();
   const bookingsQuery = useQuery({
     queryKey: [...queryKeys.bookings.all, "teacher-dashboard", from],
     queryFn: async () => ({ bookings: await loadDashboardPages(async (pagination) => {
@@ -68,7 +70,7 @@ export function useTeacherDashboard() {
   });
   const payoutAccountQuery = usePayoutAccount();
   const balanceQuery = usePayoutBalance({ enabled: payoutAccountQuery.data?.ready === true });
-  const queries = [profileQuery, bookingsQuery, applicationsQuery, invitationsQuery, payoutAccountQuery];
+  const queries = [profileQuery, completionQuery, bookingsQuery, applicationsQuery, invitationsQuery, payoutAccountQuery];
   const refresh = async () => {
     setNow(Date.now());
     await Promise.allSettled([...queries.map((query) => query.refetch()), ...(payoutAccountQuery.data?.ready ? [balanceQuery.refetch()] : [])]);
@@ -77,6 +79,7 @@ export function useTeacherDashboard() {
   return {
     now,
     profileQuery,
+    completionQuery,
     bookingsQuery,
     applicationsQuery,
     invitationsQuery,
