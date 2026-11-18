@@ -22,6 +22,7 @@ import type { AppRole, ApplicationStatus, RouteProps } from "@/types/supplyed";
 import { Avatar, Btn, buttonClassName, Checkbox, Field, Icon, Tag } from "../atoms";
 import { PageHead, PostcodeLookup, SectionLoader } from "../molecules";
 import { NotificationSettings } from "./NotificationSettings";
+import { DegreeSettings } from "./DegreeSettings";
 import { IdentitySettings } from "./IdentitySettings";
 import { PayoutSettings } from "./PayoutSettings";
 import { SchoolBillingSettingsCard } from "./SchoolBillingSettingsCard";
@@ -843,6 +844,7 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
         {role === "teacher" || role === "institution" ? <div className="mt-6"><ProfileDocumentsManager role={role} toast={toast} /></div> : null}
         {role === "institution" && profile.institution?.id ? <div className="mt-6"><SchoolBillingSettingsCard toast={toast} /></div> : null}
         {role === "teacher" && profile.instructor?.id ? <div className="mt-6"><IdentitySettings /></div> : null}
+        {role === "teacher" && profile.instructor?.id ? <DegreeSettings /> : null}
         {role === "teacher" && profile.instructor?.id ? <div className="mt-6"><PayoutSettings /></div> : null}
         {role === "teacher" || role === "institution" ? <div className="mt-6"><NotificationSettings role={role} toast={toast} /></div> : null}
 

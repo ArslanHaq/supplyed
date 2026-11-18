@@ -1,5 +1,6 @@
 import type { InstructorBookingDates } from "./booking-dates";
 import type { ProfileDocument } from "@/features/profile-documents/types";
+import type { VerifiedDegree } from "@/features/degree-checks/types";
 
 export type InstructorPublicProfile = {
   certificates: ProfileDocument[];
@@ -21,6 +22,8 @@ export type InstructorPublicProfile = {
   ratingCount: number;
   skills: string[];
   subjects: string[];
+  /** Their degree as the university confirmed it through Hedd. */
+  verifiedDegree: VerifiedDegree | null;
 };
 
 export type InstitutionPublicProfile = {

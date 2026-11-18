@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { describeDegree } from "@/features/degree-checks/presentation";
 import { useInstructorPublicProfile } from "@/features/public-profiles/use-public-profiles";
 import { useInstructorReviews } from "@/features/reviews/use-reviews";
 import type { RouteProps } from "@/types/supplyed";
@@ -93,6 +94,7 @@ export function PublicTeacherProfilePage({ ctx, go, role }: Pick<RouteProps, "ct
             <ProfileFact icon="pound" label="Daily rate" value={formatMoney(profile.dailyRate, profile.currency, "day")} />
             <ProfileFact icon="clock" label="Hourly rate" value={formatMoney(profile.hourlyRate, profile.currency, "hour")} />
             <ProfileFact icon="shield" label="DBS status" value={profile.dbsVerified ? "Verified" : "Not verified"} tone={profile.dbsVerified ? "success" : undefined} />
+            {profile.verifiedDegree ? <ProfileFact icon="award" label="Degree · verified with the university" value={describeDegree(profile.verifiedDegree)} tone="success" /> : null}
             <ProfileFact icon="pin" label="Location" value={location} />
             {role === "institution" ? <TeacherBookingDates bookings={profile.bookings} /> : null}
           </div>

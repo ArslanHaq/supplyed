@@ -1,6 +1,7 @@
 
 import { selectionValues } from "@/features/teaching-catalogue/selection";
 import { normalizeInstructorBookingDates } from "./booking-dates";
+import type { VerifiedDegree } from "@/features/degree-checks/types";
 import type { InstitutionPublicProfile, InstructorPublicProfile } from "./types";
 import { normalizeProfileDocuments } from "@/features/profile-documents/schemas";
 
@@ -40,6 +41,20 @@ export function normalizeInstructorPublicProfile(profile: InstructorPublicProfil
     ratingCount: numberOrNull(profile.ratingCount) ?? 0,
     skills: strings(profile.skills),
     subjects: strings(profile.subjects),
+    verifiedDegree: normalizeVerifiedDegree(profile.verifiedDegree),
+  };
+}
+
+function normalizeVerifiedDegree(degree: VerifiedDegree | null | undefined): VerifiedDegree | null {
+  const text = (value: unknown) => (typeof value === "string" && value.trim() ? value : null);
+  const institutionName = text(degree?.institutionName);
+  if (!degree || !institutionName) return null;
+  return {
+    classification: text(degree.classification),
+    courseName: text(degree.courseName),
+    institutionName,
+    qualificationType: text(degree.qualificationType),
+    yearOfAward: numberOrNull(degree.yearOfAward),
   };
 }
 
