@@ -123,8 +123,6 @@ function institutionPayload(input: SettingsInstitutionUpdateInput) {
   return withoutUndefined({
     address: text(input.address),
     city: validateUkCity(input.city).value,
-    complianceContact: optionalText(input.complianceContact),
-    complianceEmail: optionalText(input.complianceEmail),
     countryCode: validateUkCountry(input.countryCode, { required: true }).value,
     county: validateUkRegion(input.county).value,
     coverTypes: normalizeStringArray(input.coverTypes),
@@ -148,7 +146,7 @@ function mergeLocalSnapshot(current: SettingsProfileSnapshot, input: SettingsUpd
     ...current,
     institution:
       input.role === "institution" && input.institution && current.institution
-        ? { ...current.institution, ...school, schoolType: input.institution.schoolType || current.institution.schoolType, staffingNeeds: actualSubjects(input.institution.staffingNeeds, schoolOther === undefined ? undefined : cleanOtherSubjects(schoolOther)) }
+        ? { ...current.institution, ...school, complianceContact: current.institution.complianceContact, complianceEmail: current.institution.complianceEmail, schoolType: input.institution.schoolType || current.institution.schoolType, staffingNeeds: actualSubjects(input.institution.staffingNeeds, schoolOther === undefined ? undefined : cleanOtherSubjects(schoolOther)) }
         : current.institution,
     instructor:
       input.role === "teacher" && input.instructor && current.instructor

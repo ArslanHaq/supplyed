@@ -96,8 +96,6 @@ const emptyInstructor: SettingsInstructorUpdateInput = {
 const emptyInstitution: SettingsInstitutionUpdateInput = {
   address: "",
   city: "",
-  complianceContact: "",
-  complianceEmail: "",
   countryCode: "GB",
   county: "",
   coverTypes: [],
@@ -159,8 +157,6 @@ function createForm(snapshot?: SettingsProfileSnapshot): SettingsForm {
         ? {
             address: snapshot.institution.address,
             city: snapshot.institution.city,
-            complianceContact: snapshot.institution.complianceContact,
-            complianceEmail: snapshot.institution.complianceEmail,
             countryCode: snapshot.institution.countryCode,
             county: snapshot.institution.county,
             coverTypes: snapshot.institution.coverTypes,
@@ -790,18 +786,20 @@ export function SettingsPage({ go, state, toast, verified }: Pick<RouteProps, "g
                     value={form.institution.typicalPupilCount}
                   />
                 </Field>
-                <Field error={errors.complianceContact} label="Compliance contact">
+                <Field label="Compliance contact" hint="Read-only in Settings.">
                   <input
-                    className="input"
-                    onChange={(event) => updateInstitution("complianceContact", event.target.value)}
-                    value={form.institution.complianceContact}
+                    className="input bg-chalk text-muted"
+                    readOnly
+                    value={profile.institution?.complianceContact ?? ""}
+                    placeholder="Not provided"
                   />
                 </Field>
-                <Field error={errors.complianceEmail} label="Compliance email">
+                <Field label="Compliance email" hint="Read-only in Settings.">
                   <input
-                    className="input"
-                    onChange={(event) => updateInstitution("complianceEmail", event.target.value)}
-                    value={form.institution.complianceEmail}
+                    className="input bg-chalk text-muted"
+                    readOnly
+                    value={profile.institution?.complianceEmail ?? ""}
+                    placeholder="Not provided"
                   />
                 </Field>
                 <div className="sm:col-span-2">
