@@ -99,9 +99,9 @@ jobs:
             echo "::warning::GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET not set in the dev environment; server .env left unchanged."
             exit 0
           fi
-          printf 'GOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\n' "$GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT_SECRET" |
+          printf 'GOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\nAUTH_BACKEND_OAUTH_ENABLED=true\n' "$GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT_SECRET" |
             ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "${SERVER_USER}@${SERVER_HOST}" \
-            'set -euo pipefail; env_file="$HOME/supplyed/frontend-dev/.env"; test -f "$env_file" || { echo "Missing $env_file"; exit 1; }; tmp="$(mktemp "$env_file.XXXXXX")"; grep -Ev "^(GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET)=" "$env_file" > "$tmp" || true; cat >> "$tmp"; cat "$tmp" > "$env_file"; rm -f "$tmp"'
+            'set -euo pipefail; env_file="$HOME/supplyed/frontend-dev/.env"; test -f "$env_file" || { echo "Missing $env_file"; exit 1; }; tmp="$(mktemp "$env_file.XXXXXX")"; grep -Ev "^(GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET|AUTH_BACKEND_OAUTH_ENABLED)=" "$env_file" > "$tmp" || true; cat >> "$tmp"; cat "$tmp" > "$env_file"; rm -f "$tmp"'
 
       - name: Build and restart frontend
         shell: bash
