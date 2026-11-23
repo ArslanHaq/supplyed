@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 
 import { defaultState } from "@/data/supplyed";
+import { PaymentSetupProvider } from "@/features/payments/payment-setup";
 import { WorkspaceAccountProvider } from "@/features/auth/workspace-account";
 import { useOnboardingSnapshot } from "@/features/onboarding/use-onboarding";
 import { startRouteLoading } from "@/lib/navigation-loading";
@@ -31,6 +32,7 @@ import { MessagingPage } from "./MessagingPage";
 import { MyProfilePage } from "./MyProfilePage";
 import { MyJobsPage } from "./MyJobsPage";
 import { PostJobPage } from "./PostJobPage";
+import { PaymentSetupNotice } from "./PaymentSetupNotice";
 import { SecurityPage } from "./SecurityPage";
 import { SettingsPage } from "./SettingsPage";
 import { TeacherDashboard } from "./TeacherDashboard";
@@ -194,16 +196,19 @@ function RouteShell({ page, sessionState, initialContext }: { page: AppPage; ses
 
   return (
     <WorkspaceAccountProvider key={sessionState.id} value={{ id: sessionState.id, role: state.role, applicationStatus: state.applicationStatus }}>
-      <AppChrome
-        verified={onboarding?.verified === true}
-        state={routeProps.state}
-        go={go}
-        onLanding={goHome}
-        onLogout={logout}
-        onSettings={() => go("settings")}
-      >
-        {content}
-      </AppChrome>
+      <PaymentSetupProvider>
+        <AppChrome
+          verified={onboarding?.verified === true}
+          state={routeProps.state}
+          go={go}
+          onLanding={goHome}
+          onLogout={logout}
+          onSettings={() => go("settings")}
+        >
+          <PaymentSetupNotice />
+          {content}
+        </AppChrome>
+      </PaymentSetupProvider>
       <TweaksPanel state={routeProps.state} setState={setState} tweaks={tweaks} setTweaks={setTweaks} />
       <ToastStack autoCloseMs={3200} onDismiss={dismissToast} toasts={state.toasts} />
     </WorkspaceAccountProvider>

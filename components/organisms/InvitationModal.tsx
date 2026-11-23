@@ -57,7 +57,7 @@ export function InvitationModal({ teacher, accountId, initialJobId, onClose, go 
   const [review, setReview] = useState<JobCreateInput | null>(null);
   const [error, setError] = useInvitationError();
   const retryAfter = useRateLimit();
-  const hiringAllowed = useSchoolHiringAllowed();
+  const hiringAllowed = useSchoolHiringAllowed(true);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);

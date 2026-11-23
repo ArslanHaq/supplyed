@@ -1,3 +1,4 @@
+import { usePaymentSetup } from "@/features/payments/payment-setup";
 import { useRateLimit } from "@/lib/rate-limit";
 import { useSchoolHiringAllowed } from "@/features/auth/use-school-hiring";
 import { allowedPaymentFrequencies, scheduleForDateChange, normalizeScheduleToWholeHours, schedulePreview, validateStructuredSchedule } from "@/features/jobs/job-schedule";
@@ -207,10 +208,13 @@ function PostJobEditor({
   const [errors, setErrors] = useState<JobFormErrors>({});
   const [savingIntent, setSavingIntent] = useState<"draft" | "publish" | null>(null);
   const [publishedInstantJob, setPublishedInstantJob] = useState<Job | null>(null);
-  const savedJobIdRef = useRef<string | undefined>(editingJob?.id);
+  const [savedJobId, setSavedJobId] = useState<string | undefined>(editingJob?.id);
   const savingRef = useRef(false);
   const retryAfter = useRateLimit();
   const hiringAllowed = useSchoolHiringAllowed();
+  const paymentSetup = usePaymentSetup();
+  const canPublish = hiringAllowed && (editingJob?.status === "ACTIVE" || paymentSetup.ready);
+  const canSaveDraft = Boolean(savedJobId) || paymentSetup.ready;
   const isEditing = Boolean(editingJob);
   const todayDate = getTodayDateInput();
   const savedExpiryUnchanged = Boolean(form.originalExpiresAt && form.expiresAt === ukCalendarDate(form.originalExpiresAt, true));
@@ -225,7 +229,7 @@ function PostJobEditor({
     onSuccess: async (result) => {
       savingRef.current = false;
       if (!result.ok) {
-        if (result.savedJobId) savedJobIdRef.current = result.savedJobId;
+        if (result.savedJobId) setSavedJobId(result.savedJobId);
         setSavingIntent(null);
         if (result.fieldErrors) {
           setErrors(result.fieldErrors as JobFormErrors);
@@ -366,12 +370,12 @@ function PostJobEditor({
   }
 
   function saveJob(status: Extract<JobCreateInput["status"], "ACTIVE" | "DRAFT">) {
-    if (savingRef.current || retryAfter || (status === "ACTIVE" && !hiringAllowed)) return;
+    if (savingRef.current || retryAfter || (!savedJobId && !paymentSetup.ready) || (status === "ACTIVE" && !canPublish)) return;
     savingRef.current = true;
     const payload = toJobCreateInput(form, mode, status, catalogue.data);
     setSavingIntent(status === "ACTIVE" ? "publish" : "draft");
 
-    if (savedJobIdRef.current) {
+    if (savedJobId) {
       const initialPayload = toJobCreateInput(initialValues, initialMode, status, catalogue.data);
       // Compare against the persisted representation so an editable legacy draft
       // is migrated from date-times/fractional hours when it is next saved.
@@ -381,7 +385,7 @@ function PostJobEditor({
         initialPayload.schedule = editingJob.schedule ?? undefined;
         initialPayload.paymentFrequency = (editingJob.paymentFrequency as PaymentFrequency | undefined) ?? initialPayload.paymentFrequency;
       }
-      updateJob.mutate(toChangedJobUpdateInput(payload, initialPayload, savedJobIdRef.current));
+      updateJob.mutate(toChangedJobUpdateInput(payload, initialPayload, savedJobId, editingJob?.status));
       return;
     }
 
@@ -670,7 +674,7 @@ function PostJobEditor({
             </Btn>
             <div className="flex flex-wrap justify-end gap-2">
               <Btn
-                disabled={saving || Boolean(retryAfter)}
+                disabled={saving || Boolean(retryAfter) || !canSaveDraft}
                 loading={savingIntent === "draft"}
                 loadingLabel="Saving draft"
                 onClick={saveDraft}
@@ -680,7 +684,7 @@ function PostJobEditor({
                 Save draft
               </Btn>
               <Btn
-                disabled={saving || Boolean(retryAfter) || !hiringAllowed}
+                disabled={saving || Boolean(retryAfter) || !canPublish}
                 iconRight="send"
                 loading={savingIntent === "publish"}
                 loadingLabel="Updating"
@@ -737,7 +741,7 @@ function PostJobEditor({
           </Btn>
           <div className="flex flex-wrap justify-end gap-2">
             <Btn
-              disabled={saving || Boolean(retryAfter)}
+              disabled={saving || Boolean(retryAfter) || !canSaveDraft}
               loading={savingIntent === "draft"}
               loadingLabel="Saving draft"
               onClick={saveDraft}
@@ -747,7 +751,7 @@ function PostJobEditor({
               Save draft
             </Btn>
             <Btn
-              disabled={saving || Boolean(retryAfter) || (step === 4 && !hiringAllowed)}
+              disabled={saving || Boolean(retryAfter) || (step === 4 && !canPublish)}
               iconRight={step === 4 ? "send" : "arrow"}
               loading={savingIntent === "publish"}
               loadingLabel={isEditing ? "Updating" : "Publishing"}
@@ -949,8 +953,9 @@ function toJobCreateInput(form: JobFormState, mode: PostingMode, status: Extract
   };
 }
 
-function toChangedJobUpdateInput(current: JobCreateInput, initial: JobCreateInput, id: string): JobUpdateInput {
-  const update: Record<string, unknown> = { id, status: current.status };
+function toChangedJobUpdateInput(current: JobCreateInput, initial: JobCreateInput, id: string, persistedStatus?: Job["status"]): JobUpdateInput {
+  const update: Record<string, unknown> = { id };
+  if (current.status !== persistedStatus) update.status = current.status;
   for (const key of Object.keys(current) as Array<keyof JobCreateInput>) {
     if (key === "status") continue;
     const currentValue = current[key];

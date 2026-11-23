@@ -29,16 +29,18 @@ export function paymentReleaseSchedule(booking: Pick<Booking, "schedule" | "star
       const weekStart = booking.periodAnchor === "CALENDAR"
         ? addDays(shift.date, -((new Date(`${shift.date}T12:00:00Z`).getUTCDay() + 6) % 7))
         : addDays(start, Math.floor((Date.parse(`${shift.date}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / DAY / 7) * 7);
-      key = `week:${weekStart}`; label = "Weekly payment"; releaseDate = addDays(weekStart, 7);
+      key = booking.periodAnchor === "CALENDAR" ? `week:${weekStart}` : `week:${Math.floor((Date.parse(`${shift.date}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / DAY / 7) + 1}`; label = "Weekly payment"; releaseDate = addDays(weekStart, 7);
     } else if (frequency === "monthly") {
+      let monthIndex = 0;
       let monthStart = `${shift.date.slice(0, 7)}-01`;
       if (booking.periodAnchor !== "CALENDAR") {
         let index = 0;
         while (shift.date >= addMonths(start, index + 1)) index++;
+        monthIndex = index;
         monthStart = addMonths(start, index);
         releaseDate = addMonths(start, index + 1);
       } else releaseDate = addMonths(monthStart, 1);
-      key = `month:${monthStart}`; label = "Monthly payment";
+      key = booking.periodAnchor === "CALENDAR" ? `month:${monthStart.slice(0, 7)}` : `month:${monthIndex + 1}`; label = "Monthly payment";
     } else if (frequency === "completion") {
       key = "completion"; label = "After completion"; releaseDate = endDate; releaseTime = shift.end;
     }
@@ -52,4 +54,10 @@ export function paymentReleaseSchedule(booking: Pick<Booking, "schedule" | "star
     } else groups.set(key, { key, label, dates: [shift.date], releaseDate, releaseTime, shifts: 1 });
   }
   return [...groups.values()].sort((a, b) => `${a.releaseDate}T${a.releaseTime}`.localeCompare(`${b.releaseDate}T${b.releaseTime}`));
+}
+
+/** Paid status comes only from confirmed invoices / backend payroll, never estimated dates. */
+export function isReleasePeriodPaid(booking: Pick<Booking, "invoice" | "attendancePayroll">, period: ReleasePeriod): boolean {
+  if (booking.invoice?.status === "PAID" && (booking.invoice.billingPeriodKey == null || booking.invoice.billingPeriodKey === "completion" || booking.invoice.billingPeriodKey === period.key)) return true;
+  return Boolean(booking.attendancePayroll?.periods.some(item => item.key === period.key && item.paid));
 }

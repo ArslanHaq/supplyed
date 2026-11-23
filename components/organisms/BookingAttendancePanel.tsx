@@ -148,6 +148,7 @@ export function BookingAttendancePanel({ booking, initialDate, role, toast }: {
                   <AttendanceShiftCard
                     busy={busy}
                     canManage={canManage}
+                    paid={Boolean(booking.attendancePayroll?.periods.some(period => period.paid && period.shiftIds?.includes(shift.id)))}
                     index={index}
                     key={shift.id}
                     now={now}
@@ -226,9 +227,10 @@ function AttendanceHeader({ booking, role, tracked }: { booking: Booking; role: 
   );
 }
 
-function AttendanceShiftCard({ busy, canManage, index, now, onCorrect, onRecord, onReview, shift }: {
+function AttendanceShiftCard({ busy, paid, canManage, index, now, onCorrect, onRecord, onReview, shift }: {
   busy: boolean;
   canManage: boolean;
+  paid: boolean;
   index: number;
   now?: number;
   onCorrect: (status: "PRESENT" | "ABSENT") => void;
@@ -253,7 +255,8 @@ function AttendanceShiftCard({ busy, canManage, index, now, onCorrect, onRecord,
       </div>
       {shift.reason ? <p className="mt-2 rounded bg-chalk p-2 text-xs"><strong>Recorded reason:</strong> {shift.reason}</p> : null}
 
-      {canManage ? (
+      {paid ? <p className="mt-3 rounded-lg border border-border bg-chalk p-3 text-sm"><Tag tone="green">Paid</Tag><span className="ml-2">Attendance is locked because payment for this period is completed.</span></p> : null}
+      {canManage && !paid ? (
         <div className="mt-3 rounded-lg border border-border bg-chalk/30 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-semibold">School attendance</span>
@@ -266,7 +269,7 @@ function AttendanceShiftCard({ busy, canManage, index, now, onCorrect, onRecord,
         </div>
       ) : null}
 
-      {canManage && pendingRequest ? (
+      {canManage && !paid && pendingRequest ? (
         <div className="mt-3 rounded-lg border border-warning/40 bg-warning-tint p-3 text-xs">
           <strong>Existing teacher correction request: {statusLabel(pendingRequest.requestedStatus)}</strong>
           <p className="mt-1">{pendingRequest.reason}</p>
@@ -356,6 +359,7 @@ function PeriodAmount({ label, value }: { label: string; value: string }) {
 }
 
 function PeriodState({ period }: { period: AttendancePayroll["periods"][number] }) {
+  if (period.paid) return <Tag tone="green">Paid</Tag>;
   if (period.reviewAmountPence) return <Tag tone="amber">Review</Tag>;
   if (period.pendingAmountPence) return <Tag tone="amber">Pending</Tag>;
   if (period.payableAmountPence) return <Tag tone="green">Ready</Tag>;

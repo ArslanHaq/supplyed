@@ -13,6 +13,7 @@ export function TeacherHireActions({ teacher, go, jobId, hideMessage = false }: 
   const [hireOpen, setHireOpen] = useState(false);
   const account = useWorkspaceAccount();
   const hiringAllowed = useSchoolHiringAllowed();
+  const inviteAllowed = useSchoolHiringAllowed(true);
   const message = useStartConversation();
   const job = useJob(jobId ?? "", Boolean(jobId));
   if (account.role !== "institution") return null;
@@ -22,7 +23,7 @@ export function TeacherHireActions({ teacher, go, jobId, hideMessage = false }: 
   const disabled = blocked;
   return <div className="teacher-hire-actions mt-3 text-left">
     <div className="flex flex-wrap gap-2">
-      {jobId && job.data?.jobType === "BRIEF" ? null : <Btn disabled={disabled || (Boolean(jobId) && job.isLoading)} icon="send" size="sm" onClick={() => setHireOpen(true)}>Invite to job</Btn>}
+      {jobId && job.data?.jobType === "BRIEF" ? null : <Btn disabled={!inviteAllowed || (Boolean(jobId) && job.isLoading)} icon="send" size="sm" onClick={() => setHireOpen(true)}>Invite to job</Btn>}
       {!hideMessage ? <Btn disabled={disabled} icon="message" loading={message.isPending} loadingLabel="Opening" size="sm" variant="secondary" onClick={() => message.mutate({ instructorId: teacher.id }, { onSuccess: conversation => go("messaging", { conversationId: conversation.id }) })}>Message</Btn> : null}
     </div>
     {blocked ? <p className="mt-2 text-xs text-muted">Available when your school account is approved.</p> : null}

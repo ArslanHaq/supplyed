@@ -1,3 +1,5 @@
+import { usePaymentSetup } from "@/features/payments/payment-setup";
+import { PaymentSetupNotice } from "./PaymentSetupNotice";
 import { useRateLimit } from "@/lib/rate-limit";
 import { formatPlannedUnits } from "@/features/jobs/work-units";
 import { useState } from "react";
@@ -17,6 +19,7 @@ import { JobScheduleCalendar } from "./JobScheduleCalendar";
 
 export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" | "go" | "toast" | "role">) {
   const retryAfter = useRateLimit();
+  const paymentSetup = usePaymentSetup();
   const [open, setOpen] = useState(false);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const [coverLetter, setCoverLetter] = useState("");
@@ -75,7 +78,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
   });
 
   function submitApplication() {
-    if (!job || !isJobOpenForApplications(job) || role !== "teacher" || createApplication.isPending || retryAfter || hasApplied || scheduleBlocked) return;
+    if (!paymentSetup.ready || !job || !isJobOpenForApplications(job) || role !== "teacher" || createApplication.isPending || retryAfter || hasApplied || scheduleBlocked) return;
 
     const normalizedCoverLetter = coverLetter.trim();
     if (normalizedCoverLetter.length > MAX_PROPOSAL_LENGTH) {
@@ -198,7 +201,7 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
               View school profile
             </Btn>
           ) : null}
-          {available ? <Btn className="w-full" disabled={role === "teacher" && (hasApplied || existingApplicationQuery.isLoading || availabilityQuery.isLoading || scheduleBlocked)} size="lg" onClick={() => {
+          {available ? <Btn className="w-full" disabled={role === "teacher" && (!paymentSetup.ready || hasApplied || existingApplicationQuery.isLoading || availabilityQuery.isLoading || scheduleBlocked)} size="lg" onClick={() => {
             if (role === "institution") {
               go("find-teachers", { jobId: job.id });
               return;
@@ -258,11 +261,12 @@ export function JobDetailPage({ ctx, go, toast, role }: Pick<RouteProps, "ctx" |
                 </span>
               </div>
               </div>
+              <PaymentSetupNotice compact />
               <footer className="proposal-dialog-actions">
                 <p className="proposal-submit-note"><Icon name="file" size={16} /><span>Your application{isEmptyRichText(coverLetter) ? "" : " and proposal"} will be shared with {job.institution?.name || job.school}.</span></p>
                 <div className="proposal-action-buttons">
                 <Btn disabled={createApplication.isPending} variant="ghost" onClick={closeModal}>Cancel</Btn>
-                <Btn disabled={Boolean(retryAfter) || coverLetter.length > MAX_PROPOSAL_LENGTH} iconRight="arrowRight" loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
+                <Btn disabled={!paymentSetup.ready || Boolean(retryAfter) || coverLetter.length > MAX_PROPOSAL_LENGTH} iconRight="arrowRight" loading={createApplication.isPending} loadingLabel="Submitting application" onClick={submitApplication}>Apply for job</Btn>
                 </div>
               </footer>
             </article>

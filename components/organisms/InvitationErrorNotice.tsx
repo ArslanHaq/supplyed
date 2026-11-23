@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { reportPaymentSetupRequired } from "@/features/payments/payment-setup";
 import { reportSchoolInactive } from "@/features/auth/use-school-hiring";
+import { isPaymentSetupError } from "@/features/payments/setup-readiness";
+import { PaymentSetupNotice } from "./PaymentSetupNotice";
 import { recordRateLimit } from "@/lib/rate-limit";
 import { userFacingError } from "@/lib/user-facing-error";
 import { Icon } from "../atoms";
@@ -13,12 +16,14 @@ export function useInvitationError() {
   const setError = useCallback((message: string, details: Omit<InvitationError, "message"> = {}) => {
     recordRateLimit(details);
     reportSchoolInactive(details);
-    updateError(message ? { message, status: details.status, requestId: details.requestId } : null);
+    reportPaymentSetupRequired(details);
+    updateError(message ? { message, ...details } : null);
   }, []);
   return [error, setError] as const;
 }
 
 export function InvitationErrorNotice({ error }: { error: InvitationError }) {
+  if (isPaymentSetupError(error)) return <PaymentSetupNotice compact />;
   const message = userFacingError(error.message, { status: error.status });
   const conflict = /already booked during these dates/i.test(message);
   return (

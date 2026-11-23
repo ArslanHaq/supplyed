@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import type { Booking } from "@/features/bookings/types";
-import { paymentReleaseSchedule } from "@/features/bookings/payment-release-schedule";
+import { isReleasePeriodPaid, paymentReleaseSchedule } from "@/features/bookings/payment-release-schedule";
 import { Btn, Icon, Tag } from "../atoms";
 import { Modal } from "../molecules";
 
@@ -45,7 +45,7 @@ export function PaymentReleaseSchedule({ booking }: { booking: Booking }) {
         <p className="mt-2 text-xs leading-5 text-muted">Weekly and monthly dates follow the agreed {booking.periodAnchor === "CALENDAR" ? "calendar" : "assignment-start"} boundaries. Marking a booking completed can make its final period eligible earlier. After-completion payments require the booking to be marked completed.</p>
         {booking.status === "CANCELLED" || booking.status === "NO_SHOW" ? <p className="mt-3 text-sm text-warning">This booking is {booking.status === "CANCELLED" ? "cancelled" : "marked no-show"}. The schedule below is hypothetical and does not mean a payment is owed.</p> : null}
         {periods.length ? <ol className="mt-5 space-y-3">{periods.map((period, index) => <li key={period.key} className="rounded-xl border border-border bg-chalk/40 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{index + 1}. {period.label}</h3><span className="text-xs text-muted">{period.dates.length} working {period.dates.length === 1 ? "day" : "days"} · {period.shifts} {period.shifts === 1 ? "shift" : "shifts"}</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{index + 1}. {period.label}</h3><Tag tone={isReleasePeriodPaid(booking, period) ? "green" : "amber"}>{isReleasePeriodPaid(booking, period) ? "Payment completed" : "Pending"}</Tag><span className="text-xs text-muted">{period.dates.length} working {period.dates.length === 1 ? "day" : "days"} · {period.shifts} {period.shifts === 1 ? "shift" : "shifts"}</span></div>
           <p className="mt-2 font-semibold text-brand">{calendarLabel(period.releaseDate)} at {period.releaseTime}</p>
           <p className="mt-1 text-xs text-muted">Estimated eligibility{period.key === "completion" ? " after the final planned shift, subject to completion" : " when this payment period closes"}</p>
           <details className="mt-3 text-sm"><summary className="cursor-pointer text-muted">Working dates covered</summary><ul className="mt-2 space-y-1">{period.dates.map(date => <li key={date}>{calendarLabel(date)}</li>)}</ul></details>

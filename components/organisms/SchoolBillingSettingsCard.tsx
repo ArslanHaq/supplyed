@@ -70,7 +70,7 @@ export function SchoolBillingSettingsCard({ toast }: { toast: ToastFn }) {
 
   return (
     <>
-      <section className="card card-pad-lg mb-6" aria-labelledby="automatic-billing-title">
+      <section id="school-payment-settings" className="card card-pad-lg mb-6" aria-labelledby="automatic-billing-title">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">

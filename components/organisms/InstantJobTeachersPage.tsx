@@ -31,7 +31,7 @@ const disabledMessages: Record<string, string> = {
 export function InstantJobTeachersSection({ job, go, toast }: { job: Job; go: RouteProps["go"]; toast: RouteProps["toast"] }) {
   const [page, setPage] = useState(1);
   const [inviteTarget, setInviteTarget] = useState<RecommendedInstructor | null>(null);
-  const hiringAllowed = useSchoolHiringAllowed();
+  const hiringAllowed = useSchoolHiringAllowed(true);
   const teachersQuery = useRecommendedInstructors(job.id, { limit: PAGE_SIZE, minScore: 0, page }, job.jobType === "INSTANT");
   const teachers = [...(teachersQuery.data?.instructors ?? [])].sort((left, right) => right.match.score - left.match.score);
   const pagination = teachersQuery.data?.pagination;
@@ -101,7 +101,7 @@ export function InstantJobMatchesModal({
 }) {
   const [page, setPage] = useState(1);
   const [inviteTarget, setInviteTarget] = useState<RecommendedInstructor | null>(null);
-  const hiringAllowed = useSchoolHiringAllowed();
+  const hiringAllowed = useSchoolHiringAllowed(true);
   const teachersQuery = useRecommendedInstructors(job.id, { limit: POST_PUBLISH_PAGE_SIZE, minScore: 0, page }, true);
   const teachers = [...(teachersQuery.data?.instructors ?? [])].sort((left, right) => right.match.score - left.match.score);
   const pagination = teachersQuery.data?.pagination;
@@ -187,7 +187,7 @@ export function InstantJobTeachersPage({ ctx, go, toast }: Pick<RouteProps, "ctx
   const jobId = ctx.jobId ?? "";
   const [page, setPage] = useState(1);
   const [inviteTarget, setInviteTarget] = useState<RecommendedInstructor | null>(null);
-  const hiringAllowed = useSchoolHiringAllowed();
+  const hiringAllowed = useSchoolHiringAllowed(true);
   const jobQuery = useJob(jobId, Boolean(jobId));
   const instant = jobQuery.data?.jobType === "INSTANT";
   const teachersQuery = useRecommendedInstructors(jobId, { limit: PAGE_SIZE, minScore: 0, page }, instant);
@@ -303,7 +303,7 @@ function RelatedTeacherCard({ item, inviteAllowed, onInvite, onProfile }: { item
 function RelatedTeacherInvitationModal({ item, jobId, jobTitle, onClose, onSent }: { item: RecommendedInstructor; jobId: string; jobTitle: string; onClose: () => void; onSent: () => void | Promise<void> }) {
   const teacher = item.instructor;
   const client = useQueryClient();
-  const hiringAllowed = useSchoolHiringAllowed();
+  const hiringAllowed = useSchoolHiringAllowed(true);
   const retryAfter = useRateLimit();
   const storageKey = `supplyed:instant-invitation:v1:${jobId}:${teacher.id}`;
   const [message, setMessage] = useState("");

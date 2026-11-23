@@ -1,4 +1,5 @@
 "use client";
+import { usePaymentSetup } from "@/features/payments/payment-setup";
 import { useRateLimit } from "@/lib/rate-limit";
 import { formatPlannedUnits } from "@/features/jobs/work-units";
 
@@ -66,6 +67,7 @@ function InvitationDetail(props: Props & { id: string }) {
 
 function InvitationReview({ id, role, go, toast, accountId }: Props & { id: string; accountId: string }) {
   const query = useInvitation(id);
+  const paymentSetup = usePaymentSetup();
   const invitation = query.data;
   const status = useInvitationClock(invitation);
   const client = useQueryClient();
@@ -90,7 +92,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
   }, [status, storageKey]);
 
   async function decide(decision: InvitationDecision) {
-    if (busyRef.current || retryAfter) return;
+    if (busyRef.current || retryAfter || (decision === "accept" && !paymentSetup.ready)) return;
     busyRef.current = true; setBusy(true); setError("");
     if (storageKey) { try { sessionStorage.setItem(storageKey, decision); } catch {} }
     try {
@@ -122,7 +124,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
     catch { setCopyLink(link); }
   }
   const pending = status === "PENDING";
-  const canAccept = invitation && pending && invitationCanAccept(invitation) && !conflicted;
+  const canAccept = paymentSetup.ready && invitation && pending && invitationCanAccept(invitation) && !conflicted;
   const counterpart = invitation ? role === "institution" ? invitation.instructor.fullName : invitation.institution.name : "";
   return <div className="app-page">
     <PageHead title="Job invitation" subtitle="Review the offered terms and response deadline." actions={<Btn icon="arrowLeft" variant="secondary" onClick={() => go("job-invitations")}>All invitations</Btn>} />
@@ -189,7 +191,7 @@ function InvitationReview({ id, role, go, toast, accountId }: Props & { id: stri
           {pending && !invitationCanAccept(invitation) ? <p className="mt-3 text-sm leading-6 text-muted">This job is currently unavailable for acceptance. The school may need to update it and send a new invitation.</p> : null}
           <div className="mt-4 grid gap-2">
             <Btn icon="building" variant="secondary" onClick={() => go("institution-profile", { institutionId: invitation.institution.id, jobId: invitation.job.id })}>View school profile</Btn>
-            {retry && pending && !query.error ? <><p className="mb-2 text-sm text-muted">Your previous response is unconfirmed. Retry that same response to recover its result.</p><Btn disabled={Boolean(retryAfter) || busy} loading={busy} onClick={() => void decide(retry)}>Retry {retry === "cancel" ? "withdrawal" : retry === "accept" ? "acceptance" : "decline"}</Btn></> : pending && !query.error ? role === "teacher" ? <><Btn icon="check" disabled={Boolean(retryAfter) || busy || !canAccept || query.isFetching} onClick={() => setConfirm("accept")}>Accept invitation</Btn><Btn variant="secondary" disabled={Boolean(retryAfter) || busy || query.isFetching} onClick={() => setConfirm("decline")}>Decline invitation</Btn></> : <Btn variant="secondary" disabled={Boolean(retryAfter) || busy || query.isFetching} onClick={() => setConfirm("cancel")}>Withdraw invitation</Btn> : null}
+            {retry && pending && !query.error ? <><p className="mb-2 text-sm text-muted">Your previous response is unconfirmed. Retry that same response to recover its result.</p><Btn disabled={Boolean(retryAfter) || busy || (retry === "accept" && !paymentSetup.ready)} loading={busy} onClick={() => void decide(retry)}>Retry {retry === "cancel" ? "withdrawal" : retry === "accept" ? "acceptance" : "decline"}</Btn></> : pending && !query.error ? role === "teacher" ? <><Btn icon="check" disabled={Boolean(retryAfter) || busy || !canAccept || query.isFetching} onClick={() => setConfirm("accept")}>Accept invitation</Btn><Btn variant="secondary" disabled={Boolean(retryAfter) || busy || query.isFetching} onClick={() => setConfirm("decline")}>Decline invitation</Btn></> : <Btn variant="secondary" disabled={Boolean(retryAfter) || busy || query.isFetching} onClick={() => setConfirm("cancel")}>Withdraw invitation</Btn> : null}
             {status === "ACCEPTED" && invitation.bookingId ? <Btn iconRight="arrowRight" onClick={() => go("bookings", { bookingId: invitation.bookingId! })}>View booking</Btn> : null}
             {role === "institution" ? <Btn icon="copy" variant="secondary" onClick={() => void copy()}>Copy invitation link</Btn> : null}
             <Btn variant="ghost" disabled={Boolean(retryAfter) || busy} loading={query.isFetching} onClick={() => void query.refetch()}>Refresh status</Btn>
