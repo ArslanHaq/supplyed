@@ -26,7 +26,7 @@ import { SignupVerifyPage } from "./SignupVerifyPage";
 
 type SignupStage = "account" | "verify";
 
-const googleUnavailableMessage = "Google sign-in is not configured. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET, then restart the app.";
+const googleUnavailableMessage = "Google sign-in is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then restart the app.";
 
 function SignupRouteClientInner({
   foundingSignupEmail,

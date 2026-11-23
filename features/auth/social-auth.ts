@@ -6,7 +6,7 @@ function hasEnvValue(key: string) {
 
 export function getSocialAuthAvailability(): SocialAuthAvailability {
   return {
-    google: hasEnvValue("AUTH_GOOGLE_ID") && hasEnvValue("AUTH_GOOGLE_SECRET"),
+    google: hasEnvValue("GOOGLE_CLIENT_ID") && hasEnvValue("GOOGLE_CLIENT_SECRET"),
     microsoft: hasEnvValue("AUTH_MICROSOFT_ENTRA_ID_ID") && hasEnvValue("AUTH_MICROSOFT_ENTRA_ID_SECRET"),
   };
 }

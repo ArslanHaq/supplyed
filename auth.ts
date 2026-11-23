@@ -157,8 +157,8 @@ function applyBackendSessionUpdate(token: Record<string, unknown>, session: unkn
   clearBackendAuthError(token);
 }
 
-const googleClientId = readEnv("AUTH_GOOGLE_ID");
-const googleClientSecret = readEnv("AUTH_GOOGLE_SECRET");
+const googleClientId = readEnv("GOOGLE_CLIENT_ID");
+const googleClientSecret = readEnv("GOOGLE_CLIENT_SECRET");
 const microsoftClientId = readEnv("AUTH_MICROSOFT_ENTRA_ID_ID");
 const microsoftClientSecret = readEnv("AUTH_MICROSOFT_ENTRA_ID_SECRET");
 const microsoftIssuer = readEnv("AUTH_MICROSOFT_ENTRA_ID_ISSUER");

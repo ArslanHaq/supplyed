@@ -35,7 +35,7 @@ export function sanitizeAuthErrorMessage(message: string | undefined, fallback =
     return "Social sign-in is not available yet. Use email and password while we finish connecting Google sign-in.";
   }
   if (/Google sign-in is not configured|provider.*google.*not configured/i.test(normalized)) {
-    return "Google sign-in is not configured. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET, then restart the app.";
+    return "Google sign-in is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then restart the app.";
   }
   if (/Microsoft sign-in is not connected/i.test(normalized)) {
     return "Microsoft sign-in is not available yet. Use email and password, or continue with Google when it is enabled.";
