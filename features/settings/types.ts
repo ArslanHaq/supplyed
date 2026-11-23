@@ -106,8 +106,6 @@ export type SettingsInstitutionUpdateInput = {
   otherSubjects?: string[];
   address: string;
   city: string;
-  complianceContact: string;
-  complianceEmail: string;
   countryCode: string;
   county: string;
   coverTypes: string[];

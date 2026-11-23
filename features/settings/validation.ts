@@ -1,5 +1,4 @@
 import { actualSubjects, otherSubjectsError, otherSkillsError } from "@/features/teaching-catalogue/selection";
-import { validateEmail } from "@/features/auth/schemas";
 import { validateUkCity, validateUkCountry, validateUkPhone, validateUkPostcode, validateUkRegion } from "@/lib/uk-validation";
 import type { SettingsUpdateInput } from "./types";
 
@@ -36,11 +35,10 @@ export function validateSettingsInput(input: SettingsUpdateInput, saved?: { subj
   }
   if (input.role === "institution" && input.institution) {
     if (!["PRIMARY", "SECONDARY"].includes(input.institution.schoolType)) errors.schoolType = "Choose whether this is a primary or secondary school.";
-    for (const [field, max] of [["registrationId", 100], ["userRole", 100], ["complianceContact", 200]] as const) if (typeof input.institution[field] !== "string" || text(input.institution[field]).length > max) errors[field] = `Use ${max} characters or fewer.`;
+    for (const [field, max] of [["registrationId", 100], ["userRole", 100]] as const) if (typeof input.institution[field] !== "string" || text(input.institution[field]).length > max) errors[field] = `Use ${max} characters or fewer.`;
     if (!text(input.institution.name) || text(input.institution.name).length > 200) errors.schoolName = "Enter the school or organisation name (up to 200 characters).";
     const domain = text(input.institution.domain).replace(/^https?:\/\//i, "").replace(/\/$/, "");
     if (domain.length > 253 || !/^(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,63}$/i.test(domain)) errors.domain = "Enter a valid institution domain, for example school.org.uk.";
-    if (text(input.institution.complianceEmail) && !validateEmail(text(input.institution.complianceEmail))) errors.complianceEmail = "Use a valid compliance email.";
     if (typeof input.institution.safeguardingConfirmed !== "boolean") errors.safeguardingConfirmed = "Choose a valid safeguarding confirmation.";
 
   }

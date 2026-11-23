@@ -9,7 +9,6 @@ import type { AppPage, RouteProps } from "@/types/supplyed";
 import { Icon, Logo } from "../atoms";
 import { AppAccountMenu } from "../molecules";
 import { NotificationBell } from "./NotificationBell";
-import { UkClock } from "./UkClock";
 
 type NavItem = {
   id: AppPage;
@@ -110,7 +109,6 @@ export function AppChrome({
           <button aria-label="SupplyED dashboard" className="workspace-brand-short" onClick={() => navigate("dashboard")} type="button">S<span>ED</span></button>
         </div>
         <div className={`workspace-role ${state.role === "institution" ? "has-quick-action" : ""}`}><span className="workspace-role-mark"><Icon name={state.role === "institution" ? "building" : state.role === "admin" ? "shield" : "user"} size={18} /></span><span className="workspace-nav-copy"><strong>{userSub}</strong><span>Your SupplyED workspace</span></span></div>
-        {state.role === "institution" ? <UkClock /> : null}
         {state.role === "institution" ? (
           <button
             aria-label="Post a job"
