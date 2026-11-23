@@ -85,6 +85,24 @@ jobs:
             -czf - . | ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$ssh_target" \
             "set -euo pipefail; app_root=\"\$HOME/supplyed\"; deploy_path=\"\$app_root/frontend-dev\"; release_path=\"\$deploy_path/releases/$GITHUB_SHA\"; mkdir -p \"\$deploy_path\" \"\$release_path\"; tar -xzf - -C \"\$release_path\"; cp \"\$release_path/deploy/docker-compose.dev.yml\" \"\$deploy_path/docker-compose.dev.yml\"; ln -sfn \"\$release_path\" \"\$deploy_path/current\""
 
+      - name: Sync OAuth secrets to server .env
+        shell: bash
+        env:
+          SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          # Skip when unset so a missing secret never wipes values already on the server.
+          if [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_CLIENT_SECRET" ]; then
+            echo "::warning::GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET not set in the dev environment; server .env left unchanged."
+            exit 0
+          fi
+          printf 'GOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\n' "$GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT_SECRET" |
+            ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "${SERVER_USER}@${SERVER_HOST}" \
+            'set -euo pipefail; env_file="$HOME/supplyed/frontend-dev/.env"; test -f "$env_file" || { echo "Missing $env_file"; exit 1; }; tmp="$(mktemp "$env_file.XXXXXX")"; grep -Ev "^(GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET)=" "$env_file" > "$tmp" || true; cat >> "$tmp"; cat "$tmp" > "$env_file"; rm -f "$tmp"'
+
       - name: Build and restart frontend
         shell: bash
         env:
