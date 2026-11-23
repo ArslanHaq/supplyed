@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { routeLoadingStartEvent } from "@/lib/navigation-loading";
 
@@ -20,7 +20,12 @@ function isInternalNavigation(anchor: HTMLAnchorElement) {
 }
 
 export function RouteLoader() {
+  return <Suspense fallback={null}><RouteLoadingIndicator /></Suspense>;
+}
+
+function RouteLoadingIndicator() {
   const pathname = usePathname();
+  const search = useSearchParams().toString();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
   const startedAtRef = useRef(0);
@@ -77,33 +82,6 @@ export function RouteLoader() {
       }, 0);
     }
 
-    const originalPushState = window.history.pushState;
-    const originalReplaceState = window.history.replaceState;
-
-    window.history.pushState = function pushState(...args) {
-      const previousUrl = window.location.href;
-      const result = originalPushState.apply(this, args);
-      if (window.location.href !== previousUrl) {
-        window.setTimeout(() => {
-          if (!loadingRef.current) startLoading();
-          finishLoading();
-        }, 0);
-      }
-      return result;
-    };
-
-    window.history.replaceState = function replaceState(...args) {
-      const previousUrl = window.location.href;
-      const result = originalReplaceState.apply(this, args);
-      if (window.location.href !== previousUrl) {
-        window.setTimeout(() => {
-          if (!loadingRef.current) startLoading();
-          finishLoading();
-        }, 0);
-      }
-      return result;
-    };
-
     window.addEventListener("popstate", handlePopState);
     window.addEventListener(routeLoadingStartEvent, startLoading);
     document.addEventListener("pointerdown", handlePointerDown, true);
@@ -111,8 +89,6 @@ export function RouteLoader() {
 
     return () => {
       clearTimers();
-      window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener(routeLoadingStartEvent, startLoading);
       document.removeEventListener("pointerdown", handlePointerDown, true);
@@ -131,7 +107,7 @@ export function RouteLoader() {
       loadingRef.current = false;
       setLoading(false);
     }, delay);
-  }, [pathname]);
+  }, [pathname, search]);
 
   if (!loading) return null;
 

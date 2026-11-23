@@ -27,3 +27,24 @@ test('preview is immutable and missing or milestone schedules do not invent date
  const before=JSON.stringify(base);preview(base);assert.equal(JSON.stringify(base),before);
  assert.deepEqual(preview({...base,schedule:null}),[]);assert.deepEqual(preview({...base,paymentFrequency:'milestone'}),[]);
 });
+const {isReleasePeriodPaid}=load('features/bookings/payment-release-schedule.ts');
+test('completed status comes from confirmed period payments, including older invoices',()=>{
+ const [first,second]=preview(base);
+ const booking={invoice:{status:'OPEN',billingPeriodKey:second.key},attendancePayroll:{periods:[{key:first.key,paid:true},{key:second.key,paid:false}]}};
+ assert.equal(isReleasePeriodPaid(booking,first),true);
+ assert.equal(isReleasePeriodPaid(booking,second),false);
+ assert.equal(isReleasePeriodPaid({invoice:null,attendancePayroll:null},first),false);
+});
+test('paid invoice only completes its matching period or an entire-booking payment',()=>{
+ const [first,second]=preview(base);
+ assert.equal(isReleasePeriodPaid({invoice:{status:'PAID',billingPeriodKey:first.key}},first),true);
+ assert.equal(isReleasePeriodPaid({invoice:{status:'PAID',billingPeriodKey:first.key}},second),false);
+ assert.equal(isReleasePeriodPaid({invoice:{status:'PAID',billingPeriodKey:null}},second),true);
+ assert.equal(isReleasePeriodPaid({invoice:{status:'PENDING',billingPeriodKey:first.key}},first),false);
+});
+test('weekly and monthly keys match backend invoice period keys',()=>{
+ assert.equal(preview({...base,paymentFrequency:'weekly',periodAnchor:'ASSIGNMENT_START'})[0].key,'week:1');
+ assert.equal(preview({...base,paymentFrequency:'weekly',periodAnchor:'CALENDAR'})[0].key,'week:2026-11-16');
+ assert.equal(preview({...base,paymentFrequency:'monthly',periodAnchor:'ASSIGNMENT_START'})[0].key,'month:1');
+ assert.equal(preview({...base,paymentFrequency:'monthly',periodAnchor:'CALENDAR'})[0].key,'month:2026-11');
+});

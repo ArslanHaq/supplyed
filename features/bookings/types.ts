@@ -130,6 +130,8 @@ export type AttendancePayroll = {
   adjustmentDuePence: number;
   exclusions: Array<{ shiftId?: string | null; date: string; amountPence: number; reason: string }>;
   periods: Array<{
+    paid?: boolean;
+    shiftIds?: string[];
     key: string;
     label: string;
     estimatedAmountPence: number;
